@@ -881,6 +881,11 @@ function openCollection() {
 }
 
 function renderDeckEditor() {
+
+    if (!savedData.deck) {
+        savedData.deck = []; 
+    }
+
     // 1. デッキエリアの描画
     const deckGrid = document.getElementById("deck-grid");
     deckGrid.innerHTML = "";
