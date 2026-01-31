@@ -180,33 +180,36 @@
                     </div>
                 </div>
             </div>
-            
-            <div class="modal-overlay" id="card-shop-modal" style="display:none;">
-                <div class="modal-box shop-box">
-                    <div class="modal-title" style="color:#e94560;">CARD SHOP</div>
-                    <div style="color:#aaa; margin-bottom:10px;">所持DP: <span id="shop-dp-display" style="color:#ffd700; font-weight:bold;">0</span></div>
-                    <div class="pack-list" id="pack-list">
-                        </div>
-                <button class="modal-btn" onclick="closeCardShop()">CLOSE</button>
-                </div>
-            </div>
-
-            <div class="modal-overlay" id="pack-result-modal" style="display:none; z-index:3000;">
-                <div class="modal-box" style="border-color:#fff; box-shadow:0 0 30px #fff;">
-                    <div class="modal-title" style="color:#fff;">PACK OPENED!</div>
-                    <div id="pack-results" class="pack-results-container"></div>
-                    <button class="modal-btn" onclick="closePackResult()">OK</button>
-                </div>
-            </div>
 
             <div class="modal-overlay" id="collection-modal" style="display:none;">
-                <div class="modal-box shop-box" style="max-width:800px;">
-                    <div class="modal-title" style="color:#00d2fc;">CARD LIST</div>
-                    <div style="text-align:right; font-size:12px; color:#aaa; margin-bottom:5px;">収集率: <span id="collection-rate">0%</span></div>
-                    <div class="card-grid" id="card-grid">
-                        </div>
-                    <button class="modal-btn" onclick="closeCollection()">CLOSE</button>
+                <div class="modal-box shop-box" style="max-width:900px; height:90vh; display:flex; flex-direction:column;">
+            
+                    <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <div class="modal-title" style="color:#00d2fc; margin:0;">DECK EDIT</div>
+                        <div style="font-size:14px; color:#aaa;">所持率: <span id="collection-rate">0%</span></div>
+                    </div>
+
+                <div class="deck-area-container">
+                    <div style="color:#fff; font-size:14px; margin-bottom:5px;">
+                        ▼ YOUR DECK (<span id="deck-count" style="color:#ffd700;">0</span>/3) 
+                        <span style="font-size:10px; color:#aaa;">※クリックではずす</span>
+                    </div>
+                    <div class="deck-grid" id="deck-grid">
+                        <div class="deck-slot-empty">EMPTY</div>
+                        <div class="deck-slot-empty">EMPTY</div>
+                        <div class="deck-slot-empty">EMPTY</div>
+                    </div>
                 </div>
+
+                <hr style="border:0; border-top:1px solid #444; width:100%; margin:15px 0;">
+
+                <div style="color:#fff; font-size:14px; margin-bottom:5px;">
+                    ▼ CARD LIST <span style="font-size:10px; color:#aaa;">※クリックでデッキに入れる</span>
+                </div>
+                <div class="card-grid" id="card-grid">
+                    </div>
+
+                <button class="modal-btn" onclick="closeCollection()" style="margin-top:auto;">CLOSE</button>
             </div>
         </div>
     </div>

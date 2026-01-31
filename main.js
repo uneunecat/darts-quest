@@ -868,45 +868,125 @@ function closeCardShop() {
     updateTitleScore();
 }
 
-// 3. コレクション機能 (Collection)
+// 3. コレクション・デッキ編集機能
+// --- ★ DECK EDIT SYSTEM (Ver 3.0) ★ ---
+
+// デッキ保存用の初期化
+if (!savedData.deck) savedData.deck = [];
+
 function openCollection() {
     playSE("se-tap");
-    const grid = document.getElementById("card-grid");
-    grid.innerHTML = "";
+    renderDeckEditor();
+    document.getElementById("collection-modal").style.display = "flex";
+}
+
+function renderDeckEditor() {
+    // 1. デッキエリアの描画
+    const deckGrid = document.getElementById("deck-grid");
+    deckGrid.innerHTML = "";
+    
+    // 現在のデッキ（最大3枚）を表示
+    for (let i = 0; i < 3; i++) {
+        const cardId = savedData.deck[i]; // IDがあるかチェック
+        
+        if (cardId) {
+            // カードがある場合
+            const card = CARD_DB.find(c => c.id === cardId);
+            const el = createCardElement(card, true); // true = デッキ用
+            deckGrid.appendChild(el);
+        } else {
+            // 空きスロット
+            const div = document.createElement("div");
+            div.className = "deck-slot-empty";
+            div.innerText = "EMPTY";
+            deckGrid.appendChild(div);
+        }
+    }
+    
+    document.getElementById("deck-count").innerText = savedData.deck.length;
+
+    // 2. カードリストエリアの描画
+    const listGrid = document.getElementById("card-grid");
+    listGrid.innerHTML = "";
     
     if (!savedData.cards) savedData.cards = {};
-
     let ownedCount = 0;
-    
+
     CARD_DB.forEach(card => {
         const count = savedData.cards[card.id] || 0;
         if (count > 0) ownedCount++;
         
-        const div = document.createElement("div");
-        div.className = `collection-card rarity-${card.rarity} ${count===0 ? "card-not-owned" : ""}`;
-        
-        div.innerHTML = `
-            <div style="font-size:10px;">${card.rarity}</div>
-            <div style="font-weight:bold; margin:5px 0;">${card.name}</div>
-            ${count > 0 ? `<div class="card-count">x${count}</div>` : ""}
-        `;
-        
-        // 詳細表示用（クリックしたらアラートで説明を出す簡易実装）
-        div.onclick = function() {
-            if (count > 0) alert(`【${card.name}】\nレア度: ${card.rarity}\n\n${card.desc}`);
-        };
-        
-        grid.appendChild(div);
+        // デッキに入っている枚数を計算
+        const inDeckCount = savedData.deck.filter(id => id === card.id).length;
+        const remaining = count - inDeckCount; // デッキに入れた分はリストから減らすか、あるいは選択不可にするか
+
+        // 今回は「持っている数だけデッキに入れられる」仕様にします
+        const el = createCardElement(card, false, remaining);
+        listGrid.appendChild(el);
     });
 
-    // 収集率
     const rate = Math.floor((ownedCount / CARD_DB.length) * 100);
-    document.getElementById("collection-rate").innerText = `${rate}% (${ownedCount}/${CARD_DB.length})`;
-
-    document.getElementById("collection-modal").style.display = "flex";
+    document.getElementById("collection-rate").innerText = `${rate}%`;
 }
 
-function closeCollection() {
+// カードのHTML要素を作る関数（共通化）
+function createCardElement(card, isDeckItem, remainingCount = 1) {
+    const div = document.createElement("div");
+    // 所持数0ならグレーアウト (デッキ内の場合は常に表示)
+    const notOwnedClass = (!isDeckItem && remainingCount <= 0) ? "card-not-owned" : "";
+    div.className = `collection-card rarity-${card.rarity} ${notOwnedClass}`;
+    
+    // 画像パス: assets/cards/101.png
+    // エラー時は絵文字を表示するトリックを使用
+    const imgPath = `assets/cards/${card.id}.png`;
+    
+    // カードタイプごとの絵文字（画像がない時の予備）
+    const fallbackIcon = card.type === "MAGIC" ? "🪄" : "⛓️";
+
+    div.innerHTML = `
+        <div class="card-count-badge">x${isDeckItem ? 1 : remainingCount}</div>
+        <div class="card-art">
+            <img src="${imgPath}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <div class="card-placeholder" style="display:none;">${fallbackIcon}</div>
+        </div>
+        <div class="card-info">
+            <div class="card-name">${card.name}</div>
+            <div class="card-type">[${card.type}]</div>
+        </div>
+    `;
+
+    // クリック時の動作
+    div.onclick = function() {
+        if (isDeckItem) {
+            removeFromDeck(card.id);
+        } else {
+            addToDeck(card.id);
+        }
+    };
+
+    return div;
+}
+
+function addToDeck(cardId) {
+    // デッキ上限チェック
+    if (savedData.deck.length >= 3) {
+        alert("デッキは3枚までです！");
+        return;
+    }
+    
+    playSE("se-tap"); // 装着音的なものに変更推奨
+    savedData.deck.push(cardId);
+    saveToDrive();
+    renderDeckEditor(); // 画面更新
+}
+
+function removeFromDeck(cardId) {
     playSE("se-tap");
-    document.getElementById("collection-modal").style.display = "none";
+    // デッキから該当IDを1つだけ削除
+    const index = savedData.deck.indexOf(cardId);
+    if (index > -1) {
+        savedData.deck.splice(index, 1);
+    }
+    saveToDrive();
+    renderDeckEditor();
 }
