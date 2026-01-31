@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v1.3 Fixed)");
+console.log("★ main.js is loaded! (v1.4 Fixed)");
 
 // --- ★ GAME DATA CONFIG ★ ---
 const GAME_DATA = {
@@ -181,6 +181,7 @@ function getRankColor(r) {
     if(r==="SSS") return "#00ffff"; if(r==="S") return "#ffd700"; if(r==="A") return "#ff5555"; return "#fff";
 }
 
+// --- DP & Rank Logic ---
 function calculateStageRank(stg, turns) {
     if (stg === 5) { // Extra
         if (turns <= 15) return ["SSS", 1000]; if (turns <= 20) return ["S", 600];
@@ -785,374 +786,103 @@ function openChest() {
     showDialog("TREASURE!", `<span style="font-size:24px;color:#00ff00;">${itemName}</span> を手に入れた！<br>${itemEffect}<br>(アイテムボタンで使用可能)`, "item", [{text:"OK", action:nextStep}]);
 }
 
-// --- ★ Smartphone Touch Handling ★ ---
-function tapKey(key) {
-    if (elGame.style.display === "none" || isProcessing) return;
+function nextStep() {
+    floor++; const ppr = totalDarts>0 ? ((totalScore/totalDarts)*3).toFixed(1) : 0;
 
-    // 効果音
-    if(key === 'ENT') {
-        // エンターキー相当の処理
-        handleEnter();
-    } else if (key === 'BS') {
-        // Backspace処理
-        if (currentInput.length > 0) {
-            currentInput = currentInput.slice(0, -1);
-        } else if (turnInputs.length > 0) {
-            currentInput = "" + turnInputs.pop();
-        }
-        playSE("se-tap");
-        updateScoreDisplay();
-    } else {
-        // 数字キー処理
-        if (currentInput.length < 3) {
-            playSE("se-tap");
-            currentInput += key;
-            updateScoreDisplay();
-        }
-    }
-}
+    if((floor > 5 && stage !== 4) || (stage === 4 && floor > 6)) {
 
-// --- ★ CARD & SHOP SYSTEM (Ver 2.1) ★ ---
+        const stageTurns = totalGameTurns - stageStartTurn;
+        const [rank, dpBonus] = calculateStageRank(stage, stageTurns);
+        const scoreDP = Math.floor(totalScore * 0.2); 
 
-// 1. マスターカードデータ (Master Data)
-const CARD_DB = [
-    // UR (2%)
-    { id: 101, name: "死者蘇生", rarity: "UR", type: "MAGIC", desc: "HPを完全回復する" },
-    
-    // SR (8%)
-    { id: 201, name: "サンダー・ボルト", rarity: "SR", type: "MAGIC", desc: "敵全体に大ダメージ" },
-    { id: 202, name: "強欲な壺", rarity: "SR", type: "MAGIC", desc: "SPを最大までチャージ" },
+        let pendingBonusDP = dpBonus;
+        clearedStagesLog.forEach(log => { pendingBonusDP += log.dp; });
+        let potentialTotalDP = scoreDP + pendingBonusDP;
 
-    // R (30%)
-    { id: 301, name: "光の護封剣", rarity: "R", type: "MAGIC", desc: "3ターンの間ダメージ無効" },
-    { id: 302, name: "落とし穴", rarity: "R", type: "TRAP", desc: "敵のチャージを無効化" },
-    { id: 303, name: "聖なるバリア", rarity: "R", type: "TRAP", desc: "敵の攻撃を反射" },
+        clearedStagesLog.push({ stage: stage, rank: rank, dp: dpBonus });
 
-    // N (60%)
-    { id: 401, name: "火の粉", rarity: "N", type: "MAGIC", desc: "敵に50ダメージ" },
-    { id: 402, name: "治療の神", rarity: "N", type: "MAGIC", desc: "HPを50回復" },
-    { id: 403, name: "はさみ撃ち", rarity: "N", type: "TRAP", desc: "次の攻撃ダメージ1.2倍" },
-    { id: 404, name: "昼夜の大火事", rarity: "N", type: "MAGIC", desc: "敵に80ダメージ" },
-    { id: 405, name: "突進", rarity: "N", type: "MAGIC", desc: "攻撃力アップ" }
-];
-
-// パック定義
-const PACK_DATA = [
-    { 
-        id: "vol1", 
-        name: "Vol.1 - Legend", 
-        price: 1000, 
-        desc: "伝説の始まり。基本魔法カード収録。", 
-        unlockStage: 1,
-        img: "assets/packs/vol1.png" // ★画像パス追加
-    }
-];
-
-// 2. ショップ機能 (Shop Logic)
-function openCardShop() {
-    playSE("se-tap");
-    const list = document.getElementById("pack-list");
-    list.innerHTML = "";
-    document.getElementById("shop-dp-display").innerText = savedData.dp;
-
-    if (!savedData.cards) savedData.cards = {};
-
-    PACK_DATA.forEach(pack => {
-        // ステージ解放チェック
-        const isUnlocked = (savedData.bestRanks && savedData.bestRanks[pack.unlockStage]);
-        // const isUnlocked = true; // デバッグ用
-
-        if (!isUnlocked) return; 
-
-        const canBuy = savedData.dp >= pack.price;
-        
-        // パック画像がない場合のダミー画像（絵文字）
-        const imgHTML = `<img src="${pack.img}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                         <div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:50px; background:#333; color:#555;">📦</div>`;
-
-        const div = document.createElement("div");
-        div.className = "pack-item";
-        div.innerHTML = `
-            <div class="pack-img-container">${imgHTML}</div>
-            <div class="pack-name">${pack.name}</div>
-            <div class="pack-desc">${pack.desc}</div>
-            <button class="pack-buy-btn" ${canBuy ? "" : "disabled"} onclick="buyPack('${pack.id}')">
-                ${canBuy ? `BUY (${pack.price} DP)` : "LACK DP"}
-            </button>
-        `;
-        list.appendChild(div);
-    });
-
-    if (list.innerHTML === "") {
-        list.innerHTML = "<div style='color:#666; width:100%; text-align:center;'>STAGE 1 CLEAR REQUIRED</div>";
-    }
-
-    document.getElementById("card-shop-modal").style.display = "flex";
-}
-
-function buyPack(packId) {
-    const pack = PACK_DATA.find(p => p.id === packId);
-    if (!pack || savedData.dp < pack.price) return;
-
-    // DP消費
-    savedData.dp -= pack.price;
-    document.getElementById("shop-dp-display").innerText = savedData.dp;
-    playSE("se-item"); // 仮の音
-
-    // 3枚抽選
-    const results = [];
-    for(let i=0; i<3; i++) {
-        const card = drawShopCard(packId); // ★修正ポイント: drawCard -> drawShopCard
-        
-        // 初入手チェック
-        const isNew = !savedData.cards[card.id];
-        
-        // 所持数加算
-        if (!savedData.cards[card.id]) savedData.cards[card.id] = 0;
-        savedData.cards[card.id]++;
-        
-        results.push({ card: card, isNew: isNew });
-    }
-    
-    saveToDrive();
-    showPackResult(results);
-}
-
-// ★修正ポイント: 関数名を drawShopCard に変更
-function drawShopCard(packId) {
-    // 簡易ウェイト抽選 (N:60, R:30, SR:8, UR:2)
-    const rand = Math.random() * 100;
-    let targetRarity = "N";
-    if (rand < 2) targetRarity = "UR";
-    else if (rand < 10) targetRarity = "SR";
-    else if (rand < 40) targetRarity = "R";
-
-    // 該当レアリティの中からランダムに1枚選ぶ
-    const pool = CARD_DB.filter(c => c.rarity === targetRarity);
-    if (pool.length === 0) return CARD_DB[0]; // エラー回避
-    return pool[Math.floor(Math.random() * pool.length)];
-}
-
-function showPackResult(results) {
-    const container = document.getElementById("pack-results");
-    container.innerHTML = "";
-    
-    // 結果表示演出
-    results.forEach((res, index) => {
-        const c = res.card;
-        
-        // 以前作った createCardElement 関数を再利用してカードの見た目を作る
-        // 第2引数(isDeck)=false, 第3引数(remain)=1 (所持してるように見せるため)
-        const cardEl = createCardElement(c, false, 1);
-        
-        // アニメーション用クラスを追加
-        cardEl.classList.add("result-card-anim");
-        cardEl.style.animationDelay = `${index * 0.3}s`; // 0.3秒ずつずらして登場
-        
-        // NEWバッジの追加
-        if (res.isNew) {
-            const badge = document.createElement("div");
-            badge.className = "new-badge-overlay";
-            badge.innerText = "NEW!";
-            cardEl.appendChild(badge);
+        const currentBest = savedData.bestRanks[stage];
+        const ranksOrder = ["SSS", "S", "A", "B", "C"];
+        if (!currentBest || ranksOrder.indexOf(rank) < ranksOrder.indexOf(currentBest)) {
+            savedData.bestRanks[stage] = rank;
         }
 
-        container.appendChild(cardEl);
-    });
+        playBGM("bgm-win");
 
-    // レア度判定で音を変える
-    const hasHighRare = results.some(r => r.card.rarity === "SR" || r.card.rarity === "UR");
-    if (hasHighRare) {
-        setTimeout(() => playSE("se-win"), 300); // 少し遅らせてファンファーレ
-    } else {
-        playSE("se-buff");
-    }
+        if(stage === 5) {
+            const res = finishSession("EXTRA-WIN", parseFloat(ppr));
+            showDialog("★ TRUE ENDING ★", `<span style="font-size:30px;color:#f0f;">THE LEGEND!!</span><br>最強の黒竜を倒した！<br><br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br>PPR: ${ppr}<br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{text:"TITLE", action:returnToTitle}]);
+            return;
+        }
 
-    document.getElementById("pack-result-modal").style.display = "flex";
-}
+        if(stage === 4) {
+            const res = finishSession("WIN", parseFloat(ppr));
+            showDialog("STAGE 4 CLEAR!", `<span style="font-size:28px;color:#e0b0ff;">NIGHTMARE CONQUERED!</span><br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{text:"TITLE", action:returnToTitle}]);
+            return;
+        }
 
-function closePackResult() {
-    playSE("se-tap");
-    document.getElementById("pack-result-modal").style.display = "none";
-    updateTitleScore(); // DP表示更新
-}
+        let title = "STAGE CLEAR";
+        let msg = `STAGE ${stage} COMPLETED!<br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br><br>現在の獲得予定DP: <span style="color:#ffd700; font-weight:bold;">${potentialTotalDP} DP</span>`;
 
-function closeCardShop() {
-    playSE("se-tap");
-    document.getElementById("card-shop-modal").style.display = "none";
-    updateTitleScore();
-}
+        const btnNext = { text: "⛺ 次へ進む (繰越)", action: () => {
+            player.hp = Math.min(player.hp + 30, player.maxHp);
+            initGameSession(stage + 1, true);
+        } };
 
-// 3. コレクション・デッキ編集機能
-// --- ★ DECK EDIT SYSTEM (Ver 3.0) ★ ---
+        const btnExtra = { text: "⚠️ EXTRA STAGE", action: () => {
+            player.hp = Math.min(player.hp + 30, player.maxHp);
+            initGameSession(5, true);
+        } };
 
-// デッキ保存用の初期化
-if (!savedData.deck) savedData.deck = [];
+        const btnReturn = { text: "🏠 帰還する (確定)", action: () => {
+            const res = finishSession("RETURN", parseFloat(ppr));
+            showDialog("MISSION COMPLETE", `帰還しました。<br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{text:"TITLE", action:returnToTitle}]);
+        } };
 
-function openCollection() {
-    playSE("se-tap");
-    renderDeckEditor();
-    document.getElementById("collection-modal").style.display = "flex";
-}
-
-function closeCollection() {
-    playSE("se-tap");
-    document.getElementById("collection-modal").style.display = "none";
-}
-
-// デッキ編集画面の描画（12枚対応）
-function renderDeckEditor() {
-    // データ初期化（安全装置）
-    if (!savedData.deck) savedData.deck = [];
-
-    // 1. デッキエリアの描画
-    const deckGrid = document.getElementById("deck-grid");
-    deckGrid.innerHTML = "";
-    
-    // デッキ枠を12個に拡張
-    const DECK_MAX = 12;
-
-    for (let i = 0; i < DECK_MAX; i++) {
-        const cardId = savedData.deck[i]; 
-        
-        if (cardId) {
-            const card = CARD_DB.find(c => c.id === cardId);
-            const el = createCardElement(card, true); // true = デッキ用
-            deckGrid.appendChild(el);
+        let buttons = [];
+        if (stage === 3) {
+            if (parseFloat(ppr) >= 70.0) {
+                msg += "<br><br><span style='color:#ff0000;'>強力な反応を感知...挑戦しますか？</span>";
+                buttons = [btnExtra, btnReturn];
+            } else {
+                msg += "<br><br>全てのエリアを踏破した！";
+                buttons = [{ text: "🏠 ALL CLEAR", action: () => {
+                    const res = finishSession("WIN", parseFloat(ppr));
+                    showDialog("ALL CLEAR!", `おめでとうございます！<br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{text:"TITLE", action:returnToTitle}]);
+                } }];
+            }
         } else {
-            const div = document.createElement("div");
-            div.className = "deck-slot-empty";
-            div.innerText = "EMPTY";
-            deckGrid.appendChild(div);
+            buttons = [btnNext, btnReturn];
         }
-    }
-    
-    // 枚数カウント表示（文字色で警告）
-    const deckCount = savedData.deck.length;
-    const countEl = document.getElementById("deck-count");
-    countEl.innerText = deckCount;
-    
-    // 12枚未満なら赤字、12枚なら緑字にする演出
-    if (deckCount < 12) {
-        countEl.style.color = "#ff5555"; // 赤
-        countEl.innerText += " (あと" + (12 - deckCount) + "枚)";
+
+        showDialog(title, msg, "clear", buttons);
+
     } else {
-        countEl.style.color = "#00ff00"; // 緑
-        countEl.innerText += " (OK!)";
+        spawnEnemy();
     }
-
-    // 2. カードリストエリアの描画
-    const listGrid = document.getElementById("card-grid");
-    listGrid.innerHTML = "";
-    
-    if (!savedData.cards) savedData.cards = {};
-    let ownedCount = 0;
-
-    CARD_DB.forEach(card => {
-        const count = savedData.cards[card.id] || 0;
-        if (count > 0) ownedCount++;
-        
-        // デッキに入っているこのカードの枚数を数える
-        const inDeckCount = savedData.deck.filter(id => id === card.id).length;
-        
-        // リストに残る枚数 = 所持数 - デッキに入れた数
-        // ★ルール変更: カードは持っている数だけ入れられる（最大3枚制限はaddToDeckでやる）
-        const remaining = count - inDeckCount; 
-
-        const el = createCardElement(card, false, remaining);
-        listGrid.appendChild(el);
-    });
-
-    const rate = Math.floor((ownedCount / CARD_DB.length) * 100);
-    document.getElementById("collection-rate").innerText = `${rate}%`;
 }
 
-// カードのHTML要素を作る関数（共通化）
-function createCardElement(card, isDeckItem, remainingCount = 1) {
-    const div = document.createElement("div");
-    // 所持数0ならグレーアウト (デッキ内の場合は常に表示)
-    const notOwnedClass = (!isDeckItem && remainingCount <= 0) ? "card-not-owned" : "";
-    div.className = `collection-card rarity-${card.rarity} ${notOwnedClass}`;
-    
-    // 画像パス: assets/cards/101.png
-    // エラー時は絵文字を表示するトリックを使用
-    const imgPath = `assets/cards/${card.id}.png`;
-    
-    // カードタイプごとの絵文字（画像がない時の予備）
-    const fallbackIcon = card.type === "MAGIC" ? "🪄" : "⛓️";
+function loseBattle() {
+    const ppr = totalDarts>0 ? ((totalScore/totalDarts)*3).toFixed(1) : 0;
+    const res = finishSession("LOSE", parseFloat(ppr));
+    playBGM("bgm-lose");
 
-    div.innerHTML = `
-        <div class="card-count-badge">x${isDeckItem ? 1 : remainingCount}</div>
-        <div class="card-art">
-            <img src="${imgPath}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-            <div class="card-placeholder" style="display:none;">${fallbackIcon}</div>
-        </div>
-        <div class="card-info">
-            <div class="card-name">${card.name}</div>
-            <div class="card-type">[${card.type}]</div>
-        </div>
-    `;
-
-    // クリック時の動作
-    div.onclick = function() {
-        if (isDeckItem) {
-            removeFromDeck(card.id);
-        } else {
-            addToDeck(card.id);
-        }
-    };
-
-    return div;
+    let reached = (stage===5) ? "EXTRA" : (stage===4 ? `STAGE 4-${floor}F` : `STAGE ${stage}-${floor}F`);
+    showDialog("GAME OVER", `到達: ${reached}<br>PPR: ${ppr} <span class='rt-badge'>Rt ${calculateRating(ppr)}</span><br><br><span style="color:#ffd700; font-size:20px;">GET DP: +${res.gainedDP}</span>`, "warning", [{text:"TITLE", action:returnToTitle}]);
 }
 
-// デッキに追加する処理（ルール追加）
-function addToDeck(cardId) {
-    const DECK_MAX = 12;
-    const SAME_CARD_LIMIT = 3;
+function returnToTitle() { playBGM("bgm-title"); elContainer.classList.remove("boss-mode","extra-mode"); elGame.style.display="none"; elTitle.style.display="flex"; updateTitleScore(); }
 
-    // 1. 枚数制限チェック (最大12枚)
-    if (savedData.deck.length >= DECK_MAX) {
-        alert("デッキは12枚までです！");
-        return;
-    }
-
-    // 2. 所持数チェック
-    const ownedCount = savedData.cards[cardId] || 0;
-    const currentInDeck = savedData.deck.filter(id => id === cardId).length;
-
-    if (currentInDeck >= ownedCount) {
-        alert("これ以上持っていません！"); // パックを開けて当ててね
-        return;
-    }
-
-    // 3. 同名カード制限チェック (最大3枚)
-    if (currentInDeck >= SAME_CARD_LIMIT) {
-        alert(`「${getCardName(cardId)}」はデッキに3枚までしか入れられません。`);
-        return;
-    }
-    
-    playSE("se-tap");
-    savedData.deck.push(cardId);
-    saveToDrive();
-    renderDeckEditor(); 
+function triggerEffect(el, dmg, isP, isWeak=false) {
+    el.classList.remove("shake-small", "shake-medium", "shake-heavy", "shake-ultimate"); void el.offsetWidth;
+    if(dmg >= 150) { el.classList.add("shake-ultimate"); playSE("se-boom"); elOverlay.className = "flash-gold"; setTimeout(()=>elOverlay.className="", 800); }
+    else if(dmg >= 60) { el.classList.add("shake-heavy"); playSE("se-boom"); elOverlay.className = isP ? "flash-red" : "flash-white"; setTimeout(()=>elOverlay.className="", 300); }
+    else { el.classList.add(dmg>=30 ? "shake-medium" : "shake-small"); playSE("se-hit"); }
+    const pop = document.createElement("div"); pop.innerText=dmg; if(dmg >= 150) pop.className="damage-popup dmg-ultimate"; else if(dmg >= 60) pop.className="damage-popup dmg-heavy"; else if(dmg >= 30) pop.className="damage-popup dmg-medium"; else pop.className="damage-popup dmg-small";
+    pop.style.left="50%"; pop.style.top="50%"; el.appendChild(pop); setTimeout(()=>pop.remove(),1500);
 }
-
-// カード名を取得するヘルパー関数
-function getCardName(id) {
-    const c = CARD_DB.find(card => card.id === id);
-    return c ? c.name : "カード";
-}
-
-function removeFromDeck(cardId) {
-    playSE("se-tap");
-    // デッキから該当IDを1つだけ削除
-    const index = savedData.deck.indexOf(cardId);
-    if (index > -1) {
-        savedData.deck.splice(index, 1);
-    }
-    saveToDrive();
-    renderDeckEditor();
-}
+function animateValue(obj, s, e, d) { if(obj) obj.innerHTML = e; }
+function addLog(t, type="") { const d=document.createElement("div"); d.innerHTML=t; if(type) d.className="log-"+type; elLog.prepend(d); }
 
 // --- ★ DEBUG TOOLS (Step 1) ★ ---
 
