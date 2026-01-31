@@ -1,3 +1,5 @@
+console.log("★ main.js is loaded! ★");
+
 // --- ★ GAME DATA CONFIG ★ ---
 const GAME_DATA = {
     enemies: {
