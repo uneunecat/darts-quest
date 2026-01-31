@@ -431,23 +431,32 @@ function checkOpeningSkill() {
     // This function can be used for stage-specific intros
 }
 
+// --- ★ Fix: Battle Setup Logic ★ ---
 function setupStage(sel) {
     stage=sel; floor=1; isProcessing=false; extraBossTurnCount=0; currentTurn=1;
-    stageStartTurn = totalGameTurns; // Reset stage turn counter base
+    stageStartTurn = totalGameTurns; 
 
-    // Reset Battle State
+    // 1. Show Game Screen First
+    elAvg.innerText="0.0"; elRt.innerText="(Rt -)"; elLog.innerHTML=""; elGame.style.display="block";
+    
+    // 2. Spawn Enemy (Load data BEFORE drawing cards)
+    spawnEnemy(); 
+
+    // 3. Reset Player State
     player.state={power:false,shield:false,weakLock:false}; 
-    enemy.state={charge:false,guard:false,guardType:null,guardTurn:0,atkBuff:0,isStunned:false};
-    player.mp = 3; // Reset MP on stage start
+    player.mp = 3; 
 
-    // Deck & Hand Setup
+    // 4. Deck Setup & Initial Draw
     player.deck = shuffleArray([...savedData.deck]); 
     player.hand = [];
     player.discard = [];
-    for(let i=0; i<3; i++) drawCard();
+    
+    for(let i=0; i<3; i++) {
+        drawCard();
+    }
 
-    elAvg.innerText="0.0"; elRt.innerText="(Rt -)"; elLog.innerHTML=""; elGame.style.display="block";
-    addLog(`STAGE ${stage} START!`, "system"); spawnEnemy(); resizeGame();
+    addLog(`STAGE ${stage} START!`, "system"); 
+    resizeGame();
 }
 
 function shuffleArray(array) {
@@ -570,6 +579,9 @@ function applyCardEffect(card) {
 }
 
 function updateInfo() {
+    // ★ Safety Guard: Skip if enemy data is not loaded yet
+    if (!enemy.data) return;
+
     if(stage===5) { elStage.innerText="EXTRA"; elFloor.innerText="FINAL"; }
     else if(stage===4) { elStage.innerText="STAGE 4"; elFloor.innerText=`${floor}F`; }
     else { elStage.innerText=`STAGE ${stage}`; elFloor.innerText=`${floor}F`; }
@@ -727,7 +739,6 @@ function openChest() {
     showDialog("TREASURE!", `<span style="font-size:24px;color:#00ff00;">${itemName}</span> を手に入れた！<br>${itemEffect}<br>(アイテムボタンで使用可能)`, "item", [{text:"OK", action:nextStep}]);
 }
 
-// --- ★ Ver 52.3 Logic Updates ★ ---
 function nextStep() {
     floor++; const ppr = totalDarts>0 ? ((totalScore/totalDarts)*3).toFixed(1) : 0;
 
@@ -737,12 +748,10 @@ function nextStep() {
         const [rank, dpBonus] = calculateStageRank(stage, stageTurns);
         const scoreDP = Math.floor(totalScore * 0.2); 
 
-        // Calculate POTENTIAL DP so far (including past stages in this run)
         let pendingBonusDP = dpBonus;
         clearedStagesLog.forEach(log => { pendingBonusDP += log.dp; });
         let potentialTotalDP = scoreDP + pendingBonusDP;
 
-        // Commit log
         clearedStagesLog.push({ stage: stage, rank: rank, dp: dpBonus });
 
         const currentBest = savedData.bestRanks[stage];
@@ -753,21 +762,18 @@ function nextStep() {
 
         playBGM("bgm-win");
 
-        // --- EXTRA CLEAR ---
         if(stage === 5) {
             const res = finishSession("EXTRA-WIN", parseFloat(ppr));
             showDialog("★ TRUE ENDING ★", `<span style="font-size:30px;color:#f0f;">THE LEGEND!!</span><br>最強の黒竜を倒した！<br><br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br>PPR: ${ppr}<br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{text:"TITLE", action:returnToTitle}]);
             return;
         }
 
-        // --- STAGE 4 CLEAR ---
         if(stage === 4) {
             const res = finishSession("WIN", parseFloat(ppr));
             showDialog("STAGE 4 CLEAR!", `<span style="font-size:28px;color:#e0b0ff;">NIGHTMARE CONQUERED!</span><br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{text:"TITLE", action:returnToTitle}]);
             return;
         }
 
-        // --- STAGE 1-3 Intermission ---
         let title = "STAGE CLEAR";
         let msg = `STAGE ${stage} COMPLETED!<br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br><br>現在の獲得予定DP: <span style="color:#ffd700; font-weight:bold;">${potentialTotalDP} DP</span>`;
 
@@ -793,7 +799,9 @@ function nextStep() {
                 buttons = [btnExtra, btnReturn];
             } else {
                 msg += "<br><br>全てのエリアを踏破した！";
-                buttons = [{ text: "🏠 ALL CLEAR", action: () => {                    const res = finishSession("WIN", parseFloat(ppr));                    showDialog("ALL CLEAR!", `おめでとうございます！<br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{text:"TITLE", action:returnToTitle}]);
+                buttons = [{ text: "🏠 ALL CLEAR", action: () => {
+                    const res = finishSession("WIN", parseFloat(ppr));
+                    showDialog("ALL CLEAR!", `おめでとうございます！<br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{text:"TITLE", action:returnToTitle}]);
                 } }];
             }
         } else {
@@ -859,10 +867,38 @@ function tapKey(key) {
 // --- ★ CARD & SHOP SYSTEM (Ver 2.1) ★ ---
 
 // 1. マスターカードデータ (Master Data)
-const CARD_DB = [    // UR (2%)    { id: 101, name: "死者蘇生", rarity: "UR", type: "MAGIC", desc: "HPを完全回復する" },        // SR (8%)    { id: 201, name: "サンダー・ボルト", rarity: "SR", type: "MAGIC", desc: "敵全体に大ダメージ" },    { id: 202, name: "強欲な壺", rarity: "SR", type: "MAGIC", desc: "SPを最大までチャージ" },    // R (30%)    { id: 301, name: "光の護封剣", rarity: "R", type: "MAGIC", desc: "3ターンの間ダメージ無効" },    { id: 302, name: "落とし穴", rarity: "R", type: "TRAP", desc: "敵のチャージを無効化" },    { id: 303, name: "聖なるバリア", rarity: "R", type: "TRAP", desc: "敵の攻撃を反射" },    // N (60%)    { id: 401, name: "火の粉", rarity: "N", type: "MAGIC", desc: "敵に50ダメージ" },    { id: 402, name: "治療の神", rarity: "N", type: "MAGIC", desc: "HPを50回復" },    { id: 403, name: "はさみ撃ち", rarity: "N", type: "TRAP", desc: "次の攻撃ダメージ1.2倍" },    { id: 404, name: "昼夜の大火事", rarity: "N", type: "MAGIC", desc: "敵に80ダメージ" },    { id: 405, name: "突進", rarity: "N", type: "MAGIC", desc: "攻撃力アップ" }];
+const CARD_DB = [
+    // UR (2%)
+    { id: 101, name: "死者蘇生", rarity: "UR", type: "MAGIC", desc: "HPを完全回復する" },
+    
+    // SR (8%)
+    { id: 201, name: "サンダー・ボルト", rarity: "SR", type: "MAGIC", desc: "敵全体に大ダメージ" },
+    { id: 202, name: "強欲な壺", rarity: "SR", type: "MAGIC", desc: "SPを最大までチャージ" },
+
+    // R (30%)
+    { id: 301, name: "光の護封剣", rarity: "R", type: "MAGIC", desc: "3ターンの間ダメージ無効" },
+    { id: 302, name: "落とし穴", rarity: "R", type: "TRAP", desc: "敵のチャージを無効化" },
+    { id: 303, name: "聖なるバリア", rarity: "R", type: "TRAP", desc: "敵の攻撃を反射" },
+
+    // N (60%)
+    { id: 401, name: "火の粉", rarity: "N", type: "MAGIC", desc: "敵に50ダメージ" },
+    { id: 402, name: "治療の神", rarity: "N", type: "MAGIC", desc: "HPを50回復" },
+    { id: 403, name: "はさみ撃ち", rarity: "N", type: "TRAP", desc: "次の攻撃ダメージ1.2倍" },
+    { id: 404, name: "昼夜の大火事", rarity: "N", type: "MAGIC", desc: "敵に80ダメージ" },
+    { id: 405, name: "突進", rarity: "N", type: "MAGIC", desc: "攻撃力アップ" }
+];
 
 // パック定義
-const PACK_DATA = [    {         id: "vol1",         name: "Vol.1 - Legend",         price: 1000,         desc: "伝説の始まり。基本魔法カード収録。",         unlockStage: 1,        img: "assets/packs/vol1.png" // ★画像パス追加    }];
+const PACK_DATA = [
+    { 
+        id: "vol1", 
+        name: "Vol.1 - Legend", 
+        price: 1000, 
+        desc: "伝説の始まり。基本魔法カード収録。", 
+        unlockStage: 1,
+        img: "assets/packs/vol1.png" // ★画像パス追加
+    }
+];
 
 // 2. ショップ機能 (Shop Logic)
 function openCardShop() {
