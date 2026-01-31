@@ -880,6 +880,11 @@ function openCollection() {
     document.getElementById("collection-modal").style.display = "flex";
 }
 
+function closeCollection() {
+    playSE("se-tap");
+    document.getElementById("collection-modal").style.display = "none";
+}
+
 function renderDeckEditor() {
 
     if (!savedData.deck) {

@@ -271,43 +271,82 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     .key-enter { background: #004466; color: #ccffff; font-weight: bold; }
 }
 
-/* --- ★ DECK & CARD DESIGN (Ver 3.1 Fixed) ★ --- */
+/* --- ★ DECK & CARD DESIGN (Ver 3.2 Scroll Fixed) ★ --- */
 
-/* Modal Layout Fix (画面からはみ出さないようにする) */
+/* 1. モーダル全体の枠組み (Flexboxで縦並びを強制) */
 .modal-box.shop-box {
     width: 900px;
     max-width: 95%;
-    height: 90vh; /* 画面の高さの90%に制限 */
+    height: 90vh; /* 画面の90%の高さ */
     max-height: 800px;
     display: flex;
-    flex-direction: column; /* タテ並びレイアウト */
-    padding: 15px;
+    flex-direction: column; /* 上から順に並べる */
+    padding: 0; /* パディングは内側で管理 */
     overflow: hidden; /* ボックス自体はスクロールさせない */
+    background: #16213e; /* 背景色を明示 */
+    border: 2px solid #fff;
+    border-radius: 8px;
 }
 
-.modal-header { flex-shrink: 0; } /* ヘッダーは縮めない */
-.deck-area-container { flex-shrink: 0; } /* デッキエリアも縮めない */
+/* 2. ヘッダーとデッキエリア (サイズ固定・縮まない) */
+.modal-header {
+    padding: 15px;
+    background: rgba(0,0,0,0.2);
+    flex-shrink: 0;
+}
 
-/* Deck Area */
 .deck-area-container {
-    background: rgba(0,0,0,0.3);
+    margin: 10px 15px;
     padding: 10px;
+    background: rgba(0,0,0,0.3);
     border-radius: 8px;
     border: 1px solid #333;
-    margin-bottom: 10px;
+    flex-shrink: 0; /* 縮ませない */
 }
 
+/* 3. カードリスト (★ここだけスクロールさせる★) */
+.card-grid {
+    flex: 1; /* 余ったスペースを全部使う */
+    overflow-y: auto; /* 縦スクロール許可 */
+    min-height: 0; /* Flexboxのはみ出し防止 */
+    padding: 15px; /* カードの周りに隙間 */
+    background: rgba(0,0,0,0.2);
+    
+    /* グリッド設定 */
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    grid-auto-rows: max-content; /* 高さを中身に合わせる */
+    gap: 15px; /* カード同士の間隔 */
+    align-content: start; /* 上詰めにする */
+}
+
+/* 4. フッターボタン (一番下に固定) */
+.modal-btn {
+    margin: 15px;
+    padding: 15px 0;
+    flex-shrink: 0; /* 縮ませない */
+    width: calc(100% - 30px); /* 左右の余白分引く */
+    background: #e94560;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.modal-btn:hover { background: #ff6b81; }
+
+/* --- 以下、カード個別のデザイン --- */
 .deck-grid {
     display: flex;
     gap: 10px;
     justify-content: center;
-    align-items: center; /* 上下中央揃え */
+    align-items: center;
     min-height: 120px;
 }
 
 .deck-slot-empty {
     width: 100px;
-    height: 140px; /* カードと同じ比率に */
+    height: 140px;
     border: 2px dashed #444;
     border-radius: 6px;
     display: flex;
@@ -318,35 +357,20 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     background: rgba(0,0,0,0.2);
 }
 
-/* ★巨大化バグの修正箇所★ */
-/* デッキエリアに入ったカードはサイズを固定する */
+/* デッキ内のカード固定サイズ */
 .deck-grid .collection-card {
-    width: 100px !important;  /* 強制的に幅100px */
-    height: 140px !important; /* 強制的に高さ140px */
-    flex-shrink: 0; /* 縮まないようにする */
+    width: 100px !important;
+    height: 140px !important;
+    flex-shrink: 0;
 }
-/* デッキ内の文字サイズ調整 */
-.deck-grid .collection-card .card-name { font-size: 9px; } 
-.deck-grid .collection-card .card-type { display: none; } /* デッキ内ではタイプ非表示ですっきりさせる */
+.deck-grid .collection-card .card-name { font-size: 9px; }
+.deck-grid .collection-card .card-type { display: none; }
 
-/* Card List Area (スクロールするのはここだけ！) */
-.card-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); /* 1つ100pxくらい */
-    gap: 10px;
-    padding: 5px;
-    overflow-y: auto; /* ★ここだけスクロールさせる★ */
-    flex: 1; /* 余ったスペースを全部使う */
-    min-height: 0; /* Flexboxのはみ出し防止のおまじない */
-    background: rgba(0,0,0,0.2);
-    border-radius: 4px;
-}
-
-/* Card Common Design */
+/* 共通カードデザイン */
 .collection-card {
     position: relative;
     width: 100%;
-    aspect-ratio: 2 / 3; /* 比率固定 */
+    aspect-ratio: 2 / 3;
     border-radius: 6px;
     cursor: pointer;
     transition: transform 0.1s;
@@ -371,14 +395,14 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     border-bottom: 1px solid #333;
 }
 .card-art img { width: 100%; height: 100%; object-fit: cover; }
-.card-placeholder { font-size: 30px; } 
+.card-placeholder { font-size: 30px; }
 
 .card-info { padding: 4px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
 .card-name { font-size: 10px; font-weight: bold; color: #fff; line-height: 1.1; overflow: hidden; }
 .card-type { font-size: 8px; color: #aaa; margin-top: 2px; }
 .card-count-badge { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.8); color: #fff; font-size: 9px; padding: 1px 4px; border-radius: 3px; border: 1px solid #555; z-index: 5; }
 
-/* Rarity Styles */
+/* レアリティ色 */
 .rarity-UR { border-color: #d000ff; box-shadow: 0 0 8px #d000ff; }
 .rarity-UR .card-name { color: #f0f; text-shadow: 0 0 2px #f0f; }
 .rarity-SR { border-color: #ffd700; box-shadow: 0 0 5px #ffd700; }
@@ -387,6 +411,3 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .rarity-R .card-name { color: #00d2fc; }
 .rarity-N { border-color: #555; }
 .card-not-owned { opacity: 0.4; filter: grayscale(100%); pointer-events: none; }
-
-/* Close Button Fix */
-.modal-btn { margin-top: 10px; flex-shrink: 0; }
