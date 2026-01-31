@@ -431,34 +431,26 @@ function checkOpeningSkill() {
     // This function can be used for stage-specific intros
 }
 
+// --- ★ Fix: Battle Setup Logic ★ ---
 function setupStage(sel) {
-    stage = sel; 
-    floor = 1; 
-    isProcessing = false; 
-    extraBossTurnCount = 0; 
-    currentTurn = 1;
-    stageStartTurn = totalGameTurns; // Reset stage turn counter base
+    stage=sel; floor=1; isProcessing=false; extraBossTurnCount=0; currentTurn=1;
+    stageStartTurn = totalGameTurns; 
 
-    // ★修正ポイント1: 先にゲーム画面を表示し、敵を出現させる
-    elAvg.innerText = "0.0"; 
-    elRt.innerText = "(Rt -)"; 
-    elLog.innerHTML = ""; 
-    elGame.style.display = "block";
+    // 1. Show Game Screen First
+    elAvg.innerText="0.0"; elRt.innerText="(Rt -)"; elLog.innerHTML=""; elGame.style.display="block";
     
-    // ★敵を生成（これで enemy.data がセットされるので、updateInfoが動くようになる）
+    // 2. Spawn Enemy (Load data BEFORE drawing cards)
     spawnEnemy(); 
 
-    // Reset Battle State
-    player.state = { power: false, shield: false, weakLock: false }; 
-    // enemy.state は spawnEnemy 内でリセット済みなので削除してもよいが念のため
-    player.mp = 3; // Reset MP on stage start
+    // 3. Reset Player State
+    player.state={power:false,shield:false,weakLock:false}; 
+    player.mp = 3; 
 
-    // Deck & Hand Setup
+    // 4. Deck Setup & Initial Draw
     player.deck = shuffleArray([...savedData.deck]); 
     player.hand = [];
     player.discard = [];
     
-    // ★修正ポイント2: 敵がいる状態で、初期手札を3枚引く
     for(let i=0; i<3; i++) {
         drawCard();
     }
@@ -587,6 +579,9 @@ function applyCardEffect(card) {
 }
 
 function updateInfo() {
+    // ★ Safety Guard: Skip if enemy data is not loaded yet
+    if (!enemy.data) return;
+
     if(stage===5) { elStage.innerText="EXTRA"; elFloor.innerText="FINAL"; }
     else if(stage===4) { elStage.innerText="STAGE 4"; elFloor.innerText=`${floor}F`; }
     else { elStage.innerText=`STAGE ${stage}`; elFloor.innerText=`${floor}F`; }
@@ -744,7 +739,6 @@ function openChest() {
     showDialog("TREASURE!", `<span style="font-size:24px;color:#00ff00;">${itemName}</span> を手に入れた！<br>${itemEffect}<br>(アイテムボタンで使用可能)`, "item", [{text:"OK", action:nextStep}]);
 }
 
-// --- ★ Ver 52.3 Logic Updates ★ ---
 function nextStep() {
     floor++; const ppr = totalDarts>0 ? ((totalScore/totalDarts)*3).toFixed(1) : 0;
 
@@ -752,14 +746,12 @@ function nextStep() {
 
         const stageTurns = totalGameTurns - stageStartTurn;
         const [rank, dpBonus] = calculateStageRank(stage, stageTurns);
-        const scoreDP = Math.floor(totalScore * 0.2); // Current total score based DP
+        const scoreDP = Math.floor(totalScore * 0.2); 
 
-        // Calculate POTENTIAL DP so far (including past stages in this run)
         let pendingBonusDP = dpBonus;
         clearedStagesLog.forEach(log => { pendingBonusDP += log.dp; });
         let potentialTotalDP = scoreDP + pendingBonusDP;
 
-        // Commit log
         clearedStagesLog.push({ stage: stage, rank: rank, dp: dpBonus });
 
         const currentBest = savedData.bestRanks[stage];
@@ -770,21 +762,18 @@ function nextStep() {
 
         playBGM("bgm-win");
 
-        // --- EXTRA CLEAR ---
         if(stage === 5) {
             const res = finishSession("EXTRA-WIN", parseFloat(ppr));
             showDialog("★ TRUE ENDING ★", `<span style="font-size:30px;color:#f0f;">THE LEGEND!!</span><br>最強の黒竜を倒した！<br><br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br>PPR: ${ppr}<br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{text:"TITLE", action:returnToTitle}]);
             return;
         }
 
-        // --- STAGE 4 CLEAR ---
         if(stage === 4) {
             const res = finishSession("WIN", parseFloat(ppr));
             showDialog("STAGE 4 CLEAR!", `<span style="font-size:28px;color:#e0b0ff;">NIGHTMARE CONQUERED!</span><br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{text:"TITLE", action:returnToTitle}]);
             return;
         }
 
-        // --- STAGE 1-3 Intermission ---
         let title = "STAGE CLEAR";
         let msg = `STAGE ${stage} COMPLETED!<br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br><br>現在の獲得予定DP: <span style="color:#ffd700; font-weight:bold;">${potentialTotalDP} DP</span>`;
 
