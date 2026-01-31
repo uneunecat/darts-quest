@@ -714,3 +714,199 @@ function tapKey(key) {
         }
     }
 }
+
+// --- ★ CARD & SHOP SYSTEM (Ver 2.1) ★ ---
+
+// 1. マスターカードデータ (Master Data)
+const CARD_DB = [
+    // UR (2%)
+    { id: 101, name: "死者蘇生", rarity: "UR", type: "MAGIC", desc: "HPを完全回復する" },
+    
+    // SR (8%)
+    { id: 201, name: "サンダー・ボルト", rarity: "SR", type: "MAGIC", desc: "敵全体に大ダメージ" },
+    { id: 202, name: "強欲な壺", rarity: "SR", type: "MAGIC", desc: "SPを最大までチャージ" },
+
+    // R (30%)
+    { id: 301, name: "光の護封剣", rarity: "R", type: "MAGIC", desc: "3ターンの間ダメージ無効" },
+    { id: 302, name: "落とし穴", rarity: "R", type: "TRAP", desc: "敵のチャージを無効化" },
+    { id: 303, name: "聖なるバリア", rarity: "R", type: "TRAP", desc: "敵の攻撃を反射" },
+
+    // N (60%)
+    { id: 401, name: "火の粉", rarity: "N", type: "MAGIC", desc: "敵に50ダメージ" },
+    { id: 402, name: "治療の神", rarity: "N", type: "MAGIC", desc: "HPを50回復" },
+    { id: 403, name: "はさみ撃ち", rarity: "N", type: "TRAP", desc: "次の攻撃ダメージ1.2倍" },
+    { id: 404, name: "昼夜の大火事", rarity: "N", type: "MAGIC", desc: "敵に80ダメージ" },
+    { id: 405, name: "突進", rarity: "N", type: "MAGIC", desc: "攻撃力アップ" }
+];
+
+// パック定義
+const PACK_DATA = [
+    { id: "vol1", name: "Vol.1 - Legend", price: 500, desc: "伝説の始まり。基本魔法カード収録。", unlockStage: 1 }
+];
+
+// 2. ショップ機能 (Shop Logic)
+function openCardShop() {
+    playSE("se-tap");
+    const list = document.getElementById("pack-list");
+    list.innerHTML = "";
+    document.getElementById("shop-dp-display").innerText = savedData.dp;
+
+    // データ初期化チェック
+    if (!savedData.cards) savedData.cards = {};
+
+    PACK_DATA.forEach(pack => {
+        // ステージクリア条件チェック
+        const isUnlocked = (savedData.bestRanks && savedData.bestRanks[pack.unlockStage]);
+        // ※デバッグ用: Stage1クリア済みとみなす場合コメントアウト解除
+        // const isUnlocked = true; 
+
+        if (!isUnlocked) return; // まだ解放されていないパックは表示しない
+
+        const canBuy = savedData.dp >= pack.price;
+        const btnHTML = `<button class="pack-buy-btn" ${canBuy ? "" : "disabled"} onclick="buyPack('${pack.id}')">${pack.price} DP</button>`;
+
+        const div = document.createElement("div");
+        div.className = "pack-item";
+        div.innerHTML = `
+            <div class="pack-img">🎴</div>
+            <div class="pack-info">
+                <div class="pack-name">${pack.name}</div>
+                <div class="pack-desc">${pack.desc}</div>
+            </div>
+            <div>${btnHTML}</div>
+        `;
+        list.appendChild(div);
+    });
+    
+    // 何も買えない場合
+    if (list.innerHTML === "") {
+        list.innerHTML = "<div style='text-align:center; padding:20px; color:#666;'>まだ購入できるパックがありません。<br>STAGE 1 をクリアしよう！</div>";
+    }
+
+    document.getElementById("card-shop-modal").style.display = "flex";
+}
+
+function buyPack(packId) {
+    const pack = PACK_DATA.find(p => p.id === packId);
+    if (!pack || savedData.dp < pack.price) return;
+
+    // DP消費
+    savedData.dp -= pack.price;
+    document.getElementById("shop-dp-display").innerText = savedData.dp;
+    playSE("se-item"); // 仮の音
+
+    // 3枚抽選
+    const results = [];
+    for(let i=0; i<3; i++) {
+        const card = drawCard(packId);
+        
+        // 初入手チェック
+        const isNew = !savedData.cards[card.id];
+        
+        // 所持数加算
+        if (!savedData.cards[card.id]) savedData.cards[card.id] = 0;
+        savedData.cards[card.id]++;
+        
+        results.push({ card: card, isNew: isNew });
+    }
+    
+    saveToDrive();
+    showPackResult(results);
+}
+
+function drawCard(packId) {
+    // 簡易ウェイト抽選 (N:60, R:30, SR:8, UR:2)
+    const rand = Math.random() * 100;
+    let targetRarity = "N";
+    if (rand < 2) targetRarity = "UR";
+    else if (rand < 10) targetRarity = "SR";
+    else if (rand < 40) targetRarity = "R";
+
+    // 該当レアリティの中からランダムに1枚選ぶ
+    const pool = CARD_DB.filter(c => c.rarity === targetRarity);
+    if (pool.length === 0) return CARD_DB[0]; // エラー回避
+    return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function showPackResult(results) {
+    const container = document.getElementById("pack-results");
+    container.innerHTML = "";
+    
+    // 結果表示演出
+    results.forEach((res, index) => {
+        const c = res.card;
+        const div = document.createElement("div");
+        div.className = `result-card rarity-${c.rarity}`;
+        div.style.animationDelay = `${index * 0.2}s`; // 順番に出す
+        
+        const newTag = res.isNew ? "<span class='new-badge'>NEW!</span>" : "";
+        
+        div.innerHTML = `
+            <span>[${c.rarity}] ${c.name}</span>
+            ${newTag}
+        `;
+        container.appendChild(div);
+    });
+
+    // 良いカードが出たら音を変える
+    const hasHighRare = results.some(r => r.card.rarity === "SR" || r.card.rarity === "UR");
+    if (hasHighRare) playSE("se-win"); // 派手な音
+    else playSE("se-buff");
+
+    document.getElementById("pack-result-modal").style.display = "flex";
+}
+
+function closePackResult() {
+    playSE("se-tap");
+    document.getElementById("pack-result-modal").style.display = "none";
+    updateTitleScore(); // DP表示更新
+}
+
+function closeCardShop() {
+    playSE("se-tap");
+    document.getElementById("card-shop-modal").style.display = "none";
+    updateTitleScore();
+}
+
+// 3. コレクション機能 (Collection)
+function openCollection() {
+    playSE("se-tap");
+    const grid = document.getElementById("card-grid");
+    grid.innerHTML = "";
+    
+    if (!savedData.cards) savedData.cards = {};
+
+    let ownedCount = 0;
+    
+    CARD_DB.forEach(card => {
+        const count = savedData.cards[card.id] || 0;
+        if (count > 0) ownedCount++;
+        
+        const div = document.createElement("div");
+        div.className = `collection-card rarity-${card.rarity} ${count===0 ? "card-not-owned" : ""}`;
+        
+        div.innerHTML = `
+            <div style="font-size:10px;">${card.rarity}</div>
+            <div style="font-weight:bold; margin:5px 0;">${card.name}</div>
+            ${count > 0 ? `<div class="card-count">x${count}</div>` : ""}
+        `;
+        
+        // 詳細表示用（クリックしたらアラートで説明を出す簡易実装）
+        div.onclick = function() {
+            if (count > 0) alert(`【${card.name}】\nレア度: ${card.rarity}\n\n${card.desc}`);
+        };
+        
+        grid.appendChild(div);
+    });
+
+    // 収集率
+    const rate = Math.floor((ownedCount / CARD_DB.length) * 100);
+    document.getElementById("collection-rate").innerText = `${rate}% (${ownedCount}/${CARD_DB.length})`;
+
+    document.getElementById("collection-modal").style.display = "flex";
+}
+
+function closeCollection() {
+    playSE("se-tap");
+    document.getElementById("collection-modal").style.display = "none";
+}

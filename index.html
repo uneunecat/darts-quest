@@ -82,6 +82,8 @@
                         <div><div class="hs-label">BEST AVG (PPR)</div><div class="hs-value"><span id="hs-avg">--</span><span id="hs-rt" class="rt-badge">Rt -</span></div></div>
                     </div>
                     <div class="title-buttons">
+                        <button class="sub-btn" style="color:#e94560; border-color:#e94560;" onclick="openCardShop()">🎴 CARD SHOP</button>
+                        <button class="sub-btn" style="color:#00d2fc; border-color:#00d2fc;" onclick="openCollection()">📂 CARDS</button>
                         <button class="sub-btn" onclick="showHistory()">📜 HISTORY</button>
                         <button class="sub-btn" onclick="exportSave()">📤 EXPORT</button>
                         <button class="sub-btn" onclick="importSave()">📥 IMPORT</button>
@@ -176,6 +178,32 @@
                         <div class="keyboard-hint">[KEYBOARD / TOUCH INPUT]</div>
                         <div class="keyboard-hint">[KEYBOARD INPUT ONLY]<br>NUMBERS: Input Score<br>BACKSPACE: Correction<br>ENTER: Next / Attack / Open Chest</div>
                     </div>
+                </div>
+            <div class="modal-overlay" id="card-shop-modal" style="display:none;">
+                <div class="modal-box shop-box">
+                    <div class="modal-title" style="color:#e94560;">CARD SHOP</div>
+                    <div style="color:#aaa; margin-bottom:10px;">所持DP: <span id="shop-dp-display" style="color:#ffd700; font-weight:bold;">0</span></div>
+                    <div class="pack-list" id="pack-list">
+                        </div>
+                <button class="modal-btn" onclick="closeCardShop()">CLOSE</button>
+                </div>
+            </div>
+
+            <div class="modal-overlay" id="pack-result-modal" style="display:none; z-index:3000;">
+                <div class="modal-box" style="border-color:#fff; box-shadow:0 0 30px #fff;">
+                    <div class="modal-title" style="color:#fff;">PACK OPENED!</div>
+                    <div id="pack-results" class="pack-results-container"></div>
+                    <button class="modal-btn" onclick="closePackResult()">OK</button>
+                </div>
+            </div>
+
+            <div class="modal-overlay" id="collection-modal" style="display:none;">
+                <div class="modal-box shop-box" style="max-width:800px;">
+                    <div class="modal-title" style="color:#00d2fc;">CARD LIST</div>
+                    <div style="text-align:right; font-size:12px; color:#aaa; margin-bottom:5px;">収集率: <span id="collection-rate">0%</span></div>
+                    <div class="card-grid" id="card-grid">
+                        </div>
+                    <button class="modal-btn" onclick="closeCollection()">CLOSE</button>
                 </div>
             </div>
         </div>

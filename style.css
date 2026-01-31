@@ -271,3 +271,39 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     .key-enter { background: #004466; color: #ccffff; font-weight: bold; }
 }
 
+/* --- ★ CARD SYSTEM ★ --- */
+
+/* Pack List */
+.pack-item { display: flex; align-items: center; background: rgba(0,0,0,0.6); border: 1px solid #666; padding: 15px; border-radius: 8px; margin-bottom: 10px; transition: 0.2s; }
+.pack-item:hover { border-color: #ffd700; background: rgba(255, 215, 0, 0.1); }
+.pack-img { font-size: 40px; margin-right: 15px; }
+.pack-info { flex: 1; text-align: left; }
+.pack-name { font-size: 18px; font-weight: bold; color: #fff; }
+.pack-desc { font-size: 12px; color: #aaa; }
+.pack-buy-btn { background: #e94560; color: #fff; border: none; padding: 8px 20px; border-radius: 5px; cursor: pointer; font-weight:bold; }
+.pack-buy-btn:hover { background: #ff6b81; box-shadow: 0 0 10px #e94560; }
+.pack-buy-btn:disabled { background: #444; color: #888; cursor: not-allowed; box-shadow: none; }
+
+/* Pack Results */
+.pack-results-container { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; min-width: 300px; }
+.result-card { padding: 10px; border-radius: 5px; font-weight: bold; text-align: left; animation: popIn 0.5s; display: flex; justify-content: space-between; align-items: center; }
+.new-badge { background: #ff0000; color: #fff; font-size: 10px; padding: 2px 4px; border-radius: 4px; margin-left: 10px; animation: blink 1s infinite; }
+
+/* Rarity Colors */
+.rarity-UR { border: 2px solid #ff00ff; background: linear-gradient(90deg, #300030, #000); color: #ff00ff; text-shadow: 0 0 5px #ff00ff; }
+.rarity-SR { border: 2px solid #ffd700; background: linear-gradient(90deg, #302000, #000); color: #ffd700; text-shadow: 0 0 5px #ffd700; }
+.rarity-R { border: 2px solid #00d2fc; background: linear-gradient(90deg, #001020, #000); color: #00d2fc; }
+.rarity-N { border: 1px solid #888; background: #222; color: #ccc; }
+
+/* Collection Grid */
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; max-height: 400px; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; }
+.collection-card { position: relative; padding: 10px; border-radius: 5px; text-align: center; cursor: pointer; transition: transform 0.2s; height: 100px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+.collection-card:hover { transform: scale(1.05); z-index: 10; }
+.card-count { position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.8); color: #fff; font-size: 12px; padding: 2px 6px; border-radius: 10px; border: 1px solid #555; }
+.card-not-owned { opacity: 0.3; filter: grayscale(100%); border: 1px dashed #555 !important; background: #111 !important; color: #555 !important; }
+
+/* スマホ対応: グリッドを小さく */
+@media (max-width: 768px) {
+    .card-grid { grid-template-columns: repeat(3, 1fr); }
+    .collection-card { height: 80px; font-size: 12px; }
+}
