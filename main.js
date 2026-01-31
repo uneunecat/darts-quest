@@ -902,27 +902,26 @@ function closeCollection() {
     document.getElementById("collection-modal").style.display = "none";
 }
 
+// デッキ編集画面の描画（12枚対応）
 function renderDeckEditor() {
-
-    if (!savedData.deck) {
-        savedData.deck = []; 
-    }
+    // データ初期化（安全装置）
+    if (!savedData.deck) savedData.deck = [];
 
     // 1. デッキエリアの描画
     const deckGrid = document.getElementById("deck-grid");
     deckGrid.innerHTML = "";
     
-    // 現在のデッキ（最大3枚）を表示
-    for (let i = 0; i < 3; i++) {
-        const cardId = savedData.deck[i]; // IDがあるかチェック
+    // デッキ枠を12個に拡張
+    const DECK_MAX = 12;
+
+    for (let i = 0; i < DECK_MAX; i++) {
+        const cardId = savedData.deck[i]; 
         
         if (cardId) {
-            // カードがある場合
             const card = CARD_DB.find(c => c.id === cardId);
             const el = createCardElement(card, true); // true = デッキ用
             deckGrid.appendChild(el);
         } else {
-            // 空きスロット
             const div = document.createElement("div");
             div.className = "deck-slot-empty";
             div.innerText = "EMPTY";
@@ -930,7 +929,19 @@ function renderDeckEditor() {
         }
     }
     
-    document.getElementById("deck-count").innerText = savedData.deck.length;
+    // 枚数カウント表示（文字色で警告）
+    const deckCount = savedData.deck.length;
+    const countEl = document.getElementById("deck-count");
+    countEl.innerText = deckCount;
+    
+    // 12枚未満なら赤字、12枚なら緑字にする演出
+    if (deckCount < 12) {
+        countEl.style.color = "#ff5555"; // 赤
+        countEl.innerText += " (あと" + (12 - deckCount) + "枚)";
+    } else {
+        countEl.style.color = "#00ff00"; // 緑
+        countEl.innerText += " (OK!)";
+    }
 
     // 2. カードリストエリアの描画
     const listGrid = document.getElementById("card-grid");
@@ -943,11 +954,13 @@ function renderDeckEditor() {
         const count = savedData.cards[card.id] || 0;
         if (count > 0) ownedCount++;
         
-        // デッキに入っている枚数を計算
+        // デッキに入っているこのカードの枚数を数える
         const inDeckCount = savedData.deck.filter(id => id === card.id).length;
-        const remaining = count - inDeckCount; // デッキに入れた分はリストから減らすか、あるいは選択不可にするか
+        
+        // リストに残る枚数 = 所持数 - デッキに入れた数
+        // ★ルール変更: カードは持っている数だけ入れられる（最大3枚制限はaddToDeckでやる）
+        const remaining = count - inDeckCount; 
 
-        // 今回は「持っている数だけデッキに入れられる」仕様にします
         const el = createCardElement(card, false, remaining);
         listGrid.appendChild(el);
     });
@@ -994,17 +1007,42 @@ function createCardElement(card, isDeckItem, remainingCount = 1) {
     return div;
 }
 
+// デッキに追加する処理（ルール追加）
 function addToDeck(cardId) {
-    // デッキ上限チェック
-    if (savedData.deck.length >= 3) {
-        alert("デッキは3枚までです！");
+    const DECK_MAX = 12;
+    const SAME_CARD_LIMIT = 3;
+
+    // 1. 枚数制限チェック (最大12枚)
+    if (savedData.deck.length >= DECK_MAX) {
+        alert("デッキは12枚までです！");
+        return;
+    }
+
+    // 2. 所持数チェック
+    const ownedCount = savedData.cards[cardId] || 0;
+    const currentInDeck = savedData.deck.filter(id => id === cardId).length;
+
+    if (currentInDeck >= ownedCount) {
+        alert("これ以上持っていません！"); // パックを開けて当ててね
+        return;
+    }
+
+    // 3. 同名カード制限チェック (最大3枚)
+    if (currentInDeck >= SAME_CARD_LIMIT) {
+        alert(`「${getCardName(cardId)}」はデッキに3枚までしか入れられません。`);
         return;
     }
     
-    playSE("se-tap"); // 装着音的なものに変更推奨
+    playSE("se-tap");
     savedData.deck.push(cardId);
     saveToDrive();
-    renderDeckEditor(); // 画面更新
+    renderDeckEditor(); 
+}
+
+// カード名を取得するヘルパー関数
+function getCardName(id) {
+    const c = CARD_DB.find(card => card.id === id);
+    return c ? c.name : "カード";
 }
 
 function removeFromDeck(cardId) {
