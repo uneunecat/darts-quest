@@ -744,7 +744,7 @@ const PACK_DATA = [
     { 
         id: "vol1", 
         name: "Vol.1 - Legend", 
-        price: 500, 
+        price: 1000, 
         desc: "伝説の始まり。基本魔法カード収録。", 
         unlockStage: 1,
         img: "assets/packs/vol1.png" // ★画像パス追加
@@ -1016,4 +1016,54 @@ function removeFromDeck(cardId) {
     }
     saveToDrive();
     renderDeckEditor();
+}
+
+// --- ★ DEBUG TOOLS (Step 1) ★ ---
+
+let cheatCodeInput = "";
+let cheatTimeout;
+
+// キー入力を監視
+document.addEventListener("keydown", function(e) {
+    // タイトル画面が表示されている時のみ有効
+    const titleScreen = document.getElementById("title-screen");
+    if (!titleScreen || titleScreen.style.display === "none") return;
+
+    // "1" キーが押されたら記録
+    if (e.key === "1") {
+        cheatCodeInput += "1";
+        
+        // タイムアウト・リセット（2秒間入力がなければリセット）
+        clearTimeout(cheatTimeout);
+        cheatTimeout = setTimeout(() => { cheatCodeInput = ""; }, 2000);
+
+        // "1111" が完成したら発動
+        if (cheatCodeInput.includes("1111")) {
+            cheatCodeInput = ""; // リセット
+            activateCheat();
+        }
+    } else {
+        cheatCodeInput = ""; // 違うキーを押したらリセット
+    }
+});
+
+function activateCheat() {
+    savedData.dp += 2000;
+    saveToDrive();
+    
+    // 演出（音を鳴らしてDP表示を更新）
+    playSE("se-buff"); // 音は何でもOKですが、わかりやすくbuff音で
+    updateTitleDisplay(); // タイトル画面のDP表示を更新
+    
+    // 簡易的な通知
+    alert(`[DEBUG MODE]\nDP +2000\nCurrent DP: ${savedData.dp}`);
+}
+
+// タイトル画面のDP表示を更新する関数（既存のものがあればそれを使ってください）
+function updateTitleDisplay() {
+    // もしタイトル画面にDP表示要素があれば更新
+    const dpDisplay = document.querySelector(".dp-display");
+    if (dpDisplay) {
+        dpDisplay.innerText = `DP: ${savedData.dp}`;
+    }
 }
