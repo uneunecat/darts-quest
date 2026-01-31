@@ -411,3 +411,114 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .rarity-R .card-name { color: #00d2fc; }
 .rarity-N { border-color: #555; }
 .card-not-owned { opacity: 0.4; filter: grayscale(100%); pointer-events: none; }
+
+/* --- ★ SHOP & OPENING VISUALS (Ver 4.0) ★ --- */
+
+/* Shop Layout (Grid System) */
+.shop-box .pack-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); /* パックの幅 */
+    gap: 20px;
+    padding: 10px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Pack Item Design */
+.pack-item {
+    background: linear-gradient(180deg, #222, #111);
+    border: 1px solid #444;
+    border-radius: 10px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+    text-align: center;
+}
+.pack-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0 15px rgba(233, 69, 96, 0.4);
+    border-color: #e94560;
+}
+
+/* Pack Image Area */
+.pack-img-container {
+    width: 120px;
+    height: 180px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+    box-shadow: 0 5px 10px rgba(0,0,0,0.5);
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.pack-img-container img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Text Info */
+.pack-name { font-size: 14px; font-weight: bold; color: #fff; margin-bottom: 5px; }
+.pack-desc { font-size: 10px; color: #aaa; margin-bottom: 10px; height: 2.4em; overflow: hidden; }
+
+/* Buy Button */
+.pack-buy-btn {
+    width: 100%;
+    background: linear-gradient(90deg, #e94560, #ff6b81);
+    color: #fff;
+    border: none;
+    padding: 8px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(233, 69, 96, 0.3);
+    transition: 0.2s;
+}
+.pack-buy-btn:hover { transform: scale(1.05); filter: brightness(1.2); }
+.pack-buy-btn:active { transform: scale(0.95); }
+.pack-buy-btn:disabled { background: #444; color: #888; cursor: not-allowed; box-shadow: none; transform: none; }
+
+/* Opening Result Animation */
+.pack-results-container {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    padding: 20px;
+    flex-wrap: wrap;
+}
+
+/* Result Card (Appearance Animation) */
+.result-card-anim {
+    animation: cardPopIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+    width: 100px !important; /* 結果画面でのサイズ */
+    height: 140px !important;
+    position: relative;
+    border: 2px solid #555; /* 枠線を明示 */
+}
+
+@keyframes cardPopIn {
+    0% { opacity: 0; transform: translateY(50px) scale(0.5) rotateY(90deg); }
+    100% { opacity: 1; transform: translateY(0) scale(1) rotateY(0); }
+}
+
+/* New Badge */
+.new-badge-overlay {
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    background: #ffd700;
+    color: #000;
+    font-weight: bold;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    box-shadow: 0 0 5px #ffd700;
+    z-index: 20;
+    animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}

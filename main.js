@@ -741,7 +741,14 @@ const CARD_DB = [
 
 // パック定義
 const PACK_DATA = [
-    { id: "vol1", name: "Vol.1 - Legend", price: 500, desc: "伝説の始まり。基本魔法カード収録。", unlockStage: 1 }
+    { 
+        id: "vol1", 
+        name: "Vol.1 - Legend", 
+        price: 500, 
+        desc: "伝説の始まり。基本魔法カード収録。", 
+        unlockStage: 1,
+        img: "assets/packs/vol1.png" // ★画像パス追加
+    }
 ];
 
 // 2. ショップ機能 (Shop Logic)
@@ -751,36 +758,36 @@ function openCardShop() {
     list.innerHTML = "";
     document.getElementById("shop-dp-display").innerText = savedData.dp;
 
-    // データ初期化チェック
     if (!savedData.cards) savedData.cards = {};
 
     PACK_DATA.forEach(pack => {
-        // ステージクリア条件チェック
+        // ステージ解放チェック
         const isUnlocked = (savedData.bestRanks && savedData.bestRanks[pack.unlockStage]);
-        // ※デバッグ用: Stage1クリア済みとみなす場合コメントアウト解除
-        // const isUnlocked = true; 
+        // const isUnlocked = true; // デバッグ用
 
-        if (!isUnlocked) return; // まだ解放されていないパックは表示しない
+        if (!isUnlocked) return; 
 
         const canBuy = savedData.dp >= pack.price;
-        const btnHTML = `<button class="pack-buy-btn" ${canBuy ? "" : "disabled"} onclick="buyPack('${pack.id}')">${pack.price} DP</button>`;
+        
+        // パック画像がない場合のダミー画像（絵文字）
+        const imgHTML = `<img src="${pack.img}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                         <div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:50px; background:#333; color:#555;">📦</div>`;
 
         const div = document.createElement("div");
         div.className = "pack-item";
         div.innerHTML = `
-            <div class="pack-img">🎴</div>
-            <div class="pack-info">
-                <div class="pack-name">${pack.name}</div>
-                <div class="pack-desc">${pack.desc}</div>
-            </div>
-            <div>${btnHTML}</div>
+            <div class="pack-img-container">${imgHTML}</div>
+            <div class="pack-name">${pack.name}</div>
+            <div class="pack-desc">${pack.desc}</div>
+            <button class="pack-buy-btn" ${canBuy ? "" : "disabled"} onclick="buyPack('${pack.id}')">
+                ${canBuy ? `BUY (${pack.price} DP)` : "LACK DP"}
+            </button>
         `;
         list.appendChild(div);
     });
-    
-    // 何も買えない場合
+
     if (list.innerHTML === "") {
-        list.innerHTML = "<div style='text-align:center; padding:20px; color:#666;'>まだ購入できるパックがありません。<br>STAGE 1 をクリアしよう！</div>";
+        list.innerHTML = "<div style='color:#666; width:100%; text-align:center;'>STAGE 1 CLEAR REQUIRED</div>";
     }
 
     document.getElementById("card-shop-modal").style.display = "flex";
@@ -835,23 +842,33 @@ function showPackResult(results) {
     // 結果表示演出
     results.forEach((res, index) => {
         const c = res.card;
-        const div = document.createElement("div");
-        div.className = `result-card rarity-${c.rarity}`;
-        div.style.animationDelay = `${index * 0.2}s`; // 順番に出す
         
-        const newTag = res.isNew ? "<span class='new-badge'>NEW!</span>" : "";
+        // 以前作った createCardElement 関数を再利用してカードの見た目を作る
+        // 第2引数(isDeck)=false, 第3引数(remain)=1 (所持してるように見せるため)
+        const cardEl = createCardElement(c, false, 1);
         
-        div.innerHTML = `
-            <span>[${c.rarity}] ${c.name}</span>
-            ${newTag}
-        `;
-        container.appendChild(div);
+        // アニメーション用クラスを追加
+        cardEl.classList.add("result-card-anim");
+        cardEl.style.animationDelay = `${index * 0.3}s`; // 0.3秒ずつずらして登場
+        
+        // NEWバッジの追加
+        if (res.isNew) {
+            const badge = document.createElement("div");
+            badge.className = "new-badge-overlay";
+            badge.innerText = "NEW!";
+            cardEl.appendChild(badge);
+        }
+
+        container.appendChild(cardEl);
     });
 
-    // 良いカードが出たら音を変える
+    // レア度判定で音を変える
     const hasHighRare = results.some(r => r.card.rarity === "SR" || r.card.rarity === "UR");
-    if (hasHighRare) playSE("se-win"); // 派手な音
-    else playSE("se-buff");
+    if (hasHighRare) {
+        setTimeout(() => playSE("se-win"), 300); // 少し遅らせてファンファーレ
+    } else {
+        playSE("se-buff");
+    }
 
     document.getElementById("pack-result-modal").style.display = "flex";
 }
