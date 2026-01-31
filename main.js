@@ -17,15 +17,26 @@ const GAME_DATA = {
     }
 };
 
-let player = { hp: 100, maxHp: 100, sp: 0, items: { potion: 0, ether: 0, seed: 0 }, state: { power: false, shield: false, weakLock: false } };
+// ★Phase 4: Player Object Update (SP -> MP, Card System)
+let player = { 
+    hp: 100, 
+    maxHp: 100, 
+    mp: 3, 
+    maxMp: 10,
+    items: { potion: 0, ether: 0, seed: 0 }, 
+    state: { power: false, shield: false, weakLock: false },
+    deck: [],
+    hand: [],
+    discard: []
+};
+
 let enemy = { hp: 100, maxHp: 100, data: null, name: "", state: { charge: false, guard: false, guardType: null, guardTurn: 0, atkBuff: 0, isStunned: false } };
 let stage=1; floor=1; totalScore=0; totalDarts=0; currentDarts=3;
 let displayPlayerHP=100; displayEnemyHP=100;
 let isProcessing=false; extraBossTurnCount=0; currentTurn=1;
-let dropGuaranteed = false; let weakHitCount = 0; let restrictInput = false;
+let dropGuaranteed = false; weakHitCount = 0; let restrictInput = false;
 let turnInputs = []; let currentInput = ""; let isJustFinish = false; let waitingForChest = false;
 let cheatBuffer = ""; 
-// ★FIX: Removed global unlockedStage4 variable. Now managed in savedData.
 
 // Ver 52.0 New Variables
 let stageStartTurn = 0;
@@ -61,7 +72,7 @@ function loadGameData() {
 loadGameData();
 
 let currentSlot = "slot1";
-let savedData = { highScore: { stage: 1, floor: 1, avg: 0.0 }, history: [], clearedExtra: false, dp: 0, bestRanks: { 1: null, 2: null, 3: null, 4: null, 5: null }, unlockedStage4: false };
+let savedData = { highScore: { stage: 1, floor: 1, avg: 0.0 }, history: [], clearedExtra: false, dp: 0, bestRanks: { 1: null, 2: null, 3: null, 4: null, 5: null }, unlockedStage4: false, deck: [], cards: {} };
 
 const audioElements = [document.getElementById("bgm-title"), document.getElementById("bgm-battle"), document.getElementById("bgm-boss"), document.getElementById("bgm-extra"), document.getElementById("bgm-win"), document.getElementById("bgm-lose")];
 let currentBgmId = "";
@@ -75,7 +86,9 @@ function initSlotScreen() {
             // Migrate Data if needed
             if(data.dp === undefined) data.dp = 0;
             if(data.bestRanks === undefined) data.bestRanks = { 1: null, 2: null, 3: null, 4: null, 5: null };
-            if(data.unlockedStage4 === undefined) data.unlockedStage4 = false; // ★FIX: Migration for cheat
+            if(data.unlockedStage4 === undefined) data.unlockedStage4 = false; 
+            if(data.deck === undefined) data.deck = [];
+            if(data.cards === undefined) data.cards = {};
 
             let stg = `STAGE ${data.highScore.stage} - ${data.highScore.floor}F`;
             if(data.highScore.stage === 5) stg = "EXTRA STAGE";
@@ -89,13 +102,15 @@ function initSlotScreen() {
 function selectSlot(n) {
     currentSlot = "slot"+n; const key = currentSlot;
     // Default Data Structure including cheat flag
-    if(!allSaveData[key]) { allSaveData[key] = { highScore: { stage: 1, floor: 1, avg: 0.0 }, history: [], clearedExtra: false, dp: 0, bestRanks: { 1: null, 2: null, 3: null, 4: null, 5: null }, unlockedStage4: false }; }
+    if(!allSaveData[key]) { allSaveData[key] = { highScore: { stage: 1, floor: 1, avg: 0.0 }, history: [], clearedExtra: false, dp: 0, bestRanks: { 1: null, 2: null, 3: null, 4: null, 5: null }, unlockedStage4: false, deck: [], cards: {} }; }
     
     savedData = allSaveData[key];
     // Migration check again
     if(savedData.dp === undefined) savedData.dp = 0;
     if(savedData.bestRanks === undefined) savedData.bestRanks = { 1: null, 2: null, 3: null, 4: null, 5: null };
     if(savedData.unlockedStage4 === undefined) savedData.unlockedStage4 = false;
+    if(savedData.deck === undefined) savedData.deck = [];
+    if(savedData.cards === undefined) savedData.cards = {};
 
     allSaveData.lastPlayed = n;
     updateTitleScore(); playSE("se-tap");
@@ -129,16 +144,13 @@ function updateTitleScore() {
     document.getElementById("hs-rt").innerText = "Rt " + calculateRating(savedData.highScore.avg);
     document.getElementById("dp-display").innerText = "DP: " + savedData.dp;
 
-    // ★ RICH BUTTONS Update
     updateStageButton(1, "btn-st1");
     updateStageButton(2, "btn-st2");
     updateStageButton(3, "btn-st3");
     updateStageButton(4, "btn-stage4");
     updateStageButton(5, "btn-extra");
 
-    // Unlock logic
     const isStage3Cleared = (savedData.bestRanks && savedData.bestRanks[3]);
-    // ★FIX: Check savedData specific flag instead of global variable
     const canPlayStage4 = savedData.unlockedStage4 || isStage3Cleared || savedData.clearedExtra;
     
     if (canPlayStage4) document.getElementById("btn-stage4").style.display = "flex";
@@ -151,19 +163,15 @@ function updateStageButton(stgNum, btnId) {
     const btn = document.getElementById(btnId);
     const rank = savedData.bestRanks[stgNum];
 
-    // ★FIX 1: Cleanup any existing badges first
     const oldBadge = btn.querySelector(".rank-badge-s");
     if(oldBadge) oldBadge.remove();
 
-    // ★FIX 2: Reset classes to default state
     btn.className = "stage-btn btn-default";
     if(btnId==="btn-stage4") btn.classList.add("stage4-btn");
     if(btnId==="btn-extra") btn.classList.add("extra-btn");
 
-    // Apply Rank Style (Color only, NO TEXT BADGE)
     if(rank) {
         btn.classList.remove("btn-default", "stage4-btn", "extra-btn");
-
         if(rank === "SSS") btn.classList.add("btn-prism");
         else if(rank === "S") btn.classList.add("btn-gold");
         else if(rank === "A") btn.classList.add("btn-silver");
@@ -177,7 +185,6 @@ function getRankColor(r) {
 
 // --- DP & Rank Logic ---
 function calculateStageRank(stg, turns) {
-    // Returns [Rank, BonusDP]
     if (stg === 5) { // Extra
         if (turns <= 15) return ["SSS", 1000]; if (turns <= 20) return ["S", 600];
         if (turns <= 35) return ["A", 300]; if (turns <= 50) return ["B", 100]; return ["C", 50];
@@ -191,7 +198,6 @@ function calculateStageRank(stg, turns) {
 }
 
 function finishSession(resultType, ppr) {
-    // Calculate Total DP
     let totalDP = Math.floor(totalScore * 0.2);
     let bonusDP = 0;
     clearedStagesLog.forEach(log => { bonusDP += log.dp; });
@@ -199,18 +205,15 @@ function finishSession(resultType, ppr) {
 
     savedData.dp += totalDP;
 
-    // Save High Score Logic (Traditional)
     const curVal = stage * 100 + floor; const bestVal = savedData.highScore.stage * 100 + savedData.highScore.floor;
     let isNewRecord = false; if (curVal > bestVal) { savedData.highScore.stage = stage; savedData.highScore.floor = floor; isNewRecord = true; }
     if (ppr > savedData.highScore.avg) { savedData.highScore.avg = ppr; isNewRecord = true; }
 
     if (resultType === "EXTRA-WIN") savedData.clearedExtra = true;
 
-    // History Log
     const now = new Date(); const dateStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${("0"+now.getMinutes()).slice(-2)}`;
     let stgName = (stage === 5) ? "EXTRA" : "S" + stage + "-" + floor + "F";
 
-    // Detailed History Format
     let resultText = resultType;
     if (clearedStagesLog.length > 0) {
         const last = clearedStagesLog[clearedStagesLog.length-1];
@@ -268,15 +271,11 @@ const elBossLabel=document.getElementById("boss-label"); const elEnemyImg=docume
 const elWeak=document.getElementById("weak-display");
 const elEnemyHP=document.getElementById("enemy-hp"); const elEnemyMaxHP=document.getElementById("enemy-max-hp"); const elEnemyHPBar=document.getElementById("enemy-hp-bar");
 const elEnemyHPValue=document.getElementById("enemy-hp-value");
-const elPlayerHP=document.getElementById("player-hp"); const elPlayerMaxHP=document.getElementById("player-max-hp"); const elPlayerHPBar=document.getElementById("player-hp-bar"); const elPlayerSP=document.getElementById("player-sp"); const elPlayerSPBar=document.getElementById("player-sp-bar");
-const elPlayerHPText=document.getElementById("player-hp-text"); const elPlayerSPText=document.getElementById("player-sp-text");
+const elPlayerHP=document.getElementById("player-hp"); const elPlayerMaxHP=document.getElementById("player-max-hp"); const elPlayerHPBar=document.getElementById("player-hp-bar"); const elPlayerMP=document.getElementById("player-mp"); const elPlayerMPBar=document.getElementById("player-mp-bar");
+const elPlayerHPText=document.getElementById("player-hp-text"); const elPlayerMPText=document.getElementById("player-sp-text"); // Use same text element but update content
 const elAvg=document.getElementById("avg-display"); const elRt=document.getElementById("rt-display"); const elLog=document.getElementById("battle-log");
 const elEnemyPanel=document.getElementById("enemy-panel"); const elPlayerPanel=document.getElementById("player-panel"); const elOverlay=document.getElementById("flash-overlay");
 const btnD1=document.getElementById("btn-d1"); const btnD2=document.getElementById("btn-d2"); const btnD3=document.getElementById("btn-d3");
-
-const btnSkillHeal=document.getElementById("skill-heal");
-const btnSkillWeak=document.getElementById("skill-weak");
-const btnSkillStun=document.getElementById("skill-stun");
 
 const btnPotion=document.getElementById("btn-potion"); const btnEther=document.getElementById("btn-ether"); const btnSeed=document.getElementById("btn-seed");
 const elModal=document.getElementById("game-modal"); const elModalBox=document.getElementById("modal-box-inner"); const elModalTitle=document.getElementById("modal-title"); const elModalText=document.getElementById("modal-text"); const elModalBtn=document.getElementById("modal-btn"); const elModalBtns=document.getElementById("modal-buttons");
@@ -296,11 +295,9 @@ function updateScoreDisplay() {
 }
 
 window.addEventListener("keydown", function(e) {
-    // Cheat Code: 0607
     if (elTitle.style.display !== "none") {
         if (e.key === "0" || e.key === "6" || e.key === "7") { cheatBuffer += e.key; } else { cheatBuffer = ""; }
         if (cheatBuffer.endsWith("0607")) {
-            // ★FIX: Save cheat flag to current slot data
             playSE("se-item"); 
             savedData.unlockedStage4 = true; 
             updateTitleScore(); 
@@ -309,9 +306,7 @@ window.addEventListener("keydown", function(e) {
         }
     }
 
-    // Handle Modal Key (Enter usually triggers OK)
     if (elModal.style.display === "flex" && e.key === "Enter") {
-        // Only if there's a single button (OK)
         if (elModalBtns.children.length === 1) { e.preventDefault(); elModalBtns.children[0].click(); }
         return;
     }
@@ -329,7 +324,6 @@ function handleEnter() {
     if (currentInput !== "") {
         const val = parseInt(currentInput);
         if (!isNaN(val)) { 
-            // ★FIX: Change max input from 180 to 60 (Single dart max)
             if (val < 0 || val > 60) { 
                 alert("単発の最大値は 60 (T20) です"); 
                 currentInput=""; 
@@ -359,7 +353,10 @@ function executeAttack() {
     }
 
     playSE("se-attack"); totalGameTurns++;
-    totalScore += totalScoreInTurn; totalDarts += turnInputs.length; player.sp = Math.min(player.sp + totalScoreInTurn, 300);
+    totalScore += totalScoreInTurn; totalDarts += turnInputs.length; 
+    
+    // ★Phase 4: Remove SP gain from darts
+    // player.sp = Math.min(player.sp + totalScoreInTurn, 300);
 
     let dmg = calculatePlayerDamage(totalScoreInTurn, player, enemy);
     let remaining = enemy.hp - dmg; if (remaining === 0) isJustFinish = true; enemy.hp = Math.max(0, remaining);
@@ -382,7 +379,7 @@ function executeAttack() {
 function useItem(type) {
     if(isProcessing || waitingForChest) return;
     if(type === 'potion' && player.items.potion > 0) { player.items.potion--; playSE("se-heal"); const old=player.hp; player.hp=Math.min(player.hp+50, player.maxHp); addLog(`アイテム: 薬草使用`, "log-item"); animateValue(elPlayerHP, old, player.hp, 500); updateInfo(); }
-    else if(type === 'ether' && player.items.ether > 0) { player.items.ether--; playSE("se-heal"); player.sp=Math.min(player.sp+100, 300); addLog(`アイテム: 聖水使用`, "log-item"); updateInfo(); }
+    else if(type === 'ether' && player.items.ether > 0) { player.items.ether--; playSE("se-heal"); player.mp=Math.min(player.mp+3, player.maxMp); addLog(`アイテム: 聖水使用 (MP+3)`, "log-item"); updateInfo(); }
     else if(type === 'seed' && player.items.seed > 0) { player.items.seed--; playSE("se-buff"); player.maxHp+=10; const old=player.hp; player.hp=Math.min(player.hp+10, player.maxHp); addLog(`アイテム: 命の種使用`, "log-item"); animateValue(elPlayerHP, old, player.hp, 500); updateInfo(); }
 }
 
@@ -400,8 +397,14 @@ function showDialog(title, text, type="normal", buttons=[{text:"OK", action:null
 }
 
 function initGameSession(startStage, continueMode=false) {
+    // Deck Check
+    if (!savedData.deck || savedData.deck.length < 12) {
+        alert("デッキが不完全です！\n[CARDS]メニューから12枚セットしてください。");
+        return; 
+    }
+
     if (!continueMode) {
-        player.hp = 100; player.maxHp = 100; player.sp = 0; player.items = { potion: 0, ether: 0, seed: 0 };
+        player.hp = 100; player.maxHp = 100; player.mp = 3; player.items = { potion: 0, ether: 0, seed: 0 };
         totalGameTurns = 0; totalScore = 0; totalDarts = 0;
         clearedStagesLog = [];
     }
@@ -423,16 +426,34 @@ function startTransition(sel) {
 }
 
 function checkOpeningSkill() {
-    if(stage===3 && floor===1) { setTimeout(()=>{ showSkillCutin("光の護封剣", "wind"); enemy.state.guardType='cut'; enemy.state.guardTurn=3; addLog(">> [光の護封剣] 3ターン被ダメ軽減", "log-skill"); }, 500); }
+    // This function can be used for stage-specific intros
 }
 
 function setupStage(sel) {
     stage=sel; floor=1; isProcessing=false; extraBossTurnCount=0; currentTurn=1;
     stageStartTurn = totalGameTurns; // Reset stage turn counter base
 
-    player.state={power:false,shield:false,weakLock:false}; enemy.state={charge:false,guard:false,guardType:null,guardTurn:0,atkBuff:0,isStunned:false};
+    // Reset Battle State
+    player.state={power:false,shield:false,weakLock:false}; 
+    enemy.state={charge:false,guard:false,guardType:null,guardTurn:0,atkBuff:0,isStunned:false};
+    player.mp = 3; // Reset MP on stage start
+
+    // Deck & Hand Setup
+    player.deck = shuffleArray([...savedData.deck]); 
+    player.hand = [];
+    player.discard = [];
+    for(let i=0; i<3; i++) drawCard();
+
     elAvg.innerText="0.0"; elRt.innerText="(Rt -)"; elLog.innerHTML=""; elGame.style.display="block";
     addLog(`STAGE ${stage} START!`, "system"); spawnEnemy(); resizeGame();
+}
+
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
 }
 
 function spawnEnemy() {
@@ -463,6 +484,89 @@ function spawnEnemy() {
     isProcessing=false;
 }
 
+// --- ★ Card Battle Functions ★ ---
+function drawCard() {
+    if (player.deck.length === 0) return;
+    const cardId = player.deck.pop();
+    player.hand.push(cardId);
+    updateInfo();
+}
+
+function playHandCard(index) {
+    if(isProcessing || waitingForChest) return;
+    const cardId = player.hand[index];
+    const card = CARD_DB.find(c => c.id === cardId);
+    
+    // Cost logic
+    let cost = 1;
+    if (card.rarity === "UR") cost = 3;
+    else if (card.rarity === "SR") cost = 2;
+
+    if (player.mp < cost) {
+        addLog("MPが足りません！", "log-system");
+        playSE("se-warning");
+        return;
+    }
+
+    playSE("se-buff");
+    player.mp -= cost;
+    
+    // Apply Effect
+    applyCardEffect(card);
+
+    // Discard & Draw
+    player.hand.splice(index, 1);
+    player.discard.push(cardId);
+    drawCard();
+
+    updateInfo();
+}
+
+function applyCardEffect(card) {
+    let msg = `Card: [${card.name}] `;
+    
+    // Simple logic based on ID or Name
+    if (card.id === 101) { // 死者蘇生
+        player.hp = player.maxHp;
+        msg += "HP完全回復！";
+        playSE("se-heal");
+    } else if (card.id === 201) { // サンダーボルト
+        const dmg = 50;
+        enemy.hp = Math.max(0, enemy.hp - dmg);
+        msg += `敵に${dmg}ダメージ！`;
+        playSE("se-boom");
+        triggerEffect(elEnemyPanel, dmg, false);
+    } else if (card.id === 202) { // 強欲な壺
+        player.mp = Math.min(player.mp + 5, player.maxMp); // チャージ効果
+        msg += "MPチャージ！";
+    } else if (card.id === 301) { // 光の護封剣
+        enemy.state.guardType='cut'; 
+        enemy.state.guardTurn=3;
+        msg += "3ターン防御！";
+    } else if (card.id === 402) { // 治療の神
+        player.hp = Math.min(player.hp + 50, player.maxHp);
+        msg += "HP50回復";
+        playSE("se-heal");
+    } else if (card.id === 401 || card.id === 404) { // 火の粉, 大火事
+        const dmg = (card.id===404) ? 80 : 50;
+        enemy.hp = Math.max(0, enemy.hp - dmg);
+        msg += `敵に${dmg}ダメージ！`;
+        playSE("se-attack");
+        triggerEffect(elEnemyPanel, dmg, false);
+    } else if (card.id === 405) { // 突進
+        player.state.power = true;
+        msg += "攻撃力UP！";
+    } else {
+        msg += "(発動)";
+    }
+    
+    addLog(msg, "log-skill");
+    animateValue(elEnemyHP, displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp;
+    animateValue(elPlayerHP, displayPlayerHP, player.hp, 500); displayPlayerHP=player.hp;
+
+    if (enemy.hp <= 0) setTimeout(winBattle, 800);
+}
+
 function updateInfo() {
     if(stage===5) { elStage.innerText="EXTRA"; elFloor.innerText="FINAL"; }
     else if(stage===4) { elStage.innerText="STAGE 4"; elFloor.innerText=`${floor}F`; }
@@ -481,21 +585,47 @@ function updateInfo() {
     else if(weakHitCount > 0) { let color = weakHitCount >= 3 ? "#ff0000" : (weakHitCount >= 2 ? "#ffa500" : "#ffff00"); let msg = weakHitCount >= 3 ? "ULTRA CHANCE!!!" : (weakHitCount >= 2 ? "SUPER CHANCE!!" : "DROP CHANCE UP!"); weakText = `<span style='color:${color}; text-shadow:0 0 5px ${color};'>✨ ${msg}</span> <span style='font-size:14px; color:#ccc; margin-left:5px;'>${weakTargetStr}</span>`; }
     else { weakText = "WEAK: " + enemy.data.weak + "+"; }
     elWeak.innerHTML = weakText;
-    elEnemyHPBar.style.width=Math.max(0,(enemy.hp/enemy.maxHp)*100)+"%"; elPlayerHPBar.style.width=Math.max(0,(player.hp/player.maxHp)*100)+"%";
-    elPlayerHPText.innerText = `${player.hp} / ${player.maxHp}`; elPlayerSPBar.style.width=Math.max(0,(player.sp/300)*100)+"%"; elPlayerSPText.innerText = `${player.sp} / 300`;
+    elEnemyHPBar.style.width=Math.max(0,(enemy.hp/enemy.maxHp)*100)+"%"; 
+    
+    // Player Bars
+    elPlayerHPBar.style.width=Math.max(0,(player.hp/player.maxHp)*100)+"%";
+    elPlayerHPText.innerText = `${player.hp} / ${player.maxHp}`; 
+    elPlayerMPBar.style.width=Math.max(0,(player.mp/player.maxMp)*100)+"%"; 
+    document.querySelector("#player-mp").innerText = player.mp;
+    document.querySelector("#player-max-mp").innerText = player.maxMp;
 
-    updateSkillButtons(); updateVisuals();
+    updateVisuals();
+    
+    // Render Hand
+    const handArea = document.getElementById("hand-area");
+    handArea.innerHTML = "";
+    document.getElementById("battle-deck-count").innerText = player.deck.length;
+
+    player.hand.forEach((cardId, index) => {
+        const card = CARD_DB.find(c => c.id === cardId);
+        let cost = 1;
+        if (card.rarity === "UR") cost = 3; else if (card.rarity === "SR") cost = 2;
+
+        const div = document.createElement("div");
+        div.className = "hand-card";
+        if (player.mp < cost) div.classList.add("disabled");
+
+        const imgPath = `assets/cards/${card.id}.png`;
+        div.innerHTML = `
+            <div class="hand-cost">${cost}</div>
+            <div class="card-art" style="height:100%; border:none;">
+                 <img src="${imgPath}" onerror="this.style.display='none'">
+            </div>
+            <div style="position:absolute; bottom:0; width:100%; font-size:8px; text-align:center; background:rgba(0,0,0,0.7); color:#fff;">${card.name}</div>
+        `;
+        div.onclick = () => playHandCard(index);
+        handArea.appendChild(div);
+    });
+
     let ppr = 0; if(totalDarts>0) ppr = ((totalScore/totalDarts)*3); elAvg.innerText=ppr.toFixed(1); elRt.innerText=`(Rt ${calculateRating(ppr)})`;
     btnPotion.innerHTML = `💊 薬草 x${player.items.potion}<span class="tooltip">HPを50回復 (使い切り)</span>`; btnPotion.className = player.items.potion > 0 ? "item-btn has-item" : "item-btn disabled";
-    btnEther.innerHTML = `💧 聖水 x${player.items.ether}<span class="tooltip">SPを100回復 (使い切り)</span>`; btnEther.className = player.items.ether > 0 ? "item-btn has-item" : "item-btn disabled";
+    btnEther.innerHTML = `⚗️ マナ x${player.items.ether}<span class="tooltip">MPを3回復 (使い切り)</span>`; btnEther.className = player.items.ether > 0 ? "item-btn has-item" : "item-btn disabled";
     btnSeed.innerHTML = `🌱 種 x${player.items.seed}<span class="tooltip">最大HP+10上昇 (使い切り)</span>`; btnSeed.className = player.items.seed > 0 ? "item-btn has-item" : "item-btn disabled";
-}
-
-function updateSkillButtons() {
-    if(waitingForChest) { btnSkillHeal.disabled=true; btnSkillWeak.disabled=true; btnSkillStun.disabled=true; return; }
-    btnSkillHeal.className = (player.sp>=160) ? "skill-btn skill-ready-heal" : "skill-btn"; btnSkillHeal.disabled = (player.sp<160);
-    btnSkillWeak.className = (player.sp>=220) ? "skill-btn skill-ready-weak" : "skill-btn"; btnSkillWeak.disabled = (player.sp<220);
-    btnSkillStun.className = (player.sp>=260) ? "skill-btn skill-ready-stun" : "skill-btn"; btnSkillStun.disabled = (player.sp<260);
 }
 
 function updateVisuals() {
@@ -506,33 +636,37 @@ function updateVisuals() {
 
 function showSkillCutin(name, type) { playSE("se-warning"); elCutinText.innerText = name; elCutin.className = ""; if(type==="fire") elCutin.classList.add("cutin-fire"); if(type==="ice") elCutin.classList.add("cutin-ice"); if(type==="earth") elCutin.classList.add("cutin-earth"); if(type==="wind") elCutin.classList.add("cutin-wind"); elCutin.style.display = "flex"; elContainer.classList.add("shake-heavy"); setTimeout(()=>{ elCutin.style.display="none"; elContainer.classList.remove("shake-heavy"); }, 1500); }
 
-function useSkill(type) {
-    if(isProcessing || waitingForChest) return;
-    if(type==='heal' && player.sp>=160) { playSE("se-heal"); player.sp-=160; const old=player.hp; player.hp=Math.min(player.hp+50,player.maxHp); addLog(">> スキル: HP50回復", "skill"); animateValue(elPlayerHP,old,player.hp,500); updateInfo(); }
-    else if(type==='weakLock' && player.sp>=220) { playSE("se-buff"); player.sp-=220; player.state.weakLock=true; addLog(">> スキル: Weak Lock (全弾ドロップ確定)", "skill"); updateInfo(); }
-    else if(type==='stun' && player.sp>=260) { playSE("se-buff"); player.sp-=260; enemy.state.isStunned=true; addLog(">> スキル: 威圧 (敵をスタン！)", "skill"); updateInfo(); }
-}
-
 function enemyTurn() {
+    // MP Recovery at start of turn (Player's turn essentially)
+    
     if(enemy.state.isStunned) { addLog(`>> ${enemy.name} は怯んで動けない！`, "log-system"); enemy.state.isStunned = false; endEnemyTurn(); return; }
 
+    // ★Phase 4: SP damage -> MP damage logic update
     if (stage === 4) {
-        if (floor === 1) { if (Math.random() < 0.3) { showSkillCutin("トゥーン・ラッシュ", "wind"); setTimeout(() => { addLog(">> [速攻] 2回攻撃！", "log-enemy"); doEnemyAttack(0.7, {callback: () => { setTimeout(() => doEnemyAttack(0.7), 800); } }); }, 1200); return; } }
-        if (floor === 2) { if (currentTurn === 5) { showSkillCutin("死のびっくり箱", "fire"); setTimeout(() => { addLog(">> [死の箱] 999ダメージ！", "log-enemy"); doEnemyAttack(0, {fixedDmg: 999, ignoreShield: true}); }, 1200); return; } }
-        if (floor === 3) { if (Math.random() < 0.4) { showSkillCutin("呪いの視線", "earth"); setTimeout(() => { player.sp = Math.max(0, player.sp - 20); addLog(">> [呪い] SP20減少", "log-enemy"); doEnemyAttack(1.0); }, 1200); return; } }
-        if (floor === 4) { if (currentTurn % 3 === 0) { showSkillCutin("トゥーン・スキン", "earth"); setTimeout(() => { addLog(">> [硬質化] 被ダメ-50", "log-enemy"); updateInfo(); endEnemyTurn(); }, 1200); return; } }
-        if (floor === 5) { if (currentTurn % 3 === 0) { showSkillCutin("幻想の儀式", "wind"); setTimeout(() => { addLog(">> [儀式] HP吸収", "log-enemy"); doEnemyAttack(1.2, {isDrain: true}); }, 1200); return; } }
-        if (floor === 6) { if (currentTurn % 2 === 0) { showSkillCutin("千眼の邪教神", "wind"); setTimeout(() => { addLog(">> [結界] 80点未満無効化！", "log-enemy"); doEnemyAttack(1.2); }, 1200); return; } }
+        if (floor === 3) { if (Math.random() < 0.4) { showSkillCutin("呪いの視線", "earth"); setTimeout(() => { player.mp = Math.max(0, player.mp - 2); addLog(">> [呪い] MP2減少", "log-enemy"); doEnemyAttack(1.0); }, 1200); return; } }
     }
     if(stage===5) {
-        extraBossTurnCount++; if(extraBossTurnCount % 5 === 0) { showSkillCutin("黒 炎 弾", "fire"); setTimeout(() => { player.sp = Math.max(0, player.sp - 100); addLog(">> [黒炎弾] SP100消滅 & ダメージ", "log-enemy"); doEnemyAttack(1.0, {isBossUlt:true, fixedDmg: 50}); }, 1200); return; } doEnemyAttack(1.3); return;
+        extraBossTurnCount++; if(extraBossTurnCount % 5 === 0) { showSkillCutin("黒 炎 弾", "fire"); setTimeout(() => { player.mp = Math.max(0, player.mp - 5); addLog(">> [黒炎弾] MP5消滅 & ダメージ", "log-enemy"); doEnemyAttack(1.0, {isBossUlt:true, fixedDmg: 50}); }, 1200); return; } doEnemyAttack(1.3); return;
     }
     if(stage===3) {
+        if(floor===2) { if(Math.random()<0.3) { showSkillCutin("誘惑の風", "wind"); setTimeout(() => { if(player.mp>0) { player.mp=Math.max(0,player.mp-1); enemy.hp=Math.min(enemy.hp+20,enemy.maxHp); addLog(">> [誘惑の風] MP吸収", "log-enemy"); } doEnemyAttack(1.0); }, 1200); return; } }
+        if(floor===5) { enemy.state.atkBuff += 0.1; addLog(`>> [主人の加護] 攻撃力UP (現在x${(1.0+enemy.state.atkBuff).toFixed(1)})`, "log-enemy"); if(currentTurn % 4 === 0) { showSkillCutin("愛の鞭・ブレス", "fire"); setTimeout(() => { player.mp = 0; addLog(">> [愛の鞭] MP消滅＆大ダメージ", "log-enemy"); doEnemyAttack(2.0 * (1.0+enemy.state.atkBuff)); }, 1200); return; } doEnemyAttack(1.0 * (1.0+enemy.state.atkBuff)); return; }
+    }
+    if(stage===1) {
+        if(floor===4) { if(player.mp > 0 && Math.random()<0.3) { showSkillCutin("猛毒の鱗粉", "earth"); setTimeout(() => { player.mp = Math.max(0, player.mp - 1); addLog(">> [猛毒の鱗粉] MP1減少", "log-enemy"); doEnemyAttack(1.0); }, 1200); return; } }
+    }
+    
+    // Normal attack logic (same as before)
+    if (stage === 4 && floor === 1) { if (Math.random() < 0.3) { showSkillCutin("トゥーン・ラッシュ", "wind"); setTimeout(() => { addLog(">> [速攻] 2回攻撃！", "log-enemy"); doEnemyAttack(0.7, {callback: () => { setTimeout(() => doEnemyAttack(0.7), 800); } }); }, 1200); return; } }
+    if (stage === 4 && floor === 2) { if (currentTurn === 5) { showSkillCutin("死のびっくり箱", "fire"); setTimeout(() => { addLog(">> [死の箱] 999ダメージ！", "log-enemy"); doEnemyAttack(0, {fixedDmg: 999, ignoreShield: true}); }, 1200); return; } }
+    if (stage === 4 && floor === 4) { if (currentTurn % 3 === 0) { showSkillCutin("トゥーン・スキン", "earth"); setTimeout(() => { addLog(">> [硬質化] 被ダメ-50", "log-enemy"); updateInfo(); endEnemyTurn(); }, 1200); return; } }
+    if (stage === 4 && floor === 5) { if (currentTurn % 3 === 0) { showSkillCutin("幻想の儀式", "wind"); setTimeout(() => { addLog(">> [儀式] HP吸収", "log-enemy"); doEnemyAttack(1.2, {isDrain: true}); }, 1200); return; } }
+    if (stage === 4 && floor === 6) { if (currentTurn % 2 === 0) { showSkillCutin("千眼の邪教神", "wind"); setTimeout(() => { addLog(">> [結界] 80点未満無効化！", "log-enemy"); doEnemyAttack(1.2); }, 1200); return; } }
+    
+    if(stage===3) {
         if(floor===1 && enemy.state.guardTurn > 0) { addLog(`>> 光の護封剣 (残り${enemy.state.guardTurn}T)`, "log-enemy"); doEnemyAttack(1.0); return; }
-        if(floor===2) { if(Math.random()<0.3) { showSkillCutin("誘惑の風", "wind"); setTimeout(() => { if(player.sp>0) { player.sp=Math.max(0,player.sp-20); enemy.hp=Math.min(enemy.hp+20,enemy.maxHp); addLog(">> [誘惑の風] SP吸収", "log-enemy"); } doEnemyAttack(1.0); }, 1200); return; } }
         if(floor===3) { if(Math.random()<0.3) { showSkillCutin("サイバー・ボンテージ", "wind"); setTimeout(() => { restrictInput = true; addLog(">> [拘束] 次ターン1投制限！", "log-enemy"); doEnemyAttack(1.0); }, 1200); return; } }
         if(floor===4) { if(Math.random()<0.3) { showSkillCutin("トライアングル・エクスタシー", "wind"); setTimeout(() => { addLog(">> [3姉妹の連携] 3回攻撃！", "log-enemy"); doEnemyAttack(0.6, {callback: () => { setTimeout(() => doEnemyAttack(0.6, {callback: () => { setTimeout(() => doEnemyAttack(0.6), 600); } }), 600); } }); }, 1200); return; } }
-        if(floor===5) { enemy.state.atkBuff += 0.1; addLog(`>> [主人の加護] 攻撃力UP (現在x${(1.0+enemy.state.atkBuff).toFixed(1)})`, "log-enemy"); if(currentTurn % 4 === 0) { showSkillCutin("愛の鞭・ブレス", "fire"); setTimeout(() => { player.sp = 0; addLog(">> [愛の鞭] SP消滅＆大ダメージ", "log-enemy"); doEnemyAttack(2.0 * (1.0+enemy.state.atkBuff)); }, 1200); return; } doEnemyAttack(1.0 * (1.0+enemy.state.atkBuff)); return; }
     }
     if(stage===2) {
         if(floor===2) { if(Math.random()<0.3) { showSkillCutin("俊足の連撃", "fire"); setTimeout(() => { addLog(">> [俊足の連撃] 2回攻撃！", "log-enemy"); doEnemyAttack(0.7, {callback: () => { setTimeout(() => doEnemyAttack(0.7), 800); } }); }, 1200); return; } }
@@ -542,7 +676,6 @@ function enemyTurn() {
     }
     if(stage===1) {
         if(floor===3) { if(Math.random() < 0.2) { showSkillCutin("自己再生", "heal"); setTimeout(() => { enemy.hp = Math.min(enemy.hp + 20, enemy.maxHp); playSE("se-heal"); addLog(">> [自己再生] HP20回復", "log-heal"); animateValue(elEnemyHP,displayEnemyHP,enemy.hp,500); displayEnemyHP=enemy.hp; updateInfo(); endEnemyTurn(); }, 1200); return; } if(Math.random() < 0.4) { showSkillCutin("鉄壁の守り", "earth"); setTimeout(() => { enemy.state.guard = true; addLog(">> [鉄壁の守り] ダメージ半減", "log-enemy"); updateInfo(); endEnemyTurn(); }, 1200); return; } }
-        if(floor===4) { if(player.sp > 0 && Math.random()<0.3) { showSkillCutin("猛毒の鱗粉", "earth"); setTimeout(() => { player.sp = Math.max(0, player.sp - 15); addLog(">> [猛毒の鱗粉] SP15減少", "log-enemy"); doEnemyAttack(1.0); }, 1200); return; } }
         if(floor===5) { if(enemy.state.charge) { enemy.state.charge = false; showSkillCutin("森の破壊衝動", "earth"); setTimeout(() => { doEnemyAttack(3.0); }, 1200); return; } if(Math.random() < 0.3) { enemy.state.charge = true; addLog(`>> 力を溜めている…`, "log-enemy"); updateInfo(); endEnemyTurn(); return; } }
     }
     doEnemyAttack(1.0);
@@ -564,7 +697,15 @@ function finishAttack(dmg, isDrain, callback) {
     if(player.hp<=0) setTimeout(loseBattle,1000); else { if(callback) callback(); else endEnemyTurn(); }
 }
 
-function endEnemyTurn() { currentTurn++; updateInfo(); isProcessing=false; }
+function endEnemyTurn() { 
+    currentTurn++; 
+    // MP Regen Phase
+    player.mp = Math.min(player.mp + 3, player.maxMp); 
+    
+    updateInfo(); 
+    isProcessing=false; 
+}
+
 function winBattle() {
     addLog(`${enemy.name} を倒した`, "system");
     if (isJustFinish) { player.maxHp += 10; const oldHP = player.hp; player.hp = Math.min(player.hp + 10, player.maxHp); playSE("se-heal"); addLog(`★JUST FINISH! MaxHP+10 & HP+10`, "heal"); animateValue(elPlayerHP, oldHP, player.hp, 500); updateInfo(); setTimeout(() => { showDialog("JUST FINISH BONUS!!", `見事！ピッタリで倒した！<br>最大HPが ${player.maxHp} にアップ！<br>HPも10回復した。`, "clear", [{text:"OK", action:checkDrop}]); }, 800); } else { setTimeout(checkDrop, 800); }
@@ -579,12 +720,11 @@ function openChest() {
     if(!waitingForChest) return; waitingForChest = false; playSE("se-item");
     let seedRate = 0.15; if (weakHitCount >= 3) seedRate = 1.0; else if (weakHitCount >= 2) seedRate = 0.50;
     const rand = Math.random(); let itemName = ""; let itemEffect = "";
-    if (rand < seedRate) { itemName = "★命の種"; itemEffect = "MaxHP +10"; player.items.seed++; } else if (Math.random() < 0.6) { itemName = "薬草"; itemEffect = "HP 50 回復"; player.items.potion++; } else { itemName = "魔法の聖水"; itemEffect = "SP 100 回復"; player.items.ether++; }
+    if (rand < seedRate) { itemName = "★命の種"; itemEffect = "MaxHP +10"; player.items.seed++; } else if (Math.random() < 0.6) { itemName = "薬草"; itemEffect = "HP 50 回復"; player.items.potion++; } else { itemName = "魔法の聖水"; itemEffect = "MP 3 回復"; player.items.ether++; }
     updateInfo(); addLog(`宝箱: ${itemName} (${itemEffect}) を手に入れた`, "log-item");
     showDialog("TREASURE!", `<span style="font-size:24px;color:#00ff00;">${itemName}</span> を手に入れた！<br>${itemEffect}<br>(アイテムボタンで使用可能)`, "item", [{text:"OK", action:nextStep}]);
 }
 
-// --- ★ Ver 52.3 Logic Updates ★ ---
 function nextStep() {
     floor++; const ppr = totalDarts>0 ? ((totalScore/totalDarts)*3).toFixed(1) : 0;
 
@@ -592,14 +732,12 @@ function nextStep() {
 
         const stageTurns = totalGameTurns - stageStartTurn;
         const [rank, dpBonus] = calculateStageRank(stage, stageTurns);
-        const scoreDP = Math.floor(totalScore * 0.2); // Current total score based DP
+        const scoreDP = Math.floor(totalScore * 0.2); 
 
-        // Calculate POTENTIAL DP so far (including past stages in this run)
         let pendingBonusDP = dpBonus;
         clearedStagesLog.forEach(log => { pendingBonusDP += log.dp; });
         let potentialTotalDP = scoreDP + pendingBonusDP;
 
-        // Commit log
         clearedStagesLog.push({ stage: stage, rank: rank, dp: dpBonus });
 
         const currentBest = savedData.bestRanks[stage];
@@ -610,21 +748,18 @@ function nextStep() {
 
         playBGM("bgm-win");
 
-        // --- EXTRA CLEAR ---
         if(stage === 5) {
             const res = finishSession("EXTRA-WIN", parseFloat(ppr));
             showDialog("★ TRUE ENDING ★", `<span style="font-size:30px;color:#f0f;">THE LEGEND!!</span><br>最強の黒竜を倒した！<br><br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br>PPR: ${ppr}<br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{text:"TITLE", action:returnToTitle}]);
             return;
         }
 
-        // --- STAGE 4 CLEAR ---
         if(stage === 4) {
             const res = finishSession("WIN", parseFloat(ppr));
             showDialog("STAGE 4 CLEAR!", `<span style="font-size:28px;color:#e0b0ff;">NIGHTMARE CONQUERED!</span><br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{text:"TITLE", action:returnToTitle}]);
             return;
         }
 
-        // --- STAGE 1-3 Intermission ---
         let title = "STAGE CLEAR";
         let msg = `STAGE ${stage} COMPLETED!<br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br><br>現在の獲得予定DP: <span style="color:#ffd700; font-weight:bold;">${potentialTotalDP} DP</span>`;
 
@@ -687,374 +822,6 @@ function triggerEffect(el, dmg, isP, isWeak=false) {
 }
 function animateValue(obj, s, e, d) { if(obj) obj.innerHTML = e; }
 function addLog(t, type="") { const d=document.createElement("div"); d.innerHTML=t; if(type) d.className="log-"+type; elLog.prepend(d); }
-
-// --- ★ Smartphone Touch Handling ★ ---
-function tapKey(key) {
-    if (elGame.style.display === "none" || isProcessing) return;
-
-    // 効果音
-    if(key === 'ENT') {
-        // エンターキー相当の処理
-        handleEnter();
-    } else if (key === 'BS') {
-        // Backspace処理
-        if (currentInput.length > 0) {
-            currentInput = currentInput.slice(0, -1);
-        } else if (turnInputs.length > 0) {
-            currentInput = "" + turnInputs.pop();
-        }
-        playSE("se-tap");
-        updateScoreDisplay();
-    } else {
-        // 数字キー処理
-        if (currentInput.length < 3) {
-            playSE("se-tap");
-            currentInput += key;
-            updateScoreDisplay();
-        }
-    }
-}
-
-// --- ★ CARD & SHOP SYSTEM (Ver 2.1) ★ ---
-
-// 1. マスターカードデータ (Master Data)
-const CARD_DB = [
-    // UR (2%)
-    { id: 101, name: "死者蘇生", rarity: "UR", type: "MAGIC", desc: "HPを完全回復する" },
-    
-    // SR (8%)
-    { id: 201, name: "サンダー・ボルト", rarity: "SR", type: "MAGIC", desc: "敵全体に大ダメージ" },
-    { id: 202, name: "強欲な壺", rarity: "SR", type: "MAGIC", desc: "SPを最大までチャージ" },
-
-    // R (30%)
-    { id: 301, name: "光の護封剣", rarity: "R", type: "MAGIC", desc: "3ターンの間ダメージ無効" },
-    { id: 302, name: "落とし穴", rarity: "R", type: "TRAP", desc: "敵のチャージを無効化" },
-    { id: 303, name: "聖なるバリア", rarity: "R", type: "TRAP", desc: "敵の攻撃を反射" },
-
-    // N (60%)
-    { id: 401, name: "火の粉", rarity: "N", type: "MAGIC", desc: "敵に50ダメージ" },
-    { id: 402, name: "治療の神", rarity: "N", type: "MAGIC", desc: "HPを50回復" },
-    { id: 403, name: "はさみ撃ち", rarity: "N", type: "TRAP", desc: "次の攻撃ダメージ1.2倍" },
-    { id: 404, name: "昼夜の大火事", rarity: "N", type: "MAGIC", desc: "敵に80ダメージ" },
-    { id: 405, name: "突進", rarity: "N", type: "MAGIC", desc: "攻撃力アップ" }
-];
-
-// パック定義
-const PACK_DATA = [
-    { 
-        id: "vol1", 
-        name: "Vol.1 - Legend", 
-        price: 1000, 
-        desc: "伝説の始まり。基本魔法カード収録。", 
-        unlockStage: 1,
-        img: "assets/packs/vol1.png" // ★画像パス追加
-    }
-];
-
-// 2. ショップ機能 (Shop Logic)
-function openCardShop() {
-    playSE("se-tap");
-    const list = document.getElementById("pack-list");
-    list.innerHTML = "";
-    document.getElementById("shop-dp-display").innerText = savedData.dp;
-
-    if (!savedData.cards) savedData.cards = {};
-
-    PACK_DATA.forEach(pack => {
-        // ステージ解放チェック
-        const isUnlocked = (savedData.bestRanks && savedData.bestRanks[pack.unlockStage]);
-        // const isUnlocked = true; // デバッグ用
-
-        if (!isUnlocked) return; 
-
-        const canBuy = savedData.dp >= pack.price;
-        
-        // パック画像がない場合のダミー画像（絵文字）
-        const imgHTML = `<img src="${pack.img}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                         <div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:50px; background:#333; color:#555;">📦</div>`;
-
-        const div = document.createElement("div");
-        div.className = "pack-item";
-        div.innerHTML = `
-            <div class="pack-img-container">${imgHTML}</div>
-            <div class="pack-name">${pack.name}</div>
-            <div class="pack-desc">${pack.desc}</div>
-            <button class="pack-buy-btn" ${canBuy ? "" : "disabled"} onclick="buyPack('${pack.id}')">
-                ${canBuy ? `BUY (${pack.price} DP)` : "LACK DP"}
-            </button>
-        `;
-        list.appendChild(div);
-    });
-
-    if (list.innerHTML === "") {
-        list.innerHTML = "<div style='color:#666; width:100%; text-align:center;'>STAGE 1 CLEAR REQUIRED</div>";
-    }
-
-    document.getElementById("card-shop-modal").style.display = "flex";
-}
-
-function buyPack(packId) {
-    const pack = PACK_DATA.find(p => p.id === packId);
-    if (!pack || savedData.dp < pack.price) return;
-
-    // DP消費
-    savedData.dp -= pack.price;
-    document.getElementById("shop-dp-display").innerText = savedData.dp;
-    playSE("se-item"); // 仮の音
-
-    // 3枚抽選
-    const results = [];
-    for(let i=0; i<3; i++) {
-        const card = drawCard(packId);
-        
-        // 初入手チェック
-        const isNew = !savedData.cards[card.id];
-        
-        // 所持数加算
-        if (!savedData.cards[card.id]) savedData.cards[card.id] = 0;
-        savedData.cards[card.id]++;
-        
-        results.push({ card: card, isNew: isNew });
-    }
-    
-    saveToDrive();
-    showPackResult(results);
-}
-
-function drawCard(packId) {
-    // 簡易ウェイト抽選 (N:60, R:30, SR:8, UR:2)
-    const rand = Math.random() * 100;
-    let targetRarity = "N";
-    if (rand < 2) targetRarity = "UR";
-    else if (rand < 10) targetRarity = "SR";
-    else if (rand < 40) targetRarity = "R";
-
-    // 該当レアリティの中からランダムに1枚選ぶ
-    const pool = CARD_DB.filter(c => c.rarity === targetRarity);
-    if (pool.length === 0) return CARD_DB[0]; // エラー回避
-    return pool[Math.floor(Math.random() * pool.length)];
-}
-
-function showPackResult(results) {
-    const container = document.getElementById("pack-results");
-    container.innerHTML = "";
-    
-    // 結果表示演出
-    results.forEach((res, index) => {
-        const c = res.card;
-        
-        // 以前作った createCardElement 関数を再利用してカードの見た目を作る
-        // 第2引数(isDeck)=false, 第3引数(remain)=1 (所持してるように見せるため)
-        const cardEl = createCardElement(c, false, 1);
-        
-        // アニメーション用クラスを追加
-        cardEl.classList.add("result-card-anim");
-        cardEl.style.animationDelay = `${index * 0.3}s`; // 0.3秒ずつずらして登場
-        
-        // NEWバッジの追加
-        if (res.isNew) {
-            const badge = document.createElement("div");
-            badge.className = "new-badge-overlay";
-            badge.innerText = "NEW!";
-            cardEl.appendChild(badge);
-        }
-
-        container.appendChild(cardEl);
-    });
-
-    // レア度判定で音を変える
-    const hasHighRare = results.some(r => r.card.rarity === "SR" || r.card.rarity === "UR");
-    if (hasHighRare) {
-        setTimeout(() => playSE("se-win"), 300); // 少し遅らせてファンファーレ
-    } else {
-        playSE("se-buff");
-    }
-
-    document.getElementById("pack-result-modal").style.display = "flex";
-}
-
-function closePackResult() {
-    playSE("se-tap");
-    document.getElementById("pack-result-modal").style.display = "none";
-    updateTitleScore(); // DP表示更新
-}
-
-function closeCardShop() {
-    playSE("se-tap");
-    document.getElementById("card-shop-modal").style.display = "none";
-    updateTitleScore();
-}
-
-// 3. コレクション・デッキ編集機能
-// --- ★ DECK EDIT SYSTEM (Ver 3.0) ★ ---
-
-// デッキ保存用の初期化
-if (!savedData.deck) savedData.deck = [];
-
-function openCollection() {
-    playSE("se-tap");
-    renderDeckEditor();
-    document.getElementById("collection-modal").style.display = "flex";
-}
-
-function closeCollection() {
-    playSE("se-tap");
-    document.getElementById("collection-modal").style.display = "none";
-}
-
-// デッキ編集画面の描画（12枚対応）
-function renderDeckEditor() {
-    // データ初期化（安全装置）
-    if (!savedData.deck) savedData.deck = [];
-
-    // 1. デッキエリアの描画
-    const deckGrid = document.getElementById("deck-grid");
-    deckGrid.innerHTML = "";
-    
-    // デッキ枠を12個に拡張
-    const DECK_MAX = 12;
-
-    for (let i = 0; i < DECK_MAX; i++) {
-        const cardId = savedData.deck[i]; 
-        
-        if (cardId) {
-            const card = CARD_DB.find(c => c.id === cardId);
-            const el = createCardElement(card, true); // true = デッキ用
-            deckGrid.appendChild(el);
-        } else {
-            const div = document.createElement("div");
-            div.className = "deck-slot-empty";
-            div.innerText = "EMPTY";
-            deckGrid.appendChild(div);
-        }
-    }
-    
-    // 枚数カウント表示（文字色で警告）
-    const deckCount = savedData.deck.length;
-    const countEl = document.getElementById("deck-count");
-    countEl.innerText = deckCount;
-    
-    // 12枚未満なら赤字、12枚なら緑字にする演出
-    if (deckCount < 12) {
-        countEl.style.color = "#ff5555"; // 赤
-        countEl.innerText += " (あと" + (12 - deckCount) + "枚)";
-    } else {
-        countEl.style.color = "#00ff00"; // 緑
-        countEl.innerText += " (OK!)";
-    }
-
-    // 2. カードリストエリアの描画
-    const listGrid = document.getElementById("card-grid");
-    listGrid.innerHTML = "";
-    
-    if (!savedData.cards) savedData.cards = {};
-    let ownedCount = 0;
-
-    CARD_DB.forEach(card => {
-        const count = savedData.cards[card.id] || 0;
-        if (count > 0) ownedCount++;
-        
-        // デッキに入っているこのカードの枚数を数える
-        const inDeckCount = savedData.deck.filter(id => id === card.id).length;
-        
-        // リストに残る枚数 = 所持数 - デッキに入れた数
-        // ★ルール変更: カードは持っている数だけ入れられる（最大3枚制限はaddToDeckでやる）
-        const remaining = count - inDeckCount; 
-
-        const el = createCardElement(card, false, remaining);
-        listGrid.appendChild(el);
-    });
-
-    const rate = Math.floor((ownedCount / CARD_DB.length) * 100);
-    document.getElementById("collection-rate").innerText = `${rate}%`;
-}
-
-// カードのHTML要素を作る関数（共通化）
-function createCardElement(card, isDeckItem, remainingCount = 1) {
-    const div = document.createElement("div");
-    // 所持数0ならグレーアウト (デッキ内の場合は常に表示)
-    const notOwnedClass = (!isDeckItem && remainingCount <= 0) ? "card-not-owned" : "";
-    div.className = `collection-card rarity-${card.rarity} ${notOwnedClass}`;
-    
-    // 画像パス: assets/cards/101.png
-    // エラー時は絵文字を表示するトリックを使用
-    const imgPath = `assets/cards/${card.id}.png`;
-    
-    // カードタイプごとの絵文字（画像がない時の予備）
-    const fallbackIcon = card.type === "MAGIC" ? "🪄" : "⛓️";
-
-    div.innerHTML = `
-        <div class="card-count-badge">x${isDeckItem ? 1 : remainingCount}</div>
-        <div class="card-art">
-            <img src="${imgPath}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-            <div class="card-placeholder" style="display:none;">${fallbackIcon}</div>
-        </div>
-        <div class="card-info">
-            <div class="card-name">${card.name}</div>
-            <div class="card-type">[${card.type}]</div>
-        </div>
-    `;
-
-    // クリック時の動作
-    div.onclick = function() {
-        if (isDeckItem) {
-            removeFromDeck(card.id);
-        } else {
-            addToDeck(card.id);
-        }
-    };
-
-    return div;
-}
-
-// デッキに追加する処理（ルール追加）
-function addToDeck(cardId) {
-    const DECK_MAX = 12;
-    const SAME_CARD_LIMIT = 3;
-
-    // 1. 枚数制限チェック (最大12枚)
-    if (savedData.deck.length >= DECK_MAX) {
-        alert("デッキは12枚までです！");
-        return;
-    }
-
-    // 2. 所持数チェック
-    const ownedCount = savedData.cards[cardId] || 0;
-    const currentInDeck = savedData.deck.filter(id => id === cardId).length;
-
-    if (currentInDeck >= ownedCount) {
-        alert("これ以上持っていません！"); // パックを開けて当ててね
-        return;
-    }
-
-    // 3. 同名カード制限チェック (最大3枚)
-    if (currentInDeck >= SAME_CARD_LIMIT) {
-        alert(`「${getCardName(cardId)}」はデッキに3枚までしか入れられません。`);
-        return;
-    }
-    
-    playSE("se-tap");
-    savedData.deck.push(cardId);
-    saveToDrive();
-    renderDeckEditor(); 
-}
-
-// カード名を取得するヘルパー関数
-function getCardName(id) {
-    const c = CARD_DB.find(card => card.id === id);
-    return c ? c.name : "カード";
-}
-
-function removeFromDeck(cardId) {
-    playSE("se-tap");
-    // デッキから該当IDを1つだけ削除
-    const index = savedData.deck.indexOf(cardId);
-    if (index > -1) {
-        savedData.deck.splice(index, 1);
-    }
-    saveToDrive();
-    renderDeckEditor();
-}
 
 // --- ★ DEBUG TOOLS (Step 1) ★ ---
 

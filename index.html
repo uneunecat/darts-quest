@@ -99,7 +99,7 @@
 
                     <div class="deck-area-container">
                         <div style="color:#fff; font-size:14px; margin-bottom:5px;">
-                            ▼ YOUR DECK (<span id="deck-count" style="color:#ffd700;">0</span>/3) 
+                            ▼ YOUR DECK (<span id="deck-count" style="color:#ffd700;">0</span>/12) 
                             <span style="font-size:10px; color:#aaa;">※クリックではずす</span>
                         </div>
                         <div class="deck-grid" id="deck-grid">
@@ -174,26 +174,32 @@
                         <div class="player-box" id="player-panel">
                             <div class="status-badge badge-buff" id="player-buff-badge" style="right: auto; left: 10px;">ATK x1.5</div>
                             <div class="status-badge badge-guard" id="player-guard-badge" style="right: auto; left: 10px;">SHIELD</div>
-                            <div style="font-size:14px;">PLAYER HP</div>
-                            <div class="hp-bar-bg">
-                                <div class="hp-bar-fill player-fill" id="player-hp-bar"></div>
-                                <div class="bar-overlay-text" id="player-hp-text">100 / 100</div>
-                            </div>
-                            <div style="font-size:12px; margin-top:5px; color:#ffd700;">SP GAUGE</div>
-                            <div class="hp-bar-bg" style="border-color:#888;">
-                                <div class="hp-bar-fill sp-fill" id="player-sp-bar"></div>
-                                <div class="bar-overlay-text" id="player-sp-text">0 / 300</div>
+                            <div class="status-area">
+                                <div class="hp-bar-bg">
+                                    <div class="hp-bar-fill player-fill" id="player-hp-bar" style="width:100%;"></div>
+                                    <div class="bar-overlay-text"><span id="player-hp">100</span> / <span id="player-max-hp">100</span></div>
+                                </div>
+                                <div class="hp-bar-bg" style="border-color:#00d2fc;">
+                                    <div class="hp-bar-fill mp-fill" id="player-mp-bar" style="width:100%;"></div>
+                                    <div class="bar-overlay-text">MP: <span id="player-mp">3</span> / <span id="player-max-mp">10</span></div>
+                                </div>
                             </div>
                             <div class="stats-text">Avg: <span class="avg-score" id="avg-display">0.0</span> <span class="avg-score" id="rt-display" style="font-size:14px;">(Rt -)</span></div>
                         </div>
-                        <div class="skill-area">
-                            <button class="skill-btn" id="skill-heal" onclick="useSkill('heal')">Heal<span class="skill-cost">160</span><span class="tooltip">消費SP:160 / HPを50回復</span></button>
-                            <button class="skill-btn" id="skill-weak" onclick="useSkill('weakLock')">Weak Lock<span class="skill-cost">220</span><span class="tooltip">消費SP:220 / 次の1ターン全弾Weak化</span></button>
-                            <button class="skill-btn" id="skill-stun" onclick="useSkill('stun')">Stun<span class="skill-cost">260</span><span class="tooltip">消費SP:260 / 敵を1ターン行動不能に</span></button>
+                        
+                        <div class="hand-container">
+                            <div style="font-size:10px; color:#aaa; margin-bottom:2px; display:flex; justify-content:space-between;">
+                                <span>HAND</span>
+                                <span>DECK: <span id="battle-deck-count" style="color:#fff;">0</span></span>
+                            </div>
+                            <div class="hand-area" id="hand-area">
+                                <div class="hand-card-empty">NO CARD</div>
+                            </div>
                         </div>
+
                         <div class="item-area">
                             <button class="item-btn" id="btn-potion" onclick="useItem('potion')">💊 薬草 x0<span class="tooltip">HPを50回復 (使い切り)</span></button>
-                            <button class="item-btn" id="btn-ether" onclick="useItem('ether')">💧 聖水 x0<span class="tooltip">SPを100回復 (使い切り)</span></button>
+                            <button class="item-btn" id="btn-ether" onclick="useItem('ether')">⚗️ マナ x0<span class="tooltip">MPを3回復 (使い切り)</span></button>
                             <button class="item-btn" id="btn-seed" onclick="useItem('seed')">🌱 種 x0<span class="tooltip">最大HP+10上昇 (使い切り)</span></button>
                         </div>
                         <div class="darts-selector"><div class="darts-btn" id="btn-d1">1</div><div class="darts-btn" id="btn-d2">2</div><div class="darts-btn" id="btn-d3">3</div></div>
