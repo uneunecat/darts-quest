@@ -432,12 +432,14 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     background: linear-gradient(180deg, #222, #111);
     border: 1px solid #444;
     border-radius: 10px;
-    padding: 15px;
+    padding: 10px;
     display: flex;
     flex-direction: column;
     align-items: center;
     transition: transform 0.2s, box-shadow 0.2s;
     text-align: center;
+    min-height: 280px; /* ★高さを確保 */
+    justify-content: flex-start;
 }
 .pack-item:hover {
     transform: translateY(-5px);
@@ -445,24 +447,36 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     border-color: #e94560;
 }
 
+.pack-desc {
+    font-size: 11px;
+    color: #aaa;
+    margin-bottom: 15px;
+    height: 3.6em; /* ★3行分表示 */
+    overflow: hidden;
+    line-height: 1.2;
+}
+
 /* Pack Image Area */
 .pack-img-container {
     width: 120px;
     height: 180px;
     margin-bottom: 10px;
-    border-radius: 5px;
+    border-radius: 6px; /* ★丸角でカードっぽく */
     overflow: hidden;
-    box-shadow: 0 5px 10px rgba(0,0,0,0.5);
-    background: #000;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5); /* 影をつけて立体感を */
+    background: transparent;
     display: flex;
     align-items: center;
     justify-content: center;
 }
-.pack-img-container img { width: 100%; height: 100%; object-fit: cover; }
 
-/* Text Info */
-.pack-name { font-size: 14px; font-weight: bold; color: #fff; margin-bottom: 5px; }
-.pack-desc { font-size: 10px; color: #aaa; margin-bottom: 10px; height: 2.4em; overflow: hidden; }
+.pack-img-container img {
+    width: 100%; 
+    height: 100%; 
+    object-fit: cover;
+    /* 透過マジックは削除（白背景を活かす） */
+    border-radius: 6px; /* 画像自体も丸める */
+}
 
 /* Buy Button */
 .pack-buy-btn {
@@ -635,59 +649,4 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     border-radius: 5px;
     background: rgba(50, 0, 0, 0.5);
     animation: pulseRed 2s infinite;
-}
-
-/* --- ★ SHOP IMPROVEMENTS (Phase 4.5) ★ --- */
-
-/* 1. 見切れ防止: 高さを拡張 */
-.pack-item {
-    background: linear-gradient(180deg, #222, #111);
-    border: 1px solid #444;
-    border-radius: 10px;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    transition: transform 0.2s, box-shadow 0.2s;
-    text-align: center;
-    min-height: 280px; /* ★高さを確保 */
-    justify-content: flex-start;
-}
-.pack-item:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 0 15px rgba(233, 69, 96, 0.4);
-    border-color: #e94560;
-}
-
-.pack-desc {
-    font-size: 11px;
-    color: #aaa;
-    margin-bottom: 15px;
-    height: 3.6em; /* ★3行分表示 */
-    overflow: hidden;
-    line-height: 1.2;
-}
-
-/* 2. 画像透過マジック (Mix Blend Mode) */
-.pack-img-container {
-    width: 120px;
-    height: 180px;
-    margin-bottom: 10px;
-    border-radius: 5px;
-    overflow: hidden;
-    /* 影を消して背景に馴染ませる */
-    box-shadow: none; 
-    background: transparent;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.pack-img-container img {
-    width: 100%; 
-    height: 100%; 
-    object-fit: cover;
-    /* ★ここが魔法: 黒背景を透明として扱う */
-    mix-blend-mode: screen; 
-    filter: brightness(1.2) contrast(1.1); /* 少し明るく */
 }
