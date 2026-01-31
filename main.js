@@ -432,22 +432,39 @@ function checkOpeningSkill() {
 }
 
 function setupStage(sel) {
-    stage=sel; floor=1; isProcessing=false; extraBossTurnCount=0; currentTurn=1;
+    stage = sel; 
+    floor = 1; 
+    isProcessing = false; 
+    extraBossTurnCount = 0; 
+    currentTurn = 1;
     stageStartTurn = totalGameTurns; // Reset stage turn counter base
 
+    // ★修正ポイント1: 先にゲーム画面を表示し、敵を出現させる
+    elAvg.innerText = "0.0"; 
+    elRt.innerText = "(Rt -)"; 
+    elLog.innerHTML = ""; 
+    elGame.style.display = "block";
+    
+    // ★敵を生成（これで enemy.data がセットされるので、updateInfoが動くようになる）
+    spawnEnemy(); 
+
     // Reset Battle State
-    player.state={power:false,shield:false,weakLock:false}; 
-    enemy.state={charge:false,guard:false,guardType:null,guardTurn:0,atkBuff:0,isStunned:false};
+    player.state = { power: false, shield: false, weakLock: false }; 
+    // enemy.state は spawnEnemy 内でリセット済みなので削除してもよいが念のため
     player.mp = 3; // Reset MP on stage start
 
     // Deck & Hand Setup
     player.deck = shuffleArray([...savedData.deck]); 
     player.hand = [];
     player.discard = [];
-    for(let i=0; i<3; i++) drawCard();
+    
+    // ★修正ポイント2: 敵がいる状態で、初期手札を3枚引く
+    for(let i=0; i<3; i++) {
+        drawCard();
+    }
 
-    elAvg.innerText="0.0"; elRt.innerText="(Rt -)"; elLog.innerHTML=""; elGame.style.display="block";
-    addLog(`STAGE ${stage} START!`, "system"); spawnEnemy(); resizeGame();
+    addLog(`STAGE ${stage} START!`, "system"); 
+    resizeGame();
 }
 
 function shuffleArray(array) {
