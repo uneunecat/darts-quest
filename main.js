@@ -274,7 +274,10 @@ const elWeak=document.getElementById("weak-display");
 const elEnemyHP=document.getElementById("enemy-hp"); const elEnemyMaxHP=document.getElementById("enemy-max-hp"); const elEnemyHPBar=document.getElementById("enemy-hp-bar");
 const elEnemyHPValue=document.getElementById("enemy-hp-value");
 const elPlayerHP=document.getElementById("player-hp"); const elPlayerMaxHP=document.getElementById("player-max-hp"); const elPlayerHPBar=document.getElementById("player-hp-bar"); const elPlayerMP=document.getElementById("player-mp"); const elPlayerMPBar=document.getElementById("player-mp-bar");
-const elPlayerHPText=document.getElementById("player-hp-text"); const elPlayerMPText=document.getElementById("player-sp-text"); // Use same text element but update content
+// ★修正: 存在しない要素の取得を削除 (ここがエラー原因でした！)
+// const elPlayerHPText=document.getElementById("player-hp-text"); 
+// const elPlayerMPText=document.getElementById("player-sp-text");
+
 const elAvg=document.getElementById("avg-display"); const elRt=document.getElementById("rt-display"); const elLog=document.getElementById("battle-log");
 const elEnemyPanel=document.getElementById("enemy-panel"); const elPlayerPanel=document.getElementById("player-panel"); const elOverlay=document.getElementById("flash-overlay");
 const btnD1=document.getElementById("btn-d1"); const btnD2=document.getElementById("btn-d2"); const btnD3=document.getElementById("btn-d3");
@@ -603,7 +606,11 @@ function updateInfo() {
     
     // Player Bars
     elPlayerHPBar.style.width=Math.max(0,(player.hp/player.maxHp)*100)+"%";
-    elPlayerHPText.innerText = `${player.hp} / ${player.maxHp}`; 
+    
+    // ★修正: elPlayerHPText.innerText へのアクセスを削除し、直接IDを指定して書き換え
+    document.getElementById("player-hp").innerText = player.hp; 
+    document.getElementById("player-max-hp").innerText = player.maxHp;
+
     elPlayerMPBar.style.width=Math.max(0,(player.mp/player.maxMp)*100)+"%"; 
     document.querySelector("#player-mp").innerText = player.mp;
     document.querySelector("#player-max-mp").innerText = player.maxMp;
