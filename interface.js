@@ -1,4 +1,4 @@
-console.log("★ interface.js is loaded!");
+console.log("★ interface.js is loaded! (v1.1 Fixed)");
 
 // --- CONSTANTS & DOM ---
 const elContainer=document.getElementById("game-container"); const elTitle=document.getElementById("title-screen"); const elGame=document.getElementById("game-screen");
@@ -30,7 +30,7 @@ function resizeGame() {
 }
 window.addEventListener('resize', resizeGame); window.addEventListener('load', resizeGame); setTimeout(resizeGame, 100);
 
-// ここで初期化実行！
+// 初期化実行
 initSlotScreen();
 
 // --- SLOT & TITLE ---
@@ -188,6 +188,22 @@ function spawnEnemy() {
     enemy.name=enemy.data.name; elEnemyImg.src=enemy.data.img; enemy.hp=enemy.maxHp; displayEnemyHP=enemy.hp; updateInfo();
     if(stage===5) addLog(`>>> 伝説の黒竜、${enemy.name} が現れた！！！`, "log-skill"); else addLog(`=== STAGE ${stage} - ${floor}F ===`, "system");
     isProcessing=false;
+}
+
+// ★追加: 忘れられていた関数
+function updateScoreDisplay() {
+    slots.forEach((s, i) => { 
+        s.className = "score-slot"; 
+        if (restrictInput && i > 0) { s.classList.add("locked"); s.innerText = "X"; return; } 
+        if (i < turnInputs.length) { s.innerText = turnInputs[i]; s.classList.add("filled"); } 
+        else if (i === turnInputs.length) { s.innerText = currentInput; s.classList.add("active"); } 
+        else { s.innerText = ""; } 
+    });
+    const currentThrow = turnInputs.length + 1;
+    btnD1.className = currentThrow === 1 ? "darts-btn active" : "darts-btn"; 
+    btnD2.className = currentThrow === 2 ? "darts-btn active" : "darts-btn"; 
+    btnD3.className = currentThrow === 3 ? "darts-btn active" : "darts-btn";
+    if(restrictInput) { btnD2.className="darts-btn disabled"; btnD3.className="darts-btn disabled"; }
 }
 
 function updateInfo() {
@@ -521,7 +537,7 @@ function removeFromDeck(cardId) {
 function getCardName(id) { const c = CARD_DB.find(card => card.id === id); return c ? c.name : "カード"; }
 
 // --- UTILS ---
-function addLog(t, type="") { const d=document.createElement("div"); d.innerHTML=t; if(type) d.className="log-"+type; elLog.prepend(d); }
+function addLog(t, type="") { const d=document.createElement("div"); d.innerHTML=t; if(type) d.className="log-"+type; document.getElementById("battle-log").prepend(d); }
 function showDialog(title, text, type="normal", buttons=[{text:"OK", action:null}]) {
     elModalTitle.innerText = title; elModalText.innerHTML = text; elModalBox.className = "modal-box"; elModalTitle.style.color = "#f9a826";
     if (type === "clear") { elModalBox.classList.add("modal-clear"); elModalTitle.style.color = "#fff"; } else if (type === "warning") { elModalBox.classList.add("modal-warning"); elModalTitle.style.color = "#ff0000"; } else if (type === "item") { elModalBox.classList.add("modal-item"); elModalTitle.style.color = "#00ff00"; }
