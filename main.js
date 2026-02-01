@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v1.4.3 Fixed)");
+console.log("★ main.js is loaded! (v1.5 Final Fix)");
 
 // --- HELPER FUNCTIONS ---
 function calculateRating(ppr) { if(ppr < 30) return 1; if(ppr < 40) return 2; if(ppr < 45) return 3; if(ppr < 50) return 4; if(ppr < 55) return 5; if(ppr < 60) return 6; if(ppr < 65) return 7; if(ppr < 70) return 8; if(ppr < 75) return 9; if(ppr < 80) return 10; if(ppr < 85) return 11; if(ppr < 90) return 12; if(ppr < 95) return 13; if(ppr < 100) return 14; if(ppr < 110) return 15; if(ppr < 120) return 16; if(ppr < 130) return 17; return 18; }
@@ -54,20 +54,26 @@ let turnInputs = []; let currentInput = ""; let isJustFinish = false; let waitin
 let cheatBuffer = ""; 
 let stageStartTurn = 0; let totalGameTurns = 0; let clearedStagesLog = [];
 
-// --- DOM ELEMENTS (★ここを修正しました) ---
+// --- DOM ELEMENTS (★定義漏れを全て修正) ---
 const elContainer=document.getElementById("game-container"); const elTitle=document.getElementById("title-screen"); const elGame=document.getElementById("game-screen");
 const elChapter=document.getElementById("chapter-screen"); const elChapTitle=document.getElementById("chapter-title"); const elChapSub=document.getElementById("chapter-sub");
 const elStage=document.getElementById("stage-display"); const elFloor=document.getElementById("floor-display"); const elTurn=document.getElementById("turn-display");
 const elBossLabel=document.getElementById("boss-label"); const elEnemyImg=document.getElementById("enemy-img"); const elEnemyName=document.getElementById("enemy-name");
 const elWeak=document.getElementById("weak-display");
 
-// ★不足していた要素を追加
 const elEnemyHP=document.getElementById("enemy-hp"); 
 const elEnemyHPValue=document.getElementById("enemy-hp-value");
 const elEnemyHPBar=document.getElementById("enemy-hp-bar");
 
 const elPlayerHP=document.getElementById("player-hp"); 
 const elPlayerHPBar=document.getElementById("player-hp-bar");
+
+// ★以下の定義を追加（これで ReferenceError は消えます）
+const elEnemyBuff=document.getElementById("enemy-buff-badge");
+const elEnemyGuard=document.getElementById("enemy-guard-badge");
+const elEnemyDrop=document.getElementById("enemy-drop-badge");
+const elPlayerBuff=document.getElementById("player-buff-badge");
+const elPlayerGuard=document.getElementById("player-guard-badge");
 
 const elAvg=document.getElementById("avg-display"); const elRt=document.getElementById("rt-display"); const elLog=document.getElementById("battle-log");
 const elEnemyPanel=document.getElementById("enemy-panel"); const elPlayerPanel=document.getElementById("player-panel"); const elOverlay=document.getElementById("flash-overlay");
@@ -244,6 +250,14 @@ function setupStage(sel) {
     addLog(`STAGE ${stage} START!`, "system"); resizeGame();
 }
 
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
 function spawnEnemy() {
     enemy.state={charge:false,guard:false,guardType:null,guardTurn:0,atkBuff:0,isStunned:false}; player.state={power:false,shield:false,weakLock:false,nextShotMult:1.0};
     currentTurn=1; turnInputs=[]; currentInput=""; restrictInput=false; updateScoreDisplay(); isJustFinish = false; waitingForChest = false; dropGuaranteed = false; weakHitCount=0;
@@ -252,9 +266,13 @@ function spawnEnemy() {
     let bgKey = stage; if (stage === 4) bgKey = floor >= 5 ? "4_2" : "4_1";
     if (GAME_DATA.bg[bgKey]) elContainer.style.backgroundImage = `url('${GAME_DATA.bg[bgKey]}')`; else elContainer.style.backgroundImage = "none";
 
+    // --- Enemy Stats Scaling ---
     let isBoss;
     if (stage === 5) {
-        enemy.data = GAME_DATA.enemies[5][0]; isBoss=true; extraBossTurnCount=0; playBGM("bgm-extra"); elContainer.classList.add("extra-mode"); elEnemyPanel.classList.add("extra-border"); elBossLabel.innerText="☠️EXTRA BOSS"; elBossLabel.style.display="inline"; elStage.innerText="EXTRA STAGE"; enemy.maxHp=3000;
+        enemy.data = GAME_DATA.enemies[5][0]; isBoss=true; extraBossTurnCount=0; 
+        playBGM("bgm-extra"); elContainer.classList.add("extra-mode"); elEnemyPanel.classList.add("extra-border"); 
+        elBossLabel.innerText="☠️EXTRA BOSS"; elBossLabel.style.display="inline"; elStage.innerText="EXTRA STAGE"; 
+        enemy.maxHp=3000; 
     } else if (stage === 4) {
         enemy.data = GAME_DATA.enemies[4][floor-1];
         if (floor === 5) { isBoss = true; playBGM("bgm-boss"); elContainer.classList.add("boss-mode"); elBossLabel.innerText="⚠️BOSS"; elBossLabel.style.display="inline"; enemy.maxHp = 1000; }
@@ -294,8 +312,10 @@ function playHandCard(index) {
     updateInfo();
 }
 
+// --- ★ New Logic: Card Effects (Ver 2.2) ---
 function applyCardEffect(card) {
     let msg = `Card: [${card.name}] `;
+    
     if (card.id === 101) { player.hp = player.maxHp; msg += "HP完全回復！"; playSE("se-heal"); }
     else if (card.id === 201) { const dmg = 100; enemy.hp = Math.max(0, enemy.hp - dmg); enemy.state.isStunned = true; msg += `100ダメ & スタン！`; playSE("se-boom"); triggerEffect(document.getElementById("enemy-panel"), dmg, false); }
     else if (card.id === 202) { player.mp = Math.min(player.mp + 5, player.maxMp); msg += "MP+5 チャージ！"; }
@@ -307,20 +327,26 @@ function applyCardEffect(card) {
     else if (card.id === 403) { const dmg = 80; const selfDmg = 20; enemy.hp = Math.max(0, enemy.hp - dmg); player.hp = Math.max(0, player.hp - selfDmg); msg += `敵80ダメ / 自20ダメ`; triggerEffect(document.getElementById("enemy-panel"), dmg, false); triggerEffect(document.getElementById("player-panel"), selfDmg, true); }
     else if (card.id === 404) { const dmg = 80; enemy.hp = Math.max(0, enemy.hp - dmg); msg += `80ダメージ！`; playSE("se-attack"); triggerEffect(document.getElementById("enemy-panel"), dmg, false); }
     else if (card.id === 405) { player.state.nextShotMult = 2.0; msg += "次の一投ダメージ2倍！"; }
-    addLog(msg, "log-skill"); animateValue(document.getElementById("enemy-hp"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp; animateValue(document.getElementById("player-hp"), displayPlayerHP, player.hp, 500); displayPlayerHP=player.hp;
+    
+    addLog(msg, "log-skill");
+    animateValue(document.getElementById("enemy-hp"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp;
+    animateValue(document.getElementById("player-hp"), displayPlayerHP, player.hp, 500); displayPlayerHP=player.hp;
+
     if (enemy.hp <= 0) setTimeout(winBattle, 800);
 }
 
+// --- Info & Visuals ---
 function updateInfo() {
     if (!enemy.data) return;
+
     if(stage===5) { elStage.innerText="EXTRA"; elFloor.innerText="FINAL"; }
     else if(stage===4) { elStage.innerText="STAGE 4"; elFloor.innerText=`${floor}F`; }
     else { elStage.innerText=`STAGE ${stage}`; elFloor.innerText=`${floor}F`; }
     elTurn.innerText=`TURN ${currentTurn}`;
+
     const elName = document.getElementById("enemy-name"); elName.innerText = enemy.name;
     elName.style.fontSize = (enemy.name.length > 12) ? "12px" : (enemy.name.length > 9 ? "15px" : "18px");
-    
-    // ★修正箇所: enemy-hp-value を正しく取得・使用
+
     if(elEnemyHPValue) {
         elEnemyHPValue.innerText = enemy.hp;
         elEnemyHPValue.className = "hp-big-text";
@@ -333,23 +359,56 @@ function updateInfo() {
     else { weakText = "WEAK: " + enemy.data.weak + "+"; }
     elWeak.innerHTML = weakText;
     
-    // ★修正箇所: elEnemyHPBar / elPlayerHPBar を正しく使用
     if(elEnemyHPBar) elEnemyHPBar.style.width=Math.max(0,(enemy.hp/enemy.maxHp)*100)+"%"; 
     if(elPlayerHPBar) elPlayerHPBar.style.width=Math.max(0,(player.hp/player.maxHp)*100)+"%";
     
-    document.getElementById("player-hp").innerText = player.hp; document.getElementById("player-max-hp").innerText = player.maxHp;
-    const mpContainer = document.getElementById("player-mp-bar"); mpContainer.innerHTML = ""; mpContainer.style.width = "100%"; 
-    for(let i=0; i < player.maxMp; i++) { const dot = document.createElement("div"); dot.className = "mp-dot"; if (i < player.mp) dot.classList.add("active"); mpContainer.appendChild(dot); }
-    document.querySelector("#player-mp").innerText = player.mp; document.querySelector("#player-max-mp").innerText = player.maxMp;
-    updateVisuals(); renderHand();
-    let ppr = totalDarts>0 ? ((totalScore/totalDarts)*3).toFixed(1) : 0; elAvg.innerText=ppr; elRt.innerText=`(Rt ${calculateRating(ppr)})`;
+    document.getElementById("player-hp").innerText = player.hp; 
+    document.getElementById("player-max-hp").innerText = player.maxHp;
+
+    const mpContainer = document.getElementById("player-mp-bar");
+    mpContainer.innerHTML = ""; mpContainer.style.width = "100%"; 
+    for(let i=0; i < player.maxMp; i++) {
+        const dot = document.createElement("div"); dot.className = "mp-dot";
+        if (i < player.mp) dot.classList.add("active"); mpContainer.appendChild(dot);
+    }
+    document.querySelector("#player-mp").innerText = player.mp;
+    document.querySelector("#player-max-mp").innerText = player.maxMp;
+
+    updateVisuals();
+    
+    const handArea = document.getElementById("hand-area");
+    handArea.innerHTML = "";
+    if (player.deckLocked) {
+        document.getElementById("battle-deck-count").innerText = "-";
+        handArea.innerHTML = `<div class="hand-locked-msg">⚠️ NO DECK (DARTS ONLY)</div>`;
+    } else {
+        document.getElementById("battle-deck-count").innerText = player.deck.length;
+        if (player.hand.length === 0) { handArea.innerHTML = `<div class="hand-card-empty">NO CARD</div>`; } 
+        else {
+            player.hand.forEach((cardId, index) => {
+                const card = CARD_DB.find(c => c.id === cardId);
+                let cost = card.cost; 
+                const div = document.createElement("div"); div.className = "hand-card";
+                if (player.mp < cost) div.classList.add("disabled");
+                const imgPath = `assets/cards/${card.id}.png`;
+                div.innerHTML = `<div class="hand-cost">${cost}</div><div class="card-art" style="height:100%; border:none;"><img src="${imgPath}" onerror="this.style.display='none'"></div><div style="position:absolute; bottom:0; width:100%; font-size:8px; text-align:center; background:rgba(0,0,0,0.7); color:#fff;">${card.name}</div>`;
+                div.onclick = () => playHandCard(index);
+                handArea.appendChild(div);
+            });
+        }
+    }
+
+    let ppr = 0; if(totalDarts>0) ppr = ((totalScore/totalDarts)*3); elAvg.innerText=ppr.toFixed(1); elRt.innerText=`(Rt ${calculateRating(ppr)})`;
     btnPotion.innerHTML = `💊 薬草 x${player.items.potion}<span class="tooltip">HPを50回復 (使い切り)</span>`; btnPotion.className = player.items.potion > 0 ? "item-btn has-item" : "item-btn disabled";
     btnEther.innerHTML = `⚗️ マナ x${player.items.ether}<span class="tooltip">MPを3回復 (使い切り)</span>`; btnEther.className = player.items.ether > 0 ? "item-btn has-item" : "item-btn disabled";
     btnSeed.innerHTML = `🌱 種 x${player.items.seed}<span class="tooltip">最大HP+10上昇 (使い切り)</span>`; btnSeed.className = player.items.seed > 0 ? "item-btn has-item" : "item-btn disabled";
 }
 
 function updateVisuals() {
-    if(elPlayerBuff) { elPlayerBuff.style.display = (player.state.power || player.state.nextShotMult > 1.0) ? "block" : "none"; if(player.state.nextShotMult > 1.0) elPlayerBuff.innerText = "NEXT x2"; else elPlayerBuff.innerText = "ATK x1.5"; }
+    if(elPlayerBuff) {
+        elPlayerBuff.style.display = (player.state.power || player.state.nextShotMult > 1.0) ? "block" : "none";
+        if(player.state.nextShotMult > 1.0) elPlayerBuff.innerText = "NEXT x2"; else elPlayerBuff.innerText = "ATK x1.5";
+    }
     if(elPlayerGuard) elPlayerGuard.style.display = player.state.shield ? "block" : "none";
     if(elEnemyBuff) elEnemyBuff.style.display = enemy.state.charge ? "block" : "none";
     if(elEnemyGuard) elEnemyGuard.style.display = (enemy.state.guard || enemy.state.guardType) ? "block" : "none";
@@ -360,8 +419,10 @@ function updateVisuals() {
 
 function showSkillCutin(name, type) { playSE("se-warning"); elCutinText.innerText = name; elCutin.className = ""; if(type==="fire") elCutin.classList.add("cutin-fire"); if(type==="ice") elCutin.classList.add("cutin-ice"); if(type==="earth") elCutin.classList.add("cutin-earth"); if(type==="wind") elCutin.classList.add("cutin-wind"); elCutin.style.display = "flex"; elContainer.classList.add("shake-heavy"); setTimeout(()=>{ elCutin.style.display="none"; elContainer.classList.remove("shake-heavy"); }, 1500); }
 
+// --- ★ New Enemy AI & Boss Gimmicks (Ver 2.2) ---
 function enemyTurn() {
     if(enemy.state.isStunned) { addLog(`>> ${enemy.name} は怯んで動けない！`, "log-system"); enemy.state.isStunned = false; endEnemyTurn(); return; }
+
     if (stage === 4) {
         if (floor === 5) { if (currentTurn % 4 === 0) { showSkillCutin("イーター", "earth"); setTimeout(() => { destroyHandCard(1); addLog(">> [イーター] 手札を1枚食べられた！", "log-enemy"); doEnemyAttack(1.0, {isDrain: true}); }, 1200); return; } }
         if (floor === 6) { if (currentTurn % 3 === 0) { showSkillCutin("千眼の呪縛", "wind"); setTimeout(() => { destroyHandCard(2); player.mp = Math.max(0, player.mp - 2); addLog(">> [呪縛] 手札2枚破壊 & MP-2", "log-enemy"); doEnemyAttack(1.2); }, 1200); return; } }
@@ -406,7 +467,7 @@ function winBattle() {
 }
 function checkDrop() {
     if(stage === 5 || (stage === 4 && floor === 6)) { nextStep(); return; }
-    const isBoss = (floor === 5); let dropRate = isBoss ? 1.0 : 0.3; if (dropGuaranteed) dropRate = 1.0;
+    const isBoss = (floor === 5 || (stage===4 && floor===6)); let dropRate = isBoss ? 1.0 : 0.3; if (dropGuaranteed) dropRate = 1.0;
     if(Math.random() < dropRate) { waitingForChest = true; elEnemyImg.style.display = "none"; elChestImg.style.display = "block"; elChestImg.classList.add("chest-shine"); playSE("se-chest"); addLog("宝箱を見つけた！", "log-item"); } else { nextStep(); }
 }
 function openChest() {
@@ -463,30 +524,62 @@ function loseBattle() {
 
 function returnToTitle() { playBGM("bgm-title"); elContainer.classList.remove("boss-mode","extra-mode"); elGame.style.display="none"; elTitle.style.display="flex"; updateTitleScore(); }
 
-function useItem(type) {
-    if(isProcessing || waitingForChest) return;
-    if(type === 'potion' && player.items.potion > 0) { player.items.potion--; playSE("se-heal"); const old=player.hp; player.hp=Math.min(player.hp+50, player.maxHp); addLog(`アイテム: 薬草使用`, "log-item"); animateValue(elPlayerHP, old, player.hp, 500); updateInfo(); }
-    else if(type === 'ether' && player.items.ether > 0) { player.items.ether--; playSE("se-heal"); player.mp=Math.min(player.mp+3, player.maxMp); addLog(`アイテム: 聖水使用 (MP+3)`, "log-item"); updateInfo(); }
-    else if(type === 'seed' && player.items.seed > 0) { player.items.seed--; playSE("se-buff"); player.maxHp+=10; const old=player.hp; player.hp=Math.min(player.hp+10, player.maxHp); addLog(`アイテム: 命の種使用`, "log-item"); animateValue(elPlayerHP, old, player.hp, 500); updateInfo(); }
+function triggerEffect(el, dmg, isP, isWeak=false) {
+    el.classList.remove("shake-small", "shake-medium", "shake-heavy", "shake-ultimate"); void el.offsetWidth;
+    if(dmg >= 150) { el.classList.add("shake-ultimate"); playSE("se-boom"); elOverlay.className = "flash-gold"; setTimeout(()=>elOverlay.className="", 800); }
+    else if(dmg >= 60) { el.classList.add("shake-heavy"); playSE("se-boom"); elOverlay.className = isP ? "flash-red" : "flash-white"; setTimeout(()=>elOverlay.className="", 300); }
+    else { el.classList.add(dmg>=30 ? "shake-medium" : "shake-small"); playSE("se-hit"); }
+    const pop = document.createElement("div"); pop.innerText=dmg; if(dmg >= 150) pop.className="damage-popup dmg-ultimate"; else if(dmg >= 60) pop.className="damage-popup dmg-heavy"; else if(dmg >= 30) pop.className="damage-popup dmg-medium"; else pop.className="damage-popup dmg-small";
+    pop.style.left="50%"; pop.style.top="50%"; el.appendChild(pop); setTimeout(()=>pop.remove(),1500);
+}
+function animateValue(obj, s, e, d) { if(obj) obj.innerHTML = e; }
+function addLog(t, type="") { const d=document.createElement("div"); d.innerHTML=t; if(type) d.className="log-"+type; elLog.prepend(d); }
+
+// --- ★ Smartphone Touch Handling ★ ---
+function tapKey(key) {
+    if (elGame.style.display === "none" || isProcessing) return;
+    if(key === 'ENT') { handleEnter(); } 
+    else if (key === 'BS') { if (currentInput.length > 0) { currentInput = currentInput.slice(0, -1); } else if (turnInputs.length > 0) { currentInput = "" + turnInputs.pop(); } playSE("se-tap"); updateScoreDisplay(); } 
+    else { if (currentInput.length < 3) { playSE("se-tap"); currentInput += key; updateScoreDisplay(); } }
 }
 
-function drawCard() {
-    if (player.deck.length === 0) return;
-    const cardId = player.deck.pop();
-    player.hand.push(cardId);
-    updateInfo();
+function updateScoreDisplay() {
+    slots.forEach((s, i) => { s.className = "score-slot"; if (restrictInput && i > 0) { s.classList.add("locked"); s.innerText = "X"; return; } if (i < turnInputs.length) { s.innerText = turnInputs[i]; s.classList.add("filled"); } else if (i === turnInputs.length) { s.innerText = currentInput; s.classList.add("active"); } else { s.innerText = ""; } });
+    const currentThrow = turnInputs.length + 1;
+    btnD1.className = currentThrow === 1 ? "darts-btn active" : "darts-btn"; btnD2.className = currentThrow === 2 ? "darts-btn active" : "darts-btn"; btnD3.className = currentThrow === 3 ? "darts-btn active" : "darts-btn";
+    if(restrictInput) { btnD2.className="darts-btn disabled"; btnD3.className="darts-btn disabled"; }
 }
 
-function playHandCard(index) {
-    if(isProcessing || waitingForChest) return;
-    const cardId = player.hand[index];
-    const card = CARD_DB.find(c => c.id === cardId);
-    let cost = card.cost;
-    if (player.mp < cost) { addLog("MPが足りません！", "log-system"); playSE("se-warning"); return; }
-    playSE("se-buff"); player.mp -= cost;
-    applyCardEffect(card);
-    player.hand.splice(index, 1); player.discard.push(cardId); drawCard();
-    updateInfo();
+function handleEnter() {
+    if(isProcessing) return;
+    if (currentInput !== "") { const val = parseInt(currentInput); if (!isNaN(val)) { if (val < 0 || val > 60) { alert("単発の最大値は 60 (T20) です"); currentInput=""; updateScoreDisplay(); return; } playSE("se-tap"); turnInputs.push(val); currentInput = ""; if (restrictInput || turnInputs.length === 3) executeAttack(); else updateScoreDisplay(); } } else { if (turnInputs.length > 0) executeAttack(); }
+}
+
+function executeAttack() {
+    isProcessing = true; let totalScoreInTurn = 0; let weakHitInThisTurn = 0;
+    turnInputs.forEach(s => { totalScoreInTurn += s; if (player.state.weakLock || (s >= 51 && enemy.data.weak && (s % enemy.data.weak === 0))) weakHitInThisTurn++; });
+    if (stage === 4 && floor === 6 && currentTurn % 2 === 0 && totalScoreInTurn < 80) { playSE("se-warning"); addLog(">> 結界に阻まれた！(80点未満無効)", "log-enemy"); totalScoreInTurn = 0; }
+    playSE("se-attack"); totalGameTurns++; totalScore += totalScoreInTurn; totalDarts += turnInputs.length; 
+    let dmg = calculatePlayerDamage(totalScoreInTurn, player, enemy);
+    let remaining = enemy.hp - dmg; if (remaining === 0) isJustFinish = true; enemy.hp = Math.max(0, remaining);
+    if (weakHitInThisTurn > 0) { dropGuaranteed = true; weakHitCount += weakHitInThisTurn; addLog(`★ WEAK HIT x${weakHitInThisTurn}!!`, "log-weak"); if(!player.state.weakLock) { if(document.getElementById("se-weak")) playSE("se-weak"); elOverlay.className = "flash-purple"; setTimeout(()=>elOverlay.className="", 600); } }
+    if(player.state.weakLock) { player.state.weakLock = false; addLog("Weak Lock 効果終了", "log-system"); }
+    addLog(`攻撃！ ${dmg} ダメージ (${turnInputs.join('+')})`); triggerEffect(elEnemyPanel, dmg, false);
+    animateValue(elEnemyHP, displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp; updateInfo();
+    if (restrictInput) { restrictInput = false; addLog("束縛が解けた！", "log-system"); }
+    if (enemy.state.guardType === 'cut') { enemy.state.guardTurn--; if(enemy.state.guardTurn<=0) { enemy.state.guardType=null; addLog("光の護封剣が消滅した", "log-system"); } }
+    turnInputs = []; currentInput = ""; updateScoreDisplay();
+    if(enemy.hp<=0) setTimeout(winBattle, 1000); else setTimeout(enemyTurn, 1000);
+}
+
+function calculatePlayerDamage(score, p, e) {
+    let dmg = score;
+    if (p.state.nextShotMult > 1.0) { dmg = Math.floor(dmg * p.state.nextShotMult); p.state.nextShotMult = 1.0; addLog(`>> 突進効果！ダメージ倍増 (${dmg})`, "log-skill"); }
+    if (stage === 4 && floor === 4 && currentTurn % 3 === 0) { dmg = Math.max(0, dmg - 50); }
+    if (e.state.guardType === 'player_cut') { dmg = Math.floor(dmg * 0.5); addLog("護封剣で50%軽減！", "system"); }
+    if (p.state.power) { dmg = Math.floor(dmg * 1.5); p.state.power = false; }
+    if (e.state.guard) { dmg = Math.floor(dmg / 2); e.state.guard = false; addLog("敵の防御で半減！", "system"); }
+    return dmg;
 }
 
 // --- SHOP & COLLECTION ---
@@ -516,6 +609,15 @@ function buyPack(packId) {
         results.push({ card: card, isNew: isNew });
     }
     saveToDrive(); showPackResult(results);
+}
+
+function drawShopCard(packId) {
+    const rand = Math.random() * 100;
+    let targetRarity = "N";
+    if (rand < 2) targetRarity = "UR"; else if (rand < 10) targetRarity = "SR"; else if (rand < 40) targetRarity = "R";
+    const pool = CARD_DB.filter(c => c.rarity === targetRarity);
+    if (pool.length === 0) return CARD_DB[0];
+    return pool[Math.floor(Math.random() * pool.length)];
 }
 
 function showPackResult(results) {
@@ -583,8 +685,6 @@ function removeFromDeck(cardId) {
 
 function getCardName(id) { const c = CARD_DB.find(card => card.id === id); return c ? c.name : "カード"; }
 
-// --- UTILS ---
-function addLog(t, type="") { const d=document.createElement("div"); d.innerHTML=t; if(type) d.className="log-"+type; elLog.prepend(d); }
 function showDialog(title, text, type="normal", buttons=[{text:"OK", action:null}]) {
     elModalTitle.innerText = title; elModalText.innerHTML = text; elModalBox.className = "modal-box"; elModalTitle.style.color = "#f9a826";
     if (type === "clear") { elModalBox.classList.add("modal-clear"); elModalTitle.style.color = "#fff"; } else if (type === "warning") { elModalBox.classList.add("modal-warning"); elModalTitle.style.color = "#ff0000"; } else if (type === "item") { elModalBox.classList.add("modal-item"); elModalTitle.style.color = "#00ff00"; }
@@ -595,15 +695,7 @@ function showDialog(title, text, type="normal", buttons=[{text:"OK", action:null
     });
     elModal.style.display = "flex";
 }
-function triggerEffect(el, dmg, isP, isWeak=false) {
-    el.classList.remove("shake-small", "shake-medium", "shake-heavy", "shake-ultimate"); void el.offsetWidth;
-    if(dmg >= 100) { el.classList.add("shake-ultimate"); playSE("se-boom"); elOverlay.className = "flash-gold"; setTimeout(()=>elOverlay.className="", 800); }
-    else if(dmg >= 50) { el.classList.add("shake-heavy"); playSE("se-boom"); elOverlay.className = isP ? "flash-red" : "flash-white"; setTimeout(()=>elOverlay.className="", 300); }
-    else { el.classList.add(dmg>=20 ? "shake-medium" : "shake-small"); playSE("se-hit"); }
-    const pop = document.createElement("div"); pop.innerText=dmg; if(dmg >= 100) pop.className="damage-popup dmg-ultimate"; else if(dmg >= 50) pop.className="damage-popup dmg-heavy"; else if(dmg >= 20) pop.className="damage-popup dmg-medium"; else pop.className="damage-popup dmg-small";
-    pop.style.left="50%"; pop.style.top="50%"; el.appendChild(pop); setTimeout(()=>pop.remove(),1500);
-}
-function animateValue(obj, s, e, d) { if(obj) obj.innerHTML = e; }
+
 function showHistory() {
     const list = document.getElementById("history-list"); list.innerHTML = "";
     if(!savedData.history || savedData.history.length === 0) { list.innerHTML = "<div style='padding:20px; text-align:center;'>NO HISTORY</div>"; }
@@ -619,52 +711,8 @@ function showHistory() {
     }
     playSE("se-tap"); document.getElementById("history-modal").style.display = "flex";
 }
-
-function tapKey(key) {
-    if (elGame.style.display === "none" || isProcessing) return;
-    if(key === 'ENT') handleEnter();
-    else if (key === 'BS') { if (currentInput.length > 0) currentInput = currentInput.slice(0, -1); else if (turnInputs.length > 0) currentInput = "" + turnInputs.pop(); playSE("se-tap"); updateScoreDisplay(); }
-    else { if (currentInput.length < 3) { playSE("se-tap"); currentInput += key; updateScoreDisplay(); } }
-}
-
-function updateScoreDisplay() {
-    slots.forEach((s, i) => { s.className = "score-slot"; if (restrictInput && i > 0) { s.classList.add("locked"); s.innerText = "X"; return; } if (i < turnInputs.length) { s.innerText = turnInputs[i]; s.classList.add("filled"); } else if (i === turnInputs.length) { s.innerText = currentInput; s.classList.add("active"); } else { s.innerText = ""; } });
-    const currentThrow = turnInputs.length + 1;
-    btnD1.className = currentThrow === 1 ? "darts-btn active" : "darts-btn"; btnD2.className = currentThrow === 2 ? "darts-btn active" : "darts-btn"; btnD3.className = currentThrow === 3 ? "darts-btn active" : "darts-btn";
-    if(restrictInput) { btnD2.className="darts-btn disabled"; btnD3.className="darts-btn disabled"; }
-}
-
-function handleEnter() {
-    if(isProcessing) return;
-    if (currentInput !== "") { const val = parseInt(currentInput); if (!isNaN(val)) { if (val < 0 || val > 60) { alert("単発の最大値は 60 (T20) です"); currentInput=""; updateScoreDisplay(); return; } playSE("se-tap"); turnInputs.push(val); currentInput = ""; if (restrictInput || turnInputs.length === 3) executeAttack(); else updateScoreDisplay(); } } else { if (turnInputs.length > 0) executeAttack(); }
-}
-
-function executeAttack() {
-    isProcessing = true; let totalScoreInTurn = 0; let weakHitInThisTurn = 0;
-    turnInputs.forEach(s => { totalScoreInTurn += s; if (player.state.weakLock || (s >= 51 && enemy.data.weak && (s % enemy.data.weak === 0))) weakHitInThisTurn++; });
-    if (stage === 4 && floor === 6 && currentTurn % 2 === 0 && totalScoreInTurn < 80) { playSE("se-warning"); addLog(">> 結界に阻まれた！(80点未満無効)", "log-enemy"); totalScoreInTurn = 0; }
-    playSE("se-attack"); totalGameTurns++; totalScore += totalScoreInTurn; totalDarts += turnInputs.length; 
-    let dmg = calculatePlayerDamage(totalScoreInTurn, player, enemy);
-    let remaining = enemy.hp - dmg; if (remaining === 0) isJustFinish = true; enemy.hp = Math.max(0, remaining);
-    if (weakHitInThisTurn > 0) { dropGuaranteed = true; weakHitCount += weakHitInThisTurn; addLog(`★ WEAK HIT x${weakHitInThisTurn}!!`, "log-weak"); if(!player.state.weakLock) { if(document.getElementById("se-weak")) playSE("se-weak"); elOverlay.className = "flash-purple"; setTimeout(()=>elOverlay.className="", 600); } }
-    if(player.state.weakLock) { player.state.weakLock = false; addLog("Weak Lock 効果終了", "log-system"); }
-    addLog(`攻撃！ ${dmg} ダメージ (${turnInputs.join('+')})`); triggerEffect(elEnemyPanel, dmg, false);
-    animateValue(elEnemyHP, displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp; updateInfo();
-    if (restrictInput) { restrictInput = false; addLog("束縛が解けた！", "log-system"); }
-    if (enemy.state.guardType === 'cut') { enemy.state.guardTurn--; if(enemy.state.guardTurn<=0) { enemy.state.guardType=null; addLog("光の護封剣が消滅した", "log-system"); } }
-    turnInputs = []; currentInput = ""; updateScoreDisplay();
-    if(enemy.hp<=0) setTimeout(winBattle, 1000); else setTimeout(enemyTurn, 1000);
-}
-
-function calculatePlayerDamage(score, p, e) {
-    let dmg = score;
-    if (p.state.nextShotMult > 1.0) { dmg = Math.floor(dmg * p.state.nextShotMult); p.state.nextShotMult = 1.0; addLog(`>> 突進効果！ダメージ倍増 (${dmg})`, "log-skill"); }
-    if (stage === 4 && floor === 4 && currentTurn % 3 === 0) { dmg = Math.max(0, dmg - 50); }
-    if (e.state.guardType === 'player_cut') { dmg = Math.floor(dmg * 0.5); addLog("護封剣で50%軽減！", "system"); }
-    if (p.state.power) { dmg = Math.floor(dmg * 1.5); p.state.power = false; }
-    if (e.state.guard) { dmg = Math.floor(dmg / 2); e.state.guard = false; addLog("敵の防御で半減！", "system"); }
-    return dmg;
-}
+// ★忘れずに追加: 履歴を閉じる関数
+function closeHistory() { playSE("se-tap"); document.getElementById("history-modal").style.display = "none"; }
 
 // --- DEBUG ---
 let cheatCodeInput = ""; let cheatTimeout;
