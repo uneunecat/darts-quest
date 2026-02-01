@@ -1,16 +1,47 @@
-console.log("★ main.js is loaded! (Integrated Logic + Interface)");
+console.log("★ main.js is loaded! (v1.7 Audio Fixed)");
 
-// --- GLOBAL VARIABLES & STATE ---
+// --- ★ GAME DATA CONFIG ★ ---
+const GAME_DATA = {
+    enemies: {
+        1: [{ name: "プチモス", img: "assets/1-1.png", weak: 20 }, { name: "ラーバモス", img: "assets/1-2.png", weak: 19 }, { name: "進化の繭", img: "assets/1-3.png", weak: 18 }, { name: "グレート・モス", img: "assets/1-4.png", weak: 17 }, { name: "究極完全態・グレート・モス", img: "assets/1-5.png", weak: 20 }],
+        2: [{ name: "トラコドン", img: "assets/2-1.png", weak: 19 }, { name: "ワイルド・ラプター", img: "assets/2-2.png", weak: 18 }, { name: "屍を貪る竜", img: "assets/2-3.png", weak: 17 }, { name: "二頭を持つキング・レックス", img: "assets/2-4.png", weak: 20 }, { name: "剣竜", img: "assets/2-5.png", weak: 19 }],
+        3: [{ name: "デュナミス・ヴァルキリア", img: "assets/3-1.png", weak: 20 }, { name: "ハーピィ・レディ", img: "assets/3-2.png", weak: 19 }, { name: "ハーピィ・レディ・SB", img: "assets/3-3.png", weak: 18 }, { name: "ハーピィ・レディ三姉妹", img: "assets/3-4.png", weak: 17 }, { name: "ハーピィズペット竜", img: "assets/3-5.png", weak: 20 }],
+        4: [{ name: "ダーク・ラビット", img: "assets/4-1.png", weak: 20 }, { name: "デビル・ボックス", img: "assets/4-2.png", weak: 19 }, { name: "トゥーン・デーモン", img: "assets/4-3.png", weak: 18 }, { name: "ブルーアイズ・トゥーン・ドラゴン", img: "assets/4-4.png", weak: 17 }, { name: "サクリファイス", img: "assets/4-5.png", weak: 20 }, { name: "サウザンド・アイズ・サクリファイス", img: "assets/4-6.png", weak: 20 }],
+        5: [{ name: "真紅眼の黒竜", img: "assets/extra.png", weak: 20 }]
+    },
+    bg: {
+        1: "assets/bg_stage1.png", 2: "assets/bg_stage2.png", 3: "assets/bg_stage3.png",
+        4_1: "assets/bg_stage4_1.png", 4_2: "assets/bg_stage4_2.png", 5: "assets/bg_extra.png"
+    }
+};
+
+// --- ★ CARD DATA (Ver 2.2 Balance) ★ ---
+const CARD_DB = [
+    { id: 101, name: "死者蘇生", rarity: "UR", type: "MAGIC", cost: 8, desc: "HPを完全回復する" },
+    { id: 201, name: "サンダー・ボルト", rarity: "SR", type: "MAGIC", cost: 6, desc: "敵に100ダメージ + スタン(1回休み)" },
+    { id: 202, name: "強欲な壺", rarity: "SR", type: "MAGIC", cost: 0, desc: "MPを5回復する" },
+    { id: 301, name: "光の護封剣", rarity: "R", type: "MAGIC", cost: 5, desc: "3ターンの間、受けるダメージを半減" },
+    { id: 302, name: "落とし穴", rarity: "R", type: "TRAP", cost: 3, desc: "敵のチャージを解除しスタンさせる" },
+    { id: 303, name: "聖なるバリア", rarity: "R", type: "TRAP", cost: 4, desc: "1ターン攻撃無効化 + 敵に50反撃" },
+    { id: 401, name: "火の粉", rarity: "N", type: "MAGIC", cost: 1, desc: "敵に20ダメージ" },
+    { id: 402, name: "治療の神", rarity: "N", type: "MAGIC", cost: 4, desc: "HPを50回復する" },
+    { id: 403, name: "はさみ撃ち", rarity: "N", type: "TRAP", cost: 2, desc: "敵に80ダメージ、自分に20ダメージ" },
+    { id: 404, name: "昼夜の大火事", rarity: "N", type: "MAGIC", cost: 3, desc: "敵に80ダメージ" },
+    { id: 405, name: "突進", rarity: "N", type: "MAGIC", cost: 2, desc: "次の一投のダメージが2倍になる" }
+];
+
+const PACK_DATA = [ { id: "vol1", name: "Vol.1 - Legend", price: 1000, desc: "伝説の始まり。基本魔法カード収録。", unlockStage: 1, img: "assets/packs/vol1.png" } ];
+
+// --- GLOBAL VARIABLES ---
 let player = { 
     hp: 100, maxHp: 100, mp: 3, maxMp: 10,
     items: { potion: 0, ether: 0, seed: 0 }, 
     state: { power: false, shield: false, weakLock: false, nextShotMult: 1.0 },
     deck: [], hand: [], discard: [], deckLocked: false
 };
-
 let enemy = { hp: 100, maxHp: 100, data: null, name: "", state: { charge: false, guard: false, guardType: null, guardTurn: 0, atkBuff: 0, isStunned: false } };
 let stage=1; floor=1; totalScore=0; totalDarts=0; currentDarts=3;
-let displayPlayerHP=100; let displayEnemyHP=100;
+let displayPlayerHP=100; displayEnemyHP=100;
 let isProcessing=false; extraBossTurnCount=0; currentTurn=1;
 let dropGuaranteed = false; weakHitCount = 0; let restrictInput = false;
 let turnInputs = []; let currentInput = ""; let isJustFinish = false; let waitingForChest = false;
@@ -44,6 +75,20 @@ function resizeGame() {
     scaler.style.transform = `scale(${scale})`;
 }
 window.addEventListener('resize', resizeGame); window.addEventListener('load', resizeGame); setTimeout(resizeGame, 100);
+
+// --- AUDIO FUNCTIONS (★復旧！) ---
+function stopAllBGM() { audioElements.forEach(a => { a.pause(); a.currentTime=0; }); currentBgmId = ""; }
+function playBGM(id) { 
+    if(currentBgmId === id) return; 
+    stopAllBGM(); 
+    currentBgmId = id; 
+    const audio = document.getElementById(id); 
+    if(audio) { 
+        audio.volume=0.3; 
+        audio.play().catch(e=>{ console.log("Audio Play Blocked", e); }); 
+    } 
+}
+function playSE(id) { const audio = document.getElementById(id); if(audio) { audio.currentTime = 0; audio.volume = 0.5; audio.play().catch(e=>{}); } }
 
 // --- SAVE SYSTEM ---
 let allSaveData = { "slot1": null, "slot2": null, "slot3": null, "lastPlayed": 1 };
@@ -87,7 +132,7 @@ function initSlotScreen() {
         }
     }
 }
-initSlotScreen(); // ★ここで実行
+initSlotScreen(); // 初期化実行
 
 function selectSlot(n) {
     currentSlot = "slot"+n; const key = currentSlot;
@@ -230,7 +275,7 @@ function updateInfo() {
 
     let weakText = ""; let weakTargetStr = "(Target: " + enemy.data.weak + "+)";
     if(player.state.weakLock) { weakText = "<span style='color:#f0f; animation:blink 0.5s infinite;'>★ WEAK LOCK ACTIVE ★</span>"; }
-    else if(weakHitCount > 0) { weakText = "<span style='color:#ffa500;'>DROP CHANCE UP!</span>"; }
+    else if(weakHitCount > 0) { let color = weakHitCount >= 3 ? "#ff0000" : (weakHitCount >= 2 ? "#ffa500" : "#ffff00"); let msg = weakHitCount >= 3 ? "ULTRA CHANCE!!!" : (weakHitCount >= 2 ? "SUPER CHANCE!!" : "DROP CHANCE UP!"); weakText = `<span style='color:${color}; text-shadow:0 0 5px ${color};'>✨ ${msg}</span> <span style='font-size:14px; color:#ccc; margin-left:5px;'>${weakTargetStr}</span>`; }
     else { weakText = "WEAK: " + enemy.data.weak + "+"; }
     elWeak.innerHTML = weakText;
 
@@ -448,8 +493,128 @@ function loseBattle() {
 
 function returnToTitle() { playBGM("bgm-title"); elContainer.classList.remove("boss-mode","extra-mode"); elGame.style.display="none"; elTitle.style.display="flex"; updateTitleScore(); }
 
-// --- UTILITIES ---
-function addLog(t, type="") { const d=document.createElement("div"); d.innerHTML=t; if(type) d.className="log-"+type; elLog.prepend(d); }
+function useItem(type) {
+    if(isProcessing || waitingForChest) return;
+    if(type === 'potion' && player.items.potion > 0) { player.items.potion--; playSE("se-heal"); const old=player.hp; player.hp=Math.min(player.hp+50, player.maxHp); addLog(`アイテム: 薬草使用`, "log-item"); animateValue(elPlayerHP, old, player.hp, 500); updateInfo(); }
+    else if(type === 'ether' && player.items.ether > 0) { player.items.ether--; playSE("se-heal"); player.mp=Math.min(player.mp+3, player.maxMp); addLog(`アイテム: 聖水使用 (MP+3)`, "log-item"); updateInfo(); }
+    else if(type === 'seed' && player.items.seed > 0) { player.items.seed--; playSE("se-buff"); player.maxHp+=10; const old=player.hp; player.hp=Math.min(player.hp+10, player.maxHp); addLog(`アイテム: 命の種使用`, "log-item"); animateValue(elPlayerHP, old, player.hp, 500); updateInfo(); }
+}
+
+function drawCard() {
+    if (player.deck.length === 0) return;
+    const cardId = player.deck.pop();
+    player.hand.push(cardId);
+    updateInfo();
+}
+
+function playHandCard(index) {
+    if(isProcessing || waitingForChest) return;
+    const cardId = player.hand[index];
+    const card = CARD_DB.find(c => c.id === cardId);
+    let cost = card.cost;
+    if (player.mp < cost) { addLog("MPが足りません！", "log-system"); playSE("se-warning"); return; }
+    playSE("se-buff"); player.mp -= cost;
+    applyCardEffect(card);
+    player.hand.splice(index, 1); player.discard.push(cardId); drawCard();
+    updateInfo();
+}
+
+// --- SHOP & COLLECTION ---
+function openCardShop() {
+    playSE("se-tap"); const list = document.getElementById("pack-list"); list.innerHTML = "";
+    document.getElementById("shop-dp-display").innerText = savedData.dp;
+    PACK_DATA.forEach(pack => {
+        const isUnlocked = (savedData.bestRanks && savedData.bestRanks[pack.unlockStage]);
+        if (!isUnlocked) return; 
+        const canBuy = savedData.dp >= pack.price;
+        const imgHTML = `<img src="${pack.img}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:50px; background:#333; color:#555;">📦</div>`;
+        const div = document.createElement("div"); div.className = "pack-item";
+        div.innerHTML = `<div class="pack-img-container">${imgHTML}</div><div class="pack-name">${pack.name}</div><div class="pack-desc">${pack.desc}</div><button class="pack-buy-btn" ${canBuy ? "" : "disabled"} onclick="buyPack('${pack.id}')">${canBuy ? `BUY (${pack.price} DP)` : "LACK DP"}</button>`;
+        list.appendChild(div);
+    });
+    if (list.innerHTML === "") { list.innerHTML = "<div style='color:#666; width:100%; text-align:center;'>STAGE 1 CLEAR REQUIRED</div>"; }
+    document.getElementById("card-shop-modal").style.display = "flex";
+}
+
+function buyPack(packId) {
+    const pack = PACK_DATA.find(p => p.id === packId); if (!pack || savedData.dp < pack.price) return;
+    savedData.dp -= pack.price; document.getElementById("shop-dp-display").innerText = savedData.dp; playSE("se-item");
+    const results = []; for(let i=0; i<3; i++) {
+        const card = drawShopCard(packId); 
+        const isNew = !savedData.cards[card.id];
+        if (!savedData.cards[card.id]) savedData.cards[card.id] = 0; savedData.cards[card.id]++;
+        results.push({ card: card, isNew: isNew });
+    }
+    saveToDrive(); showPackResult(results);
+}
+
+function showPackResult(results) {
+    const container = document.getElementById("pack-results"); container.innerHTML = "";
+    results.forEach((res, index) => {
+        const c = res.card; const cardEl = createCardElement(c, false, 1);
+        cardEl.classList.add("result-card-anim"); cardEl.style.animationDelay = `${index * 0.3}s`;
+        if (res.isNew) { const badge = document.createElement("div"); badge.className = "new-badge-overlay"; badge.innerText = "NEW!"; cardEl.appendChild(badge); }
+        container.appendChild(cardEl);
+    });
+    const hasHighRare = results.some(r => r.card.rarity === "SR" || r.card.rarity === "UR");
+    if (hasHighRare) setTimeout(() => playSE("se-win"), 300); else playSE("se-buff");
+    document.getElementById("pack-result-modal").style.display = "flex";
+}
+
+function closePackResult() { playSE("se-tap"); document.getElementById("pack-result-modal").style.display = "none"; updateTitleScore(); }
+function closeCardShop() { playSE("se-tap"); document.getElementById("card-shop-modal").style.display = "none"; updateTitleScore(); }
+
+function openCollection() { playSE("se-tap"); renderDeckEditor(); document.getElementById("collection-modal").style.display = "flex"; }
+function closeCollection() { playSE("se-tap"); document.getElementById("collection-modal").style.display = "none"; }
+
+function renderDeckEditor() {
+    if (!savedData.deck) savedData.deck = [];
+    const deckGrid = document.getElementById("deck-grid"); deckGrid.innerHTML = "";
+    for (let i = 0; i < 12; i++) {
+        const cardId = savedData.deck[i]; 
+        if (cardId) { const card = CARD_DB.find(c => c.id === cardId); deckGrid.appendChild(createCardElement(card, true)); }
+        else { const div = document.createElement("div"); div.className = "deck-slot-empty"; div.innerText = "EMPTY"; deckGrid.appendChild(div); }
+    }
+    const deckCount = savedData.deck.length; const countEl = document.getElementById("deck-count"); countEl.innerText = deckCount;
+    if (deckCount < 12) { countEl.style.color = "#ff5555"; countEl.innerText += " (あと" + (12 - deckCount) + "枚)"; } else { countEl.style.color = "#00ff00"; countEl.innerText += " (OK!)"; }
+
+    const listGrid = document.getElementById("card-grid"); listGrid.innerHTML = "";
+    if (!savedData.cards) savedData.cards = {}; let ownedCount = 0;
+    CARD_DB.forEach(card => {
+        const count = savedData.cards[card.id] || 0; if (count > 0) ownedCount++;
+        const inDeckCount = savedData.deck.filter(id => id === card.id).length;
+        const remaining = count - inDeckCount; 
+        listGrid.appendChild(createCardElement(card, false, remaining));
+    });
+    document.getElementById("collection-rate").innerText = `${Math.floor((ownedCount / CARD_DB.length) * 100)}%`;
+}
+
+function createCardElement(card, isDeckItem, remainingCount = 1) {
+    const div = document.createElement("div"); const notOwnedClass = (!isDeckItem && remainingCount <= 0) ? "card-not-owned" : "";
+    div.className = `collection-card rarity-${card.rarity} ${notOwnedClass}`;
+    const imgPath = `assets/cards/${card.id}.png`; const fallbackIcon = card.type === "MAGIC" ? "🪄" : "⛓️";
+    div.innerHTML = `<div class="card-count-badge">x${isDeckItem ? 1 : remainingCount}</div><div class="card-art"><img src="${imgPath}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><div class="card-placeholder" style="display:none;">${fallbackIcon}</div></div><div class="card-info"><div class="card-name">${card.name}</div><div class="card-type">[${card.type}]</div></div>`;
+    div.onclick = function() { if (isDeckItem) removeFromDeck(card.id); else addToDeck(card.id); };
+    return div;
+}
+
+function addToDeck(cardId) {
+    if (savedData.deck.length >= 12) { alert("デッキは12枚までです！"); return; }
+    const ownedCount = savedData.cards[cardId] || 0; const currentInDeck = savedData.deck.filter(id => id === cardId).length;
+    if (currentInDeck >= ownedCount) { alert("これ以上持っていません！"); return; }
+    if (currentInDeck >= 3) { alert(`「${getCardName(cardId)}」は3枚までです。`); return; }
+    playSE("se-tap"); savedData.deck.push(cardId); saveToDrive(); renderDeckEditor(); 
+}
+
+function removeFromDeck(cardId) {
+    playSE("se-tap"); const index = savedData.deck.indexOf(cardId);
+    if (index > -1) { savedData.deck.splice(index, 1); } saveToDrive(); renderDeckEditor();
+}
+
+function getCardName(id) { const c = CARD_DB.find(card => card.id === id); return c ? c.name : "カード"; }
+
+// --- UTILS ---
+function addLog(t, type="") { const d=document.createElement("div"); d.innerHTML=t; if(type) d.className="log-"+type; document.getElementById("battle-log").prepend(d); }
 function showDialog(title, text, type="normal", buttons=[{text:"OK", action:null}]) {
     elModalTitle.innerText = title; elModalText.innerHTML = text; elModalBox.className = "modal-box"; elModalTitle.style.color = "#f9a826";
     if (type === "clear") { elModalBox.classList.add("modal-clear"); elModalTitle.style.color = "#fff"; } else if (type === "warning") { elModalBox.classList.add("modal-warning"); elModalTitle.style.color = "#ff0000"; } else if (type === "item") { elModalBox.classList.add("modal-item"); elModalTitle.style.color = "#00ff00"; }
