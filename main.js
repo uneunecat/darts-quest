@@ -1,6 +1,6 @@
-console.log("★ main.js is loaded! (v1.5 Final Fix)");
+console.log("★ main.js is loaded! (v1.4 Balance & Fix)");
 
-// --- HELPER FUNCTIONS ---
+// --- HELPER FUNCTIONS (Moved to top for safety) ---
 function calculateRating(ppr) { if(ppr < 30) return 1; if(ppr < 40) return 2; if(ppr < 45) return 3; if(ppr < 50) return 4; if(ppr < 55) return 5; if(ppr < 60) return 6; if(ppr < 65) return 7; if(ppr < 70) return 8; if(ppr < 75) return 9; if(ppr < 80) return 10; if(ppr < 85) return 11; if(ppr < 90) return 12; if(ppr < 95) return 13; if(ppr < 100) return 14; if(ppr < 110) return 15; if(ppr < 120) return 16; if(ppr < 130) return 17; return 18; }
 
 function calculateStageRank(stg, turns) {
@@ -27,6 +27,7 @@ const GAME_DATA = {
     bg: { 1: "assets/bg_stage1.png", 2: "assets/bg_stage2.png", 3: "assets/bg_stage3.png", 4_1: "assets/bg_stage4_1.png", 4_2: "assets/bg_stage4_2.png", 5: "assets/bg_extra.png" }
 };
 
+// --- ★ CARD DATA (Ver 2.2 Balance) ★ ---
 const CARD_DB = [
     { id: 101, name: "死者蘇生", rarity: "UR", type: "MAGIC", cost: 8, desc: "HPを完全回復する" },
     { id: 201, name: "サンダー・ボルト", rarity: "SR", type: "MAGIC", cost: 6, desc: "敵に100ダメージ + スタン(1回休み)" },
@@ -54,7 +55,7 @@ let turnInputs = []; let currentInput = ""; let isJustFinish = false; let waitin
 let cheatBuffer = ""; 
 let stageStartTurn = 0; let totalGameTurns = 0; let clearedStagesLog = [];
 
-// --- DOM ELEMENTS (★定義漏れを全て修正) ---
+// --- DOM ELEMENTS (Fixed Definitions) ---
 const elContainer=document.getElementById("game-container"); const elTitle=document.getElementById("title-screen"); const elGame=document.getElementById("game-screen");
 const elChapter=document.getElementById("chapter-screen"); const elChapTitle=document.getElementById("chapter-title"); const elChapSub=document.getElementById("chapter-sub");
 const elStage=document.getElementById("stage-display"); const elFloor=document.getElementById("floor-display"); const elTurn=document.getElementById("turn-display");
@@ -68,7 +69,6 @@ const elEnemyHPBar=document.getElementById("enemy-hp-bar");
 const elPlayerHP=document.getElementById("player-hp"); 
 const elPlayerHPBar=document.getElementById("player-hp-bar");
 
-// ★以下の定義を追加（これで ReferenceError は消えます）
 const elEnemyBuff=document.getElementById("enemy-buff-badge");
 const elEnemyGuard=document.getElementById("enemy-guard-badge");
 const elEnemyDrop=document.getElementById("enemy-drop-badge");
@@ -229,7 +229,18 @@ function startTransition(sel) {
     setTimeout(() => { elTitle.style.display="none"; elChapter.style.display="flex"; elChapter.style.opacity=1; setupStage(sel); setTimeout(() => { elChapter.style.opacity=0; setTimeout(()=>{ elChapter.style.display="none"; elCurtain.classList.remove("fade-in"); checkOpeningSkill(); }, 1000); }, warning ? 4000 : 2500); }, 1000);
 }
 
-function checkOpeningSkill() { }
+// ★修正: 先制スキル発動チェック関数
+function checkOpeningSkill() {
+    if (stage === 3 && floor === 1) { // ヴァルキリア
+        showSkillCutin("光の護封剣", "wind");
+        setTimeout(() => {
+            enemy.state.guardType = 'player_cut'; 
+            enemy.state.guardTurn = 3;
+            addLog(">> [先制] 光の護封剣！(3T被ダメ半減)", "log-enemy");
+            updateInfo();
+        }, 1200);
+    }
+}
 
 function setupStage(sel) {
     stage=sel; floor=1; isProcessing=false; extraBossTurnCount=0; currentTurn=1;
@@ -266,7 +277,6 @@ function spawnEnemy() {
     let bgKey = stage; if (stage === 4) bgKey = floor >= 5 ? "4_2" : "4_1";
     if (GAME_DATA.bg[bgKey]) elContainer.style.backgroundImage = `url('${GAME_DATA.bg[bgKey]}')`; else elContainer.style.backgroundImage = "none";
 
-    // --- Enemy Stats Scaling ---
     let isBoss;
     if (stage === 5) {
         enemy.data = GAME_DATA.enemies[5][0]; isBoss=true; extraBossTurnCount=0; 
@@ -312,10 +322,8 @@ function playHandCard(index) {
     updateInfo();
 }
 
-// --- ★ New Logic: Card Effects (Ver 2.2) ---
 function applyCardEffect(card) {
     let msg = `Card: [${card.name}] `;
-    
     if (card.id === 101) { player.hp = player.maxHp; msg += "HP完全回復！"; playSE("se-heal"); }
     else if (card.id === 201) { const dmg = 100; enemy.hp = Math.max(0, enemy.hp - dmg); enemy.state.isStunned = true; msg += `100ダメ & スタン！`; playSE("se-boom"); triggerEffect(document.getElementById("enemy-panel"), dmg, false); }
     else if (card.id === 202) { player.mp = Math.min(player.mp + 5, player.maxMp); msg += "MP+5 チャージ！"; }
@@ -327,26 +335,19 @@ function applyCardEffect(card) {
     else if (card.id === 403) { const dmg = 80; const selfDmg = 20; enemy.hp = Math.max(0, enemy.hp - dmg); player.hp = Math.max(0, player.hp - selfDmg); msg += `敵80ダメ / 自20ダメ`; triggerEffect(document.getElementById("enemy-panel"), dmg, false); triggerEffect(document.getElementById("player-panel"), selfDmg, true); }
     else if (card.id === 404) { const dmg = 80; enemy.hp = Math.max(0, enemy.hp - dmg); msg += `80ダメージ！`; playSE("se-attack"); triggerEffect(document.getElementById("enemy-panel"), dmg, false); }
     else if (card.id === 405) { player.state.nextShotMult = 2.0; msg += "次の一投ダメージ2倍！"; }
-    
-    addLog(msg, "log-skill");
-    animateValue(document.getElementById("enemy-hp"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp;
-    animateValue(document.getElementById("player-hp"), displayPlayerHP, player.hp, 500); displayPlayerHP=player.hp;
-
+    addLog(msg, "log-skill"); animateValue(document.getElementById("enemy-hp"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp; animateValue(document.getElementById("player-hp"), displayPlayerHP, player.hp, 500); displayPlayerHP=player.hp;
     if (enemy.hp <= 0) setTimeout(winBattle, 800);
 }
 
-// --- Info & Visuals ---
 function updateInfo() {
     if (!enemy.data) return;
-
     if(stage===5) { elStage.innerText="EXTRA"; elFloor.innerText="FINAL"; }
     else if(stage===4) { elStage.innerText="STAGE 4"; elFloor.innerText=`${floor}F`; }
     else { elStage.innerText=`STAGE ${stage}`; elFloor.innerText=`${floor}F`; }
     elTurn.innerText=`TURN ${currentTurn}`;
-
     const elName = document.getElementById("enemy-name"); elName.innerText = enemy.name;
     elName.style.fontSize = (enemy.name.length > 12) ? "12px" : (enemy.name.length > 9 ? "15px" : "18px");
-
+    
     if(elEnemyHPValue) {
         elEnemyHPValue.innerText = enemy.hp;
         elEnemyHPValue.className = "hp-big-text";
@@ -398,7 +399,7 @@ function updateInfo() {
         }
     }
 
-    let ppr = 0; if(totalDarts>0) ppr = ((totalScore/totalDarts)*3); elAvg.innerText=ppr.toFixed(1); elRt.innerText=`(Rt ${calculateRating(ppr)})`;
+    let ppr = 0; if(totalDarts>0) ppr = ((totalScore/totalDarts)*3).toFixed(1); elAvg.innerText=ppr; elRt.innerText=`(Rt ${calculateRating(ppr)})`;
     btnPotion.innerHTML = `💊 薬草 x${player.items.potion}<span class="tooltip">HPを50回復 (使い切り)</span>`; btnPotion.className = player.items.potion > 0 ? "item-btn has-item" : "item-btn disabled";
     btnEther.innerHTML = `⚗️ マナ x${player.items.ether}<span class="tooltip">MPを3回復 (使い切り)</span>`; btnEther.className = player.items.ether > 0 ? "item-btn has-item" : "item-btn disabled";
     btnSeed.innerHTML = `🌱 種 x${player.items.seed}<span class="tooltip">最大HP+10上昇 (使い切り)</span>`; btnSeed.className = player.items.seed > 0 ? "item-btn has-item" : "item-btn disabled";
@@ -582,141 +583,12 @@ function calculatePlayerDamage(score, p, e) {
     return dmg;
 }
 
-// --- SHOP & COLLECTION ---
-function openCardShop() {
-    playSE("se-tap"); const list = document.getElementById("pack-list"); list.innerHTML = "";
-    document.getElementById("shop-dp-display").innerText = savedData.dp;
-    PACK_DATA.forEach(pack => {
-        const isUnlocked = (savedData.bestRanks && savedData.bestRanks[pack.unlockStage]);
-        if (!isUnlocked) return; 
-        const canBuy = savedData.dp >= pack.price;
-        const imgHTML = `<img src="${pack.img}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:50px; background:#333; color:#555;">📦</div>`;
-        const div = document.createElement("div"); div.className = "pack-item";
-        div.innerHTML = `<div class="pack-img-container">${imgHTML}</div><div class="pack-name">${pack.name}</div><div class="pack-desc">${pack.desc}</div><button class="pack-buy-btn" ${canBuy ? "" : "disabled"} onclick="buyPack('${pack.id}')">${canBuy ? `BUY (${pack.price} DP)` : "LACK DP"}</button>`;
-        list.appendChild(div);
-    });
-    if (list.innerHTML === "") { list.innerHTML = "<div style='color:#666; width:100%; text-align:center;'>STAGE 1 CLEAR REQUIRED</div>"; }
-    document.getElementById("card-shop-modal").style.display = "flex";
-}
-
-function buyPack(packId) {
-    const pack = PACK_DATA.find(p => p.id === packId); if (!pack || savedData.dp < pack.price) return;
-    savedData.dp -= pack.price; document.getElementById("shop-dp-display").innerText = savedData.dp; playSE("se-item");
-    const results = []; for(let i=0; i<3; i++) {
-        const card = drawShopCard(packId); 
-        const isNew = !savedData.cards[card.id];
-        if (!savedData.cards[card.id]) savedData.cards[card.id] = 0; savedData.cards[card.id]++;
-        results.push({ card: card, isNew: isNew });
-    }
-    saveToDrive(); showPackResult(results);
-}
-
-function drawShopCard(packId) {
-    const rand = Math.random() * 100;
-    let targetRarity = "N";
-    if (rand < 2) targetRarity = "UR"; else if (rand < 10) targetRarity = "SR"; else if (rand < 40) targetRarity = "R";
-    const pool = CARD_DB.filter(c => c.rarity === targetRarity);
-    if (pool.length === 0) return CARD_DB[0];
-    return pool[Math.floor(Math.random() * pool.length)];
-}
-
-function showPackResult(results) {
-    const container = document.getElementById("pack-results"); container.innerHTML = "";
-    results.forEach((res, index) => {
-        const c = res.card; const cardEl = createCardElement(c, false, 1);
-        cardEl.classList.add("result-card-anim"); cardEl.style.animationDelay = `${index * 0.3}s`;
-        if (res.isNew) { const badge = document.createElement("div"); badge.className = "new-badge-overlay"; badge.innerText = "NEW!"; cardEl.appendChild(badge); }
-        container.appendChild(cardEl);
-    });
-    const hasHighRare = results.some(r => r.card.rarity === "SR" || r.card.rarity === "UR");
-    if (hasHighRare) setTimeout(() => playSE("se-win"), 300); else playSE("se-buff");
-    document.getElementById("pack-result-modal").style.display = "flex";
-}
-
-function closePackResult() { playSE("se-tap"); document.getElementById("pack-result-modal").style.display = "none"; updateTitleScore(); }
-function closeCardShop() { playSE("se-tap"); document.getElementById("card-shop-modal").style.display = "none"; updateTitleScore(); }
-
-function openCollection() { playSE("se-tap"); renderDeckEditor(); document.getElementById("collection-modal").style.display = "flex"; }
-function closeCollection() { playSE("se-tap"); document.getElementById("collection-modal").style.display = "none"; }
-
-function renderDeckEditor() {
-    if (!savedData.deck) savedData.deck = [];
-    const deckGrid = document.getElementById("deck-grid"); deckGrid.innerHTML = "";
-    for (let i = 0; i < 12; i++) {
-        const cardId = savedData.deck[i]; 
-        if (cardId) { const card = CARD_DB.find(c => c.id === cardId); deckGrid.appendChild(createCardElement(card, true)); }
-        else { const div = document.createElement("div"); div.className = "deck-slot-empty"; div.innerText = "EMPTY"; deckGrid.appendChild(div); }
-    }
-    const deckCount = savedData.deck.length; const countEl = document.getElementById("deck-count"); countEl.innerText = deckCount;
-    if (deckCount < 12) { countEl.style.color = "#ff5555"; countEl.innerText += " (あと" + (12 - deckCount) + "枚)"; } else { countEl.style.color = "#00ff00"; countEl.innerText += " (OK!)"; }
-
-    const listGrid = document.getElementById("card-grid"); listGrid.innerHTML = "";
-    if (!savedData.cards) savedData.cards = {}; let ownedCount = 0;
-    CARD_DB.forEach(card => {
-        const count = savedData.cards[card.id] || 0; if (count > 0) ownedCount++;
-        const inDeckCount = savedData.deck.filter(id => id === card.id).length;
-        const remaining = count - inDeckCount; 
-        listGrid.appendChild(createCardElement(card, false, remaining));
-    });
-    document.getElementById("collection-rate").innerText = `${Math.floor((ownedCount / CARD_DB.length) * 100)}%`;
-}
-
-function createCardElement(card, isDeckItem, remainingCount = 1) {
-    const div = document.createElement("div"); const notOwnedClass = (!isDeckItem && remainingCount <= 0) ? "card-not-owned" : "";
-    div.className = `collection-card rarity-${card.rarity} ${notOwnedClass}`;
-    const imgPath = `assets/cards/${card.id}.png`; const fallbackIcon = card.type === "MAGIC" ? "🪄" : "⛓️";
-    div.innerHTML = `<div class="card-count-badge">x${isDeckItem ? 1 : remainingCount}</div><div class="card-art"><img src="${imgPath}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><div class="card-placeholder" style="display:none;">${fallbackIcon}</div></div><div class="card-info"><div class="card-name">${card.name}</div><div class="card-type">[${card.type}]</div></div>`;
-    div.onclick = function() { if (isDeckItem) removeFromDeck(card.id); else addToDeck(card.id); };
-    return div;
-}
-
-function addToDeck(cardId) {
-    if (savedData.deck.length >= 12) { alert("デッキは12枚までです！"); return; }
-    const ownedCount = savedData.cards[cardId] || 0; const currentInDeck = savedData.deck.filter(id => id === cardId).length;
-    if (currentInDeck >= ownedCount) { alert("これ以上持っていません！"); return; }
-    if (currentInDeck >= 3) { alert(`「${getCardName(cardId)}」は3枚までです。`); return; }
-    playSE("se-tap"); savedData.deck.push(cardId); saveToDrive(); renderDeckEditor(); 
-}
-
-function removeFromDeck(cardId) {
-    playSE("se-tap"); const index = savedData.deck.indexOf(cardId);
-    if (index > -1) { savedData.deck.splice(index, 1); } saveToDrive(); renderDeckEditor();
-}
-
-function getCardName(id) { const c = CARD_DB.find(card => card.id === id); return c ? c.name : "カード"; }
-
-function showDialog(title, text, type="normal", buttons=[{text:"OK", action:null}]) {
-    elModalTitle.innerText = title; elModalText.innerHTML = text; elModalBox.className = "modal-box"; elModalTitle.style.color = "#f9a826";
-    if (type === "clear") { elModalBox.classList.add("modal-clear"); elModalTitle.style.color = "#fff"; } else if (type === "warning") { elModalBox.classList.add("modal-warning"); elModalTitle.style.color = "#ff0000"; } else if (type === "item") { elModalBox.classList.add("modal-item"); elModalTitle.style.color = "#00ff00"; }
-    elModalBtns.innerHTML = ""; buttons.forEach(b => {
-        const btn = document.createElement("button"); btn.className = "modal-btn"; btn.innerText = b.text;
-        btn.onclick = function() { playSE("se-tap"); elModal.style.display = "none"; if(b.action) b.action(); };
-        elModalBtns.appendChild(btn);
-    });
-    elModal.style.display = "flex";
-}
-
-function showHistory() {
-    const list = document.getElementById("history-list"); list.innerHTML = "";
-    if(!savedData.history || savedData.history.length === 0) { list.innerHTML = "<div style='padding:20px; text-align:center;'>NO HISTORY</div>"; }
-    else {
-        savedData.history.forEach(h => {
-            let resClass = "res-lose"; let resStr = h.result || "LOSE";
-            if (resStr.includes("WIN") || resStr.includes("CLEAR")) resClass = "res-win";
-            if (resStr.includes("EXTRA")) resClass = "res-extra";
-            let stgName = h.stgName ? h.stgName : (h.stage === 5 ? "EXTRA" : "S" + h.stage + "-" + h.floor + "F");
-            let dpText = (h.dp !== undefined) ? `+${h.dp} DP` : ""; let pprVal = h.ppr !== undefined ? h.ppr : (h.avg !== undefined ? h.avg : 0);
-            list.innerHTML += `<div class='h-row'><div>${h.date}</div><div>${stgName}</div><div class='${resClass}'>${resStr}</div><div>${dpText}<br>Avg ${pprVal.toFixed(1)}</div></div>`;
-        });
-    }
-    playSE("se-tap"); document.getElementById("history-modal").style.display = "flex";
-}
-// ★忘れずに追加: 履歴を閉じる関数
-function closeHistory() { playSE("se-tap"); document.getElementById("history-modal").style.display = "none"; }
-
 // --- DEBUG ---
 let cheatCodeInput = ""; let cheatTimeout;
 document.addEventListener("keydown", function(e) {
     const titleScreen = document.getElementById("title-screen"); if (!titleScreen || titleScreen.style.display === "none") return;
     if (e.key === "1") { cheatCodeInput += "1"; clearTimeout(cheatTimeout); cheatTimeout = setTimeout(() => { cheatCodeInput = ""; }, 2000); if (cheatCodeInput.includes("1111")) { cheatCodeInput = ""; savedData.dp += 2000; saveToDrive(); playSE("se-buff"); updateTitleScore(); alert(`[DEBUG MODE]\nDP +2000\nCurrent DP: ${savedData.dp}`); } } else { cheatCodeInput = ""; }
 });
+
+// ★忘れずに追加！
+function closeHistory() { playSE("se-tap"); document.getElementById("history-modal").style.display = "none"; }
