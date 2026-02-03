@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v2.1.1 Fix)");
+console.log("★ main.js is loaded! (v2.1.2 Final Fix)");
 
 // --- ★ GAME DATA CONFIG ★ ---
 const GAME_DATA = {
@@ -120,8 +120,8 @@ let totalGameTurns = 0;
 let clearedStagesLog = [];
 let currentBgmId = "";
 
-// v2.0.1 Constants (Corrected)
-const DECK_SIZE = 20; // ★ Fix: Changed to 20 for 5x4 grid
+// Constants
+const DECK_SIZE = 20; 
 const HAND_SIZE = 5;
 const INITIAL_HAND = 3;
 
@@ -304,7 +304,7 @@ function setupStage(sel, continueMode) {
         } else {
             player.deck = shuffleArray([...savedData.deck]); 
             player.hand = []; player.discard = [];
-            for(let i=0; i<INITIAL_HAND; i++) drawCard();
+            for(let i=0; i<INITIAL_HAND; i++) drawCard(true); // ★ Silent draw
         }
     } else {
         addLog(">> 前ステージの状態を引き継ぎました", "log-system");
@@ -487,15 +487,14 @@ function executeAttack() {
 }
 
 // --- ★ CARD LOGIC (v2.0 Overhaul) ★ ---
-function drawCard() {
+function drawCard(isSilent = false) {
     if (player.deck.length === 0) return;
     if (player.hand.length >= HAND_SIZE) return;
     
     const cardId = player.deck.pop();
     player.hand.push(cardId);
     
-    // ★ v2.0.1: Visual Feedback - Fixed Target to Hand Area (Visible on Screen)
-    triggerFloatText("DRAW!", el("hand-area")); 
+    if (!isSilent) triggerFloatText("DRAW!", el("hand-area")); 
     
     updateInfo();
 }
@@ -686,7 +685,6 @@ function enemyTurn() {
         }
     }
     
-    // Common / Stage 4 logic
     if (stage === 4 && floor === 1 && Math.random() < 0.3) { 
         showSkillCutin("トゥーン・ラッシュ", "wind"); setTimeout(() => { addLog(">> [速攻] 2回攻撃！", "log-enemy"); doEnemyAttack(0.7, {callback: () => { setTimeout(() => doEnemyAttack(0.7), 800); } }); }, 1200); return; 
     }
@@ -837,7 +835,7 @@ function winBattle() {
     // ★ v2.0.1 Fix: Reward Draw & MP (Simulate End Turn)
     player.mp = Math.min(player.mp + 3, player.maxMp);
     triggerFloatText("MP+3", el("player-mp-bar"));
-    drawCard(); 
+    drawCard(); // This will trigger DRAW float text too
     
     if (isJustFinish) { 
         player.maxHp += 10; const oldHP = player.hp; player.hp = Math.min(player.hp + 10, player.maxHp); 
@@ -885,15 +883,17 @@ function nextStep() {
         const stageTurns = totalGameTurns - stageStartTurn;
         const [rank, dpBonus] = calculateStageRank(stage, stageTurns);
         
-        const multipliers = { 1: 1.0, 2: 1.2, 3: 1.5, 4: 2.0, 5: 3.0 };
+        // ★ v2.1.2 Fix: Score Multiplier Logic
+        const multipliers = { 1: 1.0, 2: 1.5, 3: 2.0, 4: 3.0, 5: 5.0 }; // Boosted
         const mult = multipliers[stage] || 1.0;
         
+        // Multiplier applies to ScoreDP only
         const scoreDP = Math.floor(totalScore * 0.2 * mult); 
-        let pendingBonusDP = Math.floor(dpBonus * mult);
+        let pendingBonusDP = dpBonus; // Rank bonus is fixed
         clearedStagesLog.forEach(log => { pendingBonusDP += log.dp; });
         let potentialTotalDP = scoreDP + pendingBonusDP;
 
-        clearedStagesLog.push({ stage: stage, rank: rank, dp: Math.floor(dpBonus * mult) });
+        clearedStagesLog.push({ stage: stage, rank: rank, dp: dpBonus });
 
         const currentBest = savedData.bestRanks[stage];
         const ranksOrder = ["SSS", "S", "A", "B", "C"];
@@ -904,26 +904,26 @@ function nextStep() {
         playBGM("bgm-win");
 
         if(stage === 5) {
-            const res = finishSession("EXTRA-WIN", parseFloat(ppr));
+            const res = finishSession("EXTRA-WIN", parseFloat(ppr), mult);
             showDialog("★ TRUE ENDING ★", `<span style="font-size:30px;color:#f0f;">THE LEGEND!!</span><br>最強の黒竜を倒した！<br><br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br>PPR: ${ppr}<br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{text:"TITLE", action:returnToTitle}]);
             return;
         }
 
         if(stage === 4) {
-            const res = finishSession("WIN", parseFloat(ppr));
+            const res = finishSession("WIN", parseFloat(ppr), mult);
             showDialog("STAGE 4 CLEAR!", `<span style="font-size:28px;color:#e0b0ff;">NIGHTMARE CONQUERED!</span><br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{text:"TITLE", action:returnToTitle}]);
             return;
         }
 
         let title = "STAGE CLEAR";
-        let msg = `STAGE ${stage} COMPLETED!<br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br><br>現在の獲得予定DP: <span style="color:#ffd700; font-weight:bold;">${potentialTotalDP} DP</span><br>(難易度ボーナス x${mult.toFixed(1)})`;
+        let msg = `STAGE ${stage} COMPLETED!<br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br><br>現在の獲得予定DP: <span style="color:#ffd700; font-weight:bold;">${potentialTotalDP} DP</span><br>(スコア倍率 x${mult.toFixed(1)})`;
 
         const btnNext = { text: "⛺ 次へ進む (繰越)", action: () => {
             player.hp = Math.min(player.hp + 30, player.maxHp);
             initGameSession(stage + 1, true); 
         } };
         const btnReturn = { text: "🏠 帰還する (確定)", action: () => {
-            const res = finishSession("RETURN", parseFloat(ppr));
+            const res = finishSession("RETURN", parseFloat(ppr), mult);
             showDialog("MISSION COMPLETE", `帰還しました。<br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{text:"TITLE", action:returnToTitle}]);
         } };
 
@@ -935,7 +935,7 @@ function nextStep() {
             } else {
                 msg += "<br><br>全てのエリアを踏破した！";
                 showDialog(title, msg, "clear", [{ text: "🏠 ALL CLEAR", action: () => {
-                    const res = finishSession("WIN", parseFloat(ppr));
+                    const res = finishSession("WIN", parseFloat(ppr), mult);
                     showDialog("ALL CLEAR!", `おめでとうございます！<br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{text:"TITLE", action:returnToTitle}]);
                 } }]);
             }
@@ -1099,7 +1099,11 @@ function updateInfo() {
 }
 
 function updateVisuals() {
-    if(el("player-buff-badge")) el("player-buff-badge").style.display = player.state.power ? "block" : "none";
+    if(el("player-buff-badge")) {
+        el("player-buff-badge").style.display = player.state.power ? "block" : "none";
+        // ★ v2.1.2 Fix: Buff Badge Text
+        el("player-buff-badge").innerText = "ATK x2.0";
+    }
     
     if(el("player-guard-badge")) {
         if(player.state.shield) {
@@ -1422,7 +1426,7 @@ function calculateStageRank(stg, turns) {
     else { if (turns <= 12) return ["SSS", 1000]; if (turns <= 16) return ["S", 600]; if (turns <= 22) return ["A", 300]; if (turns <= 30) return ["B", 100]; return ["C", 50]; }
 }
 
-function finishSession(resultType, ppr) {
+function finishSession(resultType, ppr, multiplier = 1.0) {
     let totalDP = 0;
     let earnedDP = 0;
     clearedStagesLog.forEach(log => { earnedDP += log.dp; });
@@ -1441,11 +1445,10 @@ function finishSession(resultType, ppr) {
     
     let gainedDP = 0;
     
-    const multipliers = { 1: 1.0, 2: 1.2, 3: 1.5, 4: 2.0, 5: 3.0 };
-    const mult = multipliers[stage] || 1.0;
-    const scoreDP = Math.floor(totalScore * 0.2 * mult);
+    // ★ v2.1.2 Fix: Correct Score Bonus Calculation (ScoreDP * Multiplier + Rank Bonus)
+    const scoreDP = Math.floor(totalScore * 0.2 * multiplier);
     let rankDP = 0;
-    clearedStagesLog.forEach(log => rankDP += log.dp);
+    clearedStagesLog.forEach(log => rankDP += log.dp); // Rank DP already multiplied when pushed
     gainedDP = scoreDP + rankDP;
     
     savedData.dp += gainedDP;
@@ -1517,8 +1520,15 @@ function tapKey(key) {
 
 window.addEventListener("keydown", function(e) {
     if (el("title-screen").style.display !== "none") {
-        if (e.key === "0" || e.key === "6" || e.key === "7") cheatBuffer += e.key; else cheatBuffer = "";
-        if (cheatBuffer.endsWith("0607")) { playSE("se-item"); savedData.unlockedStage4 = true; updateTitleScore(); saveToDrive(); cheatBuffer = ""; }
+        // ★ v2.1.2 Fix: Cheat Code Logic
+        if (e.key === "1") cheatBuffer += e.key; else cheatBuffer = "";
+        if (cheatBuffer.endsWith("1111")) { 
+            playSE("se-item"); 
+            savedData.dp = (savedData.dp || 0) + 5000; 
+            updateTitleScore(); 
+            saveToDrive(); 
+            cheatBuffer = ""; 
+        }
     }
     if (el("game-modal").style.display === "flex" && e.key === "Enter") {
         const btns = document.getElementById("modal-buttons");
