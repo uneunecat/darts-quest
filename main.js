@@ -1,9 +1,8 @@
-console.log("★ main.js is loaded! (v1.4 Balance Update)");
+console.log("★ main.js is loaded! (v1.4.1 ID Fix)");
 
 // --- ★ GAME DATA CONFIG ★ ---
 const GAME_DATA = {
     enemies: {
-        // v1.4 HP Update: 資料に基づきHPを個別設定
         1: [
             { name: "プチモス", img: "assets/1-1.png", weak: 20 },
             { name: "ラーバモス", img: "assets/1-2.png", weak: 19 },
@@ -49,19 +48,12 @@ const GAME_DATA = {
 
 // --- ★ CARD SYSTEM (v1.4) ★ ---
 const CARD_DB = [
-    // UR
     { id: 101, name: "死者蘇生", rarity: "UR", type: "MAGIC", cost: 8, desc: "HPを最大値まで完全回復" },
-    
-    // SR
     { id: 201, name: "サンダー・ボルト", rarity: "SR", type: "MAGIC", cost: 6, desc: "敵に100ダメージ＋スタン(1T行動不能)" },
     { id: 202, name: "強欲な壺", rarity: "SR", type: "MAGIC", cost: 0, desc: "MPを5回復する(上限10)" },
-
-    // R
     { id: 301, name: "光の護封剣", rarity: "R", type: "MAGIC", cost: 5, desc: "3ターンの間、受けるダメージを半減" },
     { id: 302, name: "落とし穴", rarity: "R", type: "TRAP", cost: 3, desc: "敵のチャージ状態を強制解除" },
     { id: 303, name: "聖なるバリア", rarity: "R", type: "TRAP", cost: 4, desc: "次の敵の攻撃を無効化し、50ダメージ与える" },
-
-    // N
     { id: 401, name: "火の粉", rarity: "N", type: "MAGIC", cost: 1, desc: "敵に20ダメージ" },
     { id: 402, name: "治療の神", rarity: "N", type: "MAGIC", cost: 4, desc: "HPを50回復" },
     { id: 403, name: "はさみ撃ち", rarity: "N", type: "TRAP", cost: 2, desc: "自分も20ダメージ受け、敵に80ダメージ" },
@@ -84,7 +76,7 @@ const PACK_DATA = [
 let player = { 
     hp: 100, maxHp: 100, mp: 3, maxMp: 10,
     items: { potion: 0, ether: 0, seed: 0 }, 
-    state: { power: false, shield: false, weakLock: false, barrier: false }, // barrier追加
+    state: { power: false, shield: false, weakLock: false, barrier: false },
     deck: [], hand: [], discard: [], deckLocked: false
 };
 
@@ -111,8 +103,7 @@ let allSaveData = { "slot1": null, "slot2": null, "slot3": null, "lastPlayed": 1
 let currentSlot = "slot1";
 let savedData = { highScore: { stage: 1, floor: 1, avg: 0.0 }, history: [], clearedExtra: false, dp: 0, bestRanks: {}, unlockedStage4: false, deck: [], cards: {} };
 
-// --- DOM Elements (Placeholder) ---
-// Note: Actual DOM binding happens after load, but we define accessors.
+// --- DOM Elements ---
 const el = (id) => document.getElementById(id);
 
 // --- Initialization ---
@@ -164,7 +155,6 @@ function selectSlot(n) {
         allSaveData[currentSlot] = { highScore: { stage: 1, floor: 1, avg: 0.0 }, history: [], clearedExtra: false, dp: 0, bestRanks: {}, unlockedStage4: false, deck: [], cards: {} }; 
     }
     savedData = allSaveData[currentSlot];
-    // Data correction
     if(!savedData.deck) savedData.deck = [];
     if(!savedData.cards) savedData.cards = {};
     
@@ -190,7 +180,6 @@ function updateTitleScore() {
     el("hs-rt").innerText = "Rt " + calculateRating(savedData.highScore.avg);
     el("dp-display").innerText = "DP: " + (savedData.dp || 0);
 
-    // Stage Button States
     updateStageButton(1, "btn-st1");
     updateStageButton(2, "btn-st2");
     updateStageButton(3, "btn-st3");
@@ -208,7 +197,6 @@ function updateStageButton(stgNum, btnId) {
     if(!btn) return;
     const rank = savedData.bestRanks ? savedData.bestRanks[stgNum] : null;
     
-    // Clean classes
     btn.className = "stage-btn btn-default";
     if(stgNum===4) btn.classList.add("stage4-btn");
     if(stgNum===5) btn.classList.add("extra-btn");
@@ -261,7 +249,7 @@ function startTransition(sel) {
             setTimeout(()=>{
                 ch.style.display="none";
                 el("black-curtain").classList.remove("fade-in");
-                checkOpeningSkill(); // ★ v1.4: Opening Skill Check
+                checkOpeningSkill(); 
             }, 1000);
         }, warning ? 4000 : 2500);
     }, 1000);
@@ -276,11 +264,9 @@ function setupStage(sel) {
     el("battle-log").innerHTML=""; 
     el("game-screen").style.display="block";
     
-    // デッキ処理
     player.state={power:false,shield:false,weakLock:false,barrier:false}; 
     player.mp = 3; 
     
-    // Deck Lock Check
     player.deckLocked = false; 
     if (!savedData.deck || savedData.deck.length < 12) {
         player.deckLocked = true;
@@ -304,41 +290,39 @@ function spawnEnemy() {
     currentTurn=1; turnInputs=[]; currentInput=""; restrictInput=false; 
     updateScoreDisplay(); isJustFinish = false; waitingForChest = false; dropGuaranteed = false; weakHitCount=0;
     
-    el("container").className="container"; 
+    // ★Fix: ID correction (container -> game-container)
+    el("game-container").className="container"; 
     el("enemy-panel").className="left-panel"; 
     el("boss-label").style.display="none"; 
     el("enemy-img").style.display = "block"; 
     el("chest-img").style.display = "none";
 
-    // BG
     let bgKey = stage; 
     if (stage === 4) bgKey = floor >= 5 ? "4_2" : "4_1";
-    if (GAME_DATA.bg[bgKey]) el("container").style.backgroundImage = `url('${GAME_DATA.bg[bgKey]}')`;
+    if (GAME_DATA.bg[bgKey]) el("game-container").style.backgroundImage = `url('${GAME_DATA.bg[bgKey]}')`;
 
-    // Enemy Selection & HP Setup
     let isBoss = false;
     if (stage === 5) {
         enemy.data = GAME_DATA.enemies[5][0]; isBoss=true; 
         playBGM("bgm-extra"); 
-        el("container").classList.add("extra-mode"); 
+        el("game-container").classList.add("extra-mode"); 
         el("enemy-panel").classList.add("extra-border"); 
         el("boss-label").innerText="☠️EXTRA BOSS"; el("boss-label").style.display="inline"; 
-        enemy.maxHp=1200; // Default fallback
+        enemy.maxHp=1200; 
     } else {
         let list = GAME_DATA.enemies[stage];
         enemy.data = list[(floor-1)%list.length]; 
         
         if(stage===4 && floor===6) {
              isBoss=true; playBGM("bgm-extra");
-             el("container").classList.add("extra-mode"); 
+             el("game-container").classList.add("extra-mode"); 
              el("boss-label").innerText="☠️FINAL BOSS"; el("boss-label").style.display="inline";
-             enemy.maxHp = 800; // Fallback
+             enemy.maxHp = 800; 
         } else if(floor===5 || (stage===4 && floor===5)) {
              isBoss=true; playBGM("bgm-boss");
-             el("container").classList.add("boss-mode"); 
+             el("game-container").classList.add("boss-mode"); 
              el("enemy-panel").classList.add("boss-border");
              el("boss-label").innerText="⚠️BOSS"; el("boss-label").style.display="inline";
-             // Fallback HP Formula
              const base=100+((stage-1)*50); const bonus=(floor-1)*30; enemy.maxHp=base+bonus+50;
         } else {
              playBGM("bgm-battle");
@@ -346,10 +330,7 @@ function spawnEnemy() {
         }
     }
 
-    // ★ v1.4 Update: Override MaxHP if defined in data
-    if(enemy.data.hp) {
-        enemy.maxHp = enemy.data.hp;
-    }
+    if(enemy.data.hp) enemy.maxHp = enemy.data.hp;
 
     enemy.name=enemy.data.name; 
     el("enemy-img").src=enemy.data.img; 
@@ -362,15 +343,10 @@ function spawnEnemy() {
 }
 
 function checkOpeningSkill() {
-    // ★ v1.4: ヴァルキリア先制行動
     if(stage === 3 && floor === 1) {
         setTimeout(() => {
             showSkillCutin("護封剣の加護", "gold");
             setTimeout(() => {
-                enemy.state.guardType = 'cut'; // v1.3 behavior for enemy uses 'cut' (20% red)
-                // However v1.4 card is 'half'. Enemy skill might be different. 
-                // Let's stick to 'cut' (20%) for opening, or 'half' if we want it hard.
-                // Text says "Opening Light of Intervention".
                 enemy.state.guardType = 'cut'; 
                 enemy.state.guardTurn = 3;
                 addLog(">> 先制行動: 敵が光の護封剣(3T)を展開！", "log-enemy");
@@ -395,19 +371,11 @@ function handleEnter() {
 
 function calculatePlayerDamage(score, p, e) {
     let dmg = score;
-    // Stage 4-4 Hard Skin
     if (stage === 4 && floor === 4 && currentTurn % 3 === 0) { dmg = Math.max(0, dmg - 50); }
-    
-    // Enemy Guard Types
     if (e.state.guardType === 'cut') { dmg = Math.floor(dmg * 0.8); addLog("護封剣で軽減(20%)！", "system"); }
     if (e.state.guardType === 'half') { dmg = Math.floor(dmg * 0.5); addLog("護封剣で半減(50%)！", "system"); }
-    
-    // Player Buffs (v1.4: Power is 2x)
     if (p.state.power) { dmg = Math.floor(dmg * 2.0); p.state.power = false; }
-    
-    // Enemy Guard Action
     if (e.state.guard) { dmg = Math.floor(dmg / 2); e.state.guard = false; addLog("敵の防御で半減！", "system"); }
-    
     return dmg;
 }
 
@@ -441,7 +409,8 @@ function executeAttack() {
 
     addLog(`攻撃！ ${dmg} ダメージ (${turnInputs.join('+')})`);
     triggerEffect(el("enemy-panel"), dmg, false);
-    animateValue(el("enemy-hp"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp; 
+    // ★Fix: ID
+    animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp; 
     
     updateInfo();
     
@@ -467,8 +436,6 @@ function playHandCard(index) {
     if(isProcessing || waitingForChest) return;
     const cardId = player.hand[index];
     const card = CARD_DB.find(c => c.id === cardId);
-    
-    // v1.4: Individual Cost
     let cost = (card.cost !== undefined) ? card.cost : 99;
 
     if (player.mp < cost) {
@@ -489,133 +456,78 @@ function playHandCard(index) {
 
 function applyCardEffect(card) {
     let msg = `Card: [${card.name}] `;
-    
     switch(card.id) {
-        case 101: // 死者蘇生 (Cost 8)
-            player.hp = player.maxHp;
-            msg += "HP完全回復！";
-            playSE("se-heal");
-            break;
-        case 201: // サンダー・ボルト (Cost 6)
-            const dmg201 = 100;
-            enemy.hp = Math.max(0, enemy.hp - dmg201);
-            enemy.state.isStunned = true;
-            msg += `100ダメージ＆スタン！`;
-            playSE("se-boom");
-            triggerEffect(el("enemy-panel"), dmg201, false);
-            break;
-        case 202: // 強欲な壺 (Cost 0)
-            player.mp = Math.min(player.mp + 5, player.maxMp);
-            msg += "MPチャージ(+5)！";
-            break;
-        case 301: // 光の護封剣 (Cost 5)
-            enemy.state.guardType = 'half'; // v1.4: Half damage
-            enemy.state.guardTurn = 3;
-            msg += "3ターン守備(半減)！";
-            break;
-        case 302: // 落とし穴 (Cost 3)
-            if (enemy.state.charge) {
-                enemy.state.charge = false;
-                enemy.state.isStunned = true; // Bonus stun
-                msg += "チャージ解除＆スタン！";
-                playSE("se-hit");
-            } else {
-                msg += "不発(敵はチャージしていない)";
-            }
-            break;
-        case 303: // 聖なるバリア (Cost 4)
-            player.state.barrier = true;
-            msg += "バリア展開(次攻撃無効＆反撃)！";
-            break;
-        case 401: // 火の粉 (Cost 1)
-            const dmg401 = 20; // Adjusted
-            enemy.hp = Math.max(0, enemy.hp - dmg401);
-            msg += "20ダメージ！";
-            playSE("se-attack");
-            triggerEffect(el("enemy-panel"), dmg401, false);
-            break;
-        case 402: // 治療の神 (Cost 4)
-            player.hp = Math.min(player.hp + 50, player.maxHp);
-            msg += "HP50回復";
-            playSE("se-heal");
-            break;
-        case 403: // はさみ撃ち (Cost 2)
-            player.hp = Math.max(1, player.hp - 20);
-            const dmg403 = 80;
-            enemy.hp = Math.max(0, enemy.hp - dmg403);
-            msg += "自傷20＆敵に80ダメージ！";
-            playSE("se-attack");
-            triggerEffect(el("player-panel"), 20, true);
-            triggerEffect(el("enemy-panel"), dmg403, false);
-            break;
-        case 404: // 昼夜の大火事 (Cost 3)
-            const dmg404 = 80;
-            enemy.hp = Math.max(0, enemy.hp - dmg404);
-            msg += "80ダメージ！";
-            playSE("se-attack");
-            triggerEffect(el("enemy-panel"), dmg404, false);
-            break;
-        case 405: // 突進 (Cost 2)
-            player.state.power = true; // 2x damage
-            msg += "攻撃力2倍(このターン)！";
-            break;
-        default:
-            msg += "(発動)";
-            break;
+        case 101: 
+            player.hp = player.maxHp; msg += "HP完全回復！"; playSE("se-heal"); break;
+        case 201: 
+            const dmg201 = 100; enemy.hp = Math.max(0, enemy.hp - dmg201); enemy.state.isStunned = true;
+            msg += `100ダメージ＆スタン！`; playSE("se-boom"); triggerEffect(el("enemy-panel"), dmg201, false); break;
+        case 202: 
+            player.mp = Math.min(player.mp + 5, player.maxMp); msg += "MPチャージ(+5)！"; break;
+        case 301: 
+            enemy.state.guardType = 'half'; enemy.state.guardTurn = 3; msg += "3ターン守備(半減)！"; break;
+        case 302: 
+            if (enemy.state.charge) { enemy.state.charge = false; enemy.state.isStunned = true; msg += "チャージ解除＆スタン！"; playSE("se-hit"); } else { msg += "不発(敵はチャージしていない)"; } break;
+        case 303: 
+            player.state.barrier = true; msg += "バリア展開(次攻撃無効＆反撃)！"; break;
+        case 401: 
+            const dmg401 = 20; enemy.hp = Math.max(0, enemy.hp - dmg401); msg += "20ダメージ！"; playSE("se-attack"); triggerEffect(el("enemy-panel"), dmg401, false); break;
+        case 402: 
+            player.hp = Math.min(player.hp + 50, player.maxHp); msg += "HP50回復"; playSE("se-heal"); break;
+        case 403: 
+            player.hp = Math.max(1, player.hp - 20); const dmg403 = 80; enemy.hp = Math.max(0, enemy.hp - dmg403);
+            msg += "自傷20＆敵に80ダメージ！"; playSE("se-attack"); triggerEffect(el("player-panel"), 20, true); triggerEffect(el("enemy-panel"), dmg403, false); break;
+        case 404: 
+            const dmg404 = 80; enemy.hp = Math.max(0, enemy.hp - dmg404); msg += "80ダメージ！"; playSE("se-attack"); triggerEffect(el("enemy-panel"), dmg404, false); break;
+        case 405: 
+            player.state.power = true; msg += "攻撃力2倍(このターン)！"; break;
+        default: msg += "(発動)"; break;
     }
     
     addLog(msg, "log-skill");
-    animateValue(el("enemy-hp"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp;
+    // ★Fix: ID
+    animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp;
     animateValue(el("player-hp"), displayPlayerHP, player.hp, 500); displayPlayerHP=player.hp;
 
     if (enemy.hp <= 0) setTimeout(winBattle, 800);
 }
 
-// --- Enemy AI (v1.4 Updated) ---
+// --- Enemy AI ---
 function enemyTurn() {
     if(enemy.state.isStunned) { 
         addLog(`>> ${enemy.name} はスタン中で動けない！`, "log-system"); 
-        enemy.state.isStunned = false; 
-        endEnemyTurn(); return; 
+        enemy.state.isStunned = false; endEnemyTurn(); return; 
     }
 
-    // Special Stage Logics
-    // Stage 4-3 Curse
     if (stage === 4 && floor === 3 && Math.random() < 0.4) { 
-        showSkillCutin("呪いの視線", "earth"); 
-        setTimeout(() => { player.mp = Math.max(0, player.mp - 2); addLog(">> [呪い] MP2減少", "log-enemy"); doEnemyAttack(1.0); }, 1200); return; 
+        showSkillCutin("呪いの視線", "earth"); setTimeout(() => { player.mp = Math.max(0, player.mp - 2); addLog(">> [呪い] MP2減少", "log-enemy"); doEnemyAttack(1.0); }, 1200); return; 
     }
-    // Stage 5 Boss
     if(stage===5) {
         extraBossTurnCount++; 
         if(extraBossTurnCount % 5 === 0) { 
-            showSkillCutin("黒 炎 弾", "fire"); 
-            setTimeout(() => { player.mp = Math.max(0, player.mp - 5); addLog(">> [黒炎弾] MP5消滅 & 大ダメージ", "log-enemy"); doEnemyAttack(1.0, {isBossUlt:true, fixedDmg: 50}); }, 1200); return; 
+            showSkillCutin("黒 炎 弾", "fire"); setTimeout(() => { player.mp = Math.max(0, player.mp - 5); addLog(">> [黒炎弾] MP5消滅 & 大ダメージ", "log-enemy"); doEnemyAttack(1.0, {isBossUlt:true, fixedDmg: 50}); }, 1200); return; 
         } 
         doEnemyAttack(1.3); return;
     }
-    // Stage 3 Logics
     if(stage===3) {
-        if(floor===2 && Math.random()<0.3) { // Harpy
+        if(floor===2 && Math.random()<0.3) { 
             showSkillCutin("誘惑の風", "wind"); setTimeout(() => { if(player.mp>0) { player.mp=Math.max(0,player.mp-1); enemy.hp=Math.min(enemy.hp+20,enemy.maxHp); addLog(">> [誘惑の風] MP吸収", "log-enemy"); } doEnemyAttack(1.0); }, 1200); return; 
         }
-        if(floor===5) { // Pet Dragon
+        if(floor===5) { 
             enemy.state.atkBuff += 0.1; addLog(`>> [主人の加護] 攻撃力UP (現在x${(1.0+enemy.state.atkBuff).toFixed(1)})`, "log-enemy"); 
             if(currentTurn % 4 === 0) { 
-                showSkillCutin("愛の鞭・ブレス", "fire"); 
-                setTimeout(() => { player.mp = 0; addLog(">> [愛の鞭] MP消滅＆大ダメージ", "log-enemy"); doEnemyAttack(2.0 * (1.0+enemy.state.atkBuff)); }, 1200); return; 
+                showSkillCutin("愛の鞭・ブレス", "fire"); setTimeout(() => { player.mp = 0; addLog(">> [愛の鞭] MP消滅＆大ダメージ", "log-enemy"); doEnemyAttack(2.0 * (1.0+enemy.state.atkBuff)); }, 1200); return; 
             } 
             doEnemyAttack(1.0 * (1.0+enemy.state.atkBuff)); return; 
         }
     }
-    // Stage 1
     if(stage===1) {
         if(floor===4 && player.mp > 0 && Math.random()<0.3) { 
             showSkillCutin("猛毒の鱗粉", "earth"); setTimeout(() => { player.mp = Math.max(0, player.mp - 1); addLog(">> [猛毒の鱗粉] MP1減少", "log-enemy"); doEnemyAttack(1.0); }, 1200); return; 
         }
     }
     
-    // Common / Stage 4
+    // Common / Stage 4 logic
     if (stage === 4 && floor === 1 && Math.random() < 0.3) { 
         showSkillCutin("トゥーン・ラッシュ", "wind"); setTimeout(() => { addLog(">> [速攻] 2回攻撃！", "log-enemy"); doEnemyAttack(0.7, {callback: () => { setTimeout(() => doEnemyAttack(0.7), 800); } }); }, 1200); return; 
     }
@@ -644,7 +556,7 @@ function enemyTurn() {
         if(floor===5 && Math.random() < 0.3) { showSkillCutin("恐竜剣・兜割り", "earth"); setTimeout(() => { addLog(">> [BOSS] 兜割り！シールド無効", "log-enemy"); doEnemyAttack(1.8, {ignoreShield: true}); }, 1200); return; }
     }
     if(stage===1) {
-        if(floor===3) { if(Math.random() < 0.2) { showSkillCutin("自己再生", "heal"); setTimeout(() => { enemy.hp = Math.min(enemy.hp + 20, enemy.maxHp); playSE("se-heal"); addLog(">> [自己再生] HP20回復", "log-heal"); animateValue(el("enemy-hp"),displayEnemyHP,enemy.hp,500); displayEnemyHP=enemy.hp; updateInfo(); endEnemyTurn(); }, 1200); return; } if(Math.random() < 0.4) { showSkillCutin("鉄壁の守り", "earth"); setTimeout(() => { enemy.state.guard = true; addLog(">> [鉄壁の守り] ダメージ半減", "log-enemy"); updateInfo(); endEnemyTurn(); }, 1200); return; } }
+        if(floor===3) { if(Math.random() < 0.2) { showSkillCutin("自己再生", "heal"); setTimeout(() => { enemy.hp = Math.min(enemy.hp + 20, enemy.maxHp); playSE("se-heal"); addLog(">> [自己再生] HP20回復", "log-heal"); animateValue(el("enemy-hp-value"),displayEnemyHP,enemy.hp,500); displayEnemyHP=enemy.hp; updateInfo(); endEnemyTurn(); }, 1200); return; } if(Math.random() < 0.4) { showSkillCutin("鉄壁の守り", "earth"); setTimeout(() => { enemy.state.guard = true; addLog(">> [鉄壁の守り] ダメージ半減", "log-enemy"); updateInfo(); endEnemyTurn(); }, 1200); return; } }
         if(floor===5) { if(enemy.state.charge) { enemy.state.charge = false; showSkillCutin("森の破壊衝動", "earth"); setTimeout(() => { doEnemyAttack(3.0); }, 1200); return; } if(Math.random() < 0.3) { enemy.state.charge = true; addLog(`>> 力を溜めている…`, "log-enemy"); updateInfo(); endEnemyTurn(); return; } }
     }
     doEnemyAttack(1.0);
@@ -653,18 +565,16 @@ function enemyTurn() {
 function doEnemyAttack(mult, options = {}) {
     const { ignoreShield = false, isDrain = false, isBossUlt = false, fixedDmg = 0, callback = null } = options;
     
-    // ★ v1.4 Barrier Check (Holy Barrier)
     if (player.state.barrier) {
         player.state.barrier = false;
         addLog("★聖なるバリア発動！攻撃無効化＆反撃！", "log-skill");
         playSE("se-boom");
         el("flash-overlay").className="flash-gold"; setTimeout(()=>el("flash-overlay").className="",300);
-        
-        // Counter Damage (50)
         enemy.hp = Math.max(0, enemy.hp - 50);
         triggerEffect(el("enemy-panel"), 50, false);
+        // ★Fix: ID
+        animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp;
         updateInfo();
-        
         if(enemy.hp <= 0) setTimeout(winBattle, 800);
         else if(callback) callback(); else endEnemyTurn();
         return;
@@ -704,7 +614,8 @@ function finishAttack(dmg, isDrain, callback) {
         if(heal > 0) { 
             enemy.hp = Math.min(enemy.hp + heal, enemy.maxHp); 
             addLog(`>> 敵が HP${heal} 吸収した！`, "log-enemy"); 
-            animateValue(el("enemy-hp"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp; 
+            // ★Fix: ID
+            animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp; 
         } 
     }
     
@@ -717,7 +628,7 @@ function finishAttack(dmg, isDrain, callback) {
 
 function endEnemyTurn() { 
     currentTurn++; 
-    player.mp = Math.min(player.mp + 3, player.maxMp); // MP Auto Regen
+    player.mp = Math.min(player.mp + 3, player.maxMp); 
     updateInfo(); 
     isProcessing=false; 
 }
@@ -805,7 +716,6 @@ function nextStep() {
             showDialog("MISSION COMPLETE", `帰還しました。<br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{text:"TITLE", action:returnToTitle}]);
         } };
 
-        // Stage 3 Branching
         if (stage === 3) {
             const btnExtra = { text: "⚠️ EXTRA STAGE", action: () => { player.hp = Math.min(player.hp + 30, player.maxHp); initGameSession(5, true); } };
             if (parseFloat(ppr) >= 70.0) {
@@ -833,7 +743,8 @@ function loseBattle() {
 
 function returnToTitle() { 
     playBGM("bgm-title"); 
-    el("container").classList.remove("boss-mode","extra-mode"); 
+    // ★Fix: ID
+    el("game-container").classList.remove("boss-mode","extra-mode"); 
     el("game-screen").style.display="none"; 
     el("title-screen").style.display="flex"; 
     updateTitleScore(); 
@@ -871,10 +782,11 @@ function showSkillCutin(name, type) {
     if(type==="ice") cutin.classList.add("cutin-ice"); 
     if(type==="earth") cutin.classList.add("cutin-earth"); 
     if(type==="wind") cutin.classList.add("cutin-wind"); 
-    if(type==="gold") cutin.classList.add("cutin-earth"); // Reuse earth for gold/light
+    if(type==="gold") cutin.classList.add("cutin-earth"); 
     cutin.style.display = "flex"; 
-    el("container").classList.add("shake-heavy"); 
-    setTimeout(()=>{ cutin.style.display="none"; el("container").classList.remove("shake-heavy"); }, 1500); 
+    // ★Fix: ID
+    el("game-container").classList.add("shake-heavy"); 
+    setTimeout(()=>{ cutin.style.display="none"; el("game-container").classList.remove("shake-heavy"); }, 1500); 
 }
 
 function updateInfo() {
@@ -888,6 +800,7 @@ function updateInfo() {
     const elName = el("enemy-name"); elName.innerText = enemy.name;
     elName.style.fontSize = (enemy.name.length > 12) ? "12px" : ((enemy.name.length > 9) ? "15px" : "18px");
 
+    // ★Fix: ID
     const hpVal = el("enemy-hp-value"); hpVal.innerText = enemy.hp; 
     hpVal.className = "hp-big-text";
     if(enemy.hp <= 60) hpVal.classList.add("hp-danger"); else if(enemy.hp <= 180) hpVal.classList.add("hp-warning");
@@ -905,7 +818,6 @@ function updateInfo() {
     el("player-hp-bar").style.width=Math.max(0,(player.hp/player.maxHp)*100)+"%";
     el("player-hp").innerText = player.hp; el("player-max-hp").innerText = player.maxHp;
 
-    // MP Dots
     const mpContainer = el("player-mp-bar");
     mpContainer.innerHTML = ""; mpContainer.style.width = "100%"; 
     for(let i=0; i < player.maxMp; i++) {
@@ -922,7 +834,6 @@ function updateInfo() {
     let ppr = 0; if(totalDarts>0) ppr = ((totalScore/totalDarts)*3); 
     el("avg-display").innerText=ppr.toFixed(1); el("rt-display").innerText=`(Rt ${calculateRating(ppr)})`;
     
-    // Items
     el("btn-potion").className = player.items.potion > 0 ? "item-btn has-item" : "item-btn disabled";
     el("btn-potion").innerHTML = `💊 薬草 x${player.items.potion}<span class="tooltip">HPを50回復</span>`;
     el("btn-ether").className = player.items.ether > 0 ? "item-btn has-item" : "item-btn disabled";
@@ -1217,6 +1128,7 @@ function triggerEffect(el, dmg, isP) {
     pop.style.left="50%"; pop.style.top="50%"; el.appendChild(pop); setTimeout(()=>pop.remove(),1500);
 }
 
+// ★Fix: ID
 function animateValue(obj, s, e, d) { if(obj) obj.innerHTML = e; }
 function addLog(t, type="") { const d=document.createElement("div"); d.innerHTML=t; if(type) d.className="log-"+type; el("battle-log").prepend(d); }
 function stopAllBGM() { const audio = ["bgm-title","bgm-battle","bgm-boss","bgm-extra","bgm-win","bgm-lose"]; audio.forEach(id => { const el = document.getElementById(id); if(el){ el.pause(); el.currentTime=0;} }); }
