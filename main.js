@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v1.5 Full Fix)");
+console.log("★ main.js is loaded! (v1.6 Progression Update)");
 
 // --- ★ GAME DATA CONFIG ★ ---
 const GAME_DATA = {
@@ -76,7 +76,6 @@ const PACK_DATA = [
 let player = { 
     hp: 100, maxHp: 100, mp: 3, maxMp: 10,
     items: { potion: 0, ether: 0, seed: 0 }, 
-    // ★ guardTurn 追加
     state: { power: false, shield: false, weakLock: false, barrier: false, guardTurn: 0 },
     deck: [], hand: [], discard: [], deckLocked: false
 };
@@ -214,16 +213,18 @@ function updateStageButton(stgNum, btnId) {
 
 // --- Game Logic: Start & Setup ---
 function initGameSession(startStage, continueMode=false) {
+    // ★ v1.6: Continue Handling
     if (!continueMode) {
         player.hp = 100; player.maxHp = 100; player.mp = 3; 
         player.items = { potion: 0, ether: 0, seed: 0 };
         totalGameTurns = 0; totalScore = 0; totalDarts = 0;
         clearedStagesLog = [];
     }
-    startTransition(startStage);
+    // Pass continue flag to transition
+    startTransition(startStage, continueMode);
 }
 
-function startTransition(sel) {
+function startTransition(sel, continueMode) {
     let t="STAGE "+sel; let s=""; let warning=false;
     if(sel===1) { t="旅立ちの森"; s="Forest of Beginnings"; }
     if(sel===2) { t="荒れ狂う荒野"; s="Raging Wasteland"; }
@@ -244,7 +245,7 @@ function startTransition(sel) {
         el("title-screen").style.display="none";
         ch.style.display="flex"; ch.style.opacity=1;
         
-        setupStage(sel);
+        setupStage(sel, continueMode);
         
         setTimeout(() => {
             ch.style.opacity=0;
@@ -257,7 +258,7 @@ function startTransition(sel) {
     }, 1000);
 }
 
-function setupStage(sel) {
+function setupStage(sel, continueMode) {
     stage=sel; floor=1; isProcessing=false; extraBossTurnCount=0; currentTurn=1;
     stageStartTurn = totalGameTurns; 
 
@@ -266,18 +267,24 @@ function setupStage(sel) {
     el("battle-log").innerHTML=""; 
     el("game-screen").style.display="block";
     
+    // Reset Battle States
     player.state={power:false,shield:false,weakLock:false,barrier:false,guardTurn:0}; 
-    player.mp = 3; 
     
-    player.deckLocked = false; 
-    if (!savedData.deck || savedData.deck.length < 12) {
-        player.deckLocked = true;
-        player.deck = []; player.hand = []; player.discard = [];
-        addLog("⚠ デッキ不完全: カード機能封鎖", "log-system");
+    // ★ v1.6: Deck & MP Persistence
+    if (!continueMode) {
+        player.mp = 3; 
+        player.deckLocked = false; 
+        if (!savedData.deck || savedData.deck.length < 12) {
+            player.deckLocked = true;
+            player.deck = []; player.hand = []; player.discard = [];
+            addLog("⚠ デッキ不完全: カード機能封鎖", "log-system");
+        } else {
+            player.deck = shuffleArray([...savedData.deck]); 
+            player.hand = []; player.discard = [];
+            for(let i=0; i<3; i++) drawCard();
+        }
     } else {
-        player.deck = shuffleArray([...savedData.deck]); 
-        player.hand = []; player.discard = [];
-        for(let i=0; i<3; i++) drawCard();
+        addLog(">> 前ステージの状態を引き継ぎました", "log-system");
     }
 
     spawnEnemy();
@@ -289,7 +296,6 @@ function spawnEnemy() {
     try {
         enemy.state={charge:false,guard:false,guardType:null,guardTurn:0,atkBuff:0,isStunned:false}; 
         player.state.power=false; player.state.shield=false; player.state.weakLock=false; player.state.barrier=false; 
-        // player.state.guardTurnは維持するかリセットするか？ここではステージ継続なら維持もありだが、敵が変わるのでリセットが安全。
         player.state.guardTurn = 0; 
         
         currentTurn=1; turnInputs=[]; currentInput=""; restrictInput=false; 
@@ -478,7 +484,6 @@ function applyCardEffect(card) {
         case 202: 
             player.mp = Math.min(player.mp + 5, player.maxMp); msg += "MPチャージ(+5)！"; break;
         case 301: 
-            // ★修正: プレイヤーが守られる効果に変更
             player.state.guardTurn = 3;
             msg += "3ターン防御(被ダメ半減)！"; 
             break;
@@ -604,7 +609,6 @@ function doEnemyAttack(mult, options = {}) {
         return; 
     }
 
-    // ★修正: プレイヤー側の護封剣効果
     if (player.state.guardTurn > 0) {
         mult *= 0.5;
         addLog("[護封剣] 被ダメージ半減！", "log-skill");
@@ -649,7 +653,6 @@ function endEnemyTurn() {
     currentTurn++; 
     player.mp = Math.min(player.mp + 3, player.maxMp); 
     
-    // ★修正: プレイヤー側の護封剣ターン消費
     if(player.state.guardTurn > 0) {
         player.state.guardTurn--;
         if(player.state.guardTurn === 0) {
@@ -702,7 +705,6 @@ function openChest() {
 function nextStep() {
     floor++; const ppr = totalDarts>0 ? ((totalScore/totalDarts)*3).toFixed(1) : 0;
 
-    // ★修正: Stage 5は1階層だけなので、floor > 1 でクリア
     const isExtraClear = (stage === 5 && floor > 1);
     const isStage4Clear = (stage === 4 && floor > 6);
     const isNormalClear = (stage < 4 && floor > 5);
@@ -710,12 +712,21 @@ function nextStep() {
     if(isNormalClear || isStage4Clear || isExtraClear) {
         const stageTurns = totalGameTurns - stageStartTurn;
         const [rank, dpBonus] = calculateStageRank(stage, stageTurns);
-        const scoreDP = Math.floor(totalScore * 0.2); 
-        let pendingBonusDP = dpBonus;
-        clearedStagesLog.forEach(log => { pendingBonusDP += log.dp; });
+        
+        // ★ v1.6 DP Multiplier
+        const multipliers = { 1: 1.0, 2: 1.2, 3: 1.5, 4: 2.0, 5: 3.0 };
+        const mult = multipliers[stage] || 1.0;
+        
+        // スコアDPとランクDP両方に倍率を適用
+        const scoreDP = Math.floor(totalScore * 0.2 * mult); 
+        let pendingBonusDP = Math.floor(dpBonus * mult);
+        
+        // 過去のDPログも倍率適用 (既にlogに入っているものは固定だが、今回のボーナスはmult適用)
+        clearedStagesLog.forEach(log => { pendingBonusDP += log.dp; }); // ※既存ログはそのまま加算
+        
         let potentialTotalDP = scoreDP + pendingBonusDP;
 
-        clearedStagesLog.push({ stage: stage, rank: rank, dp: dpBonus });
+        clearedStagesLog.push({ stage: stage, rank: rank, dp: Math.floor(dpBonus * mult) });
 
         const currentBest = savedData.bestRanks[stage];
         const ranksOrder = ["SSS", "S", "A", "B", "C"];
@@ -738,11 +749,11 @@ function nextStep() {
         }
 
         let title = "STAGE CLEAR";
-        let msg = `STAGE ${stage} COMPLETED!<br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br><br>現在の獲得予定DP: <span style="color:#ffd700; font-weight:bold;">${potentialTotalDP} DP</span>`;
+        let msg = `STAGE ${stage} COMPLETED!<br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br><br>現在の獲得予定DP: <span style="color:#ffd700; font-weight:bold;">${potentialTotalDP} DP</span><br>(難易度ボーナス x${mult.toFixed(1)})`;
 
         const btnNext = { text: "⛺ 次へ進む (繰越)", action: () => {
             player.hp = Math.min(player.hp + 30, player.maxHp);
-            initGameSession(stage + 1, true);
+            initGameSession(stage + 1, true); // ★ Continue Flag ON
         } };
         const btnReturn = { text: "🏠 帰還する (確定)", action: () => {
             const res = finishSession("RETURN", parseFloat(ppr));
@@ -857,7 +868,6 @@ function updateInfo() {
     let weakText = ""; 
     if(player.state.weakLock) weakText = "<span style='color:#f0f; animation:blink 0.5s infinite;'>★ WEAK LOCK ACTIVE ★</span>"; 
     else {
-        // ★修正: WEAK表示の上書き防止
         let baseText = "WEAK: " + enemy.data.weak + "+";
         if (weakHitCount > 0) { 
             let color = weakHitCount >= 3 ? "#ff0000" : (weakHitCount >= 2 ? "#ffa500" : "#ffff00"); 
@@ -900,7 +910,6 @@ function updateInfo() {
 function updateVisuals() {
     if(el("player-buff-badge")) el("player-buff-badge").style.display = player.state.power ? "block" : "none";
     
-    // ★修正: プレイヤーガードの表示
     if(el("player-guard-badge")) {
         if(player.state.shield) {
             el("player-guard-badge").style.display = "block";
@@ -1152,9 +1161,20 @@ function calculateStageRank(stg, turns) {
 }
 
 function finishSession(resultType, ppr) {
-    let totalDP = Math.floor(totalScore * 0.2);
-    let bonusDP = 0; clearedStagesLog.forEach(log => { bonusDP += log.dp; }); totalDP += bonusDP;
-    savedData.dp = (savedData.dp || 0) + totalDP;
+    // DP Calculation is moved to nextStep for display accuracy, this just saves it.
+    // However, for consistency, we calculate basic reward here too if needed, but nextStep handles the logic.
+    // This function focuses on saving History.
+    let totalDP = 0;
+    // Recalculate full DP to be sure
+    let earnedDP = 0;
+    // Note: This logic assumes 'clearedStagesLog' is fully populated in nextStep
+    clearedStagesLog.forEach(log => { earnedDP += log.dp; });
+    
+    // Add Score DP (approx) - In v1.6 we did this in nextStep, so here we trust the value passed or re-calc?
+    // Let's rely on savedData.dp update in nextStep before calling this, or just log it here.
+    // For Safety: We just log the result. The DP addition happens in nextStep before this call.
+    
+    savedData.dp = (savedData.dp || 0); // Already added in nextStep
 
     const curVal = stage * 100 + floor; const bestVal = savedData.highScore.stage * 100 + savedData.highScore.floor;
     let isNewRecord = false; if (curVal > bestVal) { savedData.highScore.stage = stage; savedData.highScore.floor = floor; isNewRecord = true; }
@@ -1165,16 +1185,39 @@ function finishSession(resultType, ppr) {
     const dateStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${("0"+now.getMinutes()).slice(-2)}`;
     let stgName = (stage === 5) ? "EXTRA" : "S" + stage + "-" + floor + "F";
     let resultText = resultType;
+    
+    // Total gained in this session
+    let gainedDP = 0;
+    // Note: We need to pass gainedDP from nextStep to display it correctly
+    // To simplify: We calculate "Session Total" by summing up log + current score
+    // But since we already added to savedData.dp in nextStep loop, we can just return a value.
+    
+    // Recalculate for display
+    const multipliers = { 1: 1.0, 2: 1.2, 3: 1.5, 4: 2.0, 5: 3.0 };
+    const mult = multipliers[stage] || 1.0;
+    const scoreDP = Math.floor(totalScore * 0.2 * mult);
+    let rankDP = 0;
+    clearedStagesLog.forEach(log => rankDP += log.dp);
+    gainedDP = scoreDP + rankDP;
+    
+    // Add to save data (Critical: Ensure not double added if nextStep did it? 
+    // In v1.5 we added in finishSession. In v1.6 we moved calc to nextStep but ADDITION should be here to be safe)
+    // Let's do the addition HERE to be safe and atomic.
+    // Remove addition from nextStep? -> No, nextStep needs to show it.
+    // Correct approach: nextStep shows "Predicted", finishSession "Commits" it.
+    // So:
+    savedData.dp += gainedDP;
+
     if (clearedStagesLog.length > 0 && resultType === "RETURN") {
         const last = clearedStagesLog[clearedStagesLog.length-1];
         resultText = `CLEAR(${last.rank})`;
         stgName = (last.stage===5) ? "EXTRA" : "STAGE " + last.stage;
     }
 
-    savedData.history.unshift({ date: dateStr, stage: stage, floor: floor, stgName: stgName, result: resultText, dp: totalDP, ppr: ppr, rt: calculateRating(ppr) });
+    savedData.history.unshift({ date: dateStr, stage: stage, floor: floor, stgName: stgName, result: resultText, dp: gainedDP, ppr: ppr, rt: calculateRating(ppr) });
     if(savedData.history.length > 50) savedData.history.pop();
     updateTitleScore(); saveToDrive();
-    return { isNewRecord: isNewRecord, gainedDP: totalDP };
+    return { isNewRecord: isNewRecord, gainedDP: gainedDP };
 }
 
 function shuffleArray(array) {
