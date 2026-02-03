@@ -47,7 +47,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .stage-select { display: flex; gap: 20px; }
 
 /* Stage Buttons */
-.stage-btn { position: relative; width: 140px; height: 60px; font-size: 20px; font-weight: bold; font-family: 'Cinzel Decorative'; border-radius: 10px; cursor: pointer; transition: all 0.3s; display:flex; justify-content:center; align-items:center; text-shadow: 1px 1px 2px #000; box-shadow: 0 4px 6px rgba(0,0,0,0.5); }
+.stage-btn { position: relative; width: 130px; height: 55px; font-size: 18px; font-weight: bold; font-family: 'Cinzel Decorative'; border-radius: 10px; cursor: pointer; transition: all 0.3s; display:flex; justify-content:center; align-items:center; text-shadow: 1px 1px 2px #000; box-shadow: 0 4px 6px rgba(0,0,0,0.5); }
 .stage-btn:hover { transform: scale(1.1); z-index:10; }
 .btn-default { background: linear-gradient(145deg, #1a2a4a, #0f1c30); color: #fff; border: 2px solid #4a6fa5; }
 .btn-default:hover { border-color: #8ab4f8; box-shadow: 0 0 15px #4a6fa5; }
@@ -56,10 +56,17 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .btn-gold { background: linear-gradient(145deg, #ffd700, #b8860b); color: #fff; border: 2px solid #ffff00; box-shadow: 0 0 20px #ffd700; text-shadow: 0 0 5px #b8860b; }
 .btn-prism { background: linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000); background-size: 400% 400%; animation: rainbow 3s ease infinite; color: #fff; border: 2px solid #fff; box-shadow: 0 0 15px #fff, 0 0 30px #ff00de; text-shadow: 2px 2px 0 #000; }
 @keyframes rainbow { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+
 .stage4-btn { display: none; background: linear-gradient(145deg, #2a0f4a, #1a0530); color: #e0b0ff; border: 2px solid #9932cc; }
 .stage4-btn:hover { border-color: #ba55d3; box-shadow: 0 0 20px #ba55d3; }
-.extra-btn { display: none; background: linear-gradient(145deg, #4a0f1c, #300a10); color: #ff99aa; border: 2px solid #ff0055; }
-.extra-btn:hover { border-color: #ff0000; box-shadow: 0 0 20px #ff0000; }
+
+/* ★ v2.2.0 New: Stage 5 Button (God/Red) */
+.stage5-btn { display: none; background: linear-gradient(145deg, #4a0f0f, #2a0505); color: #ff9999; border: 2px solid #ff4444; }
+.stage5-btn:hover { border-color: #ff0000; box-shadow: 0 0 20px #ff0000; }
+
+/* Extra Button (Now Stage 6) */
+.extra-btn { display: none; background: linear-gradient(145deg, #0f0f0f, #000000); color: #fff; border: 2px solid #fff; }
+.extra-btn:hover { border-color: #fff; box-shadow: 0 0 20px #fff; }
 
 /* Game Screen */
 .game-screen { display: none; padding: 20px; box-sizing: border-box; height: 100%; position: relative; z-index:1; }
@@ -105,7 +112,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .skill-ready-stun { background-color: #ff8c00; color: white; border-color: #fff; cursor: pointer; box-shadow: 0 0 5px #ffa500; }
 
 .item-btn { background: #333; color: #ccc; } .item-btn:hover { background: #555; color: #fff; }
-.item-btn.disabled { opacity: 0.4; cursor: default; background: #222; color: #666; }
+.item-btn.disabled { opacity: 0.4; cursor: default; background: #222; color: #666; pointer-events: none; } /* Ensure pointer events none */
 .item-btn.has-item { background-color: #663399; color: white; border-color: #c080ff; box-shadow: 0 0 5px #8a2be2; } .item-btn.has-item:hover { background-color: #8a2be2; }
 .tooltip { visibility: hidden; width: 160px; background-color: rgba(0,0,0,0.9); color: #fff; text-align: center; border-radius: 6px; padding: 5px; position: absolute; z-index: 1000; bottom: 110%; left: 50%; margin-left: -80px; border: 1px solid #777; font-size: 10px; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
 .skill-btn:hover .tooltip, .item-btn:hover .tooltip { visibility: visible; opacity: 1; }
@@ -370,6 +377,10 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .hand-card.disabled { filter: grayscale(100%) brightness(0.5); cursor: not-allowed; transform: none; box-shadow: none; }
 .hand-card-empty { color: #555; font-size: 10px; }
 .hand-locked-msg { color: #ff5555; font-weight: bold; font-size: 12px; border: 1px dashed #ff5555; padding: 8px 15px; border-radius: 5px; background: rgba(50, 0, 0, 0.5); animation: pulseRed 2s infinite; }
+
+/* v2.2.0: Jamming visual */
+.hand-card.jammed { filter: sepia(100%) hue-rotate(200deg) brightness(0.4); cursor: not-allowed; border-color: #55f; pointer-events: none; }
+.hand-card.jammed::after { content: "🔒"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 24px; }
 
 /* Rarity Colors */
 .rarity-UR { border-color: #d000ff; box-shadow: 0 0 8px #d000ff; }
