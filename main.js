@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v1.8 UX Polish)");
+console.log("★ main.js is loaded! (v1.9 Stable UI Update)");
 
 // --- ★ GAME DATA CONFIG ★ ---
 const GAME_DATA = {
@@ -949,23 +949,20 @@ function renderHand() {
 
                 const imgPath = `assets/cards/${card.id}.png`;
                 
-                // ★ v1.8 UX: Smart Tooltip + Mouse Events
+                // ★ v1.9 UX: Global Tooltip Logic
                 div.innerHTML = `
                     <div class="hand-cost">${cost}</div>
                     <div class="card-art" style="height:100%; border:none;">
                         <img src="${imgPath}" onerror="this.style.display='none'">
                     </div>
                     <div style="position:absolute; bottom:0; width:100%; font-size:8px; text-align:center; background:rgba(0,0,0,0.7); color:#fff;">${card.name}</div>
-                    <div class="card-tooltip-box battle-tooltip" id="tooltip-hand-${index}">
-                        <div class="ct-name">${card.name} [Cost:${cost}]</div>
-                        <div class="ct-desc">${card.desc}</div>
-                    </div>
                 `;
                 
                 div.onclick = () => playHandCard(index);
                 
-                // Smart Position Logic
-                div.onmouseenter = (e) => adjustTooltipPosition(e, `tooltip-hand-${index}`);
+                // ★ v1.9: Use Global Tooltip
+                div.onmouseenter = (e) => showTooltip(card.name, card.desc, e);
+                div.onmouseleave = () => hideTooltip();
                 
                 handArea.appendChild(div);
             });
@@ -1028,7 +1025,8 @@ function showPackResult(results) {
     const container = el("pack-results"); container.innerHTML = "";
     results.forEach((res, index) => {
         const c = res.card;
-        const cardEl = createCardElement(c, false, 1);
+        // In pack opening, we always own it now (count=1 for visual)
+        const cardEl = createCardElement(c, false, 1, 1);
         cardEl.classList.add("result-card-anim");
         cardEl.style.animationDelay = `${index * 0.3}s`;
         if (res.isNew) {
@@ -1047,7 +1045,7 @@ function closeCardShop() { playSE("se-tap"); el("card-shop-modal").style.display
 
 // --- Collection ---
 function openCollection() { playSE("se-tap"); renderDeckEditor(); el("collection-modal").style.display = "flex"; }
-function closeCollection() { playSE("se-tap"); el("collection-modal").style.display = "none"; }
+function closeCollection() { playSE("se-tap"); el("collection-modal").style.display = "none"; hideTooltip(); }
 
 function renderDeckEditor() {
     if (!savedData.deck) savedData.deck = [];
@@ -1060,7 +1058,10 @@ function renderDeckEditor() {
         const cardId = savedData.deck[i]; 
         if (cardId) {
             const card = CARD_DB.find(c => c.id === cardId);
-            const el = createCardElement(card, true);
+            // Deck item: remainingCount doesn't matter for owned check, passing dummy 1
+            // But we can pass actual totalOwned for correctness
+            const totalOwned = savedData.cards[card.id] || 0;
+            const el = createCardElement(card, true, 0, totalOwned);
             deckGrid.appendChild(el);
         } else {
             const div = document.createElement("div"); div.className = "deck-slot-empty"; div.innerText = "EMPTY";
@@ -1082,16 +1083,19 @@ function renderDeckEditor() {
         if (count > 0) ownedCount++;
         const inDeckCount = savedData.deck.filter(id => id === card.id).length;
         const remaining = count - inDeckCount; 
-        const el = createCardElement(card, false, remaining);
+        // ★ Fix: Pass 'count' (total owned) to createCardElement
+        const el = createCardElement(card, false, remaining, count);
         listGrid.appendChild(el);
     });
     el("collection-rate").innerText = `${Math.floor((ownedCount / CARD_DB.length) * 100)}%`;
 }
 
-function createCardElement(card, isDeckItem, remainingCount = 1) {
+// ★ v1.9 Updated: createCardElement with totalCount support & Global Tooltip
+function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0) {
     const div = document.createElement("div");
-    // ★ v1.8 Fix: Remove pointer-events:none, use logic instead
-    const isOwned = (isDeckItem || remainingCount > 0);
+    
+    // ★ Logic Fix: Owned if totalCount > 0 OR it's already in deck (safe fallback)
+    const isOwned = (totalCount > 0 || isDeckItem);
     const notOwnedClass = (!isOwned) ? "card-not-owned" : "";
     
     div.className = `collection-card rarity-${card.rarity} ${notOwnedClass}`;
@@ -1099,13 +1103,10 @@ function createCardElement(card, isDeckItem, remainingCount = 1) {
     const fallbackIcon = card.type === "MAGIC" ? "🪄" : "⛓️";
     const cost = (card.cost !== undefined) ? card.cost : "?";
     
-    // ★ v1.8 UX: Direct Info Display (Short desc)
     let shortDesc = card.desc;
     if(shortDesc.length > 20) shortDesc = shortDesc.substring(0, 19) + "..";
 
-    // Unique ID for tooltip
-    const uid = Math.random().toString(36).substr(2, 9);
-
+    // Build HTML (Removed Tooltip HTML from here)
     div.innerHTML = `
         <div class="card-cost-badge">${cost}</div>
         <div class="card-count-badge">x${isDeckItem ? 1 : remainingCount}</div>
@@ -1116,60 +1117,62 @@ function createCardElement(card, isDeckItem, remainingCount = 1) {
         <div class="card-info">
             <div class="card-name">${card.name}</div>
             <div class="card-type">[${card.type}]</div>
-            
-            ${isOwned ? `<div class="card-info-direct" style="display:block;"><span class="cid-cost">MP${cost}</span> ${shortDesc}</div>` : ''}
-        </div>
-        
-        <div class="card-tooltip-box" id="tooltip-${uid}">
-            <div class="ct-name">${card.name} [Cost:${cost}]</div>
-            <div class="ct-desc">${card.desc}</div>
+            ${isOwned ? `<div class="card-info-direct" style="display:block;">${shortDesc}</div>` : ''}
         </div>
     `;
     
     div.onclick = function() {
-        if (!isOwned) return; // Ignore click if not owned
+        if (!isOwned) return; 
         if (isDeckItem) removeFromDeck(card.id); else addToDeck(card.id);
     };
     
-    // Smart Position Logic
-    div.onmouseenter = (e) => adjustTooltipPosition(e, `tooltip-${uid}`);
+    // ★ Global Tooltip Events
+    // Only show tooltip if NOT in deck (user requirement: deck cards are small/don't need it? or maybe keep it for clarity?)
+    // User said: "Deck cards are small so no need for DIRECT EFFECT". But maybe Tooltip is still nice?
+    // Let's enable tooltip for all cards for safety, but styling handles direct text visibility.
+    div.onmouseenter = (e) => showTooltip(card.name, card.desc, e);
+    div.onmouseleave = () => hideTooltip();
 
     return div;
 }
 
-// ★ v1.8 New Function: Smart Tooltip Positioning
-function adjustTooltipPosition(e, tooltipId) {
-    const tooltip = document.getElementById(tooltipId);
-    if(!tooltip) return;
+// --- ★ v1.9 Global Tooltip System ★ ---
+function showTooltip(name, desc, e) {
+    const tt = el("global-tooltip");
+    el("gt-name").innerText = name;
+    el("gt-desc").innerText = desc;
+    tt.style.visibility = "visible";
+    tt.style.opacity = "1";
     
-    const cardRect = e.currentTarget.getBoundingClientRect();
-    const winW = window.innerWidth;
-    const winH = window.innerHeight;
+    // Position Logic
+    moveTooltip(e);
     
-    // Default: Center bottom
-    let left = cardRect.left + (cardRect.width / 2) - 100; // 100 is half tooltip width
-    let top = cardRect.top - 10 - tooltip.offsetHeight; // Above card
+    // Attach move event to update position while hovering
+    e.currentTarget.onmousemove = moveTooltip;
+}
+
+function moveTooltip(e) {
+    const tt = el("global-tooltip");
+    const offset = 15;
+    let left = e.clientX + offset;
+    let top = e.clientY + offset;
     
-    // Check Top edge
-    if (top < 10) {
-        top = cardRect.bottom + 10; // Move to below
+    // Edge Detection
+    if (left + tt.offsetWidth > window.innerWidth) {
+        left = e.clientX - tt.offsetWidth - offset;
+    }
+    if (top + tt.offsetHeight > window.innerHeight) {
+        top = e.clientY - tt.offsetHeight - offset;
     }
     
-    // Check Left edge
-    if (left < 10) {
-        left = 10;
-    }
-    
-    // Check Right edge
-    if (left + 200 > winW - 10) {
-        left = winW - 210;
-    }
-    
-    tooltip.style.left = `${left}px`;
-    tooltip.style.top = `${top}px`;
-    tooltip.style.transform = "none"; // Reset CSS transform center
-    tooltip.style.opacity = "1";
-    tooltip.style.visibility = "visible";
+    tt.style.left = left + "px";
+    tt.style.top = top + "px";
+}
+
+function hideTooltip() {
+    const tt = el("global-tooltip");
+    tt.style.visibility = "hidden";
+    tt.style.opacity = "0";
 }
 
 function addToDeck(cardId) {
