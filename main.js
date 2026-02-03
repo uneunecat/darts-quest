@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v1.4.1 ID Fix)");
+console.log("★ main.js is loaded! (v1.4.2 Stability Fix)");
 
 // --- ★ GAME DATA CONFIG ★ ---
 const GAME_DATA = {
@@ -96,6 +96,7 @@ let cheatBuffer = "";
 let stageStartTurn = 0;
 let totalGameTurns = 0;
 let clearedStagesLog = [];
+let currentBgmId = ""; // ★ v1.4.2 Fix: Track BGM ID
 
 // --- Save System ---
 const SAVE_KEY = "darts_quest_save";
@@ -284,62 +285,74 @@ function setupStage(sel) {
 }
 
 function spawnEnemy() {
-    enemy.state={charge:false,guard:false,guardType:null,guardTurn:0,atkBuff:0,isStunned:false}; 
-    player.state.power=false; player.state.shield=false; player.state.weakLock=false; player.state.barrier=false;
-    
-    currentTurn=1; turnInputs=[]; currentInput=""; restrictInput=false; 
-    updateScoreDisplay(); isJustFinish = false; waitingForChest = false; dropGuaranteed = false; weakHitCount=0;
-    
-    // ★Fix: ID correction (container -> game-container)
-    el("game-container").className="container"; 
-    el("enemy-panel").className="left-panel"; 
-    el("boss-label").style.display="none"; 
-    el("enemy-img").style.display = "block"; 
-    el("chest-img").style.display = "none";
-
-    let bgKey = stage; 
-    if (stage === 4) bgKey = floor >= 5 ? "4_2" : "4_1";
-    if (GAME_DATA.bg[bgKey]) el("game-container").style.backgroundImage = `url('${GAME_DATA.bg[bgKey]}')`;
-
-    let isBoss = false;
-    if (stage === 5) {
-        enemy.data = GAME_DATA.enemies[5][0]; isBoss=true; 
-        playBGM("bgm-extra"); 
-        el("game-container").classList.add("extra-mode"); 
-        el("enemy-panel").classList.add("extra-border"); 
-        el("boss-label").innerText="☠️EXTRA BOSS"; el("boss-label").style.display="inline"; 
-        enemy.maxHp=1200; 
-    } else {
-        let list = GAME_DATA.enemies[stage];
-        enemy.data = list[(floor-1)%list.length]; 
+    try {
+        enemy.state={charge:false,guard:false,guardType:null,guardTurn:0,atkBuff:0,isStunned:false}; 
+        player.state.power=false; player.state.shield=false; player.state.weakLock=false; player.state.barrier=false;
         
-        if(stage===4 && floor===6) {
-             isBoss=true; playBGM("bgm-extra");
-             el("game-container").classList.add("extra-mode"); 
-             el("boss-label").innerText="☠️FINAL BOSS"; el("boss-label").style.display="inline";
-             enemy.maxHp = 800; 
-        } else if(floor===5 || (stage===4 && floor===5)) {
-             isBoss=true; playBGM("bgm-boss");
-             el("game-container").classList.add("boss-mode"); 
-             el("enemy-panel").classList.add("boss-border");
-             el("boss-label").innerText="⚠️BOSS"; el("boss-label").style.display="inline";
-             const base=100+((stage-1)*50); const bonus=(floor-1)*30; enemy.maxHp=base+bonus+50;
+        currentTurn=1; turnInputs=[]; currentInput=""; restrictInput=false; 
+        updateScoreDisplay(); isJustFinish = false; waitingForChest = false; dropGuaranteed = false; weakHitCount=0;
+        
+        // Reset Overlays
+        el("flash-overlay").className = ""; 
+        el("game-container").classList.remove("shake-heavy", "shake-medium", "shake-small");
+
+        el("game-container").className="container"; 
+        el("enemy-panel").className="left-panel"; 
+        el("boss-label").style.display="none"; 
+        el("enemy-img").style.display = "block"; 
+        el("chest-img").style.display = "none";
+
+        let bgKey = stage; 
+        if (stage === 4) bgKey = floor >= 5 ? "4_2" : "4_1";
+        if (GAME_DATA.bg[bgKey]) el("game-container").style.backgroundImage = `url('${GAME_DATA.bg[bgKey]}')`;
+
+        let isBoss = false;
+        if (stage === 5) {
+            enemy.data = GAME_DATA.enemies[5][0]; isBoss=true; 
+            playBGM("bgm-extra"); 
+            el("game-container").classList.add("extra-mode"); 
+            el("enemy-panel").classList.add("extra-border"); 
+            el("boss-label").innerText="☠️EXTRA BOSS"; el("boss-label").style.display="inline"; 
+            enemy.maxHp=1200; 
         } else {
-             playBGM("bgm-battle");
-             const base=100+((stage-1)*50); const bonus=(floor-1)*30; enemy.maxHp=base+bonus;
+            let list = GAME_DATA.enemies[stage];
+            enemy.data = list[(floor-1)%list.length]; 
+            
+            if(stage===4 && floor===6) {
+                isBoss=true; playBGM("bgm-extra");
+                el("game-container").classList.add("extra-mode"); 
+                el("boss-label").innerText="☠️FINAL BOSS"; el("boss-label").style.display="inline";
+                enemy.maxHp = 800; 
+            } else if(floor===5 || (stage===4 && floor===5)) {
+                isBoss=true; playBGM("bgm-boss");
+                el("game-container").classList.add("boss-mode"); 
+                el("enemy-panel").classList.add("boss-border");
+                el("boss-label").innerText="⚠️BOSS"; el("boss-label").style.display="inline";
+                const base=100+((stage-1)*50); const bonus=(floor-1)*30; enemy.maxHp=base+bonus+50;
+            } else {
+                playBGM("bgm-battle");
+                const base=100+((stage-1)*50); const bonus=(floor-1)*30; enemy.maxHp=base+bonus;
+            }
         }
+
+        if(enemy.data.hp) enemy.maxHp = enemy.data.hp;
+
+        enemy.name=enemy.data.name; 
+        el("enemy-img").src=enemy.data.img; 
+        enemy.hp=enemy.maxHp; 
+        displayEnemyHP=enemy.hp; 
+        updateInfo();
+        
+        if(stage===5) addLog(`>>> 伝説の黒竜、${enemy.name} が現れた！！！`, "log-skill"); 
+        else addLog(`=== STAGE ${stage} - ${floor}F ===`, "system");
+
+        // ★ v1.4.2 Safety Fix: Force unlock input
+        isProcessing = false;
+        
+    } catch(e) {
+        console.error("Spawn Error:", e);
+        isProcessing = false; // エラー時もロック解除
     }
-
-    if(enemy.data.hp) enemy.maxHp = enemy.data.hp;
-
-    enemy.name=enemy.data.name; 
-    el("enemy-img").src=enemy.data.img; 
-    enemy.hp=enemy.maxHp; 
-    displayEnemyHP=enemy.hp; 
-    updateInfo();
-    
-    if(stage===5) addLog(`>>> 伝説の黒竜、${enemy.name} が現れた！！！`, "log-skill"); 
-    else addLog(`=== STAGE ${stage} - ${floor}F ===`, "system");
 }
 
 function checkOpeningSkill() {
@@ -409,7 +422,6 @@ function executeAttack() {
 
     addLog(`攻撃！ ${dmg} ダメージ (${turnInputs.join('+')})`);
     triggerEffect(el("enemy-panel"), dmg, false);
-    // ★Fix: ID
     animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp; 
     
     updateInfo();
@@ -485,7 +497,6 @@ function applyCardEffect(card) {
     }
     
     addLog(msg, "log-skill");
-    // ★Fix: ID
     animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp;
     animateValue(el("player-hp"), displayPlayerHP, player.hp, 500); displayPlayerHP=player.hp;
 
@@ -572,7 +583,6 @@ function doEnemyAttack(mult, options = {}) {
         el("flash-overlay").className="flash-gold"; setTimeout(()=>el("flash-overlay").className="",300);
         enemy.hp = Math.max(0, enemy.hp - 50);
         triggerEffect(el("enemy-panel"), 50, false);
-        // ★Fix: ID
         animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp;
         updateInfo();
         if(enemy.hp <= 0) setTimeout(winBattle, 800);
@@ -614,7 +624,6 @@ function finishAttack(dmg, isDrain, callback) {
         if(heal > 0) { 
             enemy.hp = Math.min(enemy.hp + heal, enemy.maxHp); 
             addLog(`>> 敵が HP${heal} 吸収した！`, "log-enemy"); 
-            // ★Fix: ID
             animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp; 
         } 
     }
@@ -743,7 +752,6 @@ function loseBattle() {
 
 function returnToTitle() { 
     playBGM("bgm-title"); 
-    // ★Fix: ID
     el("game-container").classList.remove("boss-mode","extra-mode"); 
     el("game-screen").style.display="none"; 
     el("title-screen").style.display="flex"; 
@@ -772,7 +780,26 @@ function useItem(type) {
     }
 }
 
-// --- Visual & Audio ---
+// --- Visual & Audio (v1.4.2 Fix: BGM Control) ---
+function stopAllBGM() { 
+    const audio = ["bgm-title","bgm-battle","bgm-boss","bgm-extra","bgm-win","bgm-lose"]; 
+    audio.forEach(id => { const el = document.getElementById(id); if(el){ el.pause(); el.currentTime=0;} }); 
+    currentBgmId = "";
+}
+
+function playBGM(id) { 
+    if(currentBgmId === id) return; // ★重複再生防止
+    stopAllBGM(); 
+    const a=document.getElementById(id); 
+    if(a){ 
+        currentBgmId = id;
+        a.volume=0.3; 
+        a.play().catch(e=>{ console.log("BGM Play Error:", e); }); 
+    } 
+}
+
+function playSE(id) { const a=document.getElementById(id); if(a){ a.currentTime=0; a.volume=0.5; a.play().catch(e=>{}); } }
+
 function showSkillCutin(name, type) { 
     playSE("se-warning"); 
     el("cutin-text-val").innerText = name; 
@@ -784,7 +811,6 @@ function showSkillCutin(name, type) {
     if(type==="wind") cutin.classList.add("cutin-wind"); 
     if(type==="gold") cutin.classList.add("cutin-earth"); 
     cutin.style.display = "flex"; 
-    // ★Fix: ID
     el("game-container").classList.add("shake-heavy"); 
     setTimeout(()=>{ cutin.style.display="none"; el("game-container").classList.remove("shake-heavy"); }, 1500); 
 }
@@ -800,7 +826,6 @@ function updateInfo() {
     const elName = el("enemy-name"); elName.innerText = enemy.name;
     elName.style.fontSize = (enemy.name.length > 12) ? "12px" : ((enemy.name.length > 9) ? "15px" : "18px");
 
-    // ★Fix: ID
     const hpVal = el("enemy-hp-value"); hpVal.innerText = enemy.hp; 
     hpVal.className = "hp-big-text";
     if(enemy.hp <= 60) hpVal.classList.add("hp-danger"); else if(enemy.hp <= 180) hpVal.classList.add("hp-warning");
@@ -1128,12 +1153,8 @@ function triggerEffect(el, dmg, isP) {
     pop.style.left="50%"; pop.style.top="50%"; el.appendChild(pop); setTimeout(()=>pop.remove(),1500);
 }
 
-// ★Fix: ID
 function animateValue(obj, s, e, d) { if(obj) obj.innerHTML = e; }
 function addLog(t, type="") { const d=document.createElement("div"); d.innerHTML=t; if(type) d.className="log-"+type; el("battle-log").prepend(d); }
-function stopAllBGM() { const audio = ["bgm-title","bgm-battle","bgm-boss","bgm-extra","bgm-win","bgm-lose"]; audio.forEach(id => { const el = document.getElementById(id); if(el){ el.pause(); el.currentTime=0;} }); }
-function playBGM(id) { stopAllBGM(); const a=document.getElementById(id); if(a){ a.volume=0.3; a.play().catch(e=>{}); } }
-function playSE(id) { const a=document.getElementById(id); if(a){ a.currentTime=0; a.volume=0.5; a.play().catch(e=>{}); } }
 
 function showHistory() {
     const list = el("history-list"); list.innerHTML = "";
