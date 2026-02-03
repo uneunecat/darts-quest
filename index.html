@@ -101,21 +101,18 @@
                     </div>
 
                     <div class="modal-body-split">
-                        
                         <div class="deck-column">
                             <div class="column-header">
                                 ▼ YOUR DECK (<span id="deck-count" style="color:#ffd700;">0</span>/20)
                             </div>
                             <div class="deck-grid" id="deck-grid"></div>
                         </div>
-
                         <div class="list-column">
                             <div class="column-header">
                                 ▼ CARD LIST <span style="font-size:10px; color:#aaa;">(Click to Add)</span>
                             </div>
                             <div class="card-grid" id="card-grid"></div>
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -149,12 +146,16 @@
                 </div>
                 <p style="margin-bottom:20px; font-size:18px; color:#aaa; font-family: 'Cinzel Decorative';">SELECT STAGE</p>
                 <div class="stage-select">
-                    <button class="stage-btn btn-default" id="btn-st1" onclick="initGameSession(1)">STAGE 1</button>
-                    <button class="stage-btn btn-default" id="btn-st2" onclick="initGameSession(2)">STAGE 2</button>
-                    <button class="stage-btn btn-default" id="btn-st3" onclick="initGameSession(3)">STAGE 3</button>
-                    <button class="stage-btn stage4-btn" id="btn-st4" onclick="initGameSession(4)">STAGE 4</button>
-                    <button class="stage-btn stage5-btn" id="btn-st5" onclick="initGameSession(5)">STAGE 5</button>
-                    <button class="stage-btn extra-btn" id="btn-st6" onclick="initGameSession(6)">EXTRA</button>
+                    <div style="display:flex; gap:10px;">
+                        <button class="stage-btn btn-default" id="btn-st1" onclick="initGameSession(1)">STAGE 1</button>
+                        <button class="stage-btn btn-default" id="btn-st2" onclick="initGameSession(2)">STAGE 2</button>
+                        <button class="stage-btn btn-default" id="btn-st3" onclick="initGameSession(3)">STAGE 3</button>
+                    </div>
+                    <div style="display:flex; gap:10px; margin-top:10px;">
+                        <button class="stage-btn stage4-btn" id="btn-stage4" onclick="initGameSession(4)">STAGE 4</button>
+                        <button class="stage-btn stage5-btn" id="btn-stage5" style="display:none;" onclick="initGameSession(5)">STAGE 5</button>
+                    </div>
+                    <button class="stage-btn extra-btn" id="btn-extra" style="margin-top:10px;" onclick="initGameSession(6)">EXTRA</button>
                 </div>
             </div>
 
@@ -186,6 +187,8 @@
                         <div class="player-box" id="player-panel">
                             <div class="status-badge badge-buff" id="player-buff-badge" style="right: auto; left: 10px;">ATK x1.5</div>
                             <div class="status-badge badge-guard" id="player-guard-badge" style="right: auto; left: 10px;">SHIELD</div>
+                            <div class="status-badge badge-guard" id="player-lock-badge" style="right: auto; left: 80px; background-color:#555; color:#fff;">SEALED</div>
+                            
                             <div class="status-area">
                                 <div class="hp-bar-bg">
                                     <div class="hp-bar-fill player-fill" id="player-hp-bar" style="width:100%;"></div>
