@@ -94,7 +94,10 @@
                 <div class="modal-box shop-box" style="max-width:900px; height:90vh; display:flex; flex-direction:column;">
                     <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                         <div class="modal-title" style="color:#00d2fc; margin:0;">DECK EDIT</div>
-                        <div style="font-size:14px; color:#aaa;">所持率: <span id="collection-rate">0%</span></div>
+                        <div style="display:flex; align-items:center; gap:15px;">
+                            <div style="font-size:14px; color:#aaa;">所持率: <span id="collection-rate">0%</span></div>
+                            <button class="header-close-btn" onclick="closeCollection()">×</button>
+                        </div>
                     </div>
 
                     <div class="deck-area-container">
@@ -102,8 +105,7 @@
                             ▼ YOUR DECK (<span id="deck-count" style="color:#ffd700;">0</span>/12) 
                             <span style="font-size:10px; color:#aaa;">※クリックではずす</span>
                         </div>
-                        <div class="deck-grid" id="deck-grid">
-                            </div>
+                        <div class="deck-grid" id="deck-grid"></div>
                     </div>
 
                     <hr style="border:0; border-top:1px solid #444; width:100%; margin:15px 0;">
@@ -111,11 +113,8 @@
                     <div style="color:#fff; font-size:14px; margin-bottom:5px;">
                         ▼ CARD LIST <span style="font-size:10px; color:#aaa;">※クリックでデッキに入れる</span>
                     </div>
-                    <div class="card-grid" id="card-grid">
-                        </div>
-
-                    <button class="modal-btn" onclick="closeCollection()" style="margin-top:auto;">CLOSE</button>
-                </div>
+                    <div class="card-grid" id="card-grid"></div>
+                    </div>
             </div>
 
             <div class="title-screen" id="title-screen">

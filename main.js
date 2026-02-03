@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v1.7 UX Update)");
+console.log("★ main.js is loaded! (v1.7.1 UI Fix)");
 
 // --- ★ GAME DATA CONFIG ★ ---
 const GAME_DATA = {

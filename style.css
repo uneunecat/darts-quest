@@ -13,7 +13,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .fade-in { opacity: 1 !important; pointer-events: all !important; }
 
 /* Chapter Screen */
-#chapter-screen { position: absolute; top: 0; left: 100%; width: 100%; height: 100%; background-color: #000; z-index: 3500; display: none; justify-content: center; align-items: center; flex-direction: column; opacity: 0; transition: opacity 1s; left: 0; } /* fixed left */
+#chapter-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #000; z-index: 3500; display: none; justify-content: center; align-items: center; flex-direction: column; opacity: 0; transition: opacity 1s; }
 .chapter-title { font-size: 60px; font-weight: bold; color: #fff; margin-bottom: 20px; text-shadow: 0 0 20px #fff; font-family: 'Cinzel Decorative', serif; letter-spacing: 5px; animation: zoomIn 4s ease-out forwards; }
 .chapter-sub { font-size: 24px; color: #aaa; font-style: italic; letter-spacing: 2px; font-family: 'Playfair Display', serif; animation: zoomIn 4s ease-out forwards; }
 .chapter-extra .chapter-title { color: #ff0000; text-shadow: 0 0 30px #f00; animation: pulseRed 2s infinite alternate; }
@@ -215,7 +215,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     .key-enter { background: #004466; color: #ccffff; font-weight: bold; }
 }
 
-/* --- DECK & CARD DESIGN (v1.7 Updated) --- */
+/* --- DECK & CARD DESIGN (v1.7.1 Fix) --- */
 .modal-box.shop-box { width: 900px; max-width: 95%; height: 90vh; max-height: 800px; display: flex; flex-direction: column; padding: 0; overflow: hidden; background: #16213e; border: 2px solid #fff; border-radius: 8px; }
 .modal-header { padding: 15px; background: rgba(0,0,0,0.2); flex-shrink: 0; }
 .deck-area-container { margin: 10px 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid #333; flex-shrink: 0; }
@@ -227,14 +227,18 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .deck-grid .collection-card .card-count-badge { display: none; }
 .card-grid { flex: 1; overflow-y: auto; min-height: 0; padding: 15px; background: rgba(0,0,0,0.2); display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); grid-auto-rows: max-content; gap: 15px; align-content: start; }
 
-/* 共通カードデザイン (v1.7: overflow:visible to allow tooltips) */
+/* Close Button Style */
+.header-close-btn { background: transparent; border: 2px solid #555; color: #aaa; border-radius: 50%; width: 30px; height: 30px; font-size: 20px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.header-close-btn:hover { border-color: #ff5555; color: #ff5555; background: rgba(255,85,85,0.1); }
+
+/* 共通カードデザイン (v1.7 Fix: Tooltip Visible) */
 .collection-card {
     position: relative; width: 100%; aspect-ratio: 2 / 3; border-radius: 6px; cursor: pointer; transition: transform 0.1s; background: #1a1a1a; border: 2px solid #555;
-    /* overflow: hidden; Removed for v1.7 to show tooltips */
-    display: flex; flex-direction: column;
+    overflow: visible !important; /* ★Fix: ツールチップがはみ出せるようにする */
+    display: flex; flex-direction: column; z-index: 10;
 }
-.collection-card:hover { transform: scale(1.05); z-index: 50; border-color: #fff; }
-/* Clip inner content instead */
+.collection-card:hover { transform: scale(1.05); z-index: 1000; border-color: #fff; }
+
 .card-art { width: 100%; height: 60%; background: #000; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid #333; border-top-left-radius: 4px; border-top-right-radius: 4px; }
 .card-art img { width: 100%; height: 100%; object-fit: cover; }
 .card-placeholder { font-size: 30px; }
@@ -255,7 +259,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     box-shadow: 1px 1px 3px rgba(0,0,0,0.5);
 }
 
-/* Tooltips (v1.7 New) */
+/* Tooltips (v1.7 Fix: High Z-Index) */
 .card-tooltip-box {
     visibility: hidden; opacity: 0;
     position: absolute;
@@ -265,7 +269,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     border: 1px solid #fff;
     border-radius: 5px;
     padding: 8px;
-    z-index: 1000;
+    z-index: 10000 !important; /* ★Fix: 最前面へ */
     pointer-events: none;
     transition: opacity 0.2s;
     text-align: left;
@@ -278,12 +282,13 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .ct-name { color: #ffd700; font-size: 12px; font-weight: bold; margin-bottom: 4px; border-bottom: 1px solid #555; padding-bottom: 2px; }
 .ct-desc { color: #ddd; font-size: 10px; line-height: 1.4; }
 
-/* Battle Hand Card (v1.7 Updated) */
+/* Battle Hand Card (v1.7 Fix) */
 .hand-card {
     width: 60px; height: 90px; background: #1a1a1a; border: 1px solid #555; border-radius: 4px; position: relative; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; flex-shrink: 0; display: flex; flex-direction: column;
-    /* overflow: hidden; Removed for v1.7 */
+    overflow: visible !important; /* ★Fix: ツールチップ用 */
+    z-index: 10;
 }
-.hand-card:hover { transform: translateY(-10px) scale(1.1); box-shadow: 0 0 10px #fff; z-index: 100; }
+.hand-card:hover { transform: translateY(-10px) scale(1.1); box-shadow: 0 0 10px #fff; z-index: 1000; }
 .hand-cost { position: absolute; top: 0; left: 0; background: #00d2fc; color: #000; font-weight: bold; font-size: 10px; padding: 2px 5px; border-bottom-right-radius: 4px; z-index: 5; }
 .hand-card.disabled { filter: grayscale(100%) brightness(0.5); cursor: not-allowed; transform: none; box-shadow: none; }
 .hand-card-empty { color: #555; font-size: 10px; }
