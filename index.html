@@ -74,11 +74,14 @@
             </div>
 
             <div class="modal-overlay" id="card-shop-modal" style="display:none;">
-                <div class="modal-box shop-box">
-                    <div class="modal-title" style="color:#e94560;">CARD SHOP</div>
-                    <div style="color:#aaa; margin-bottom:10px;">所持DP: <span id="shop-dp-display" style="color:#ffd700; font-weight:bold;">0</span></div>
+               <div class="modal-box shop-box">
+                    <div style="display:flex; justify-content:space-between; align-items:center; width:100%; padding: 0 20px; box-sizing: border-box; flex-shrink: 0;">
+                        <div class="modal-title" style="color:#e94560; margin:0; padding:0;">CARD SHOP</div>
+                        <button class="header-close-btn" onclick="closeCardShop()">×</button>
+                    </div>
+                    <div style="color:#aaa; margin:5px 0 10px 0; padding: 0 20px; text-align: left; width: 100%; box-sizing: border-box;">所持DP: <span id="shop-dp-display" style="color:#ffd700; font-weight:bold;">0</span></div>
                     <div class="pack-list" id="pack-list"></div>
-                    <button class="modal-btn" onclick="closeCardShop()">CLOSE</button>
+                    </div>
                 </div>
             </div>
 
