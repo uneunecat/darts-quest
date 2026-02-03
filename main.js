@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v1.6 Progression Update)");
+console.log("★ main.js is loaded! (v1.7 UX Update)");
 
 // --- ★ GAME DATA CONFIG ★ ---
 const GAME_DATA = {
@@ -213,14 +213,12 @@ function updateStageButton(stgNum, btnId) {
 
 // --- Game Logic: Start & Setup ---
 function initGameSession(startStage, continueMode=false) {
-    // ★ v1.6: Continue Handling
     if (!continueMode) {
         player.hp = 100; player.maxHp = 100; player.mp = 3; 
         player.items = { potion: 0, ether: 0, seed: 0 };
         totalGameTurns = 0; totalScore = 0; totalDarts = 0;
         clearedStagesLog = [];
     }
-    // Pass continue flag to transition
     startTransition(startStage, continueMode);
 }
 
@@ -267,10 +265,8 @@ function setupStage(sel, continueMode) {
     el("battle-log").innerHTML=""; 
     el("game-screen").style.display="block";
     
-    // Reset Battle States
     player.state={power:false,shield:false,weakLock:false,barrier:false,guardTurn:0}; 
     
-    // ★ v1.6: Deck & MP Persistence
     if (!continueMode) {
         player.mp = 3; 
         player.deckLocked = false; 
@@ -713,17 +709,12 @@ function nextStep() {
         const stageTurns = totalGameTurns - stageStartTurn;
         const [rank, dpBonus] = calculateStageRank(stage, stageTurns);
         
-        // ★ v1.6 DP Multiplier
         const multipliers = { 1: 1.0, 2: 1.2, 3: 1.5, 4: 2.0, 5: 3.0 };
         const mult = multipliers[stage] || 1.0;
         
-        // スコアDPとランクDP両方に倍率を適用
         const scoreDP = Math.floor(totalScore * 0.2 * mult); 
         let pendingBonusDP = Math.floor(dpBonus * mult);
-        
-        // 過去のDPログも倍率適用 (既にlogに入っているものは固定だが、今回のボーナスはmult適用)
-        clearedStagesLog.forEach(log => { pendingBonusDP += log.dp; }); // ※既存ログはそのまま加算
-        
+        clearedStagesLog.forEach(log => { pendingBonusDP += log.dp; });
         let potentialTotalDP = scoreDP + pendingBonusDP;
 
         clearedStagesLog.push({ stage: stage, rank: rank, dp: Math.floor(dpBonus * mult) });
@@ -753,7 +744,7 @@ function nextStep() {
 
         const btnNext = { text: "⛺ 次へ進む (繰越)", action: () => {
             player.hp = Math.min(player.hp + 30, player.maxHp);
-            initGameSession(stage + 1, true); // ★ Continue Flag ON
+            initGameSession(stage + 1, true); 
         } };
         const btnReturn = { text: "🏠 帰還する (確定)", action: () => {
             const res = finishSession("RETURN", parseFloat(ppr));
@@ -963,6 +954,10 @@ function renderHand() {
                         <img src="${imgPath}" onerror="this.style.display='none'">
                     </div>
                     <div style="position:absolute; bottom:0; width:100%; font-size:8px; text-align:center; background:rgba(0,0,0,0.7); color:#fff;">${card.name}</div>
+                    <div class="card-tooltip-box battle-tooltip">
+                        <div class="ct-name">${card.name} [Cost:${cost}]</div>
+                        <div class="ct-desc">${card.desc}</div>
+                    </div>
                 `;
                 div.onclick = () => playHandCard(index);
                 handArea.appendChild(div);
@@ -1049,6 +1044,9 @@ function closeCollection() { playSE("se-tap"); el("collection-modal").style.disp
 
 function renderDeckEditor() {
     if (!savedData.deck) savedData.deck = [];
+    // ★ v1.7: Sort deck by ID
+    savedData.deck.sort((a,b) => a - b);
+
     const deckGrid = el("deck-grid"); deckGrid.innerHTML = "";
     const DECK_MAX = 12;
 
@@ -1090,8 +1088,11 @@ function createCardElement(card, isDeckItem, remainingCount = 1) {
     div.className = `collection-card rarity-${card.rarity} ${notOwnedClass}`;
     const imgPath = `assets/cards/${card.id}.png`;
     const fallbackIcon = card.type === "MAGIC" ? "🪄" : "⛓️";
+    // ★ v1.7: Cost & Tooltip
+    const cost = (card.cost !== undefined) ? card.cost : "?";
 
     div.innerHTML = `
+        <div class="card-cost-badge">${cost}</div>
         <div class="card-count-badge">x${isDeckItem ? 1 : remainingCount}</div>
         <div class="card-art">
             <img src="${imgPath}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
@@ -1100,6 +1101,10 @@ function createCardElement(card, isDeckItem, remainingCount = 1) {
         <div class="card-info">
             <div class="card-name">${card.name}</div>
             <div class="card-type">[${card.type}]</div>
+        </div>
+        <div class="card-tooltip-box">
+            <div class="ct-name">${card.name} [Cost:${cost}]</div>
+            <div class="ct-desc">${card.desc}</div>
         </div>
     `;
     div.onclick = function() {
@@ -1161,20 +1166,11 @@ function calculateStageRank(stg, turns) {
 }
 
 function finishSession(resultType, ppr) {
-    // DP Calculation is moved to nextStep for display accuracy, this just saves it.
-    // However, for consistency, we calculate basic reward here too if needed, but nextStep handles the logic.
-    // This function focuses on saving History.
     let totalDP = 0;
-    // Recalculate full DP to be sure
     let earnedDP = 0;
-    // Note: This logic assumes 'clearedStagesLog' is fully populated in nextStep
     clearedStagesLog.forEach(log => { earnedDP += log.dp; });
     
-    // Add Score DP (approx) - In v1.6 we did this in nextStep, so here we trust the value passed or re-calc?
-    // Let's rely on savedData.dp update in nextStep before calling this, or just log it here.
-    // For Safety: We just log the result. The DP addition happens in nextStep before this call.
-    
-    savedData.dp = (savedData.dp || 0); // Already added in nextStep
+    savedData.dp = (savedData.dp || 0);
 
     const curVal = stage * 100 + floor; const bestVal = savedData.highScore.stage * 100 + savedData.highScore.floor;
     let isNewRecord = false; if (curVal > bestVal) { savedData.highScore.stage = stage; savedData.highScore.floor = floor; isNewRecord = true; }
@@ -1186,13 +1182,8 @@ function finishSession(resultType, ppr) {
     let stgName = (stage === 5) ? "EXTRA" : "S" + stage + "-" + floor + "F";
     let resultText = resultType;
     
-    // Total gained in this session
     let gainedDP = 0;
-    // Note: We need to pass gainedDP from nextStep to display it correctly
-    // To simplify: We calculate "Session Total" by summing up log + current score
-    // But since we already added to savedData.dp in nextStep loop, we can just return a value.
     
-    // Recalculate for display
     const multipliers = { 1: 1.0, 2: 1.2, 3: 1.5, 4: 2.0, 5: 3.0 };
     const mult = multipliers[stage] || 1.0;
     const scoreDP = Math.floor(totalScore * 0.2 * mult);
@@ -1200,12 +1191,6 @@ function finishSession(resultType, ppr) {
     clearedStagesLog.forEach(log => rankDP += log.dp);
     gainedDP = scoreDP + rankDP;
     
-    // Add to save data (Critical: Ensure not double added if nextStep did it? 
-    // In v1.5 we added in finishSession. In v1.6 we moved calc to nextStep but ADDITION should be here to be safe)
-    // Let's do the addition HERE to be safe and atomic.
-    // Remove addition from nextStep? -> No, nextStep needs to show it.
-    // Correct approach: nextStep shows "Predicted", finishSession "Commits" it.
-    // So:
     savedData.dp += gainedDP;
 
     if (clearedStagesLog.length > 0 && resultType === "RETURN") {
