@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v2.0.1 Polish Update)");
+console.log("★ main.js is loaded! (v2.1 UI Layout)");
 
 // --- ★ GAME DATA CONFIG ★ ---
 const GAME_DATA = {
@@ -120,8 +120,8 @@ let totalGameTurns = 0;
 let clearedStagesLog = [];
 let currentBgmId = "";
 
-// v2.0.1 Constants
-const DECK_SIZE = 24; // ★ Modified from 20
+// Constants
+const DECK_SIZE = 24; 
 const HAND_SIZE = 5;
 const INITIAL_HAND = 3;
 
@@ -297,7 +297,6 @@ function setupStage(sel, continueMode) {
     if (!continueMode) {
         player.mp = 3; 
         player.deckLocked = false; 
-        // ★ v2.0.1: Deck Size Check (24)
         if (!savedData.deck || savedData.deck.length < DECK_SIZE) {
             player.deckLocked = true;
             player.deck = []; player.hand = []; player.discard = [];
@@ -496,7 +495,7 @@ function drawCard() {
     player.hand.push(cardId);
     
     // ★ v2.0.1: Visual Feedback
-    triggerFloatText("DRAW!", el("hand-area"));
+    triggerFloatText("DRAW!", el("hand-area")); // Target hand area
     
     updateInfo();
 }
@@ -813,7 +812,7 @@ function endEnemyTurn() {
     player.mp = Math.min(player.mp + 3, player.maxMp); 
     
     // ★ v2.0.1: Visual Feedback
-    triggerFloatText("MP+3", el("player-mp-bar"));
+    triggerFloatText("MP+3", el("player-mp-bar")); // Target MP bar
 
     if(player.state.guardTurn > 0) {
         player.state.guardTurn--;
@@ -837,7 +836,7 @@ function winBattle() {
     // ★ v2.0.1 Fix: Reward Draw & MP (Simulate End Turn)
     player.mp = Math.min(player.mp + 3, player.maxMp);
     triggerFloatText("MP+3", el("player-mp-bar"));
-    drawCard();
+    drawCard(); // This will trigger DRAW float text too
     
     if (isJustFinish) { 
         player.maxHp += 10; const oldHP = player.hp; player.hp = Math.min(player.hp + 10, player.maxHp); 
@@ -1004,6 +1003,7 @@ function playSE(id) { const a=document.getElementById(id); if(a){ a.currentTime=
 
 // ★ v2.0.1 New: Floating Text Effect
 function triggerFloatText(text, targetEl) {
+    if(!targetEl) return;
     const float = document.createElement("div");
     float.className = "float-text-box";
     float.innerText = text;
@@ -1013,7 +1013,7 @@ function triggerFloatText(text, targetEl) {
     const containerRect = el("game-container").getBoundingClientRect();
     
     // Calculate center of target relative to container
-    const left = rect.left - containerRect.left + (rect.width / 2) - 20; // 20 is approx half text width
+    const left = rect.left - containerRect.left + (rect.width / 2) - 30; // Center approx
     const top = rect.top - containerRect.top;
     
     float.style.left = `${left}px`;
