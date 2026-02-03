@@ -1,4 +1,4 @@
-/* Global Reset & Base */
+/* --- Global & Base --- */
 body { background-color: #000; color: white; font-family: 'Courier New', sans-serif; margin: 0; width: 100vw; height: 100vh; overflow: hidden; display: flex; justify-content: center; align-items: center; user-select: none; }
 #game-scaler { width: 900px; height: 620px; flex-shrink: 0; transform-origin: center center; }
 
@@ -225,7 +225,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .deck-grid .collection-card .card-name { font-size: 8px; }
 .deck-grid .collection-card .card-type { display: none; }
 .deck-grid .collection-card .card-count-badge { display: none; }
-.deck-grid .collection-card .card-info-direct { display: none; } /* デッキ内では詳細隠す */
+.deck-grid .collection-card .card-info-direct { display: none; } 
 
 .card-grid { flex: 1; overflow-y: auto; min-height: 0; padding: 15px; background: rgba(0,0,0,0.2); display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); grid-auto-rows: max-content; gap: 15px; align-content: start; }
 

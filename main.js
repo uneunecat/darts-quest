@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v1.9 Stable UI Update)");
+console.log("★ main.js is loaded! (v1.9.1 Fine Tuning)");
 
 // --- ★ GAME DATA CONFIG ★ ---
 const GAME_DATA = {
@@ -58,7 +58,7 @@ const CARD_DB = [
     { id: 402, name: "治療の神", rarity: "N", type: "MAGIC", cost: 4, desc: "HPを50回復" },
     { id: 403, name: "はさみ撃ち", rarity: "N", type: "TRAP", cost: 2, desc: "自分も20ダメージ受け、敵に80ダメージ" },
     { id: 404, name: "昼夜の大火事", rarity: "N", type: "MAGIC", cost: 3, desc: "敵に80ダメージ" },
-    { id: 405, name: "突進", rarity: "N", type: "MAGIC", cost: 2, desc: "このターンの攻撃ダメージ2倍" }
+    { id: 405, name: "突進", rarity: "N", type: "MAGIC", cost: 2, desc: "攻撃力2倍(次の1投のみ)" }
 ];
 
 const PACK_DATA = [
@@ -390,27 +390,75 @@ function calculatePlayerDamage(score, p, e) {
     if (stage === 4 && floor === 4 && currentTurn % 3 === 0) { dmg = Math.max(0, dmg - 50); }
     if (e.state.guardType === 'cut') { dmg = Math.floor(dmg * 0.8); addLog("護封剣で軽減(20%)！", "system"); }
     if (e.state.guardType === 'half') { dmg = Math.floor(dmg * 0.5); addLog("護封剣で半減(50%)！", "system"); }
-    if (p.state.power) { dmg = Math.floor(dmg * 2.0); p.state.power = false; }
+    
+    // ★ v1.9.1 Fix: Power Buff (Charge) Logic
+    if (p.state.power) { 
+        dmg = Math.floor(dmg * 2.0); 
+        p.state.power = false; // 消費
+        addLog("突進の効果で2倍ダメージ！", "log-skill");
+    }
+    
     if (e.state.guard) { dmg = Math.floor(dmg / 2); e.state.guard = false; addLog("敵の防御で半減！", "system"); }
     return dmg;
 }
 
 function executeAttack() {
     isProcessing = true; let totalScoreInTurn = 0; let weakHitInThisTurn = 0;
-    turnInputs.forEach(s => { 
-        totalScoreInTurn += s; 
-        if (player.state.weakLock || (s >= 51 && enemy.data.weak && (s % enemy.data.weak === 0))) weakHitInThisTurn++; 
+    
+    // ★ v1.9.1: Attack loop modified for single-throw buff consumption
+    // Since buffs apply per HIT in code structure, but `executeAttack` aggregates damage.
+    // However, `calculatePlayerDamage` is called ONCE for the total sum.
+    // This means "Next 1 Throw" logic needs to be handled carefully if user inputs 3 darts.
+    // If "Rush" is active, it should only double the FIRST dart of the 3? 
+    // OR does "Next 1 Throw" mean "Next Attack Action"?
+    // Card description says "Next 1 Throw".
+    // If the user inputs [20, 20, 20], total is 60. 
+    // If logic applies to sum, it doubles 60 to 120. This is "Next Turn".
+    // If logic applies to 1 throw, it should be (20*2 + 20 + 20) = 80.
+    
+    // Let's implement rigorous calculation loop:
+    let calculatedTotalDmg = 0;
+    
+    turnInputs.forEach((s, index) => {
+        let singleDmg = s;
+        
+        // Apply Power Buff (Single Throw)
+        if (player.state.power) {
+            singleDmg = Math.floor(singleDmg * 2.0);
+            player.state.power = false; // Consume immediately
+            // Note: This logic assumes player.state.power is boolean.
+        }
+        
+        calculatedTotalDmg += singleDmg;
+        
+        // Weak Check
+        if (player.state.weakLock || (s >= 51 && enemy.data.weak && (s % enemy.data.weak === 0))) weakHitInThisTurn++;
     });
+    
+    // Re-assign total for further processing (Guard etc applies to total)
+    // Note: Enemy Guard is usually for the whole turn in this game style?
+    // Let's keep `calculatePlayerDamage` for Enemy Guard / Stage Gimmicks, but pass the pre-calculated buffed score.
+    // However, `calculatePlayerDamage` currently handles `p.state.power`. We should remove it from there or update it.
+    // Since we consumed it above, `calculatePlayerDamage` won't double it again.
+    
+    let totalScoreInTurnRaw = 0;
+    turnInputs.forEach(s => totalScoreInTurnRaw += s);
 
-    if (stage === 4 && floor === 6 && currentTurn % 2 === 0 && totalScoreInTurn < 80) {
-        playSE("se-warning"); addLog(">> 結界に阻まれた！(80点未満無効)", "log-enemy"); totalScoreInTurn = 0;
+    if (stage === 4 && floor === 6 && currentTurn % 2 === 0 && totalScoreInTurnRaw < 80) {
+        playSE("se-warning"); addLog(">> 結界に阻まれた！(80点未満無効)", "log-enemy"); calculatedTotalDmg = 0;
     }
 
     playSE("se-attack"); totalGameTurns++;
-    totalScore += totalScoreInTurn; totalDarts += turnInputs.length; 
+    totalScore += totalScoreInTurnRaw; totalDarts += turnInputs.length; 
 
-    let dmg = calculatePlayerDamage(totalScoreInTurn, player, enemy);
-    let remaining = enemy.hp - dmg; if (remaining === 0) isJustFinish = true; enemy.hp = Math.max(0, remaining);
+    // Enemy Guard / Stage Gimmicks apply to the total
+    let finalDmg = calculatedTotalDmg;
+    if (stage === 4 && floor === 4 && currentTurn % 3 === 0) { finalDmg = Math.max(0, finalDmg - 50); }
+    if (enemy.state.guardType === 'cut') { finalDmg = Math.floor(finalDmg * 0.8); addLog("護封剣で軽減(20%)！", "system"); }
+    if (enemy.state.guardType === 'half') { finalDmg = Math.floor(finalDmg * 0.5); addLog("護封剣で半減(50%)！", "system"); }
+    if (enemy.state.guard) { finalDmg = Math.floor(finalDmg / 2); enemy.state.guard = false; addLog("敵の防御で半減！", "system"); }
+
+    let remaining = enemy.hp - finalDmg; if (remaining === 0) isJustFinish = true; enemy.hp = Math.max(0, remaining);
 
     if (weakHitInThisTurn > 0) {
         dropGuaranteed = true; weakHitCount += weakHitInThisTurn; 
@@ -423,8 +471,8 @@ function executeAttack() {
     }
     if(player.state.weakLock) { player.state.weakLock = false; addLog("Weak Lock 効果終了", "log-system"); }
 
-    addLog(`攻撃！ ${dmg} ダメージ (${turnInputs.join('+')})`);
-    triggerEffect(el("enemy-panel"), dmg, false);
+    addLog(`攻撃！ ${finalDmg} ダメージ (${turnInputs.join('+')})`);
+    triggerEffect(el("enemy-panel"), finalDmg, false);
     animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp; 
     
     updateInfo();
@@ -949,18 +997,17 @@ function renderHand() {
 
                 const imgPath = `assets/cards/${card.id}.png`;
                 
-                // ★ v1.9 UX: Global Tooltip Logic
+                // ★ v1.9.1: Remove text from Hand, Tooltip stays
                 div.innerHTML = `
                     <div class="hand-cost">${cost}</div>
                     <div class="card-art" style="height:100%; border:none;">
                         <img src="${imgPath}" onerror="this.style.display='none'">
                     </div>
-                    <div style="position:absolute; bottom:0; width:100%; font-size:8px; text-align:center; background:rgba(0,0,0,0.7); color:#fff;">${card.name}</div>
                 `;
                 
                 div.onclick = () => playHandCard(index);
                 
-                // ★ v1.9: Use Global Tooltip
+                // Show tooltip
                 div.onmouseenter = (e) => showTooltip(card.name, card.desc, e);
                 div.onmouseleave = () => hideTooltip();
                 
@@ -1025,7 +1072,6 @@ function showPackResult(results) {
     const container = el("pack-results"); container.innerHTML = "";
     results.forEach((res, index) => {
         const c = res.card;
-        // In pack opening, we always own it now (count=1 for visual)
         const cardEl = createCardElement(c, false, 1, 1);
         cardEl.classList.add("result-card-anim");
         cardEl.style.animationDelay = `${index * 0.3}s`;
@@ -1058,9 +1104,8 @@ function renderDeckEditor() {
         const cardId = savedData.deck[i]; 
         if (cardId) {
             const card = CARD_DB.find(c => c.id === cardId);
-            // Deck item: remainingCount doesn't matter for owned check, passing dummy 1
-            // But we can pass actual totalOwned for correctness
             const totalOwned = savedData.cards[card.id] || 0;
+            // ★ v1.9.1: Deck cards -> show tooltip, hide direct info
             const el = createCardElement(card, true, 0, totalOwned);
             deckGrid.appendChild(el);
         } else {
@@ -1083,18 +1128,16 @@ function renderDeckEditor() {
         if (count > 0) ownedCount++;
         const inDeckCount = savedData.deck.filter(id => id === card.id).length;
         const remaining = count - inDeckCount; 
-        // ★ Fix: Pass 'count' (total owned) to createCardElement
+        // ★ v1.9.1: List cards -> hide tooltip (direct info shown)
         const el = createCardElement(card, false, remaining, count);
         listGrid.appendChild(el);
     });
     el("collection-rate").innerText = `${Math.floor((ownedCount / CARD_DB.length) * 100)}%`;
 }
 
-// ★ v1.9 Updated: createCardElement with totalCount support & Global Tooltip
 function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0) {
     const div = document.createElement("div");
     
-    // ★ Logic Fix: Owned if totalCount > 0 OR it's already in deck (safe fallback)
     const isOwned = (totalCount > 0 || isDeckItem);
     const notOwnedClass = (!isOwned) ? "card-not-owned" : "";
     
@@ -1106,7 +1149,10 @@ function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0)
     let shortDesc = card.desc;
     if(shortDesc.length > 20) shortDesc = shortDesc.substring(0, 19) + "..";
 
-    // Build HTML (Removed Tooltip HTML from here)
+    // ★ v1.9.1: Logic separation
+    // 1. Deck Items (Small): No Direct Info, Show Tooltip
+    // 2. List Items (Big): Show Direct Info, No Tooltip
+    
     div.innerHTML = `
         <div class="card-cost-badge">${cost}</div>
         <div class="card-count-badge">x${isDeckItem ? 1 : remainingCount}</div>
@@ -1117,7 +1163,7 @@ function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0)
         <div class="card-info">
             <div class="card-name">${card.name}</div>
             <div class="card-type">[${card.type}]</div>
-            ${isOwned ? `<div class="card-info-direct" style="display:block;">${shortDesc}</div>` : ''}
+            ${(!isDeckItem && isOwned) ? `<div class="card-info-direct" style="display:block;">${shortDesc}</div>` : ''}
         </div>
     `;
     
@@ -1126,28 +1172,24 @@ function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0)
         if (isDeckItem) removeFromDeck(card.id); else addToDeck(card.id);
     };
     
-    // ★ Global Tooltip Events
-    // Only show tooltip if NOT in deck (user requirement: deck cards are small/don't need it? or maybe keep it for clarity?)
-    // User said: "Deck cards are small so no need for DIRECT EFFECT". But maybe Tooltip is still nice?
-    // Let's enable tooltip for all cards for safety, but styling handles direct text visibility.
-    div.onmouseenter = (e) => showTooltip(card.name, card.desc, e);
-    div.onmouseleave = () => hideTooltip();
+    // ★ v1.9.1: Tooltip only for Deck items (or if not owned in list?)
+    // Actually, "List items don't need tooltip" requested.
+    if (isDeckItem) {
+        div.onmouseenter = (e) => showTooltip(card.name, card.desc, e);
+        div.onmouseleave = () => hideTooltip();
+    }
 
     return div;
 }
 
-// --- ★ v1.9 Global Tooltip System ★ ---
+// --- Global Tooltip System ---
 function showTooltip(name, desc, e) {
     const tt = el("global-tooltip");
     el("gt-name").innerText = name;
     el("gt-desc").innerText = desc;
     tt.style.visibility = "visible";
     tt.style.opacity = "1";
-    
-    // Position Logic
     moveTooltip(e);
-    
-    // Attach move event to update position while hovering
     e.currentTarget.onmousemove = moveTooltip;
 }
 
@@ -1157,7 +1199,6 @@ function moveTooltip(e) {
     let left = e.clientX + offset;
     let top = e.clientY + offset;
     
-    // Edge Detection
     if (left + tt.offsetWidth > window.innerWidth) {
         left = e.clientX - tt.offsetWidth - offset;
     }
