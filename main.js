@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v2.0 System Overhaul)");
+console.log("★ main.js is loaded! (v2.0.1 Polish Update)");
 
 // --- ★ GAME DATA CONFIG ★ ---
 const GAME_DATA = {
@@ -61,7 +61,7 @@ const CARD_DB = [
     { id: 404, name: "昼夜の大火事", rarity: "N", type: "MAGIC", cost: 3, desc: "敵に80ダメージ" },
     { id: 405, name: "突進", rarity: "N", type: "MAGIC", cost: 2, desc: "攻撃力2倍(次の1投のみ)" },
 
-    // Vol.2 (New in v2.0)
+    // Vol.2
     { id: 501, name: "天使の施し", rarity: "UR", type: "MAGIC", cost: 4, desc: "手札を1枚選んで捨て、カードを2枚引く。" },
     { id: 601, name: "ブラック・ホール", rarity: "SR", type: "MAGIC", cost: 7, desc: "敵に150ダメージ。ただし自分の手札を全て捨てる。" },
     { id: 602, name: "魔法の筒", rarity: "SR", type: "TRAP", cost: 4, desc: "敵の攻撃を無効化し、そのダメージをそのまま敵に与える。" },
@@ -90,11 +90,11 @@ const PACK_DATA = [
         price: 1500, 
         desc: "テクニカルな戦略カードが登場。", 
         unlockStage: 2,
-        img: "assets/packs/vol1.png" // Placeholder
+        img: "assets/packs/vol1.png"
     }
 ];
 
-// --- Player State (v2.0) ---
+// --- Player State ---
 let player = { 
     hp: 100, maxHp: 100, mp: 3, maxMp: 10,
     items: { potion: 0, ether: 0, seed: 0 }, 
@@ -120,8 +120,8 @@ let totalGameTurns = 0;
 let clearedStagesLog = [];
 let currentBgmId = "";
 
-// v2.0 Constants
-const DECK_SIZE = 20;
+// v2.0.1 Constants
+const DECK_SIZE = 24; // ★ Modified from 20
 const HAND_SIZE = 5;
 const INITIAL_HAND = 3;
 
@@ -297,7 +297,7 @@ function setupStage(sel, continueMode) {
     if (!continueMode) {
         player.mp = 3; 
         player.deckLocked = false; 
-        // ★ v2.0: Deck Size Check (20)
+        // ★ v2.0.1: Deck Size Check (24)
         if (!savedData.deck || savedData.deck.length < DECK_SIZE) {
             player.deckLocked = true;
             player.deck = []; player.hand = []; player.discard = [];
@@ -421,22 +421,20 @@ function executeAttack() {
     turnInputs.forEach((s, index) => {
         let singleDmg = s;
         
-        // ★ v2.0 Buffs Logic
         if (player.state.atkBonus > 0) {
             singleDmg += player.state.atkBonus;
-            player.state.atkBonus = 0; // Consume
+            player.state.atkBonus = 0;
         }
 
         if (player.state.power) {
             singleDmg = Math.floor(singleDmg * 2.0);
-            player.state.power = false; // Consume
+            player.state.power = false;
         }
         
-        // Huge (Megamorph)
         if (player.state.huge !== 0) {
             if (player.state.huge === 1) singleDmg = Math.floor(singleDmg * 3.0);
             else singleDmg = Math.floor(singleDmg * 0.5);
-            player.state.huge = 0; // Consume
+            player.state.huge = 0;
         }
         
         calculatedTotalDmg += singleDmg;
@@ -491,20 +489,15 @@ function executeAttack() {
 
 // --- ★ CARD LOGIC (v2.0 Overhaul) ★ ---
 function drawCard() {
-    if (player.deck.length === 0) {
-        // No log to avoid spam, or "Deck Empty"
-        return; 
-    }
-    // ★ v2.0: Hand Limit Check
-    if (player.hand.length >= HAND_SIZE) {
-        // Hand Full - Burn card? Or just don't draw? Usually "Cannot Draw".
-        // Let's just burn top deck or do nothing. Standard TCG = Draw and discard if over?
-        // Simple RPG logic: "Hand Full, cannot draw"
-        // addLog("手札がいっぱいで引けません", "log-system"); // Spammy?
-        return;
-    }
+    if (player.deck.length === 0) return;
+    if (player.hand.length >= HAND_SIZE) return;
+    
     const cardId = player.deck.pop();
     player.hand.push(cardId);
+    
+    // ★ v2.0.1: Visual Feedback
+    triggerFloatText("DRAW!", el("hand-area"));
+    
     updateInfo();
 }
 
@@ -520,11 +513,8 @@ function playHandCard(index) {
         return;
     }
 
-    // ★ v2.0 Special Handling for "Graceful Charity" (ID 501)
     if (card.id === 501) {
-        // Need to discard 1 card. Open Selector.
-        // Can't pay cost yet if cancelled.
-        if (player.hand.length <= 1) { // Only Charity itself
+        if (player.hand.length <= 1) { 
              addLog("捨てる手札がありません！", "log-system");
              return;
         }
@@ -539,8 +529,6 @@ function playHandCard(index) {
     player.hand.splice(index, 1);
     player.discard.push(cardId);
     
-    // ★ v2.0: No more auto-draw here
-    
     updateInfo();
 }
 
@@ -552,7 +540,6 @@ function openDiscardSelector(cardIndex, cost) {
     pendingCardIndex = cardIndex;
     pendingCardCost = cost;
     
-    // Create a list of OTHER cards in hand
     const discardCandidates = [];
     player.hand.forEach((cid, idx) => {
         if (idx !== cardIndex) {
@@ -585,24 +572,19 @@ function closeCardSelector() {
 function executeDiscardAndEffect(discardIndex) {
     if(pendingCardIndex === -1) return;
     
-    // Pay Cost
     player.mp -= pendingCardCost;
     
-    // Discard Target
     const discardId = player.hand[discardIndex];
     
-    // Remove Both (Careful with indices shifting)
-    // Remove Higher index first
     const firstRm = Math.max(pendingCardIndex, discardIndex);
     const secondRm = Math.min(pendingCardIndex, discardIndex);
     
     player.hand.splice(firstRm, 1);
     player.hand.splice(secondRm, 1);
     
-    player.discard.push(501); // Charity
-    player.discard.push(discardId); // Selected
+    player.discard.push(501); 
+    player.discard.push(discardId); 
     
-    // Effect: Draw 2
     playSE("se-heal");
     addLog("手札を捨て、2枚ドロー！", "log-skill");
     drawCard();
@@ -628,77 +610,36 @@ function applyCardEffect(card) {
         case 404: const dmg404 = 80; enemy.hp = Math.max(0, enemy.hp - dmg404); msg += "80ダメージ！"; playSE("se-attack"); triggerEffect(el("enemy-panel"), dmg404, false); break;
         case 405: player.state.power = true; msg += "攻撃力2倍(このターン)！"; break;
 
-        // Vol.2 (v2.0 New)
-        case 501: // Handled separately (Selector)
-            break; 
-        case 601: // Black Hole
-            const dmg601 = 150;
-            enemy.hp = Math.max(0, enemy.hp - dmg601);
-            // Discard all remaining hand
-            while(player.hand.length > 0) {
-                player.discard.push(player.hand.pop());
-            }
+        // Vol.2
+        case 501: break; 
+        case 601: 
+            const dmg601 = 150; enemy.hp = Math.max(0, enemy.hp - dmg601);
+            while(player.hand.length > 0) player.discard.push(player.hand.pop());
             msg += "全手札を犠牲に150ダメージ！"; playSE("se-boom"); triggerEffect(el("enemy-panel"), dmg601, false);
             break;
-        case 602: // Magic Cylinder
-            player.state.magicCylinder = true;
-            msg += "魔法の筒をセット(反射待機)！";
-            break;
-        case 701: // Megamorph
-            if (player.hp <= enemy.hp) player.state.huge = 1; // x3
-            else player.state.huge = 2; // x0.5
+        case 602: player.state.magicCylinder = true; msg += "魔法の筒をセット(反射待機)！"; break;
+        case 701: 
+            if (player.hp <= enemy.hp) player.state.huge = 1; else player.state.huge = 2;
             msg += (player.state.huge===1) ? "HP劣勢…逆転の3倍パワー！" : "HP優勢…油断の0.5倍パワー…";
             break;
-        case 702: // Fissure
-            const dmg702 = 40;
-            enemy.hp = Math.max(0, enemy.hp - dmg702);
-            if(enemy.state.guard) { enemy.state.guard = false; msg += "40ダメ＆敵の防御を破壊！"; }
-            else msg += "40ダメージ！";
-            triggerEffect(el("enemy-panel"), dmg702, false);
-            break;
-        case 703: // Hex
-            player.state.hexSeal = true; // Special flag for enemy turn
-            enemy.state.isStunned = true; // Also stun
-            msg += "六芒星の呪縛！(弱体化＆スタン)";
-            break;
-        case 801: // Stop Defense
-            if(enemy.state.guard) { enemy.state.guard = false; msg += "敵の防御を解除した！"; }
-            else msg += "敵は防御していなかった";
-            break;
-        case 802: // Fire burn
-            const dmg802 = 40;
-            enemy.hp = Math.max(0, enemy.hp - dmg802);
-            msg += "40ダメージ！"; triggerEffect(el("enemy-panel"), dmg802, false);
-            break;
-        case 803: // Reinforcements
-            player.hp = Math.min(player.hp + 30, player.maxHp);
-            player.state.atkBonus = 20;
-            msg += "HP30回復＆次撃+20！"; playSE("se-heal");
-            break;
-        case 804: // Mask of Darkness
+        case 702: 
+            const dmg702 = 40; enemy.hp = Math.max(0, enemy.hp - dmg702);
+            if(enemy.state.guard) { enemy.state.guard = false; msg += "40ダメ＆敵の防御を破壊！"; } else msg += "40ダメージ！";
+            triggerEffect(el("enemy-panel"), dmg702, false); break;
+        case 703: player.state.hexSeal = true; enemy.state.isStunned = true; msg += "六芒星の呪縛！(弱体化＆スタン)"; break;
+        case 801: if(enemy.state.guard) { enemy.state.guard = false; msg += "敵の防御を解除した！"; } else msg += "敵は防御していなかった"; break;
+        case 802: const dmg802 = 40; enemy.hp = Math.max(0, enemy.hp - dmg802); msg += "40ダメージ！"; triggerEffect(el("enemy-panel"), dmg802, false); break;
+        case 803: player.hp = Math.min(player.hp + 30, player.maxHp); player.state.atkBonus = 20; msg += "HP30回復＆次撃+20！"; playSE("se-heal"); break;
+        case 804: 
             if (player.discard.length === 0) { msg += "墓地にカードがない…"; break; }
-            const magics = player.discard.filter(did => {
-                const c = CARD_DB.find(cd => cd.id === did);
-                return c.type === "MAGIC";
-            });
+            const magics = player.discard.filter(did => { const c = CARD_DB.find(cd => cd.id === did); return c.type === "MAGIC"; });
             if (magics.length === 0) { msg += "墓地に魔法がない…"; break; }
-            // Salvage random
             const salvId = magics[Math.floor(Math.random() * magics.length)];
-            // Remove from discard
-            const dIndex = player.discard.indexOf(salvId);
-            player.discard.splice(dIndex, 1);
-            player.hand.push(salvId);
-            msg += `墓地から「${CARD_DB.find(c=>c.id===salvId).name}」を回収！`;
-            break;
-        case 805: // Final War
-            player.hp = Math.max(1, player.hp - 50);
-            const dmg805 = 150;
-            enemy.hp = Math.max(0, enemy.hp - dmg805);
-            msg += "自傷50＆敵に150ダメージ！";
-            triggerEffect(el("player-panel"), 50, true);
-            triggerEffect(el("enemy-panel"), dmg805, false);
-            break;
-        
+            const dIndex = player.discard.indexOf(salvId); player.discard.splice(dIndex, 1); player.hand.push(salvId);
+            msg += `墓地から「${CARD_DB.find(c=>c.id===salvId).name}」を回収！`; break;
+        case 805: 
+            player.hp = Math.max(1, player.hp - 50); const dmg805 = 150; enemy.hp = Math.max(0, enemy.hp - dmg805);
+            msg += "自傷50＆敵に150ダメージ！"; triggerEffect(el("player-panel"), 50, true); triggerEffect(el("enemy-panel"), dmg805, false); break;
         default: msg += "(発動)"; break;
     }
     
@@ -709,17 +650,14 @@ function applyCardEffect(card) {
     if (enemy.hp <= 0) setTimeout(winBattle, 800);
 }
 
-// --- Enemy AI (v2.0) ---
+// --- Enemy AI ---
 function enemyTurn() {
     if(enemy.state.isStunned) { 
         addLog(`>> ${enemy.name} はスタン中で動けない！`, "log-system"); 
         enemy.state.isStunned = false; endEnemyTurn(); return; 
     }
 
-    // Hex Seal logic (Half attack handled in doEnemyAttack)
-    if (player.state.hexSeal) {
-        addLog(">> 呪縛により攻撃力が半減している！", "log-skill");
-    }
+    if (player.state.hexSeal) { addLog(">> 呪縛により攻撃力が半減している！", "log-skill"); }
 
     if (stage === 4 && floor === 3 && Math.random() < 0.4) { 
         showSkillCutin("呪いの視線", "earth"); setTimeout(() => { player.mp = Math.max(0, player.mp - 2); addLog(">> [呪い] MP2減少", "log-enemy"); doEnemyAttack(1.0); }, 1200); return; 
@@ -749,7 +687,6 @@ function enemyTurn() {
         }
     }
     
-    // Common / Stage 4 logic
     if (stage === 4 && floor === 1 && Math.random() < 0.3) { 
         showSkillCutin("トゥーン・ラッシュ", "wind"); setTimeout(() => { addLog(">> [速攻] 2回攻撃！", "log-enemy"); doEnemyAttack(0.7, {callback: () => { setTimeout(() => doEnemyAttack(0.7), 800); } }); }, 1200); return; 
     }
@@ -787,21 +724,11 @@ function enemyTurn() {
 function doEnemyAttack(mult, options = {}) {
     const { ignoreShield = false, isDrain = false, isBossUlt = false, fixedDmg = 0, callback = null } = options;
     
-    // Hex Seal Weakness
     if (player.state.hexSeal) { mult *= 0.5; }
 
-    // ★ v2.0 Magic Cylinder (Trap)
     if (player.state.magicCylinder) {
         player.state.magicCylinder = false;
-        // Calculate raw incoming damage to reflect
         const base = 2+floor+(stage-1)*3; 
-        const rawDmg = Math.floor((base + 3) * mult); // Average estimation or exact calculation
-        // To be exact, we should use the same formula.
-        // Let's defer calculation.
-        
-        // Actually, we can just trigger it here.
-        const reflectDmg = Math.max(50, Math.floor(rawDmg * 1.5)); // Bonus reflect? Or exact? Description says "Directly".
-        // Let's recalculate exactly what would have hit.
         const wouldBeDmg = Math.floor((base + Math.floor(Math.random()*6)) * mult);
         
         addLog("★魔法の筒発動！攻撃を反射！", "log-skill");
@@ -885,6 +812,9 @@ function endEnemyTurn() {
     currentTurn++; 
     player.mp = Math.min(player.mp + 3, player.maxMp); 
     
+    // ★ v2.0.1: Visual Feedback
+    triggerFloatText("MP+3", el("player-mp-bar"));
+
     if(player.state.guardTurn > 0) {
         player.state.guardTurn--;
         if(player.state.guardTurn === 0) {
@@ -892,9 +822,8 @@ function endEnemyTurn() {
         }
     }
     
-    player.state.hexSeal = false; // Reset temporary hex
+    player.state.hexSeal = false; 
 
-    // ★ v2.0 Draw Phase
     drawCard();
 
     updateInfo(); 
@@ -904,6 +833,12 @@ function endEnemyTurn() {
 // --- Battle Outcome ---
 function winBattle() {
     addLog(`${enemy.name} を倒した`, "system");
+    
+    // ★ v2.0.1 Fix: Reward Draw & MP (Simulate End Turn)
+    player.mp = Math.min(player.mp + 3, player.maxMp);
+    triggerFloatText("MP+3", el("player-mp-bar"));
+    drawCard();
+    
     if (isJustFinish) { 
         player.maxHp += 10; const oldHP = player.hp; player.hp = Math.min(player.hp + 10, player.maxHp); 
         playSE("se-heal"); addLog(`★JUST FINISH! MaxHP+10 & HP+10`, "heal"); 
@@ -1067,6 +1002,27 @@ function playBGM(id) {
 
 function playSE(id) { const a=document.getElementById(id); if(a){ a.currentTime=0; a.volume=0.5; a.play().catch(e=>{}); } }
 
+// ★ v2.0.1 New: Floating Text Effect
+function triggerFloatText(text, targetEl) {
+    const float = document.createElement("div");
+    float.className = "float-text-box";
+    float.innerText = text;
+    
+    // Position relative to target
+    const rect = targetEl.getBoundingClientRect();
+    const containerRect = el("game-container").getBoundingClientRect();
+    
+    // Calculate center of target relative to container
+    const left = rect.left - containerRect.left + (rect.width / 2) - 20; // 20 is approx half text width
+    const top = rect.top - containerRect.top;
+    
+    float.style.left = `${left}px`;
+    float.style.top = `${top}px`;
+    
+    el("game-container").appendChild(float);
+    setTimeout(() => float.remove(), 1500);
+}
+
 function showSkillCutin(name, type) { 
     playSE("se-warning"); 
     el("cutin-text-val").innerText = name; 
@@ -1172,7 +1128,6 @@ function renderHand() {
     const handArea = el("hand-area");
     handArea.innerHTML = "";
     
-    // v2.0: Count display
     el("hand-count-display").innerText = player.hand.length;
     
     if (player.deckLocked) {
@@ -1219,7 +1174,6 @@ function openCardShop() {
     if (!savedData.cards) savedData.cards = {};
 
     PACK_DATA.forEach(pack => {
-        // v2.0 Unlock condition
         const isUnlocked = (savedData.bestRanks && savedData.bestRanks[pack.unlockStage]);
         if (!isUnlocked) return; 
         const canBuy = savedData.dp >= pack.price;
@@ -1242,8 +1196,6 @@ function buyPack(packId) {
 
     const results = [];
     for(let i=0; i<3; i++) {
-        // v2.0 Pack Logic (Separate pools if needed, for now shared ID pool, but can filter by ID range)
-        // Simple logic: Vol.1 (100-499), Vol.2 (500-899)
         const card = drawShopCard(packId); 
         const isNew = !savedData.cards[card.id];
         if (!savedData.cards[card.id]) savedData.cards[card.id] = 0;
@@ -1261,7 +1213,6 @@ function drawShopCard(packId) {
     else if (rand < 10) targetRarity = "SR";
     else if (rand < 40) targetRarity = "R";
     
-    // v2.0: Filter by Pack
     let pool = CARD_DB.filter(c => c.rarity === targetRarity);
     if(packId === "vol1") {
         pool = pool.filter(c => c.id < 500);
