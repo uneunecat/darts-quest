@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v1.4.2 Stability Fix)");
+console.log("★ main.js is loaded! (v1.5 Full Fix)");
 
 // --- ★ GAME DATA CONFIG ★ ---
 const GAME_DATA = {
@@ -25,15 +25,15 @@ const GAME_DATA = {
             { name: "ハーピィズペット竜", img: "assets/3-5.png", weak: 20, hp: 550 }
         ],
         4: [
-            { name: "ダーク・ラビット", img: "assets/4-1.png", weak: 20 },
-            { name: "デビル・ボックス", img: "assets/4-2.png", weak: 19 },
-            { name: "トゥーン・デーモン", img: "assets/4-3.png", weak: 18 },
-            { name: "ブルーアイズ・トゥーン・ドラゴン", img: "assets/4-4.png", weak: 17 },
-            { name: "サクリファイス", img: "assets/4-5.png", weak: 20 },
-            { name: "サウザンド・アイズ・サクリファイス", img: "assets/4-6.png", weak: 20 }
+            { name: "ダーク・ラビット", img: "assets/4-1.png", weak: 20, hp: 380 },
+            { name: "デビル・ボックス", img: "assets/4-2.png", weak: 19, hp: 420 },
+            { name: "トゥーン・デーモン", img: "assets/4-3.png", weak: 18, hp: 460 },
+            { name: "ブルーアイズ・トゥーン・ドラゴン", img: "assets/4-4.png", weak: 17, hp: 500 },
+            { name: "サクリファイス", img: "assets/4-5.png", weak: 20, hp: 550 },
+            { name: "サウザンド・アイズ・サクリファイス", img: "assets/4-6.png", weak: 20, hp: 800 }
         ],
         5: [
-            { name: "真紅眼の黒竜", img: "assets/extra.png", weak: 20 }
+            { name: "真紅眼の黒竜", img: "assets/extra.png", weak: 20, hp: 1500 }
         ]
     },
     bg: {
@@ -76,7 +76,8 @@ const PACK_DATA = [
 let player = { 
     hp: 100, maxHp: 100, mp: 3, maxMp: 10,
     items: { potion: 0, ether: 0, seed: 0 }, 
-    state: { power: false, shield: false, weakLock: false, barrier: false },
+    // ★ guardTurn 追加
+    state: { power: false, shield: false, weakLock: false, barrier: false, guardTurn: 0 },
     deck: [], hand: [], discard: [], deckLocked: false
 };
 
@@ -96,7 +97,7 @@ let cheatBuffer = "";
 let stageStartTurn = 0;
 let totalGameTurns = 0;
 let clearedStagesLog = [];
-let currentBgmId = ""; // ★ v1.4.2 Fix: Track BGM ID
+let currentBgmId = "";
 
 // --- Save System ---
 const SAVE_KEY = "darts_quest_save";
@@ -265,7 +266,7 @@ function setupStage(sel) {
     el("battle-log").innerHTML=""; 
     el("game-screen").style.display="block";
     
-    player.state={power:false,shield:false,weakLock:false,barrier:false}; 
+    player.state={power:false,shield:false,weakLock:false,barrier:false,guardTurn:0}; 
     player.mp = 3; 
     
     player.deckLocked = false; 
@@ -287,12 +288,13 @@ function setupStage(sel) {
 function spawnEnemy() {
     try {
         enemy.state={charge:false,guard:false,guardType:null,guardTurn:0,atkBuff:0,isStunned:false}; 
-        player.state.power=false; player.state.shield=false; player.state.weakLock=false; player.state.barrier=false;
+        player.state.power=false; player.state.shield=false; player.state.weakLock=false; player.state.barrier=false; 
+        // player.state.guardTurnは維持するかリセットするか？ここではステージ継続なら維持もありだが、敵が変わるのでリセットが安全。
+        player.state.guardTurn = 0; 
         
         currentTurn=1; turnInputs=[]; currentInput=""; restrictInput=false; 
         updateScoreDisplay(); isJustFinish = false; waitingForChest = false; dropGuaranteed = false; weakHitCount=0;
         
-        // Reset Overlays
         el("flash-overlay").className = ""; 
         el("game-container").classList.remove("shake-heavy", "shake-medium", "shake-small");
 
@@ -346,12 +348,11 @@ function spawnEnemy() {
         if(stage===5) addLog(`>>> 伝説の黒竜、${enemy.name} が現れた！！！`, "log-skill"); 
         else addLog(`=== STAGE ${stage} - ${floor}F ===`, "system");
 
-        // ★ v1.4.2 Safety Fix: Force unlock input
         isProcessing = false;
         
     } catch(e) {
         console.error("Spawn Error:", e);
-        isProcessing = false; // エラー時もロック解除
+        isProcessing = false;
     }
 }
 
@@ -477,7 +478,10 @@ function applyCardEffect(card) {
         case 202: 
             player.mp = Math.min(player.mp + 5, player.maxMp); msg += "MPチャージ(+5)！"; break;
         case 301: 
-            enemy.state.guardType = 'half'; enemy.state.guardTurn = 3; msg += "3ターン守備(半減)！"; break;
+            // ★修正: プレイヤーが守られる効果に変更
+            player.state.guardTurn = 3;
+            msg += "3ターン防御(被ダメ半減)！"; 
+            break;
         case 302: 
             if (enemy.state.charge) { enemy.state.charge = false; enemy.state.isStunned = true; msg += "チャージ解除＆スタン！"; playSE("se-hit"); } else { msg += "不発(敵はチャージしていない)"; } break;
         case 303: 
@@ -600,6 +604,12 @@ function doEnemyAttack(mult, options = {}) {
         return; 
     }
 
+    // ★修正: プレイヤー側の護封剣効果
+    if (player.state.guardTurn > 0) {
+        mult *= 0.5;
+        addLog("[護封剣] 被ダメージ半減！", "log-skill");
+    }
+
     if (isBossUlt) { 
         let dmg = fixedDmg > 0 ? fixedDmg : 60; 
         playSE("se-boom"); el("flash-overlay").className="flash-fire"; setTimeout(()=>el("flash-overlay").className="",600); 
@@ -638,6 +648,15 @@ function finishAttack(dmg, isDrain, callback) {
 function endEnemyTurn() { 
     currentTurn++; 
     player.mp = Math.min(player.mp + 3, player.maxMp); 
+    
+    // ★修正: プレイヤー側の護封剣ターン消費
+    if(player.state.guardTurn > 0) {
+        player.state.guardTurn--;
+        if(player.state.guardTurn === 0) {
+            addLog("光の護封剣の効果が切れた", "log-system");
+        }
+    }
+
     updateInfo(); 
     isProcessing=false; 
 }
@@ -683,7 +702,12 @@ function openChest() {
 function nextStep() {
     floor++; const ppr = totalDarts>0 ? ((totalScore/totalDarts)*3).toFixed(1) : 0;
 
-    if((floor > 5 && stage !== 4) || (stage === 4 && floor > 6)) {
+    // ★修正: Stage 5は1階層だけなので、floor > 1 でクリア
+    const isExtraClear = (stage === 5 && floor > 1);
+    const isStage4Clear = (stage === 4 && floor > 6);
+    const isNormalClear = (stage < 4 && floor > 5);
+
+    if(isNormalClear || isStage4Clear || isExtraClear) {
         const stageTurns = totalGameTurns - stageStartTurn;
         const [rank, dpBonus] = calculateStageRank(stage, stageTurns);
         const scoreDP = Math.floor(totalScore * 0.2); 
@@ -788,7 +812,7 @@ function stopAllBGM() {
 }
 
 function playBGM(id) { 
-    if(currentBgmId === id) return; // ★重複再生防止
+    if(currentBgmId === id) return;
     stopAllBGM(); 
     const a=document.getElementById(id); 
     if(a){ 
@@ -832,11 +856,17 @@ function updateInfo() {
 
     let weakText = ""; 
     if(player.state.weakLock) weakText = "<span style='color:#f0f; animation:blink 0.5s infinite;'>★ WEAK LOCK ACTIVE ★</span>"; 
-    else if(weakHitCount > 0) { 
-        let color = weakHitCount >= 3 ? "#ff0000" : (weakHitCount >= 2 ? "#ffa500" : "#ffff00"); 
-        let msg = weakHitCount >= 3 ? "ULTRA CHANCE!!!" : (weakHitCount >= 2 ? "SUPER CHANCE!!" : "DROP CHANCE UP!"); 
-        weakText = `<span style='color:${color}; text-shadow:0 0 5px ${color};'>✨ ${msg}</span>`; 
-    } else { weakText = "WEAK: " + enemy.data.weak + "+"; }
+    else {
+        // ★修正: WEAK表示の上書き防止
+        let baseText = "WEAK: " + enemy.data.weak + "+";
+        if (weakHitCount > 0) { 
+            let color = weakHitCount >= 3 ? "#ff0000" : (weakHitCount >= 2 ? "#ffa500" : "#ffff00"); 
+            let msg = weakHitCount >= 3 ? "ULTRA CHANCE!!!" : (weakHitCount >= 2 ? "SUPER CHANCE!!" : "DROP CHANCE UP!"); 
+            weakText = `${baseText} <span style='color:${color}; text-shadow:0 0 5px ${color}; margin-left:5px;'>✨ ${msg}</span>`; 
+        } else {
+            weakText = baseText;
+        }
+    }
     el("weak-display").innerHTML = weakText;
 
     el("enemy-hp-bar").style.width=Math.max(0,(enemy.hp/enemy.maxHp)*100)+"%"; 
@@ -869,7 +899,20 @@ function updateInfo() {
 
 function updateVisuals() {
     if(el("player-buff-badge")) el("player-buff-badge").style.display = player.state.power ? "block" : "none";
-    if(el("player-guard-badge")) el("player-guard-badge").style.display = player.state.shield ? "block" : "none";
+    
+    // ★修正: プレイヤーガードの表示
+    if(el("player-guard-badge")) {
+        if(player.state.shield) {
+            el("player-guard-badge").style.display = "block";
+            el("player-guard-badge").innerText = "SHIELD";
+        } else if(player.state.guardTurn > 0) {
+            el("player-guard-badge").style.display = "block";
+            el("player-guard-badge").innerText = "GUARD " + player.state.guardTurn;
+        } else {
+            el("player-guard-badge").style.display = "none";
+        }
+    }
+
     if(el("enemy-buff-badge")) el("enemy-buff-badge").style.display = enemy.state.charge ? "block" : "none";
     if(el("enemy-guard-badge")) el("enemy-guard-badge").style.display = (enemy.state.guard || enemy.state.guardType) ? "block" : "none";
     

@@ -355,11 +355,12 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 }
 
 /* 4. フッターボタン */
-.modal-btn {
+/* ★修正: モーダルボタンのスタイルを調整し、巨大化を防ぐ */
+.shop-box .modal-btn, .deck-area-container + .modal-btn {
     margin: 15px;
     padding: 15px 0;
     flex-shrink: 0;
-    width: calc(100% - 30px);
+    width: calc(100% - 30px); /* ショップ等の縦積みボタンのみ幅広に */
     background: #e94560;
     color: #fff;
     border: none;
@@ -367,7 +368,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     font-weight: bold;
     cursor: pointer;
 }
-.modal-btn:hover { background: #ff6b81; }
+.shop-box .modal-btn:hover { background: #ff6b81; }
 
 /* --- 共通カードデザイン --- */
 .collection-card {
