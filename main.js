@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v1.9.1 Fine Tuning)");
+console.log("★ main.js is loaded! (v2.0 System Overhaul)");
 
 // --- ★ GAME DATA CONFIG ★ ---
 const GAME_DATA = {
@@ -46,8 +46,9 @@ const GAME_DATA = {
     }
 };
 
-// --- ★ CARD SYSTEM (v1.4) ★ ---
+// --- ★ CARD SYSTEM (v2.0) ★ ---
 const CARD_DB = [
+    // Vol.1
     { id: 101, name: "死者蘇生", rarity: "UR", type: "MAGIC", cost: 8, desc: "HPを最大値まで完全回復" },
     { id: 201, name: "サンダー・ボルト", rarity: "SR", type: "MAGIC", cost: 6, desc: "敵に100ダメージ＋スタン(1T行動不能)" },
     { id: 202, name: "強欲な壺", rarity: "SR", type: "MAGIC", cost: 0, desc: "MPを5回復する(上限10)" },
@@ -58,7 +59,20 @@ const CARD_DB = [
     { id: 402, name: "治療の神", rarity: "N", type: "MAGIC", cost: 4, desc: "HPを50回復" },
     { id: 403, name: "はさみ撃ち", rarity: "N", type: "TRAP", cost: 2, desc: "自分も20ダメージ受け、敵に80ダメージ" },
     { id: 404, name: "昼夜の大火事", rarity: "N", type: "MAGIC", cost: 3, desc: "敵に80ダメージ" },
-    { id: 405, name: "突進", rarity: "N", type: "MAGIC", cost: 2, desc: "攻撃力2倍(次の1投のみ)" }
+    { id: 405, name: "突進", rarity: "N", type: "MAGIC", cost: 2, desc: "攻撃力2倍(次の1投のみ)" },
+
+    // Vol.2 (New in v2.0)
+    { id: 501, name: "天使の施し", rarity: "UR", type: "MAGIC", cost: 4, desc: "手札を1枚選んで捨て、カードを2枚引く。" },
+    { id: 601, name: "ブラック・ホール", rarity: "SR", type: "MAGIC", cost: 7, desc: "敵に150ダメージ。ただし自分の手札を全て捨てる。" },
+    { id: 602, name: "魔法の筒", rarity: "SR", type: "TRAP", cost: 4, desc: "敵の攻撃を無効化し、そのダメージをそのまま敵に与える。" },
+    { id: 701, name: "巨大化", rarity: "R", type: "MAGIC", cost: 3, desc: "自分のHPが敵より低ければ次の1投3倍。そうでなければ0.5倍。" },
+    { id: 702, name: "地割れ", rarity: "R", type: "MAGIC", cost: 3, desc: "敵に40ダメージを与え、防御状態を解除する。" },
+    { id: 703, name: "六芒星の呪縛", rarity: "R", type: "TRAP", cost: 3, desc: "敵の攻撃力を半減させ、さらにスタンさせる。" },
+    { id: 801, name: "守備封じ", rarity: "N", type: "MAGIC", cost: 1, desc: "敵の防御状態を解除する。" },
+    { id: 802, name: "火あぶりの刑", rarity: "N", type: "MAGIC", cost: 2, desc: "敵に40ダメージ。" },
+    { id: 803, name: "援軍", rarity: "N", type: "MAGIC", cost: 2, desc: "HPを30回復し、攻撃力を+20する(次の1投)。" },
+    { id: 804, name: "闇の仮面", rarity: "N", type: "MAGIC", cost: 4, desc: "捨て札からランダムに魔法カードを1枚手札に加える。" },
+    { id: 805, name: "最終戦争", rarity: "N", type: "MAGIC", cost: 5, desc: "敵に150ダメージ、自分に50ダメージ。" }
 ];
 
 const PACK_DATA = [
@@ -69,14 +83,22 @@ const PACK_DATA = [
         desc: "伝説の始まり。基本魔法カード収録。", 
         unlockStage: 1,
         img: "assets/packs/vol1.png"
+    },
+    { 
+        id: "vol2", 
+        name: "Vol.2 - Awakening", 
+        price: 1500, 
+        desc: "テクニカルな戦略カードが登場。", 
+        unlockStage: 2,
+        img: "assets/packs/vol1.png" // Placeholder
     }
 ];
 
-// --- Player State ---
+// --- Player State (v2.0) ---
 let player = { 
     hp: 100, maxHp: 100, mp: 3, maxMp: 10,
     items: { potion: 0, ether: 0, seed: 0 }, 
-    state: { power: false, shield: false, weakLock: false, barrier: false, guardTurn: 0 },
+    state: { power: false, shield: false, weakLock: false, barrier: false, guardTurn: 0, magicCylinder: false, hexSeal: false, huge: 0, atkBonus: 0 },
     deck: [], hand: [], discard: [], deckLocked: false
 };
 
@@ -97,6 +119,11 @@ let stageStartTurn = 0;
 let totalGameTurns = 0;
 let clearedStagesLog = [];
 let currentBgmId = "";
+
+// v2.0 Constants
+const DECK_SIZE = 20;
+const HAND_SIZE = 5;
+const INITIAL_HAND = 3;
 
 // --- Save System ---
 const SAVE_KEY = "darts_quest_save";
@@ -265,19 +292,20 @@ function setupStage(sel, continueMode) {
     el("battle-log").innerHTML=""; 
     el("game-screen").style.display="block";
     
-    player.state={power:false,shield:false,weakLock:false,barrier:false,guardTurn:0}; 
+    player.state={power:false,shield:false,weakLock:false,barrier:false,guardTurn:0, magicCylinder:false, hexSeal:false, huge:0, atkBonus:0}; 
     
     if (!continueMode) {
         player.mp = 3; 
         player.deckLocked = false; 
-        if (!savedData.deck || savedData.deck.length < 12) {
+        // ★ v2.0: Deck Size Check (20)
+        if (!savedData.deck || savedData.deck.length < DECK_SIZE) {
             player.deckLocked = true;
             player.deck = []; player.hand = []; player.discard = [];
-            addLog("⚠ デッキ不完全: カード機能封鎖", "log-system");
+            addLog(`⚠ デッキ不完全(${DECK_SIZE}枚未満): カード機能封鎖`, "log-system");
         } else {
             player.deck = shuffleArray([...savedData.deck]); 
             player.hand = []; player.discard = [];
-            for(let i=0; i<3; i++) drawCard();
+            for(let i=0; i<INITIAL_HAND; i++) drawCard();
         }
     } else {
         addLog(">> 前ステージの状態を引き継ぎました", "log-system");
@@ -292,7 +320,7 @@ function spawnEnemy() {
     try {
         enemy.state={charge:false,guard:false,guardType:null,guardTurn:0,atkBuff:0,isStunned:false}; 
         player.state.power=false; player.state.shield=false; player.state.weakLock=false; player.state.barrier=false; 
-        player.state.guardTurn = 0; 
+        player.state.guardTurn = 0; player.state.magicCylinder = false; player.state.hexSeal = false; player.state.huge = 0; player.state.atkBonus = 0;
         
         currentTurn=1; turnInputs=[]; currentInput=""; restrictInput=false; 
         updateScoreDisplay(); isJustFinish = false; waitingForChest = false; dropGuaranteed = false; weakHitCount=0;
@@ -385,61 +413,36 @@ function handleEnter() {
     } else { if (turnInputs.length > 0) executeAttack(); }
 }
 
-function calculatePlayerDamage(score, p, e) {
-    let dmg = score;
-    if (stage === 4 && floor === 4 && currentTurn % 3 === 0) { dmg = Math.max(0, dmg - 50); }
-    if (e.state.guardType === 'cut') { dmg = Math.floor(dmg * 0.8); addLog("護封剣で軽減(20%)！", "system"); }
-    if (e.state.guardType === 'half') { dmg = Math.floor(dmg * 0.5); addLog("護封剣で半減(50%)！", "system"); }
-    
-    // ★ v1.9.1 Fix: Power Buff (Charge) Logic
-    if (p.state.power) { 
-        dmg = Math.floor(dmg * 2.0); 
-        p.state.power = false; // 消費
-        addLog("突進の効果で2倍ダメージ！", "log-skill");
-    }
-    
-    if (e.state.guard) { dmg = Math.floor(dmg / 2); e.state.guard = false; addLog("敵の防御で半減！", "system"); }
-    return dmg;
-}
-
 function executeAttack() {
     isProcessing = true; let totalScoreInTurn = 0; let weakHitInThisTurn = 0;
     
-    // ★ v1.9.1: Attack loop modified for single-throw buff consumption
-    // Since buffs apply per HIT in code structure, but `executeAttack` aggregates damage.
-    // However, `calculatePlayerDamage` is called ONCE for the total sum.
-    // This means "Next 1 Throw" logic needs to be handled carefully if user inputs 3 darts.
-    // If "Rush" is active, it should only double the FIRST dart of the 3? 
-    // OR does "Next 1 Throw" mean "Next Attack Action"?
-    // Card description says "Next 1 Throw".
-    // If the user inputs [20, 20, 20], total is 60. 
-    // If logic applies to sum, it doubles 60 to 120. This is "Next Turn".
-    // If logic applies to 1 throw, it should be (20*2 + 20 + 20) = 80.
-    
-    // Let's implement rigorous calculation loop:
     let calculatedTotalDmg = 0;
     
     turnInputs.forEach((s, index) => {
         let singleDmg = s;
         
-        // Apply Power Buff (Single Throw)
+        // ★ v2.0 Buffs Logic
+        if (player.state.atkBonus > 0) {
+            singleDmg += player.state.atkBonus;
+            player.state.atkBonus = 0; // Consume
+        }
+
         if (player.state.power) {
             singleDmg = Math.floor(singleDmg * 2.0);
-            player.state.power = false; // Consume immediately
-            // Note: This logic assumes player.state.power is boolean.
+            player.state.power = false; // Consume
+        }
+        
+        // Huge (Megamorph)
+        if (player.state.huge !== 0) {
+            if (player.state.huge === 1) singleDmg = Math.floor(singleDmg * 3.0);
+            else singleDmg = Math.floor(singleDmg * 0.5);
+            player.state.huge = 0; // Consume
         }
         
         calculatedTotalDmg += singleDmg;
         
-        // Weak Check
         if (player.state.weakLock || (s >= 51 && enemy.data.weak && (s % enemy.data.weak === 0))) weakHitInThisTurn++;
     });
-    
-    // Re-assign total for further processing (Guard etc applies to total)
-    // Note: Enemy Guard is usually for the whole turn in this game style?
-    // Let's keep `calculatePlayerDamage` for Enemy Guard / Stage Gimmicks, but pass the pre-calculated buffed score.
-    // However, `calculatePlayerDamage` currently handles `p.state.power`. We should remove it from there or update it.
-    // Since we consumed it above, `calculatePlayerDamage` won't double it again.
     
     let totalScoreInTurnRaw = 0;
     turnInputs.forEach(s => totalScoreInTurnRaw += s);
@@ -451,7 +454,6 @@ function executeAttack() {
     playSE("se-attack"); totalGameTurns++;
     totalScore += totalScoreInTurnRaw; totalDarts += turnInputs.length; 
 
-    // Enemy Guard / Stage Gimmicks apply to the total
     let finalDmg = calculatedTotalDmg;
     if (stage === 4 && floor === 4 && currentTurn % 3 === 0) { finalDmg = Math.max(0, finalDmg - 50); }
     if (enemy.state.guardType === 'cut') { finalDmg = Math.floor(finalDmg * 0.8); addLog("護封剣で軽減(20%)！", "system"); }
@@ -487,9 +489,20 @@ function executeAttack() {
     if(enemy.hp<=0) setTimeout(winBattle, 1000); else setTimeout(enemyTurn, 1000);
 }
 
-// --- ★ CARD LOGIC (v1.4 Updated) ★ ---
+// --- ★ CARD LOGIC (v2.0 Overhaul) ★ ---
 function drawCard() {
-    if (player.deck.length === 0) return;
+    if (player.deck.length === 0) {
+        // No log to avoid spam, or "Deck Empty"
+        return; 
+    }
+    // ★ v2.0: Hand Limit Check
+    if (player.hand.length >= HAND_SIZE) {
+        // Hand Full - Burn card? Or just don't draw? Usually "Cannot Draw".
+        // Let's just burn top deck or do nothing. Standard TCG = Draw and discard if over?
+        // Simple RPG logic: "Hand Full, cannot draw"
+        // addLog("手札がいっぱいで引けません", "log-system"); // Spammy?
+        return;
+    }
     const cardId = player.deck.pop();
     player.hand.push(cardId);
     updateInfo();
@@ -507,45 +520,185 @@ function playHandCard(index) {
         return;
     }
 
+    // ★ v2.0 Special Handling for "Graceful Charity" (ID 501)
+    if (card.id === 501) {
+        // Need to discard 1 card. Open Selector.
+        // Can't pay cost yet if cancelled.
+        if (player.hand.length <= 1) { // Only Charity itself
+             addLog("捨てる手札がありません！", "log-system");
+             return;
+        }
+        openDiscardSelector(index, cost);
+        return;
+    }
+
     player.mp -= cost;
     playSE("se-buff");
     applyCardEffect(card);
 
     player.hand.splice(index, 1);
     player.discard.push(cardId);
+    
+    // ★ v2.0: No more auto-draw here
+    
+    updateInfo();
+}
+
+// Special Selector for Discarding
+let pendingCardIndex = -1;
+let pendingCardCost = 0;
+
+function openDiscardSelector(cardIndex, cost) {
+    pendingCardIndex = cardIndex;
+    pendingCardCost = cost;
+    
+    // Create a list of OTHER cards in hand
+    const discardCandidates = [];
+    player.hand.forEach((cid, idx) => {
+        if (idx !== cardIndex) {
+            const c = CARD_DB.find(cd => cd.id === cid);
+            discardCandidates.push({ id: cid, name: c.name, originalIndex: idx });
+        }
+    });
+    
+    const modal = el("card-selector-modal");
+    const grid = el("cs-grid");
+    grid.innerHTML = "";
+    
+    discardCandidates.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "collection-card";
+        div.style.width = "60px"; div.style.height = "90px";
+        div.innerHTML = `<div class="card-art"><img src="assets/cards/${item.id}.png"></div>`;
+        div.onclick = () => executeDiscardAndEffect(item.originalIndex);
+        grid.appendChild(div);
+    });
+    
+    modal.style.display = "flex";
+}
+
+function closeCardSelector() {
+    el("card-selector-modal").style.display = "none";
+    pendingCardIndex = -1;
+}
+
+function executeDiscardAndEffect(discardIndex) {
+    if(pendingCardIndex === -1) return;
+    
+    // Pay Cost
+    player.mp -= pendingCardCost;
+    
+    // Discard Target
+    const discardId = player.hand[discardIndex];
+    
+    // Remove Both (Careful with indices shifting)
+    // Remove Higher index first
+    const firstRm = Math.max(pendingCardIndex, discardIndex);
+    const secondRm = Math.min(pendingCardIndex, discardIndex);
+    
+    player.hand.splice(firstRm, 1);
+    player.hand.splice(secondRm, 1);
+    
+    player.discard.push(501); // Charity
+    player.discard.push(discardId); // Selected
+    
+    // Effect: Draw 2
+    playSE("se-heal");
+    addLog("手札を捨て、2枚ドロー！", "log-skill");
     drawCard();
+    drawCard();
+    
+    closeCardSelector();
     updateInfo();
 }
 
 function applyCardEffect(card) {
     let msg = `Card: [${card.name}] `;
     switch(card.id) {
-        case 101: 
-            player.hp = player.maxHp; msg += "HP完全回復！"; playSE("se-heal"); break;
-        case 201: 
-            const dmg201 = 100; enemy.hp = Math.max(0, enemy.hp - dmg201); enemy.state.isStunned = true;
-            msg += `100ダメージ＆スタン！`; playSE("se-boom"); triggerEffect(el("enemy-panel"), dmg201, false); break;
-        case 202: 
-            player.mp = Math.min(player.mp + 5, player.maxMp); msg += "MPチャージ(+5)！"; break;
-        case 301: 
-            player.state.guardTurn = 3;
-            msg += "3ターン防御(被ダメ半減)！"; 
+        // Vol.1
+        case 101: player.hp = player.maxHp; msg += "HP完全回復！"; playSE("se-heal"); break;
+        case 201: const dmg201 = 100; enemy.hp = Math.max(0, enemy.hp - dmg201); enemy.state.isStunned = true; msg += `100ダメージ＆スタン！`; playSE("se-boom"); triggerEffect(el("enemy-panel"), dmg201, false); break;
+        case 202: player.mp = Math.min(player.mp + 5, player.maxMp); msg += "MPチャージ(+5)！"; break;
+        case 301: player.state.guardTurn = 3; msg += "3ターン防御(被ダメ半減)！"; break;
+        case 302: if (enemy.state.charge) { enemy.state.charge = false; enemy.state.isStunned = true; msg += "チャージ解除＆スタン！"; playSE("se-hit"); } else { msg += "不発(敵はチャージしていない)"; } break;
+        case 303: player.state.barrier = true; msg += "バリア展開(次攻撃無効＆反撃)！"; break;
+        case 401: const dmg401 = 20; enemy.hp = Math.max(0, enemy.hp - dmg401); msg += "20ダメージ！"; playSE("se-attack"); triggerEffect(el("enemy-panel"), dmg401, false); break;
+        case 402: player.hp = Math.min(player.hp + 50, player.maxHp); msg += "HP50回復"; playSE("se-heal"); break;
+        case 403: player.hp = Math.max(1, player.hp - 20); const dmg403 = 80; enemy.hp = Math.max(0, enemy.hp - dmg403); msg += "自傷20＆敵に80ダメージ！"; playSE("se-attack"); triggerEffect(el("player-panel"), 20, true); triggerEffect(el("enemy-panel"), dmg403, false); break;
+        case 404: const dmg404 = 80; enemy.hp = Math.max(0, enemy.hp - dmg404); msg += "80ダメージ！"; playSE("se-attack"); triggerEffect(el("enemy-panel"), dmg404, false); break;
+        case 405: player.state.power = true; msg += "攻撃力2倍(このターン)！"; break;
+
+        // Vol.2 (v2.0 New)
+        case 501: // Handled separately (Selector)
+            break; 
+        case 601: // Black Hole
+            const dmg601 = 150;
+            enemy.hp = Math.max(0, enemy.hp - dmg601);
+            // Discard all remaining hand
+            while(player.hand.length > 0) {
+                player.discard.push(player.hand.pop());
+            }
+            msg += "全手札を犠牲に150ダメージ！"; playSE("se-boom"); triggerEffect(el("enemy-panel"), dmg601, false);
             break;
-        case 302: 
-            if (enemy.state.charge) { enemy.state.charge = false; enemy.state.isStunned = true; msg += "チャージ解除＆スタン！"; playSE("se-hit"); } else { msg += "不発(敵はチャージしていない)"; } break;
-        case 303: 
-            player.state.barrier = true; msg += "バリア展開(次攻撃無効＆反撃)！"; break;
-        case 401: 
-            const dmg401 = 20; enemy.hp = Math.max(0, enemy.hp - dmg401); msg += "20ダメージ！"; playSE("se-attack"); triggerEffect(el("enemy-panel"), dmg401, false); break;
-        case 402: 
-            player.hp = Math.min(player.hp + 50, player.maxHp); msg += "HP50回復"; playSE("se-heal"); break;
-        case 403: 
-            player.hp = Math.max(1, player.hp - 20); const dmg403 = 80; enemy.hp = Math.max(0, enemy.hp - dmg403);
-            msg += "自傷20＆敵に80ダメージ！"; playSE("se-attack"); triggerEffect(el("player-panel"), 20, true); triggerEffect(el("enemy-panel"), dmg403, false); break;
-        case 404: 
-            const dmg404 = 80; enemy.hp = Math.max(0, enemy.hp - dmg404); msg += "80ダメージ！"; playSE("se-attack"); triggerEffect(el("enemy-panel"), dmg404, false); break;
-        case 405: 
-            player.state.power = true; msg += "攻撃力2倍(このターン)！"; break;
+        case 602: // Magic Cylinder
+            player.state.magicCylinder = true;
+            msg += "魔法の筒をセット(反射待機)！";
+            break;
+        case 701: // Megamorph
+            if (player.hp <= enemy.hp) player.state.huge = 1; // x3
+            else player.state.huge = 2; // x0.5
+            msg += (player.state.huge===1) ? "HP劣勢…逆転の3倍パワー！" : "HP優勢…油断の0.5倍パワー…";
+            break;
+        case 702: // Fissure
+            const dmg702 = 40;
+            enemy.hp = Math.max(0, enemy.hp - dmg702);
+            if(enemy.state.guard) { enemy.state.guard = false; msg += "40ダメ＆敵の防御を破壊！"; }
+            else msg += "40ダメージ！";
+            triggerEffect(el("enemy-panel"), dmg702, false);
+            break;
+        case 703: // Hex
+            player.state.hexSeal = true; // Special flag for enemy turn
+            enemy.state.isStunned = true; // Also stun
+            msg += "六芒星の呪縛！(弱体化＆スタン)";
+            break;
+        case 801: // Stop Defense
+            if(enemy.state.guard) { enemy.state.guard = false; msg += "敵の防御を解除した！"; }
+            else msg += "敵は防御していなかった";
+            break;
+        case 802: // Fire burn
+            const dmg802 = 40;
+            enemy.hp = Math.max(0, enemy.hp - dmg802);
+            msg += "40ダメージ！"; triggerEffect(el("enemy-panel"), dmg802, false);
+            break;
+        case 803: // Reinforcements
+            player.hp = Math.min(player.hp + 30, player.maxHp);
+            player.state.atkBonus = 20;
+            msg += "HP30回復＆次撃+20！"; playSE("se-heal");
+            break;
+        case 804: // Mask of Darkness
+            if (player.discard.length === 0) { msg += "墓地にカードがない…"; break; }
+            const magics = player.discard.filter(did => {
+                const c = CARD_DB.find(cd => cd.id === did);
+                return c.type === "MAGIC";
+            });
+            if (magics.length === 0) { msg += "墓地に魔法がない…"; break; }
+            // Salvage random
+            const salvId = magics[Math.floor(Math.random() * magics.length)];
+            // Remove from discard
+            const dIndex = player.discard.indexOf(salvId);
+            player.discard.splice(dIndex, 1);
+            player.hand.push(salvId);
+            msg += `墓地から「${CARD_DB.find(c=>c.id===salvId).name}」を回収！`;
+            break;
+        case 805: // Final War
+            player.hp = Math.max(1, player.hp - 50);
+            const dmg805 = 150;
+            enemy.hp = Math.max(0, enemy.hp - dmg805);
+            msg += "自傷50＆敵に150ダメージ！";
+            triggerEffect(el("player-panel"), 50, true);
+            triggerEffect(el("enemy-panel"), dmg805, false);
+            break;
+        
         default: msg += "(発動)"; break;
     }
     
@@ -556,11 +709,16 @@ function applyCardEffect(card) {
     if (enemy.hp <= 0) setTimeout(winBattle, 800);
 }
 
-// --- Enemy AI ---
+// --- Enemy AI (v2.0) ---
 function enemyTurn() {
     if(enemy.state.isStunned) { 
         addLog(`>> ${enemy.name} はスタン中で動けない！`, "log-system"); 
         enemy.state.isStunned = false; endEnemyTurn(); return; 
+    }
+
+    // Hex Seal logic (Half attack handled in doEnemyAttack)
+    if (player.state.hexSeal) {
+        addLog(">> 呪縛により攻撃力が半減している！", "log-skill");
     }
 
     if (stage === 4 && floor === 3 && Math.random() < 0.4) { 
@@ -629,6 +787,36 @@ function enemyTurn() {
 function doEnemyAttack(mult, options = {}) {
     const { ignoreShield = false, isDrain = false, isBossUlt = false, fixedDmg = 0, callback = null } = options;
     
+    // Hex Seal Weakness
+    if (player.state.hexSeal) { mult *= 0.5; }
+
+    // ★ v2.0 Magic Cylinder (Trap)
+    if (player.state.magicCylinder) {
+        player.state.magicCylinder = false;
+        // Calculate raw incoming damage to reflect
+        const base = 2+floor+(stage-1)*3; 
+        const rawDmg = Math.floor((base + 3) * mult); // Average estimation or exact calculation
+        // To be exact, we should use the same formula.
+        // Let's defer calculation.
+        
+        // Actually, we can just trigger it here.
+        const reflectDmg = Math.max(50, Math.floor(rawDmg * 1.5)); // Bonus reflect? Or exact? Description says "Directly".
+        // Let's recalculate exactly what would have hit.
+        const wouldBeDmg = Math.floor((base + Math.floor(Math.random()*6)) * mult);
+        
+        addLog("★魔法の筒発動！攻撃を反射！", "log-skill");
+        playSE("se-boom");
+        el("flash-overlay").className="flash-gold"; setTimeout(()=>el("flash-overlay").className="",300);
+        
+        enemy.hp = Math.max(0, enemy.hp - wouldBeDmg);
+        triggerEffect(el("enemy-panel"), wouldBeDmg, false);
+        animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp;
+        updateInfo();
+        if(enemy.hp <= 0) setTimeout(winBattle, 800);
+        else if(callback) callback(); else endEnemyTurn();
+        return;
+    }
+
     if (player.state.barrier) {
         player.state.barrier = false;
         addLog("★聖なるバリア発動！攻撃無効化＆反撃！", "log-skill");
@@ -703,6 +891,11 @@ function endEnemyTurn() {
             addLog("光の護封剣の効果が切れた", "log-system");
         }
     }
+    
+    player.state.hexSeal = false; // Reset temporary hex
+
+    // ★ v2.0 Draw Phase
+    drawCard();
 
     updateInfo(); 
     isProcessing=false; 
@@ -979,6 +1172,9 @@ function renderHand() {
     const handArea = el("hand-area");
     handArea.innerHTML = "";
     
+    // v2.0: Count display
+    el("hand-count-display").innerText = player.hand.length;
+    
     if (player.deckLocked) {
         el("battle-deck-count").innerText = "-";
         handArea.innerHTML = `<div class="hand-locked-msg">⚠️ NO DECK (DARTS ONLY)</div>`;
@@ -997,7 +1193,6 @@ function renderHand() {
 
                 const imgPath = `assets/cards/${card.id}.png`;
                 
-                // ★ v1.9.1: Remove text from Hand, Tooltip stays
                 div.innerHTML = `
                     <div class="hand-cost">${cost}</div>
                     <div class="card-art" style="height:100%; border:none;">
@@ -1007,7 +1202,6 @@ function renderHand() {
                 
                 div.onclick = () => playHandCard(index);
                 
-                // Show tooltip
                 div.onmouseenter = (e) => showTooltip(card.name, card.desc, e);
                 div.onmouseleave = () => hideTooltip();
                 
@@ -1025,6 +1219,7 @@ function openCardShop() {
     if (!savedData.cards) savedData.cards = {};
 
     PACK_DATA.forEach(pack => {
+        // v2.0 Unlock condition
         const isUnlocked = (savedData.bestRanks && savedData.bestRanks[pack.unlockStage]);
         if (!isUnlocked) return; 
         const canBuy = savedData.dp >= pack.price;
@@ -1047,6 +1242,8 @@ function buyPack(packId) {
 
     const results = [];
     for(let i=0; i<3; i++) {
+        // v2.0 Pack Logic (Separate pools if needed, for now shared ID pool, but can filter by ID range)
+        // Simple logic: Vol.1 (100-499), Vol.2 (500-899)
         const card = drawShopCard(packId); 
         const isNew = !savedData.cards[card.id];
         if (!savedData.cards[card.id]) savedData.cards[card.id] = 0;
@@ -1063,7 +1260,15 @@ function drawShopCard(packId) {
     if (rand < 2) targetRarity = "UR";
     else if (rand < 10) targetRarity = "SR";
     else if (rand < 40) targetRarity = "R";
-    const pool = CARD_DB.filter(c => c.rarity === targetRarity);
+    
+    // v2.0: Filter by Pack
+    let pool = CARD_DB.filter(c => c.rarity === targetRarity);
+    if(packId === "vol1") {
+        pool = pool.filter(c => c.id < 500);
+    } else if(packId === "vol2") {
+        pool = pool.filter(c => c.id >= 500);
+    }
+    
     if (pool.length === 0) return CARD_DB[0];
     return pool[Math.floor(Math.random() * pool.length)];
 }
@@ -1098,14 +1303,12 @@ function renderDeckEditor() {
     savedData.deck.sort((a,b) => a - b);
 
     const deckGrid = el("deck-grid"); deckGrid.innerHTML = "";
-    const DECK_MAX = 12;
-
-    for (let i = 0; i < DECK_MAX; i++) {
+    
+    for (let i = 0; i < DECK_SIZE; i++) {
         const cardId = savedData.deck[i]; 
         if (cardId) {
             const card = CARD_DB.find(c => c.id === cardId);
             const totalOwned = savedData.cards[card.id] || 0;
-            // ★ v1.9.1: Deck cards -> show tooltip, hide direct info
             const el = createCardElement(card, true, 0, totalOwned);
             deckGrid.appendChild(el);
         } else {
@@ -1116,7 +1319,7 @@ function renderDeckEditor() {
     
     const deckCount = savedData.deck.length;
     const countEl = el("deck-count"); countEl.innerText = deckCount;
-    if (deckCount < 12) { countEl.style.color = "#ff5555"; countEl.innerText += " (あと" + (12 - deckCount) + "枚)"; } 
+    if (deckCount < DECK_SIZE) { countEl.style.color = "#ff5555"; countEl.innerText += " (あと" + (DECK_SIZE - deckCount) + "枚)"; } 
     else { countEl.style.color = "#00ff00"; countEl.innerText += " (OK!)"; }
 
     const listGrid = el("card-grid"); listGrid.innerHTML = "";
@@ -1128,7 +1331,6 @@ function renderDeckEditor() {
         if (count > 0) ownedCount++;
         const inDeckCount = savedData.deck.filter(id => id === card.id).length;
         const remaining = count - inDeckCount; 
-        // ★ v1.9.1: List cards -> hide tooltip (direct info shown)
         const el = createCardElement(card, false, remaining, count);
         listGrid.appendChild(el);
     });
@@ -1149,10 +1351,6 @@ function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0)
     let shortDesc = card.desc;
     if(shortDesc.length > 20) shortDesc = shortDesc.substring(0, 19) + "..";
 
-    // ★ v1.9.1: Logic separation
-    // 1. Deck Items (Small): No Direct Info, Show Tooltip
-    // 2. List Items (Big): Show Direct Info, No Tooltip
-    
     div.innerHTML = `
         <div class="card-cost-badge">${cost}</div>
         <div class="card-count-badge">x${isDeckItem ? 1 : remainingCount}</div>
@@ -1172,8 +1370,6 @@ function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0)
         if (isDeckItem) removeFromDeck(card.id); else addToDeck(card.id);
     };
     
-    // ★ v1.9.1: Tooltip only for Deck items (or if not owned in list?)
-    // Actually, "List items don't need tooltip" requested.
     if (isDeckItem) {
         div.onmouseenter = (e) => showTooltip(card.name, card.desc, e);
         div.onmouseleave = () => hideTooltip();
@@ -1217,8 +1413,8 @@ function hideTooltip() {
 }
 
 function addToDeck(cardId) {
-    const DECK_MAX = 12; const SAME_CARD_LIMIT = 3;
-    if (savedData.deck.length >= DECK_MAX) { alert("デッキは12枚までです！"); return; }
+    const SAME_CARD_LIMIT = 3;
+    if (savedData.deck.length >= DECK_SIZE) { alert(`デッキは${DECK_SIZE}枚までです！`); return; }
     const ownedCount = savedData.cards[cardId] || 0;
     const currentInDeck = savedData.deck.filter(id => id === cardId).length;
     if (currentInDeck >= ownedCount) { alert("これ以上持っていません！"); return; }

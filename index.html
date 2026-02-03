@@ -102,7 +102,7 @@
 
                     <div class="deck-area-container">
                         <div style="color:#fff; font-size:14px; margin-bottom:5px;">
-                            ▼ YOUR DECK (<span id="deck-count" style="color:#ffd700;">0</span>/12) 
+                            ▼ YOUR DECK (<span id="deck-count" style="color:#ffd700;">0</span>/20) 
                             <span style="font-size:10px; color:#aaa;">※クリックではずす</span>
                         </div>
                         <div class="deck-grid" id="deck-grid"></div>
@@ -114,7 +114,16 @@
                         ▼ CARD LIST <span style="font-size:10px; color:#aaa;">※クリックでデッキに入れる</span>
                     </div>
                     <div class="card-grid" id="card-grid"></div>
-                    </div>
+                </div>
+            </div>
+
+            <div class="modal-overlay" id="card-selector-modal" style="display:none; z-index:4000;">
+                <div class="modal-box" style="background:#222; border:2px solid #aaa;">
+                    <div class="modal-title" id="cs-title" style="color:#fff; font-size:24px;">SELECT CARD</div>
+                    <div style="color:#ccc; font-size:14px; margin-bottom:15px;" id="cs-message">捨てるカードを選んでください</div>
+                    <div class="deck-grid" id="cs-grid" style="justify-content:center; margin-bottom:15px;"></div>
+                    <button class="modal-btn" style="background:#555;" onclick="closeCardSelector()">CANCEL</button>
+                </div>
             </div>
 
             <div class="title-screen" id="title-screen">
@@ -188,7 +197,7 @@
                         
                         <div class="hand-container">
                             <div style="font-size:10px; color:#aaa; margin-bottom:2px; display:flex; justify-content:space-between;">
-                                <span>HAND</span>
+                                <span>HAND (<span id="hand-count-display">0</span>/5)</span>
                                 <span>DECK: <span id="battle-deck-count" style="color:#fff;">0</span></span>
                             </div>
                             <div class="hand-area" id="hand-area">
