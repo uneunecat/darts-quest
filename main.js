@@ -32,17 +32,18 @@ const GAME_DATA = {
             { name: "サクリファイス", img: "assets/4-5.png", weak: 20, hp: 550 },
             { name: "サウザンド・アイズ・サクリファイス", img: "assets/4-6.png", weak: 20, hp: 800 }
         ],
-        // ★ v2.2 New: Stage 5 (God's Trial)
+        // ★ v2.2 Moved: Extra Stage (Red-Eyes) ID:5 -> ID:5 (User's instruction: Extra is 5)
+        // Wait, user said: "extra(5)", "stage5(6)".
         5: [
+            { name: "真紅眼の黒竜", img: "assets/extra.png", weak: 20, hp: 1500 }
+        ],
+        // ★ v2.2 New: Stage 5 (God's Trial) ID:6
+        6: [
             { name: "ワームドレイク", img: "assets/5-1.png", weak: 19, hp: 400 },
             { name: "ヒューマノイド・スライム", img: "assets/5-2.png", weak: 18, hp: 450 },
             { name: "リバイバルスライム", img: "assets/5-3.png", weak: 20, hp: 300 },
             { name: "ヒューマノイド・ドレイク", img: "assets/5-4.png", weak: 17, hp: 600 },
             { name: "オシリスの天空竜", img: "assets/5-5.png", weak: 20, hp: 2000 }
-        ],
-        // ★ v2.2 Moved: Extra Stage (Red-Eyes)
-        6: [
-            { name: "真紅眼の黒竜", img: "assets/extra.png", weak: 20, hp: 1500 }
         ]
     },
     bg: {
@@ -51,8 +52,8 @@ const GAME_DATA = {
         3: "assets/bg_stage3.png",
         4_1: "assets/bg_stage4_1.png",
         4_2: "assets/bg_stage4_2.png",
-        5: "assets/bg_stage5.png", // New
-        6: "assets/bg_extra.png"   // Moved
+        5: "assets/bg_extra.png", // Extra
+        6: "assets/bg_stage5.png" // New Stage 5
     }
 };
 
@@ -98,8 +99,8 @@ const PACK_DATA = [
         name: "Vol.2 - Awakening", 
         price: 1500, 
         desc: "テクニカルな戦略カードが登場。", 
-        unlockStage: 3, // ★ v2.2 Changed: Unlock at Stage 3
-        img: "assets/packs/vol2.png" // ★ v2.2 Updated image
+        unlockStage: 3, // Unlock at Stage 3
+        img: "assets/packs/vol2.png" 
     }
 ];
 
@@ -179,7 +180,12 @@ function initSlotScreen() {
         const infoEl = el("info-"+i);
         if(!data) { infoEl.innerHTML = "<div class='slot-empty'>NO DATA<br>- Start New Game -</div>"; }
         else {
-            let stg = (data.highScore.stage === 6) ? "EXTRA STAGE" : `STAGE ${data.highScore.stage} - ${data.highScore.floor}F`;
+            // v2.2: ID 5 is Extra, ID 6 is Stage 5. Check progress.
+            let stgName = `STAGE ${data.highScore.stage}`;
+            if(data.highScore.stage === 5) stgName = "EXTRA";
+            if(data.highScore.stage === 6) stgName = "STAGE 5";
+            
+            let stg = `${stgName} - ${data.highScore.floor}F`;
             let badge = data.clearedExtra ? "<br><span style='color:#f0f;font-weight:bold;'>★ EXTRA CLEARED</span>" : "";
             infoEl.innerHTML = `<div>${stg}</div><div style='color:#ffdd00;'>Avg: ${data.highScore.avg.toFixed(1)} (Rt ${calculateRating(data.highScore.avg)})</div><div style='color:#aaa;font-size:12px;'>DP: ${data.dp || 0}${badge}</div>`;
         }
@@ -211,7 +217,10 @@ function backToSlots() {
 }
 
 function updateTitleScore() {
-    let stg = savedData.highScore.stage === 6 ? "EXTRA" : `STAGE ${savedData.highScore.stage}`;
+    let stg = `STAGE ${savedData.highScore.stage}`;
+    if(savedData.highScore.stage === 5) stg = "EXTRA";
+    if(savedData.highScore.stage === 6) stg = "STAGE 5";
+
     el("hs-reach").innerText = `${stg} - ${savedData.highScore.floor}F`;
     el("hs-avg").innerText = savedData.highScore.avg.toFixed(1);
     el("hs-rt").innerText = "Rt " + calculateRating(savedData.highScore.avg);
@@ -221,18 +230,18 @@ function updateTitleScore() {
     updateStageButton(2, "btn-st2");
     updateStageButton(3, "btn-st3");
     
-    // Check unlocks
     const canPlayStage4 = savedData.unlockedStage4 || (savedData.bestRanks && savedData.bestRanks[3]) || savedData.clearedExtra;
     el("btn-stage4").style.display = canPlayStage4 ? "flex" : "none";
     updateStageButton(4, "btn-stage4");
 
-    // ★ v2.2 New: Unlock Stage 5 & Extra (ID 6)
+    // ★ v2.2 New: Unlock Stage 5 (ID 6)
+    // Unlock condition: Stage 4 Cleared
     const canPlayStage5 = (savedData.bestRanks && savedData.bestRanks[4]);
     el("btn-stage5").style.display = canPlayStage5 ? "flex" : "none";
-    updateStageButton(5, "btn-stage5");
+    updateStageButton(6, "btn-stage5"); // Note: btn-stage5 maps to ID 6
 
     el("btn-extra").style.display = savedData.clearedExtra ? "flex" : "none";
-    updateStageButton(6, "btn-extra");
+    updateStageButton(5, "btn-extra");
 }
 
 function updateStageButton(stgNum, btnId) {
@@ -242,8 +251,8 @@ function updateStageButton(stgNum, btnId) {
     
     btn.className = "stage-btn btn-default";
     if(stgNum===4) btn.classList.add("stage4-btn");
-    if(stgNum===5) btn.classList.add("stage5-btn"); // New style
-    if(stgNum===6) btn.classList.add("extra-btn"); // Moved
+    if(stgNum===5) btn.classList.add("extra-btn"); // Extra
+    if(stgNum===6) btn.classList.add("stage5-btn"); // Stage 5
 
     if(rank) {
         btn.classList.remove("btn-default", "stage4-btn", "stage5-btn", "extra-btn");
@@ -271,8 +280,8 @@ function startTransition(sel, continueMode) {
     if(sel===2) { t="荒れ狂う荒野"; s="Raging Wasteland"; }
     if(sel===3) { t="誘惑の迷宮"; s="Labyrinth of Temptation"; }
     if(sel===4) { t="幻想の狂宴"; s="Toon Nightmare"; warning=true; }
-    if(sel===5) { t="神の試練"; s="God's Testing Ground"; warning=true; }
-    if(sel===6) { t="燃えたぎる火口"; s="Burning Crater"; warning=true; }
+    if(sel===5) { t="燃えたぎる火口"; s="Burning Crater"; warning=true; } // Extra
+    if(sel===6) { t="神の試練"; s="God's Testing Ground"; warning=true; } // Stage 5
 
     el("chapter-title").innerText = t; 
     el("chapter-sub").innerText = s;
@@ -358,16 +367,16 @@ function spawnEnemy() {
         if (GAME_DATA.bg[bgKey]) el("game-container").style.backgroundImage = `url('${GAME_DATA.bg[bgKey]}')`;
 
         let isBoss = false;
-        // ★ v2.2 New Logic for Stage 5 & 6
-        if (stage === 6) { // Old Extra
-            enemy.data = GAME_DATA.enemies[6][0]; isBoss=true; 
+        
+        if (stage === 5) { // Extra (Red-Eyes)
+            enemy.data = GAME_DATA.enemies[5][0]; isBoss=true; 
             playBGM("bgm-extra"); 
             el("game-container").classList.add("extra-mode"); 
             el("enemy-panel").classList.add("extra-border"); 
             el("boss-label").innerText="☠️EXTRA BOSS"; el("boss-label").style.display="inline"; 
             enemy.maxHp=1500; 
-        } else if (stage === 5) { // New God Stage
-            let list = GAME_DATA.enemies[5];
+        } else if (stage === 6) { // New Stage 5 (God)
+            let list = GAME_DATA.enemies[6];
             enemy.data = list[(floor-1)%list.length]; 
             if(floor === 5) {
                 isBoss=true; playBGM("bgm-extra");
@@ -375,9 +384,12 @@ function spawnEnemy() {
                 el("boss-label").innerText="☠️GOD降臨"; el("boss-label").style.display="inline";
                 enemy.maxHp=2000;
             } else {
-                playBGM("bgm-boss"); // Hard stage music
+                playBGM("bgm-boss"); 
                 el("game-container").classList.add("boss-mode"); 
-                enemy.maxHp = enemy.data.hp;
+                el("boss-label").innerText="⚠️ENEMY"; el("boss-label").style.display="inline"; // Not boss label, just warning
+                // Normal HP for minions
+                const base=100+((stage-1)*50); const bonus=(floor-1)*30; 
+                enemy.maxHp = enemy.data.hp ? enemy.data.hp : base+bonus;
             }
         } else {
             let list = GAME_DATA.enemies[stage];
@@ -408,7 +420,7 @@ function spawnEnemy() {
         displayEnemyHP=enemy.hp; 
         updateInfo();
         
-        if(stage===5 && floor===5) addLog(`>>> 天空より雷鳴と共に ${enemy.name} が現れた！`, "log-skill"); 
+        if(stage===6 && floor===5) addLog(`>>> 天空より雷鳴と共に ${enemy.name} が現れた！`, "log-skill"); 
         else addLog(`=== STAGE ${stage} - ${floor}F ===`, "system");
 
         isProcessing = false;
@@ -454,12 +466,10 @@ function executeAttack() {
     turnInputs.forEach((s, index) => {
         let singleDmg = s;
         
-        // ★ v2.2 New: Slifer's Thunder Bullet (God Passive)
-        if (stage === 5 && floor === 5) {
+        // ★ v2.2 Slifer's Thunder Bullet
+        if (stage === 6 && floor === 5) {
             if (singleDmg <= 20) {
-                // Invalid hit
                 singleDmg = 0;
-                // Visual effect for block?
             }
         }
 
@@ -485,7 +495,7 @@ function executeAttack() {
     });
     
     // Slifer Block Message
-    if (stage === 5 && floor === 5 && calculatedTotalDmg < turnInputs.reduce((a,b)=>a+b,0) && calculatedTotalDmg === 0) {
+    if (stage === 6 && floor === 5 && calculatedTotalDmg === 0 && turnInputs.reduce((a,b)=>a+b,0) > 0) {
          playSE("se-warning"); addLog(">> 召雷弾！ 弱い攻撃(20以下)は無効化された！", "log-enemy");
     }
 
@@ -550,7 +560,6 @@ function drawCard(isSilent = false) {
 function playHandCard(index) {
     if(isProcessing || waitingForChest) return;
     
-    // ★ v2.2 Lock Check
     if (player.state.itemLock) {
         addLog(">> 封印されていて使えない！", "log-system");
         playSE("se-warning");
@@ -713,9 +722,9 @@ function enemyTurn() {
 
     if (player.state.hexSeal) { addLog(">> 呪縛により攻撃力が半減している！", "log-skill"); }
 
-    // ★ v2.2 New Logic: Stage 5 Enemies
-    if (stage === 5) {
-        // Revival Slime
+    // ★ v2.2 New Logic: Stage 6 Enemies (Stage 5 / God)
+    if (stage === 6) {
+        // Revival Slime (Floor 3)
         if (floor === 3) {
             if (Math.random() < 0.3) {
                 const heal = 100;
@@ -729,7 +738,7 @@ function enemyTurn() {
                 return;
             }
         }
-        // Humanoid Drake (Lock)
+        // Humanoid Drake (Lock) (Floor 4)
         if (floor === 4) {
             if (!player.state.itemLock && Math.random() < 0.3) {
                 showSkillCutin("スライムの粘着", "earth");
@@ -741,18 +750,17 @@ function enemyTurn() {
                 return;
             }
         }
-        // God (Slifer)
+        // God (Slifer) (Floor 5)
         if (floor === 5) {
             extraBossTurnCount++;
             if (extraBossTurnCount % 5 === 0) {
                 showSkillCutin("サンダー・フォース", "fire");
                 setTimeout(() => {
                     addLog(">> [神の怒り] 必殺の超雷撃！！", "log-enemy");
-                    doEnemyAttack(1.0, { isBossUlt: true, fixedDmg: 80 }); // Big dmg
+                    doEnemyAttack(1.0, { isBossUlt: true, fixedDmg: 80 }); 
                 }, 1200);
                 return;
             }
-            // Hand power buff (simulation)
             if (Math.random() < 0.4) {
                 enemy.state.atkBuff += 0.1;
                 addLog(`>> [手札増強] 神の攻撃力が上がっていく… (x${(1.0+enemy.state.atkBuff).toFixed(1)})`, "log-enemy");
@@ -766,7 +774,7 @@ function enemyTurn() {
     if (stage === 4 && floor === 3 && Math.random() < 0.4) { 
         showSkillCutin("呪いの視線", "earth"); setTimeout(() => { player.mp = Math.max(0, player.mp - 2); addLog(">> [呪い] MP2減少", "log-enemy"); doEnemyAttack(1.0); }, 1200); return; 
     }
-    if (stage === 6) { // Old Extra (Red-Eyes)
+    if (stage === 5) { // Extra (Red-Eyes)
         extraBossTurnCount++; 
         if(extraBossTurnCount % 5 === 0) { 
             showSkillCutin("黒 炎 弾", "fire"); setTimeout(() => { player.mp = Math.max(0, player.mp - 5); addLog(">> [黒炎弾] MP5消滅 & 大ダメージ", "log-enemy"); doEnemyAttack(1.0, {isBossUlt:true, fixedDmg: 50}); }, 1200); return; 
@@ -774,6 +782,61 @@ function enemyTurn() {
         doEnemyAttack(1.3); return;
     }
     // ... (Keep other stage logics)
+    
+    // Default / Other stages
+    if(stage === 3) {
+        if(floor===2 && Math.random()<0.3) { 
+            showSkillCutin("誘惑の風", "wind"); setTimeout(() => { if(player.mp>0) { player.mp=Math.max(0,player.mp-1); enemy.hp=Math.min(enemy.hp+20,enemy.maxHp); addLog(">> [誘惑の風] MP吸収", "log-enemy"); } doEnemyAttack(1.0); }, 1200); return; 
+        }
+        if(floor===5) { 
+            enemy.state.atkBuff += 0.1; addLog(`>> [主人の加護] 攻撃力UP (現在x${(1.0+enemy.state.atkBuff).toFixed(1)})`, "log-enemy"); 
+            if(currentTurn % 4 === 0) { 
+                showSkillCutin("愛の鞭・ブレス", "fire"); setTimeout(() => { player.mp = 0; addLog(">> [愛の鞭] MP消滅＆大ダメージ", "log-enemy"); doEnemyAttack(2.0 * (1.0+enemy.state.atkBuff)); }, 1200); return; 
+            } 
+            doEnemyAttack(1.0 * (1.0+enemy.state.atkBuff)); return; 
+        }
+    }
+    if(stage===1) {
+        if(floor===4 && player.mp > 0 && Math.random()<0.3) { 
+            showSkillCutin("猛毒の鱗粉", "earth"); setTimeout(() => { player.mp = Math.max(0, player.mp - 1); addLog(">> [猛毒の鱗粉] MP1減少", "log-enemy"); doEnemyAttack(1.0); }, 1200); return; 
+        }
+    }
+    
+    // Common / Stage 4 logic
+    if (stage === 4 && floor === 1 && Math.random() < 0.3) { 
+        showSkillCutin("トゥーン・ラッシュ", "wind"); setTimeout(() => { addLog(">> [速攻] 2回攻撃！", "log-enemy"); doEnemyAttack(0.7, {callback: () => { setTimeout(() => doEnemyAttack(0.7), 800); } }); }, 1200); return; 
+    }
+    if (stage === 4 && floor === 2 && currentTurn === 5) { 
+        showSkillCutin("死のびっくり箱", "fire"); setTimeout(() => { addLog(">> [死の箱] 999ダメージ！", "log-enemy"); doEnemyAttack(0, {fixedDmg: 999, ignoreShield: true}); }, 1200); return; 
+    }
+    if (stage === 4 && floor === 4 && currentTurn % 3 === 0) { 
+        showSkillCutin("トゥーン・スキン", "earth"); setTimeout(() => { addLog(">> [硬質化] 被ダメ-50", "log-enemy"); updateInfo(); endEnemyTurn(); }, 1200); return; 
+    }
+    if (stage === 4 && floor === 5 && currentTurn % 3 === 0) { 
+        showSkillCutin("幻想の儀式", "wind"); setTimeout(() => { addLog(">> [儀式] HP吸収", "log-enemy"); doEnemyAttack(1.2, {isDrain: true}); }, 1200); return; 
+    }
+    if (stage === 4 && floor === 6 && currentTurn % 2 === 0) { 
+        showSkillCutin("千眼の邪教神", "wind"); setTimeout(() => { addLog(">> [結界] 80点未満無効化！", "log-enemy"); doEnemyAttack(1.2); }, 1200); return; 
+    }
+    
+    // Stage 3 specific (Duplicated in original logic structure, kept for safety)
+    if(stage===3) {
+        if(floor===1 && enemy.state.guardTurn > 0) { addLog(`>> 光の護封剣 (残り${enemy.state.guardTurn}T)`, "log-enemy"); doEnemyAttack(1.0); return; }
+        if(floor===3 && Math.random()<0.3) { showSkillCutin("サイバー・ボンテージ", "wind"); setTimeout(() => { restrictInput = true; addLog(">> [拘束] 次ターン1投制限！", "log-enemy"); doEnemyAttack(1.0); }, 1200); return; }
+        if(floor===4 && Math.random()<0.3) { showSkillCutin("トライアングル・エクスタシー", "wind"); setTimeout(() => { addLog(">> [3姉妹の連携] 3回攻撃！", "log-enemy"); doEnemyAttack(0.6, {callback: () => { setTimeout(() => doEnemyAttack(0.6, {callback: () => { setTimeout(() => doEnemyAttack(0.6), 600); } }), 600); } }); }, 1200); return; }
+    }
+    // Stage 2
+    if(stage===2) {
+        if(floor===2 && Math.random()<0.3) { showSkillCutin("俊足の連撃", "fire"); setTimeout(() => { addLog(">> [俊足の連撃] 2回攻撃！", "log-enemy"); doEnemyAttack(0.7, {callback: () => { setTimeout(() => doEnemyAttack(0.7), 800); } }); }, 1200); return; }
+        if(floor===3 && Math.random()<0.3) { showSkillCutin("死肉の渇望", "fire"); setTimeout(() => { addLog(">> [死肉の渇望] 与ダメ吸収", "log-enemy"); doEnemyAttack(1.0, {isDrain: true}); }, 1200); return; }
+        if(floor===4 && enemy.hp <= enemy.maxHp * 0.5 && Math.random()<0.5) { showSkillCutin("狂暴化", "fire"); setTimeout(() => { addLog(">> [狂暴化] 攻撃1.5倍", "log-enemy"); doEnemyAttack(1.5); }, 1200); return; }
+        if(floor===5 && Math.random() < 0.3) { showSkillCutin("恐竜剣・兜割り", "earth"); setTimeout(() => { addLog(">> [BOSS] 兜割り！シールド無効", "log-enemy"); doEnemyAttack(1.8, {ignoreShield: true}); }, 1200); return; }
+    }
+    // Stage 1
+    if(stage===1) {
+        if(floor===3) { if(Math.random() < 0.2) { showSkillCutin("自己再生", "heal"); setTimeout(() => { enemy.hp = Math.min(enemy.hp + 20, enemy.maxHp); playSE("se-heal"); addLog(">> [自己再生] HP20回復", "log-heal"); animateValue(el("enemy-hp-value"),displayEnemyHP,enemy.hp,500); displayEnemyHP=enemy.hp; updateInfo(); endEnemyTurn(); }, 1200); return; } if(Math.random() < 0.4) { showSkillCutin("鉄壁の守り", "earth"); setTimeout(() => { enemy.state.guard = true; addLog(">> [鉄壁の守り] ダメージ半減", "log-enemy"); updateInfo(); endEnemyTurn(); }, 1200); return; } }
+        if(floor===5) { if(enemy.state.charge) { enemy.state.charge = false; showSkillCutin("森の破壊衝動", "earth"); setTimeout(() => { doEnemyAttack(3.0); }, 1200); return; } if(Math.random() < 0.3) { enemy.state.charge = true; addLog(`>> 力を溜めている…`, "log-enemy"); updateInfo(); endEnemyTurn(); return; } }
+    }
     
     doEnemyAttack(1.0);
 }
@@ -910,8 +973,8 @@ function winBattle() {
 
 function checkDrop() {
     // Check next stages
-    if(stage === 6) { nextStep(); return; } // Extra
-    if(stage === 5 && floor === 5) { nextStep(); return; } // God
+    if(stage === 5 && floor === 1) { nextStep(); return; } // Extra
+    if(stage === 6 && floor === 5) { nextStep(); return; } // God
     if(stage === 4 && floor === 6) { nextStep(); return; } // Toon
     
     const isBoss = (floor === 5 || (stage===4 && floor===6)); 
@@ -941,12 +1004,12 @@ function openChest() {
 function nextStep() {
     floor++; const ppr = totalDarts>0 ? ((totalScore/totalDarts)*3).toFixed(1) : 0;
 
-    const isStage6Clear = (stage === 6 && floor > 1);
-    const isStage5Clear = (stage === 5 && floor > 5);
+    const isStage5Clear = (stage === 5 && floor > 1); // Extra
+    const isStage6Clear = (stage === 6 && floor > 5); // God
     const isStage4Clear = (stage === 4 && floor > 6);
     const isNormalClear = (stage <= 3 && floor > 5);
 
-    if(isNormalClear || isStage4Clear || isStage5Clear || isStage6Clear) {
+    if(isNormalClear || isStage4Clear || isStage6Clear || isStage5Clear) {
         const stageTurns = totalGameTurns - stageStartTurn;
         const [rank, dpBonus] = calculateStageRank(stage, stageTurns);
         
@@ -968,13 +1031,13 @@ function nextStep() {
 
         playBGM("bgm-win");
 
-        if(stage === 6) { // Extra
+        if(stage === 5) { // Extra
             const res = finishSession("EXTRA-WIN", parseFloat(ppr), mult);
             showDialog("★ TRUE ENDING ★", `<span style="font-size:30px;color:#f0f;">THE LEGEND!!</span><br>最強の黒竜を倒した！<br><br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br>PPR: ${ppr}<br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{text:"TITLE", action:returnToTitle}]);
             return;
         }
         
-        if(stage === 5) { // God
+        if(stage === 6) { // God
             const res = finishSession("GOD-WIN", parseFloat(ppr), mult);
             showDialog("GOD DEFEATED!", `<span style="font-size:30px;color:#ffd700;">DIVINE VICTORY!</span><br>神の試練を乗り越えた！<br><br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{text:"TITLE", action:returnToTitle}]);
             return;
@@ -992,7 +1055,7 @@ function nextStep() {
         const btnNext = { text: "⛺ 次へ進む (繰越)", action: () => {
             player.hp = Math.min(player.hp + 30, player.maxHp);
             // Logic for next stage
-            if(stage === 4) initGameSession(5, true);
+            if(stage === 4) initGameSession(6, true);
             else initGameSession(stage + 1, true); 
         } };
         const btnReturn = { text: "🏠 帰還する (確定)", action: () => {
@@ -1001,7 +1064,7 @@ function nextStep() {
         } };
 
         if (stage === 3) {
-            const btnExtra = { text: "⚠️ EXTRA STAGE", action: () => { player.hp = Math.min(player.hp + 30, player.maxHp); initGameSession(6, true); } };
+            const btnExtra = { text: "⚠️ EXTRA STAGE", action: () => { player.hp = Math.min(player.hp + 30, player.maxHp); initGameSession(5, true); } };
             // Simple: Just allow clearing or extra
             if (parseFloat(ppr) >= 70.0 || savedData.clearedExtra) {
                 msg += "<br><br><span style='color:#ff0000;'>強力な反応を感知...挑戦しますか？</span>";
@@ -1117,8 +1180,8 @@ function showSkillCutin(name, type) {
 function updateInfo() {
     if (!enemy.data) return;
 
-    if(stage===6) { el("stage-display").innerText="EXTRA"; el("floor-display").innerText="FINAL"; }
-    else if(stage===5) { el("stage-display").innerText="STAGE 5"; el("floor-display").innerText=`${floor}F`; }
+    if(stage===5) { el("stage-display").innerText="EXTRA"; el("floor-display").innerText="FINAL"; }
+    else if(stage===6) { el("stage-display").innerText="STAGE 5"; el("floor-display").innerText=`${floor}F`; }
     else if(stage===4) { el("stage-display").innerText="STAGE 4"; el("floor-display").innerText=`${floor}F`; }
     else { el("stage-display").innerText=`STAGE ${stage}`; el("floor-display").innerText=`${floor}F`; }
     el("turn-display").innerText=`TURN ${currentTurn}`;
@@ -1373,7 +1436,6 @@ function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0)
     let shortDesc = card.desc;
     if(shortDesc.length > 20) shortDesc = shortDesc.substring(0, 19) + "..";
 
-    // Deck View: Image fills area
     const imgStyle = isDeckItem ? "height: 100%; border-radius: 4px;" : "";
     const artStyle = isDeckItem ? "height: 100%;" : "";
 
@@ -1499,7 +1561,7 @@ function finishSession(resultType, ppr, multiplier = 1.0) {
 
     const now = new Date(); 
     const dateStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${("0"+now.getMinutes()).slice(-2)}`;
-    let stgName = (stage === 6) ? "EXTRA" : (stage===5 ? "STAGE 5" : "S" + stage + "-" + floor + "F");
+    let stgName = (stage === 6) ? "STAGE 5" : (stage===5 ? "EXTRA" : "S" + stage + "-" + floor + "F");
     let resultText = resultType;
     
     let gainedDP = 0;
