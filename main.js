@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v1.7.1 UI Fix)");
+console.log("★ main.js is loaded! (v1.8 UX Polish)");
 
 // --- ★ GAME DATA CONFIG ★ ---
 const GAME_DATA = {
@@ -948,18 +948,25 @@ function renderHand() {
                 if (player.mp < cost) div.classList.add("disabled");
 
                 const imgPath = `assets/cards/${card.id}.png`;
+                
+                // ★ v1.8 UX: Smart Tooltip + Mouse Events
                 div.innerHTML = `
                     <div class="hand-cost">${cost}</div>
                     <div class="card-art" style="height:100%; border:none;">
                         <img src="${imgPath}" onerror="this.style.display='none'">
                     </div>
                     <div style="position:absolute; bottom:0; width:100%; font-size:8px; text-align:center; background:rgba(0,0,0,0.7); color:#fff;">${card.name}</div>
-                    <div class="card-tooltip-box battle-tooltip">
+                    <div class="card-tooltip-box battle-tooltip" id="tooltip-hand-${index}">
                         <div class="ct-name">${card.name} [Cost:${cost}]</div>
                         <div class="ct-desc">${card.desc}</div>
                     </div>
                 `;
+                
                 div.onclick = () => playHandCard(index);
+                
+                // Smart Position Logic
+                div.onmouseenter = (e) => adjustTooltipPosition(e, `tooltip-hand-${index}`);
+                
                 handArea.appendChild(div);
             });
         }
@@ -1044,7 +1051,6 @@ function closeCollection() { playSE("se-tap"); el("collection-modal").style.disp
 
 function renderDeckEditor() {
     if (!savedData.deck) savedData.deck = [];
-    // ★ v1.7: Sort deck by ID
     savedData.deck.sort((a,b) => a - b);
 
     const deckGrid = el("deck-grid"); deckGrid.innerHTML = "";
@@ -1084,12 +1090,21 @@ function renderDeckEditor() {
 
 function createCardElement(card, isDeckItem, remainingCount = 1) {
     const div = document.createElement("div");
-    const notOwnedClass = (!isDeckItem && remainingCount <= 0) ? "card-not-owned" : "";
+    // ★ v1.8 Fix: Remove pointer-events:none, use logic instead
+    const isOwned = (isDeckItem || remainingCount > 0);
+    const notOwnedClass = (!isOwned) ? "card-not-owned" : "";
+    
     div.className = `collection-card rarity-${card.rarity} ${notOwnedClass}`;
     const imgPath = `assets/cards/${card.id}.png`;
     const fallbackIcon = card.type === "MAGIC" ? "🪄" : "⛓️";
-    // ★ v1.7: Cost & Tooltip
     const cost = (card.cost !== undefined) ? card.cost : "?";
+    
+    // ★ v1.8 UX: Direct Info Display (Short desc)
+    let shortDesc = card.desc;
+    if(shortDesc.length > 20) shortDesc = shortDesc.substring(0, 19) + "..";
+
+    // Unique ID for tooltip
+    const uid = Math.random().toString(36).substr(2, 9);
 
     div.innerHTML = `
         <div class="card-cost-badge">${cost}</div>
@@ -1101,16 +1116,60 @@ function createCardElement(card, isDeckItem, remainingCount = 1) {
         <div class="card-info">
             <div class="card-name">${card.name}</div>
             <div class="card-type">[${card.type}]</div>
+            
+            ${isOwned ? `<div class="card-info-direct" style="display:block;"><span class="cid-cost">MP${cost}</span> ${shortDesc}</div>` : ''}
         </div>
-        <div class="card-tooltip-box">
+        
+        <div class="card-tooltip-box" id="tooltip-${uid}">
             <div class="ct-name">${card.name} [Cost:${cost}]</div>
             <div class="ct-desc">${card.desc}</div>
         </div>
     `;
+    
     div.onclick = function() {
+        if (!isOwned) return; // Ignore click if not owned
         if (isDeckItem) removeFromDeck(card.id); else addToDeck(card.id);
     };
+    
+    // Smart Position Logic
+    div.onmouseenter = (e) => adjustTooltipPosition(e, `tooltip-${uid}`);
+
     return div;
+}
+
+// ★ v1.8 New Function: Smart Tooltip Positioning
+function adjustTooltipPosition(e, tooltipId) {
+    const tooltip = document.getElementById(tooltipId);
+    if(!tooltip) return;
+    
+    const cardRect = e.currentTarget.getBoundingClientRect();
+    const winW = window.innerWidth;
+    const winH = window.innerHeight;
+    
+    // Default: Center bottom
+    let left = cardRect.left + (cardRect.width / 2) - 100; // 100 is half tooltip width
+    let top = cardRect.top - 10 - tooltip.offsetHeight; // Above card
+    
+    // Check Top edge
+    if (top < 10) {
+        top = cardRect.bottom + 10; // Move to below
+    }
+    
+    // Check Left edge
+    if (left < 10) {
+        left = 10;
+    }
+    
+    // Check Right edge
+    if (left + 200 > winW - 10) {
+        left = winW - 210;
+    }
+    
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+    tooltip.style.transform = "none"; // Reset CSS transform center
+    tooltip.style.opacity = "1";
+    tooltip.style.visibility = "visible";
 }
 
 function addToDeck(cardId) {
