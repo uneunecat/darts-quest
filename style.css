@@ -178,27 +178,11 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .modal-item { border-color: #00ff00 !important; box-shadow: 0 0 40px #00ff00 !important; }
 .modal-title { font-size: 32px; color: #f9a826; margin-bottom: 15px; font-weight: bold; }
 .modal-text { font-size: 20px; margin-bottom: 20px; line-height: 1.5; }
-
-/* Shop Modal Fix */
-.modal-box.shop-box {
-    width: 900px; max-width: 95%; height: 90vh; max-height: 800px;
-    display: flex; flex-direction: column;
-    padding: 20px 0; /* Vertical padding only to let children fill width */
-    overflow: hidden; background: #16213e; border: 2px solid #fff; border-radius: 8px;
-}
-.modal-box.shop-box .modal-title,
-.modal-box.shop-box > div:not(.pack-list) {
-    padding: 0 20px;
-    width: 100%;
-    box-sizing: border-box;
-}
-
 .shop-box .modal-btn, .deck-area-container + .modal-btn {
     margin: 15px;
     padding: 15px 0;
     flex-shrink: 0;
     width: calc(100% - 30px);
-    align-self: center; /* Center button */
     background: #e94560;
     color: #fff;
     border: none;
@@ -207,100 +191,67 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     cursor: pointer;
 }
 .shop-box .modal-btn:hover { background: #ff6b81; }
-
-/* Pack List Fix */
-.shop-box .pack-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); /* Fix: Reduced min-width to 140px */
-    gap: 20px;
-    padding: 20px;
-    overflow-y: auto;
-    flex: 1;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.pack-item { 
-    background: linear-gradient(180deg, #222, #111); border: 1px solid #444; border-radius: 10px; padding: 10px; /* Reduced padding */
-    display: flex; flex-direction: column; align-items: center; transition: transform 0.2s, box-shadow 0.2s; text-align: center; 
-    min-height: 300px; /* Reduced height */
-    justify-content: flex-start;
-    max-width: 180px; /* Fix: Max width limit */
-    margin: 0 auto; /* Center in grid cell */
-}
-.pack-item:hover { transform: translateY(-5px); box-shadow: 0 0 15px rgba(233, 69, 96, 0.4); border-color: #e94560; }
-.pack-desc { font-size: 10px; color: #aaa; margin-bottom: auto; height: 3.6em; overflow: hidden; line-height: 1.2; width: 100%; }
-.pack-img-container { width: 120px; height: 165px; /* Fix: Reduced image size */ margin-bottom: 10px; border-radius: 8px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.6); background: transparent; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.pack-img-container img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
-
 .modal-btn { background-color: #e94560; color: white; border: none; padding: 10px 30px; font-size: 20px; border-radius: 5px; cursor: pointer; margin-top: 10px; }
 .modal-btn:hover { background-color: #fff; color: #e94560; }
 .btn-group { display: flex; gap: 20px; justify-content: center; margin-top: 20px; }
 
+.history-box { max-width: 90%; max-height: 80%; width: 800px; padding: 20px; overflow: hidden; display:flex; flex-direction:column; }
+.history-list { flex: 1; overflow-y: auto; text-align: left; margin-bottom: 20px; border: 1px solid #444; background: rgba(0,0,0,0.8); }
+.h-header { display: grid; grid-template-columns: 2fr 3fr 3fr 3fr; background: #333; color: #aaa; padding: 10px; font-weight: bold; border-bottom: 1px solid #555; }
+.h-row { display: grid; grid-template-columns: 2fr 3fr 3fr 3fr; padding: 8px 10px; border-bottom: 1px solid #333; font-family: 'Roboto Mono', monospace; font-size: 14px; align-items: center; }
+.h-row:nth-child(even) { background: rgba(255,255,255,0.05); }
+.res-win { color: #00d2fc; font-weight: bold; }
+.res-lose { color: #ff5555; font-weight: bold; }
+.res-extra { color: #f0f; font-weight: bold; text-shadow: 0 0 5px #f0f; }
+.rank-text { font-weight:bold; margin-left:5px; }
+
+/* Mobile Responsive Design */
+#mobile-keypad { display: none; }
+@media (max-width: 768px) {
+    body { height: auto; min-height: 100vh; overflow-y: auto; align-items: flex-start; background-color: #16213e; }
+    #game-scaler { width: 100%; height: auto; transform: none !important; margin: 0; }
+    .container { border: none; border-radius: 0; height: auto; min-height: 100vh; display: flex; flex-direction: column; }
+    .title-screen { padding: 20px 0; }
+    .title-logo { font-size: 50px; margin-top: 20px; }
+    .highscore-box { min-width: 90%; width: 90%; }
+    .stage-select { flex-wrap: wrap; justify-content: center; }
+    .game-screen { display: none; height: auto; padding: 10px; flex-direction: column; }
+    .header-info { margin-top: 40px; font-size: 18px; gap: 15px; }
+    .main-area { flex-direction: column; height: auto; gap: 10px; }
+    .left-panel { width: 100%; padding: 10px; box-sizing: border-box; }
+    .enemy-image-container { width: 100%; height: 180px; }
+    #enemy-img { object-fit: contain; }
+    .right-panel { width: 100%; }
+    .player-box { margin-bottom: 5px; padding: 5px; }
+    .skill-area, .item-area { margin-bottom: 5px; }
+    .score-display { height: 40px; line-height: 40px; font-size: 24px; }
+    .keyboard-hint { display: none; }
+    #mobile-keypad { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px; padding-bottom: 20px; }
+    .key-btn { background: #333; color: #fff; border: 1px solid #555; border-radius: 8px; font-size: 24px; font-family: 'Courier New', monospace; padding: 15px 0; cursor: pointer; touch-action: manipulation; }
+    .key-btn:active { background: #00d2fc; color: #000; }
+    .key-func { background: #442222; color: #ffcccc; }
+    .key-enter { background: #004466; color: #ccffff; font-weight: bold; }
+}
+
 /* --- DECK & CARD DESIGN (v2.1 UI Split) --- */
+.modal-box.shop-box { width: 900px; max-width: 95%; height: 90vh; max-height: 800px; display: flex; flex-direction: column; padding: 0; overflow: hidden; background: #16213e; border: 2px solid #fff; border-radius: 8px; }
 .modal-header { padding: 15px; background: rgba(0,0,0,0.2); flex-shrink: 0; }
-
-.modal-body-split {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-    gap: 15px;
-    padding: 10px 15px;
-}
-.deck-column {
-    flex: 0 0 35%; 
-    display: flex;
-    flex-direction: column;
-    background: rgba(0,0,0,0.3);
-    border-radius: 8px;
-    border: 1px solid #333;
-    padding: 5px;
-}
-.list-column {
-    flex: 1; 
-    display: flex;
-    flex-direction: column;
-    background: rgba(0,0,0,0.3);
-    border-radius: 8px;
-    border: 1px solid #333;
-    padding: 5px;
-}
-.column-header {
-    color: #fff; font-size: 14px; margin-bottom: 5px; text-align: left; padding-left: 5px;
-    border-bottom: 1px solid #444; padding-bottom: 5px;
-}
-
-.deck-grid { 
-    display: flex; flex-wrap: wrap; gap: 6px; 
-    justify-content: flex-start; 
-    align-content: flex-start;
-    padding: 5px; overflow-y: auto; flex: 1;
-}
-
-.deck-slot-empty { width: 50px; height: 75px; border: 1px dashed #555; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #444; font-size: 10px; background: rgba(0,0,0,0.2); }
-.deck-grid .collection-card { width: 50px !important; height: 75px !important; flex-shrink: 0; }
-.deck-grid .collection-card .card-name { font-size: 7px; display: none; }
+.deck-area-container { margin: 10px 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid #333; flex-shrink: 0; }
+.deck-grid { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; min-height: 120px; padding: 5px; }
+.deck-slot-empty { width: 60px; height: 90px; border: 1px dashed #555; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #444; font-size: 10px; background: rgba(0,0,0,0.2); }
+.deck-grid .collection-card { width: 60px !important; height: 90px !important; flex-shrink: 0; }
+.deck-grid .collection-card .card-name { font-size: 8px; }
 .deck-grid .collection-card .card-type { display: none; }
 .deck-grid .collection-card .card-count-badge { display: none; }
 .deck-grid .collection-card .card-info-direct { display: none; } 
-.deck-grid .collection-card .card-art { border-radius: 4px; }
 
-.card-grid { 
-    flex: 1; overflow-y: auto; min-height: 0; padding: 10px; 
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); 
-    grid-auto-rows: max-content; gap: 10px; align-content: start; 
-}
+.card-grid { flex: 1; overflow-y: auto; min-height: 0; padding: 15px; background: rgba(0,0,0,0.2); display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); grid-auto-rows: max-content; gap: 15px; align-content: start; }
 
-@media (max-width: 768px) {
-    .modal-body-split { flex-direction: column; }
-    .deck-column { flex: 0 0 auto; height: 180px; } 
-    .list-column { flex: 1; }
-    .deck-grid { justify-content: center; } 
-}
-
+/* Close Button Style */
 .header-close-btn { background: transparent; border: 2px solid #555; color: #aaa; border-radius: 50%; width: 30px; height: 30px; font-size: 20px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
 .header-close-btn:hover { border-color: #ff5555; color: #ff5555; background: rgba(255,85,85,0.1); }
 
+/* Common Card Design (v1.9 Stable) */
 .collection-card {
     position: relative; width: 100%; 
     border-radius: 6px; cursor: pointer; transition: transform 0.1s; background: #1a1a1a; border: 2px solid #555;
@@ -316,6 +267,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .card-type { font-size: 8px; color: #aaa; margin-top: 2px; }
 .card-count-badge { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.8); color: #fff; font-size: 9px; padding: 1px 4px; border-radius: 3px; border: 1px solid #555; z-index: 5; }
 
+/* Direct Info (v1.9: Removed MP cost from text) */
 .card-info-direct {
     font-size: 9px; color: #ccc;
     background: rgba(0,0,0,0.3);
@@ -324,6 +276,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     line-height: 1.2;
 }
 
+/* Cost Badge */
 .card-cost-badge {
     position: absolute; top: 0; left: 0;
     background: #00d2fc; color: #000;
@@ -335,6 +288,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     box-shadow: 1px 1px 3px rgba(0,0,0,0.5);
 }
 
+/* ★ v1.9 New: Global Tooltip Style */
 .global-tooltip {
     position: fixed;
     visibility: hidden;
@@ -353,9 +307,9 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .tooltip-name { color: #ffd700; font-weight: bold; border-bottom: 1px solid #555; margin-bottom: 5px; padding-bottom: 3px; font-size: 14px; }
 .tooltip-desc { font-size: 12px; line-height: 1.4; color: #ddd; }
 
-/* Battle UI Fixes (v2.2.1) */
+/* Battle Hand Card (v2.0 Fix) */
 .hand-card {
-    width: 50px;
+    width: 50px; /* 少し小さく */
     height: 75px;
     flex-shrink: 0; /* Important: Don't shrink */
     background: #1a1a1a; border: 1px solid #555; border-radius: 4px; position: relative; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column;
@@ -367,87 +321,82 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .hand-card-empty { color: #555; font-size: 10px; }
 .hand-locked-msg { color: #ff5555; font-weight: bold; font-size: 12px; border: 1px dashed #ff5555; padding: 8px 15px; border-radius: 5px; background: rgba(50, 0, 0, 0.5); animation: pulseRed 2s infinite; }
 
-#player-mp-bar {
-    background: transparent !important;
-    box-shadow: none !important;
-    display: flex;
-    gap: 1px; /* Fix: Reduced gap from 3px to 1px */
-    align-items: center;
-    width: 100% !important;
-    padding: 0 2px;
-    box-sizing: border-box;
-}
+/* Rarity Colors */
+.rarity-UR { border-color: #d000ff; box-shadow: 0 0 8px #d000ff; }
+.rarity-UR .card-name { color: #f0f; text-shadow: 0 0 2px #f0f; }
+.rarity-SR { border-color: #ffd700; box-shadow: 0 0 5px #ffd700; }
+.rarity-SR .card-name { color: #ffd700; }
+.rarity-R { border-color: #00d2fc; }
+.rarity-R .card-name { color: #00d2fc; }
+.rarity-N { border-color: #555; }
+.card-not-owned { opacity: 0.4; filter: grayscale(100%); }
 
-.mp-dot {
-    flex: 1;
-    height: 14px;
-    min-width: 2px; /* Fix: Prevent collapse */
-    background-color: rgba(0, 40, 80, 0.5); border: 1px solid #005577; border-radius: 2px; box-shadow: inset 0 0 2px #000; transition: all 0.2s;
-}
+/* Shop & Packs */
+.shop-box .pack-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; padding: 10px; overflow-y: auto; flex: 1; }
+.pack-item { background: linear-gradient(180deg, #222, #111); border: 1px solid #444; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; align-items: center; transition: transform 0.2s, box-shadow 0.2s; text-align: center; min-height: 340px; justify-content: flex-start; }
+.pack-item:hover { transform: translateY(-5px); box-shadow: 0 0 15px rgba(233, 69, 96, 0.4); border-color: #e94560; }
+.pack-desc { font-size: 11px; color: #aaa; margin-bottom: auto; height: 3.6em; overflow: hidden; line-height: 1.2; width: 100%; }
+.pack-img-container { width: 160px; height: 220px; margin-bottom: 15px; border-radius: 8px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.6); background: transparent; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.pack-img-container img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+.pack-buy-btn { width: 100%; background: linear-gradient(90deg, #e94560, #ff6b81); color: #fff; border: none; padding: 10px 0; border-radius: 20px; font-size: 14px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(233, 69, 96, 0.3); transition: 0.2s; margin-top: 10px; }
+.pack-buy-btn:hover { transform: scale(1.05); filter: brightness(1.2); }
+.pack-buy-btn:active { transform: scale(0.95); }
+.pack-buy-btn:disabled { background: #444; color: #888; cursor: not-allowed; box-shadow: none; transform: none; }
+.pack-results-container { display: flex; justify-content: center; gap: 15px; padding: 20px; flex-wrap: wrap; }
+.result-card-anim { animation: cardPopIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; width: 100px !important; height: 140px !important; position: relative; border: 2px solid #555; }
+@keyframes cardPopIn { 0% { opacity: 0; transform: translateY(50px) scale(0.5) rotateY(90deg); } 100% { opacity: 1; transform: translateY(0) scale(1) rotateY(0); } }
+.new-badge-overlay { position: absolute; top: -5px; left: -5px; background: #ffd700; color: #000; font-weight: bold; font-size: 10px; padding: 2px 6px; border-radius: 10px; box-shadow: 0 0 5px #ffd700; z-index: 20; animation: bounce 1s infinite; }
+@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
+/* Battle UI Dots */
+.mp-fill { background: linear-gradient(90deg, #00d2fc, #0077aa); box-shadow: 0 0 10px #00d2fc; transition: width 0.3s; }
+#player-mp-bar { background: transparent !important; box-shadow: none !important; display: flex; gap: 3px; align-items: center; width: 100% !important; padding: 0 2px; }
+.mp-dot { flex: 1; height: 14px; background-color: rgba(0, 40, 80, 0.5); border: 1px solid #005577; border-radius: 2px; box-shadow: inset 0 0 2px #000; transition: all 0.2s; }
 .mp-dot.active { background-color: #00d2fc; box-shadow: 0 0 8px #00d2fc, inset 0 0 2px #fff; border-color: #fff; transform: scale(1.1); }
-
 .hand-container { background: rgba(0,0,0,0.4); border: 1px solid #444; border-radius: 8px; padding: 5px; margin-bottom: 10px; height: 130px; display: flex; flex-direction: column; }
+.hand-area { flex: 1; display: flex; gap: 5px; justify-content: center; align-items: center; overflow-x: auto; }
 
-/* Hand Area Fix */
+/* ★ v2.1.2 Reverted & v2.2. New Styles below override */
+
+/* Modal Split (v2.1) */
+.modal-body-split {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    gap: 15px;
+    padding: 10px 15px;
+}
+.deck-column {
+    flex: 0 0 35%; /* Left 35% */
+    display: flex;
+    flex-direction: column;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    border: 1px solid #333;
+    padding: 5px;
+}
+.list-column {
+    flex: 1; /* Right remainder */
+    display: flex;
+    flex-direction: column;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    border: 1px solid #333;
+    padding: 5px;
+}
+.column-header {
+    color: #fff; font-size: 14px; margin-bottom: 5px; text-align: left; padding-left: 5px;
+    border-bottom: 1px solid #444; padding-bottom: 5px;
+}
+
+/* Battle UI Fixes (v2.2.1) - Override */
+#player-mp-bar {
+    gap: 1px; /* Fix: Reduced gap */
+}
+.mp-dot {
+    min-width: 2px; /* Fix: Prevent collapse */
+}
 .hand-area { 
-    flex: 1; 
-    display: flex; 
     flex-direction: row; /* Fix: Force row */
     flex-wrap: nowrap; /* Fix: No wrap */
-    gap: 5px; 
-    justify-content: center; 
-    align-items: center; 
-    overflow-x: auto;
-    width: 100%;
-}
-
-/* --- Pack Result Fix (v2.2.4) --- */
-
-/* コンテナ設定: 横並び・中央寄せ */
-.pack-results-container { 
-    display: flex; 
-    justify-content: center; 
-    align-items: center; 
-    gap: 20px; 
-    padding: 20px; 
-    flex-wrap: wrap; /* 画面が狭い場合は折り返し */
-    width: 100%;
-    box-sizing: border-box;
-}
-
-/* カードサイズを強制的に固定 (v2.1.2と同様のサイズ感に) */
-.pack-results-container .collection-card {
-    width: 100px !important;
-    height: 150px !important;
-    flex-shrink: 0;
-    margin: 0; /* 余計なマージンを削除 */
-    transform: none; /* ホバー拡大などの影響をリセット */
-}
-
-/* アニメーション用のクラス設定 */
-.result-card-anim { 
-    animation: cardPopIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; 
-    position: relative; 
-    border: 2px solid #555; 
-}
-
-@keyframes cardPopIn { 
-    0% { opacity: 0; transform: translateY(50px) scale(0.5) rotateY(90deg); } 
-    100% { opacity: 1; transform: translateY(0) scale(1) rotateY(0); } 
-}
-
-/* NEWバッジのスタイル再定義 */
-.new-badge-overlay { 
-    position: absolute; 
-    top: -5px; 
-    left: -5px; 
-    background: #ffd700; 
-    color: #000; 
-    font-weight: bold; 
-    font-size: 10px; 
-    padding: 2px 6px; 
-    border-radius: 10px; 
-    box-shadow: 0 0 5px #ffd700; 
-    z-index: 20; 
-    animation: bounce 1s infinite; 
 }

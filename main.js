@@ -32,8 +32,7 @@ const GAME_DATA = {
             { name: "サクリファイス", img: "assets/4-5.png", weak: 20, hp: 550 },
             { name: "サウザンド・アイズ・サクリファイス", img: "assets/4-6.png", weak: 20, hp: 800 }
         ],
-        // ★ v2.2 Moved: Extra Stage (Red-Eyes) ID:5 -> ID:5 (User's instruction: Extra is 5)
-        // Wait, user said: "extra(5)", "stage5(6)".
+        // ★ v2.2 Moved: Extra Stage (Red-Eyes) ID:5
         5: [
             { name: "真紅眼の黒竜", img: "assets/extra.png", weak: 20, hp: 1500 }
         ],
@@ -180,12 +179,7 @@ function initSlotScreen() {
         const infoEl = el("info-"+i);
         if(!data) { infoEl.innerHTML = "<div class='slot-empty'>NO DATA<br>- Start New Game -</div>"; }
         else {
-            // v2.2: ID 5 is Extra, ID 6 is Stage 5. Check progress.
-            let stgName = `STAGE ${data.highScore.stage}`;
-            if(data.highScore.stage === 5) stgName = "EXTRA";
-            if(data.highScore.stage === 6) stgName = "STAGE 5";
-            
-            let stg = `${stgName} - ${data.highScore.floor}F`;
+            let stg = (data.highScore.stage === 6) ? "EXTRA STAGE" : `STAGE ${data.highScore.stage} - ${data.highScore.floor}F`;
             let badge = data.clearedExtra ? "<br><span style='color:#f0f;font-weight:bold;'>★ EXTRA CLEARED</span>" : "";
             infoEl.innerHTML = `<div>${stg}</div><div style='color:#ffdd00;'>Avg: ${data.highScore.avg.toFixed(1)} (Rt ${calculateRating(data.highScore.avg)})</div><div style='color:#aaa;font-size:12px;'>DP: ${data.dp || 0}${badge}</div>`;
         }
@@ -217,10 +211,7 @@ function backToSlots() {
 }
 
 function updateTitleScore() {
-    let stg = `STAGE ${savedData.highScore.stage}`;
-    if(savedData.highScore.stage === 5) stg = "EXTRA";
-    if(savedData.highScore.stage === 6) stg = "STAGE 5";
-
+    let stg = savedData.highScore.stage === 6 ? "EXTRA" : `STAGE ${savedData.highScore.stage}`;
     el("hs-reach").innerText = `${stg} - ${savedData.highScore.floor}F`;
     el("hs-avg").innerText = savedData.highScore.avg.toFixed(1);
     el("hs-rt").innerText = "Rt " + calculateRating(savedData.highScore.avg);
@@ -235,10 +226,9 @@ function updateTitleScore() {
     updateStageButton(4, "btn-stage4");
 
     // ★ v2.2 New: Unlock Stage 5 (ID 6)
-    // Unlock condition: Stage 4 Cleared
     const canPlayStage5 = (savedData.bestRanks && savedData.bestRanks[4]);
     el("btn-stage5").style.display = canPlayStage5 ? "flex" : "none";
-    updateStageButton(6, "btn-stage5"); // Note: btn-stage5 maps to ID 6
+    updateStageButton(6, "btn-stage5"); 
 
     el("btn-extra").style.display = savedData.clearedExtra ? "flex" : "none";
     updateStageButton(5, "btn-extra");
@@ -348,7 +338,7 @@ function spawnEnemy() {
         // Reset player battle temp states
         player.state.power=false; player.state.shield=false; player.state.weakLock=false; player.state.barrier=false; 
         player.state.guardTurn = 0; player.state.magicCylinder = false; player.state.hexSeal = false; player.state.huge = 0; player.state.atkBonus = 0;
-        // Keep itemLock? No, usually reset per battle or turn. Let's keep it per turn logic.
+        // Keep itemLock
         
         currentTurn=1; turnInputs=[]; currentInput=""; restrictInput=false; 
         updateScoreDisplay(); isJustFinish = false; waitingForChest = false; dropGuaranteed = false; weakHitCount=0;
@@ -386,7 +376,7 @@ function spawnEnemy() {
             } else {
                 playBGM("bgm-boss"); 
                 el("game-container").classList.add("boss-mode"); 
-                el("boss-label").innerText="⚠️ENEMY"; el("boss-label").style.display="inline"; // Not boss label, just warning
+                el("boss-label").innerText="⚠️ENEMY"; el("boss-label").style.display="inline"; 
                 // Normal HP for minions
                 const base=100+((stage-1)*50); const bonus=(floor-1)*30; 
                 enemy.maxHp = enemy.data.hp ? enemy.data.hp : base+bonus;
@@ -727,11 +717,11 @@ function enemyTurn() {
         // Revival Slime (Floor 3)
         if (floor === 3) {
             if (Math.random() < 0.3) {
-                const heal = 100;
-                enemy.hp = Math.min(enemy.hp + heal, enemy.maxHp);
+                // ★ Change: Full Recovery
+                enemy.hp = enemy.maxHp; // Full Heal
                 showSkillCutin("再 生", "heal");
                 setTimeout(() => {
-                    addLog(">> [再生] HPが100回復した", "log-heal");
+                    addLog(">> [再生] HPが全回復した！", "log-heal");
                     animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp;
                     updateInfo(); endEnemyTurn();
                 }, 1200);
@@ -1180,8 +1170,8 @@ function showSkillCutin(name, type) {
 function updateInfo() {
     if (!enemy.data) return;
 
-    if(stage===5) { el("stage-display").innerText="EXTRA"; el("floor-display").innerText="FINAL"; }
-    else if(stage===6) { el("stage-display").innerText="STAGE 5"; el("floor-display").innerText=`${floor}F`; }
+    if(stage===6) { el("stage-display").innerText="STAGE 5"; el("floor-display").innerText=`${floor}F`; }
+    else if(stage===5) { el("stage-display").innerText="EXTRA"; el("floor-display").innerText="FINAL"; }
     else if(stage===4) { el("stage-display").innerText="STAGE 4"; el("floor-display").innerText=`${floor}F`; }
     else { el("stage-display").innerText=`STAGE ${stage}`; el("floor-display").innerText=`${floor}F`; }
     el("turn-display").innerText=`TURN ${currentTurn}`;

@@ -75,17 +75,10 @@
 
             <div class="modal-overlay" id="card-shop-modal" style="display:none;">
                 <div class="modal-box shop-box">
-                    <div style="display:flex; justify-content:space-between; align-items:center; width:100%; padding: 0 20px; box-sizing: border-box; flex-shrink: 0; margin-bottom: 10px;">
-                        <div class="modal-title" style="color:#e94560; margin:0; padding:0;">CARD SHOP</div>
-                        <button class="header-close-btn" onclick="closeCardShop()">×</button>
-                    </div>
-                    
-                    <div style="color:#aaa; margin-bottom:10px; padding: 0 20px; text-align: left; width: 100%; box-sizing: border-box;">
-                        所持DP: <span id="shop-dp-display" style="color:#ffd700; font-weight:bold;">0</span>
-                    </div>
-                    
+                    <div class="modal-title" style="color:#e94560;">CARD SHOP</div>
+                    <div style="color:#aaa; margin-bottom:10px;">所持DP: <span id="shop-dp-display" style="color:#ffd700; font-weight:bold;">0</span></div>
                     <div class="pack-list" id="pack-list"></div>
-                    </div>
+                    <button class="modal-btn" onclick="closeCardShop()">CLOSE</button>
                 </div>
             </div>
 
@@ -99,7 +92,7 @@
 
             <div class="modal-overlay" id="collection-modal" style="display:none;">
                 <div class="modal-box shop-box" style="max-width:900px; height:90vh; display:flex; flex-direction:column;">
-                    <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                         <div class="modal-title" style="color:#00d2fc; margin:0;">DECK EDIT</div>
                         <div style="display:flex; align-items:center; gap:15px;">
                             <div style="font-size:14px; color:#aaa;">所持率: <span id="collection-rate">0%</span></div>
@@ -160,9 +153,9 @@
                     </div>
                     <div style="display:flex; gap:10px; margin-top:10px;">
                         <button class="stage-btn stage4-btn" id="btn-stage4" onclick="initGameSession(4)">STAGE 4</button>
-                        <button class="stage-btn stage5-btn" id="btn-stage5" style="display:none;" onclick="initGameSession(5)">STAGE 5</button>
+                        <button class="stage-btn stage5-btn" id="btn-stage5" style="display:none;" onclick="initGameSession(6)">STAGE 5</button>
                     </div>
-                    <button class="stage-btn extra-btn" id="btn-extra" style="margin-top:10px;" onclick="initGameSession(6)">EXTRA</button>
+                    <button class="stage-btn extra-btn" id="btn-extra" style="margin-top:10px;" onclick="initGameSession(5)">EXTRA</button>
                 </div>
             </div>
 
