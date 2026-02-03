@@ -90,7 +90,7 @@ const PACK_DATA = [
         price: 1500, 
         desc: "テクニカルな戦略カードが登場。", 
         unlockStage: 2,
-        img: "assets/packs/vol1.png"
+        img: "assets/packs/vol2.png"
     }
 ];
 
