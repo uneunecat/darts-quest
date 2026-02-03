@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v2.1 UI Layout)");
+console.log("★ main.js is loaded! (v2.1.1 Fix)");
 
 // --- ★ GAME DATA CONFIG ★ ---
 const GAME_DATA = {
@@ -120,8 +120,8 @@ let totalGameTurns = 0;
 let clearedStagesLog = [];
 let currentBgmId = "";
 
-// Constants
-const DECK_SIZE = 24; 
+// v2.0.1 Constants (Corrected)
+const DECK_SIZE = 20; // ★ Fix: Changed to 20 for 5x4 grid
 const HAND_SIZE = 5;
 const INITIAL_HAND = 3;
 
@@ -494,8 +494,8 @@ function drawCard() {
     const cardId = player.deck.pop();
     player.hand.push(cardId);
     
-    // ★ v2.0.1: Visual Feedback
-    triggerFloatText("DRAW!", el("hand-area")); // Target hand area
+    // ★ v2.0.1: Visual Feedback - Fixed Target to Hand Area (Visible on Screen)
+    triggerFloatText("DRAW!", el("hand-area")); 
     
     updateInfo();
 }
@@ -686,6 +686,7 @@ function enemyTurn() {
         }
     }
     
+    // Common / Stage 4 logic
     if (stage === 4 && floor === 1 && Math.random() < 0.3) { 
         showSkillCutin("トゥーン・ラッシュ", "wind"); setTimeout(() => { addLog(">> [速攻] 2回攻撃！", "log-enemy"); doEnemyAttack(0.7, {callback: () => { setTimeout(() => doEnemyAttack(0.7), 800); } }); }, 1200); return; 
     }
@@ -811,8 +812,8 @@ function endEnemyTurn() {
     currentTurn++; 
     player.mp = Math.min(player.mp + 3, player.maxMp); 
     
-    // ★ v2.0.1: Visual Feedback
-    triggerFloatText("MP+3", el("player-mp-bar")); // Target MP bar
+    // ★ v2.0.1: Fix Visual Feedback (Target MP Bar)
+    triggerFloatText("MP+3", el("player-mp-bar"));
 
     if(player.state.guardTurn > 0) {
         player.state.guardTurn--;
@@ -836,7 +837,7 @@ function winBattle() {
     // ★ v2.0.1 Fix: Reward Draw & MP (Simulate End Turn)
     player.mp = Math.min(player.mp + 3, player.maxMp);
     triggerFloatText("MP+3", el("player-mp-bar"));
-    drawCard(); // This will trigger DRAW float text too
+    drawCard(); 
     
     if (isJustFinish) { 
         player.maxHp += 10; const oldHP = player.hp; player.hp = Math.min(player.hp + 10, player.maxHp); 
@@ -1001,25 +1002,27 @@ function playBGM(id) {
 
 function playSE(id) { const a=document.getElementById(id); if(a){ a.currentTime=0; a.volume=0.5; a.play().catch(e=>{}); } }
 
-// ★ v2.0.1 New: Floating Text Effect
+// ★ v2.0.1 New: Floating Text Effect - Fix Calculation to use fixed position
 function triggerFloatText(text, targetEl) {
     if(!targetEl) return;
     const float = document.createElement("div");
     float.className = "float-text-box";
     float.innerText = text;
     
-    // Position relative to target
+    // Position fixed logic to bypass scaling complexity
     const rect = targetEl.getBoundingClientRect();
-    const containerRect = el("game-container").getBoundingClientRect();
     
-    // Calculate center of target relative to container
-    const left = rect.left - containerRect.left + (rect.width / 2) - 30; // Center approx
-    const top = rect.top - containerRect.top;
+    // We attach to body to avoid container clipping/scaling weirdness
+    document.body.appendChild(float);
+    
+    // Centered on target
+    const left = rect.left + (rect.width / 2) - 30; 
+    const top = rect.top;
     
     float.style.left = `${left}px`;
     float.style.top = `${top}px`;
+    float.style.position = "fixed"; // Force fixed
     
-    el("game-container").appendChild(float);
     setTimeout(() => float.remove(), 1500);
 }
 
@@ -1302,11 +1305,15 @@ function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0)
     let shortDesc = card.desc;
     if(shortDesc.length > 20) shortDesc = shortDesc.substring(0, 19) + "..";
 
+    // ★ v2.1.1 Fix: Force image size for deck view where text is hidden
+    const imgStyle = isDeckItem ? "height: 100%; border-radius: 4px;" : "";
+    const artStyle = isDeckItem ? "height: 100%;" : "";
+
     div.innerHTML = `
         <div class="card-cost-badge">${cost}</div>
         <div class="card-count-badge">x${isDeckItem ? 1 : remainingCount}</div>
-        <div class="card-art">
-            <img src="${imgPath}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+        <div class="card-art" style="${artStyle}">
+            <img src="${imgPath}" style="${imgStyle}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
             <div class="card-placeholder" style="display:none;">${fallbackIcon}</div>
         </div>
         <div class="card-info">
