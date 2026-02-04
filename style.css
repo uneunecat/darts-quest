@@ -464,12 +464,27 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 #card-selector-modal .card-art {
     height: 60%; /* Ensure art takes space */
 }
+/* ★ v2.4.3: Card Selector Description */
 #card-selector-modal .card-info {
-    height: 40%;
-    justify-content: start;
+    height: auto; 
+    min-height: 40px;
+    justify-content: flex-start;
+    padding: 2px;
 }
+
 #card-selector-modal .card-info-direct {
-    display: none; /* Hide desc in selector to save space if needed, or keep it */
+    display: block !important; /* Force show */
+    font-size: 8px;
+    line-height: 1.1;
+    color: #ccc;
+    background: transparent;
+    margin-top: 2px;
+    white-space: normal; /* Allow wrap */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 3; /* Limit lines */
+    -webkit-box-orient: vertical;
 }
 
 /* Not Owned Style */
@@ -481,10 +496,9 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .header-close-btn { background: transparent; border: 2px solid #555; color: #aaa; border-radius: 50%; width: 30px; height: 30px; font-size: 20px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
 .header-close-btn:hover { border-color: #ff5555; color: #ff5555; background: rgba(255,85,85,0.1); }
 
-.collection-card {
-    position: relative; width: 100%; 
-    border-radius: 6px; cursor: pointer; transition: transform 0.1s; background: #1a1a1a; border: 2px solid #555;
-    overflow: visible; display: flex; flex-direction: column; z-index: 10;
+#card-selector-modal .collection-card {
+    /* Slightly increase height to fit text if needed */
+    height: 130px !important; 
 }
 .collection-card:hover { transform: scale(1.05); z-index: 100; border-color: #fff; }
 

@@ -727,7 +727,7 @@ function openDiscardSelector(cardIndex, cost) {
     player.hand.forEach((cid, idx) => {
         if (idx !== cardIndex) {
             const c = CARD_DB.find(cd => cd.id === cid);
-            discardCandidates.push({ id: cid, name: c.name, originalIndex: idx });
+            discardCandidates.push({ id: cid, name: c.name, desc: c.desc, originalIndex: idx }); // Added desc
         }
     });
     
@@ -738,8 +738,17 @@ function openDiscardSelector(cardIndex, cost) {
     discardCandidates.forEach(item => {
         const div = document.createElement("div");
         div.className = "collection-card";
-        div.style.width = "60px"; div.style.height = "90px";
-        div.innerHTML = `<div class="card-art"><img src="assets/cards/${item.id}.png"></div>`;
+        // Remove inline style that conflicts with CSS
+        // div.style.width = "60px"; div.style.height = "90px"; 
+        
+        // ★ v2.4.3: Added description text
+        div.innerHTML = `
+            <div class="card-art"><img src="assets/cards/${item.id}.png"></div>
+            <div class="card-info">
+                <div class="card-name" style="font-size:9px;">${item.name}</div>
+                <div class="card-info-direct">${item.desc}</div>
+            </div>
+        `;
         div.onclick = () => executeDiscardAndEffect(item.originalIndex);
         grid.appendChild(div);
     });
@@ -1051,9 +1060,9 @@ function winBattle() {
 }
 
 function checkDrop() {
-    if(stage === 5 && floor === 1) { nextStep(); return; } // Extra
-    if(stage === 6 && floor === 5) { nextStep(); return; } // God
-    if(stage === 4 && floor === 6) { nextStep(); return; } // Toon
+    if(stage === 5 && floor === 1) { nextStep(); return; } 
+    if(stage === 6 && floor === 5) { nextStep(); return; } 
+    if(stage === 4 && floor === 6) { nextStep(); return; } 
     
     const isBoss = (floor === 5 || (stage===4 && floor===6)); 
     let dropRate = isBoss ? 1.0 : 0.3; if (dropGuaranteed) dropRate = 1.0;
@@ -1062,7 +1071,14 @@ function checkDrop() {
         waitingForChest = true; 
         el("enemy-img").style.display = "none"; 
         el("chest-img").style.display = "block"; el("chest-img").classList.add("chest-shine"); 
-        playSE("se-chest"); addLog("宝箱を見つけた！", "log-item"); 
+        playSE("se-chest"); 
+        addLog("宝箱を見つけた！", "log-item"); 
+        
+        // ★ v2.4.3: Auto Open Chest after 1.5s
+        setTimeout(() => {
+            if(waitingForChest) openChest();
+        }, 1500);
+
     } else { nextStep(); }
 }
 
@@ -1311,8 +1327,21 @@ function updateInfo() {
     updateVisuals();
     renderHand();
 
-    let ppr = 0; if(totalDarts>0) ppr = ((totalScore/totalDarts)*3); 
-    el("avg-display").innerText=ppr.toFixed(1); el("rt-display").innerText=`(Rt ${calculateRating(ppr)})`;
+// ★ v2.4.3: Fix PPR Calculation
+    // PPR = (Total Score / Total Darts Thrown) * 3
+    // Note: totalDarts is updated in finishPlayerTurn, so it tracks COMPLETED throws.
+    // To make it real-time, we should add current turn's throws.
+    const currentThrows = turnInputs.length;
+    const realTotalDarts = totalDarts + currentThrows;
+    
+    let ppr = 0; 
+    if (realTotalDarts > 0) {
+        // totalScore includes current turn's score (updated in processOneThrow)
+        ppr = (totalScore / realTotalDarts) * 3;
+    }
+    
+    el("avg-display").innerText = ppr.toFixed(1); 
+    el("rt-display").innerText = `(Rt ${calculateRating(ppr)})`;
     
     // ★ v2.2.3 Fix: Item Button Visual Logic
     const isLocked = player.state.itemLock;
