@@ -422,23 +422,35 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 }
 
 /* Modal Selector Fix for Image Cutoff */
+/* ★ v2.4.1 Fix: Card Selector Modal Layout */
 #card-selector-modal .modal-box {
-    max-height: 90vh;
-    overflow-y: auto; /* Scroll if needed */
+    width: 90%;
+    max-width: 600px;
+    height: auto;
+    max-height: 80vh;
+    overflow-y: auto;
     padding: 20px;
-    display: block; /* Default block layout */
 }
+
 #card-selector-modal .deck-grid {
-    /* Use flex for centering few cards */
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: wrap; /* Force Wrap */
     justify-content: center;
-    overflow: visible; /* Show full cards */
-    max-height: none;
+    gap: 10px;
+    overflow: visible;
+    margin-bottom: 20px;
 }
+
 #card-selector-modal .collection-card {
     margin: 5px;
-    transform: scale(1.1); /* Make selection cards slightly bigger */
+    transform: scale(1.0); /* Reset scale just in case */
+    flex-shrink: 0;
+}
+
+/* ★ v2.4.1 New: Not Owned Card Style */
+.card-not-owned {
+    filter: grayscale(100%) opacity(0.4);
+    pointer-events: none; /* Click disabled */
 }
 
 .header-close-btn { background: transparent; border: 2px solid #555; color: #aaa; border-radius: 50%; width: 30px; height: 30px; font-size: 20px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }

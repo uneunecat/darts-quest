@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v2.4 Real-time Link)");
+console.log("★ main.js is loaded! (v2.4.1 UX Polish)");
 
 // --- ★ GAME DATA CONFIG ★ ---
 // ... (GAME_DATA, CARD_DB, PACK_DATA は変更なし) ...
@@ -85,33 +85,34 @@ const PACK_DATA = [
     { id: "vol2", name: "Vol.2 - Awakening", price: 1500, desc: "テクニカルな戦略カードが登場。", unlockStage: 3, img: "assets/packs/vol2.png" }
 ];
 
-// --- ★ Bluetooth Config (v2.4) ★ ---
-const DL_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e'; // Nordic UART Service
-const DL_NOTIFY_UUID  = '6e40fff6-b5a3-f393-e0a9-e50e24dcca9e'; // Notify Characteristic
+// --- ★ Bluetooth Config (v2.4.1 Updated with Type Info) ★ ---
+const DL_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e'; 
+const DL_NOTIFY_UUID  = '6e40fff6-b5a3-f393-e0a9-e50e24dcca9e'; 
 
+// Format: [Score, Type(0:Single, 1:Double, 2:Triple, 3:Bull, 4:DBull)]
 const DL_SCORE_MAP = {
-    0x3c:60, 0x28:20, 0x50:60, 0x14:20, // 20
-    0x29:2,  0x15:1,  0x3d:3,  0x01:1,  // 1
-    0x3a:36, 0x26:18, 0x4e:54, 0x12:18, // 18
-    0x2c:8,  0x18:4,  0x40:12, 0x04:4,  // 4
-    0x35:26, 0x21:13, 0x49:39, 0x0d:13, // 13
-    0x2e:12, 0x1a:6,  0x42:18, 0x06:6,  // 6
-    0x32:20, 0x1e:10, 0x46:30, 0x0a:10, // 10
-    0x37:30, 0x23:15, 0x4b:45, 0x0f:15, // 15
-    0x2a:4,  0x16:2,  0x3e:6,  0x02:2,  // 2
-    0x39:34, 0x25:17, 0x4d:51, 0x11:17, // 17
-    0x2b:6,  0x17:3,  0x3f:9,  0x03:3,  // 3
-    0x3b:38, 0x27:19, 0x4f:57, 0x13:19, // 19
-    0x2f:14, 0x1b:7,  0x43:21, 0x07:7,  // 7
-    0x38:32, 0x24:16, 0x4c:48, 0x10:16, // 16
-    0x30:16, 0x1c:8,  0x44:24, 0x08:8,  // 8
-    0x33:22, 0x1f:11, 0x47:33, 0x0b:11, // 11
-    0x36:28, 0x22:14, 0x4a:42, 0x0e:14, // 14
-    0x31:18, 0x1d:9,  0x45:27, 0x09:9,  // 9
-    0x34:24, 0x20:12, 0x48:36, 0x0c:12, // 12
-    0x2d:10, 0x19:5,  0x41:15, 0x05:5,  // 5
-    0x51:50, 0x52:50, // BULL
-    0x54: "CHANGE" // CHANGE
+    0x3c:[60,2], 0x28:[20,0], 0x50:[60,2], 0x14:[20,0], // 20
+    0x29:[2,1],  0x15:[1,0],  0x3d:[3,2],  0x01:[1,0],  // 1
+    0x3a:[36,1], 0x26:[18,0], 0x4e:[54,2], 0x12:[18,0], // 18
+    0x2c:[8,1],  0x18:[4,0],  0x40:[12,2], 0x04:[4,0],  // 4
+    0x35:[26,1], 0x21:[13,0], 0x49:[39,2], 0x0d:[13,0], // 13
+    0x2e:[12,1], 0x1a:[6,0],  0x42:[18,2], 0x06:[6,0],  // 6
+    0x32:[20,1], 0x1e:[10,0], 0x46:[30,2], 0x0a:[10,0], // 10
+    0x37:[30,1], 0x23:[15,0], 0x4b:[45,2], 0x0f:[15,0], // 15
+    0x2a:[4,1],  0x16:[2,0],  0x3e:[6,2],  0x02:[2,0],  // 2
+    0x39:[34,1], 0x25:[17,0], 0x4d:[51,2], 0x11:[17,0], // 17
+    0x2b:[6,1],  0x17:[3,0],  0x3f:[9,2],  0x03:[3,0],  // 3
+    0x3b:[38,1], 0x27:[19,0], 0x4f:[57,2], 0x13:[19,0], // 19
+    0x2f:[14,1], 0x1b:[7,0],  0x43:[21,2], 0x07:[7,0],  // 7
+    0x38:[32,1], 0x24:[16,0], 0x4c:[48,2], 0x10:[16,0], // 16
+    0x30:[16,1], 0x1c:[8,0],  0x44:[24,2], 0x08:[8,0],  // 8
+    0x33:[22,1], 0x1f:[11,0], 0x47:[33,2], 0x0b:[11,0], // 11
+    0x36:[28,1], 0x22:[14,0], 0x4a:[42,2], 0x0e:[14,0], // 14
+    0x31:[18,1], 0x1d:[9,0],  0x45:[27,2], 0x09:[9,0],  // 9
+    0x34:[24,1], 0x20:[12,0], 0x48:[36,2], 0x0c:[12,0], // 12
+    0x2d:[10,1], 0x19:[5,0],  0x41:[15,2], 0x05:[5,0],  // 5
+    0x51:[50,3], 0x52:[50,4], // BULL, D-BULL
+    0x54: "CHANGE" 
 };
 
 let bluetoothDevice = null;
@@ -319,22 +320,26 @@ function handleBluetoothNotify(event) {
     if (el("game-screen").style.display === "none" || isProcessing) return;
     
     const value = event.target.value;
-    // Python code logic: data[2] is the area ID
     if (value.byteLength > 2) {
         const areaId = value.getUint8(2);
         const scoreData = DL_SCORE_MAP[areaId];
         
         if (scoreData !== undefined) {
             if (scoreData === "CHANGE") {
-                if (turnInputs.length > 0) {
-                    // Force finish turn if CHANGE pressed but input exists
-                    // Or ignore. Let's make it finish turn for safety if 3 throws not met
-                    // But standard logic is 3 throws. Just ignore CHANGE for now or use as 'skip'
-                }
+                // Ignore CHANGE button
             } else {
-                // It's a number score
-                playSE("se-hit");
-                processOneThrow(scoreData);
+                // scoreData is now [Score, Type]
+                const score = scoreData[0];
+                const type = scoreData[1];
+                
+                // ★ v2.4.1 SE Selection
+                if (type === 4) playSE("se-dbull");
+                else if (type === 3) playSE("se-bull");
+                else if (type === 2) playSE("se-triple");
+                else if (type === 1) playSE("se-double");
+                else playSE("se-single");
+
+                processOneThrow(score);
             }
         }
     }
@@ -531,7 +536,11 @@ function handleEnter() {
         if (!isNaN(val)) { 
             if (val < 0 || val > 60) { alert("単発の最大値は 60 (T20) です"); currentInput=""; updateScoreDisplay(); return; } 
             
-            // ★ v2.4: Call processOneThrow instead of just pushing
+            // Manual input fallback SE
+            if(val === 50) playSE("se-bull");
+            else if (val >= 51) playSE("se-triple");
+            else playSE("se-hit");
+
             processOneThrow(val);
             
             currentInput = ""; 
@@ -541,10 +550,8 @@ function handleEnter() {
 }
 
 function processOneThrow(score) {
-    if (restrictInput && turnInputs.length > 0) return; // Restrict check
+    if (restrictInput && turnInputs.length > 0) return; 
 
-    playSE("se-attack"); 
-    
     // Calculate damage for THIS throw
     let singleDmg = score;
     let weakHit = false;
@@ -579,27 +586,20 @@ function processOneThrow(score) {
 
     // Enemy Defense Logic
     if (stage === 4 && floor === 6 && currentTurn % 2 === 0) {
-        // Stage 4 Boss logic is "Total < 80". In real-time, this is hard.
-        // Let's adapt: "Single < 30 invalid" or keep original logic?
-        // Original: "Total Score < 80 invalid".
-        // Adaptation: We check cumulative score later, OR just apply flat reduction?
-        // Let's make it: "Single < 25 invalid" for real-time balance?
-        // OR: Just ignore this gimmick for v2.4 to keep simple, OR apply reduction.
-        // Let's implement: "Single < 30 invalid" for simplified realtime logic.
         if (singleDmg < 30) {
             singleDmg = 0;
             addLog(">> 結界に阻まれた！(30未満無効)", "log-enemy");
         }
     }
     
-    if (stage === 4 && floor === 4 && currentTurn % 3 === 0) { singleDmg = Math.max(0, singleDmg - 15); } // Hard skin (adapted)
+    if (stage === 4 && floor === 4 && currentTurn % 3 === 0) { singleDmg = Math.max(0, singleDmg - 15); } 
     if (enemy.state.guardType === 'cut') { singleDmg = Math.floor(singleDmg * 0.8); }
     if (enemy.state.guardType === 'half') { singleDmg = Math.floor(singleDmg * 0.5); }
     if (enemy.state.guard) { singleDmg = Math.floor(singleDmg / 2); enemy.state.guard = false; addLog("敵の防御で半減！", "system"); }
 
     // Apply Damage
     enemy.hp = Math.max(0, enemy.hp - singleDmg);
-    if (enemy.hp === 0) isJustFinish = true; // Simplified just finish
+    if (enemy.hp === 0) isJustFinish = true; 
 
     // Logs & Visuals
     totalScore += score; // Stats only
@@ -620,7 +620,7 @@ function processOneThrow(score) {
     triggerEffect(el("enemy-panel"), singleDmg, false);
     animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 300); displayEnemyHP=enemy.hp; 
     
-    updateInfo(); // This will lock UI
+    updateInfo(); 
 
     // Check Win
     if (enemy.hp <= 0) {
@@ -635,7 +635,6 @@ function processOneThrow(score) {
 }
 
 function finishPlayerTurn() {
-    // End of player's 3 throws
     totalDarts += turnInputs.length;
     totalGameTurns++;
     
@@ -664,7 +663,6 @@ function drawCard(isSilent = false) {
 
 function playHandCard(index) {
     if(isProcessing || waitingForChest) return;
-    // ★ v2.4: Card only usable before 1st throw
     if (turnInputs.length > 0) {
         addLog(">> 投擲中はカードを使えません！", "log-system");
         return;
@@ -1037,7 +1035,8 @@ function winBattle() {
         player.maxHp += 10; const oldHP = player.hp; player.hp = Math.min(player.hp + 10, player.maxHp); 
         playSE("se-heal"); addLog(`★JUST FINISH! MaxHP+10 & HP+10`, "heal"); 
         animateValue(el("player-hp"), oldHP, player.hp, 500); updateInfo(); 
-        setTimeout(() => { showDialog("JUST FINISH BONUS!!", `見事！ピッタリで倒した！<br>最大HPが ${player.maxHp} にアップ！<br>HPも10回復した。`, "clear", [{text:"OK", action:checkDrop}]); }, 800); 
+        // ★ v2.4.1: Auto Close
+        setTimeout(() => { showDialog("JUST FINISH BONUS!!", `見事！ピッタリで倒した！<br>最大HPが ${player.maxHp} にアップ！<br>HPも10回復した。`, "clear", [{text:"OK", action:checkDrop}], 3000); }, 800); 
     } else { setTimeout(checkDrop, 800); }
 }
 
@@ -1067,7 +1066,8 @@ function openChest() {
     else { itemName = "魔法の聖水"; itemEffect = "MP 3 回復"; player.items.ether++; }
     
     updateInfo(); addLog(`宝箱: ${itemName} (${itemEffect}) を手に入れた`, "log-item");
-    showDialog("TREASURE!", `<span style="font-size:24px;color:#00ff00;">${itemName}</span> を手に入れた！<br>${itemEffect}<br>(アイテムボタンで使用可能)`, "item", [{text:"OK", action:nextStep}]);
+    // ★ v2.4.1: Auto Close
+    showDialog("TREASURE!", `<span style="font-size:24px;color:#00ff00;">${itemName}</span> を手に入れた！<br>${itemEffect}<br>(アイテムボタンで使用可能)`, "item", [{text:"OK", action:nextStep}], 2000);
 }
 
 function nextStep() {
@@ -1255,6 +1255,7 @@ function showSkillCutin(name, type) {
 function updateInfo() {
     if (!enemy.data) return;
 
+    // ★ v2.2.3 Fix: Stage Name Logic
     if(stage===6) { el("stage-display").innerText="STAGE 5"; el("floor-display").innerText=`${floor}F`; }
     else if(stage===5) { el("stage-display").innerText="EXTRA"; el("floor-display").innerText="FINAL"; }
     else if(stage===4) { el("stage-display").innerText="STAGE 4"; el("floor-display").innerText=`${floor}F`; }
@@ -1302,22 +1303,14 @@ function updateInfo() {
     let ppr = 0; if(totalDarts>0) ppr = ((totalScore/totalDarts)*3); 
     el("avg-display").innerText=ppr.toFixed(1); el("rt-display").innerText=`(Rt ${calculateRating(ppr)})`;
     
-    // ★ v2.4 UI Lock Logic
-    // If turnInputs has items (throwing phase), disable buttons visually
-    const isThrowing = turnInputs.length > 0;
-    const isLocked = player.state.itemLock || isThrowing;
+    // ★ v2.2.3 Fix: Item Button Visual Logic
+    const isLocked = player.state.itemLock;
     
-    const panel = el("player-panel").parentElement; // Right panel container
-    if (isThrowing) {
-        panel.classList.add("ui-locked");
-    } else {
-        panel.classList.remove("ui-locked");
-    }
-
+    // Helper to update specific button
     const updateItemBtn = (btnId, count) => {
         const b = el(btnId);
         if (!b) return;
-        b.className = "item-btn"; 
+        b.className = "item-btn"; // Reset class
         
         if (isLocked) {
             b.classList.add("disabled");
@@ -1384,7 +1377,6 @@ function renderHand() {
     handArea.innerHTML = "";
     el("hand-count-display").innerText = player.hand.length;
     
-    // Check locked state for cards
     const isThrowing = turnInputs.length > 0;
     const isCardLocked = player.state.itemLock || isThrowing;
 
@@ -1414,37 +1406,416 @@ function renderHand() {
     }
 }
 
-// --- Shop & Deck (Unchanged, compact) ---
-function openCardShop(){playSE("se-tap");const list=el("pack-list");list.innerHTML="";el("shop-dp-display").innerText=savedData.dp;if(!savedData.cards)savedData.cards={};PACK_DATA.forEach(pack=>{const isUnlocked=(savedData.bestRanks&&savedData.bestRanks[pack.unlockStage]);if(!isUnlocked)return;const canBuy=savedData.dp>=pack.price;const imgHTML=`<img src="${pack.img}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:50px; background:#333; color:#555;">📦</div>`;const div=document.createElement("div");div.className="pack-item";div.innerHTML=`<div class="pack-img-container">${imgHTML}</div><div class="pack-name">${pack.name}</div><div class="pack-desc">${pack.desc}</div><button class="pack-buy-btn" ${canBuy?"":"disabled"} onclick="buyPack('${pack.id}')">${canBuy?`BUY (${pack.price} DP)`:"LACK DP"}</button>`;list.appendChild(div);});if(list.innerHTML==="")list.innerHTML="<div style='color:#666; width:100%; text-align:center;'>STAGE 1 CLEAR REQUIRED</div>";el("card-shop-modal").style.display="flex";}
-function buyPack(packId){const pack=PACK_DATA.find(p=>p.id===packId);if(!pack||savedData.dp<pack.price)return;savedData.dp-=pack.price;el("shop-dp-display").innerText=savedData.dp;playSE("se-item");const results=[];for(let i=0;i<3;i++){const card=drawShopCard(packId);const isNew=!savedData.cards[card.id];if(!savedData.cards[card.id])savedData.cards[card.id]=0;savedData.cards[card.id]++;results.push({card:card,isNew:isNew});}saveToDrive();showPackResult(results);}
-function drawShopCard(packId){const rand=Math.random()*100;let targetRarity="N";if(rand<2)targetRarity="UR";else if(rand<10)targetRarity="SR";else if(rand<40)targetRarity="R";let pool=CARD_DB.filter(c=>c.rarity===targetRarity);if(packId==="vol1")pool=pool.filter(c=>c.id<500);else if(packId==="vol2")pool=pool.filter(c=>c.id>=500);if(pool.length===0)return CARD_DB[0];return pool[Math.floor(Math.random()*pool.length)];}
-function showPackResult(results){const container=el("pack-results");container.innerHTML="";results.forEach((res,index)=>{const c=res.card;const cardEl=createCardElement(c,false,1,1);cardEl.classList.add("result-card-anim");cardEl.style.animationDelay=`${index*0.3}s`;if(res.isNew){const badge=document.createElement("div");badge.className="new-badge-overlay";badge.innerText="NEW!";cardEl.appendChild(badge);}container.appendChild(cardEl);});const hasHighRare=results.some(r=>r.card.rarity==="SR"||r.card.rarity==="UR");if(hasHighRare)setTimeout(()=>playSE("se-win"),300);else playSE("se-buff");el("pack-result-modal").style.display="flex";}
-function closePackResult(){playSE("se-tap");el("pack-result-modal").style.display="none";updateTitleScore();}
-function closeCardShop(){playSE("se-tap");el("card-shop-modal").style.display="none";updateTitleScore();}
-function openCollection(){playSE("se-tap");renderDeckEditor();el("collection-modal").style.display="flex";}
-function closeCollection(){playSE("se-tap");el("collection-modal").style.display="none";hideTooltip();}
-function renderDeckEditor(){if(!savedData.deck)savedData.deck=[];savedData.deck.sort((a,b)=>a-b);const deckGrid=el("deck-grid");deckGrid.innerHTML="";for(let i=0;i<DECK_SIZE;i++){const cardId=savedData.deck[i];if(cardId){const card=CARD_DB.find(c=>c.id===cardId);const totalOwned=savedData.cards[card.id]||0;const el=createCardElement(card,true,0,totalOwned);el.onmouseenter=()=>showCardDetail(card);deckGrid.appendChild(el);}else{const div=document.createElement("div");div.className="deck-slot-empty";div.innerText="EMPTY";deckGrid.appendChild(div);}}const deckCount=savedData.deck.length;const countEl=el("deck-count");countEl.innerText=deckCount;if(deckCount<DECK_SIZE){countEl.style.color="#ff5555";countEl.innerText+=" (あと"+(DECK_SIZE-deckCount)+"枚)";}else{countEl.style.color="#00ff00";countEl.innerText+=" (OK!)";}const listGrid=el("card-grid");listGrid.innerHTML="";if(!savedData.cards)savedData.cards={};let ownedCount=0;CARD_DB.forEach(card=>{const count=savedData.cards[card.id]||0;if(count>0)ownedCount++;const inDeckCount=savedData.deck.filter(id=>id===card.id).length;const remaining=count-inDeckCount;const el=createCardElement(card,false,remaining,count);listGrid.appendChild(el);});el("collection-rate").innerText=`${Math.floor((ownedCount/CARD_DB.length)*100)}%`;}
-function showCardDetail(card){const detailEl=el("deck-card-detail");if(!detailEl)return;detailEl.innerHTML=`<span class="detail-name">${card.name}</span>${card.desc}`;}
-function createCardElement(card,isDeckItem,remainingCount=1,totalCount=0){const div=document.createElement("div");const isOwned=(totalCount>0||isDeckItem);const notOwnedClass=(!isOwned)?"card-not-owned":"";div.className=`collection-card rarity-${card.rarity} ${notOwnedClass}`;const imgPath=`assets/cards/${card.id}.png`;const fallbackIcon=card.type==="MAGIC"?"🪄":"⛓️";const cost=(card.cost!==undefined)?card.cost:"?";let shortDesc=card.desc;if(shortDesc.length>20)shortDesc=shortDesc.substring(0,19)+"..";const imgStyle=isDeckItem?"height: 100%; border-radius: 4px;":"";const artStyle=isDeckItem?"height: 100%;":"";div.innerHTML=`<div class="card-cost-badge">${cost}</div><div class="card-count-badge">x${isDeckItem?1:remainingCount}</div><div class="card-art" style="${artStyle}"><img src="${imgPath}" style="${imgStyle}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><div class="card-placeholder" style="display:none;">${fallbackIcon}</div></div><div class="card-info"><div class="card-name">${card.name}</div><div class="card-type">[${card.type}]</div>${(!isDeckItem&&isOwned)?`<div class="card-info-direct" style="display:block;">${shortDesc}</div>`:''}</div>`;div.onclick=function(){if(!isOwned)return;if(isDeckItem)removeFromDeck(card.id);else addToDeck(card.id);};div.onmouseenter=(e)=>{showCardDetail(card);if(isDeckItem)showTooltip(card.name,card.desc,e);};if(isDeckItem){div.onmouseleave=()=>hideTooltip();}return div;}
-function showTooltip(name,desc,e){const tt=el("global-tooltip");el("gt-name").innerText=name;el("gt-desc").innerText=desc;tt.style.visibility="visible";tt.style.opacity="1";moveTooltip(e);e.currentTarget.onmousemove=moveTooltip;}
-function moveTooltip(e){const tt=el("global-tooltip");const offset=15;let left=e.clientX+offset;let top=e.clientY+offset;if(left+tt.offsetWidth>window.innerWidth)left=e.clientX-tt.offsetWidth-offset;if(top+tt.offsetHeight>window.innerHeight)top=e.clientY-tt.offsetHeight-offset;tt.style.left=left+"px";tt.style.top=top+"px";}
-function hideTooltip(){const tt=el("global-tooltip");tt.style.visibility="hidden";tt.style.opacity="0";}
-function addToDeck(cardId){hideTooltip();const SAME_CARD_LIMIT=3;if(savedData.deck.length>=DECK_SIZE){alert(`デッキは${DECK_SIZE}枚までです！`);return;}const ownedCount=savedData.cards[cardId]||0;const currentInDeck=savedData.deck.filter(id=>id===cardId).length;if(currentInDeck>=ownedCount){alert("これ以上持っていません！");return;}if(currentInDeck>=SAME_CARD_LIMIT){alert(`「${getCardName(cardId)}」は3枚までです。`);return;}playSE("se-tap");savedData.deck.push(cardId);saveToDrive();renderDeckEditor();}
-function removeFromDeck(cardId){hideTooltip();playSE("se-tap");const index=savedData.deck.indexOf(cardId);if(index>-1){savedData.deck.splice(index,1);}saveToDrive();renderDeckEditor();}
-function getCardName(id){const c=CARD_DB.find(card=>card.id===id);return c?c.name:"カード";}
-function showDialog(title,text,type="normal",buttons=[{text:"OK",action:null}]){const box=el("modal-box-inner");el("modal-title").innerText=title;el("modal-text").innerHTML=text;box.className="modal-box";el("modal-title").style.color="#f9a826";if(type==="clear"){box.classList.add("modal-clear");el("modal-title").style.color="#fff";}else if(type==="warning"){box.classList.add("modal-warning");el("modal-title").style.color="#ff0000";}else if(type==="item"){box.classList.add("modal-item");el("modal-title").style.color="#00ff00";}const btnGroup=el("modal-buttons");btnGroup.innerHTML="";buttons.forEach(b=>{const btn=document.createElement("button");btn.className="modal-btn";btn.innerText=b.text;btn.onclick=function(){playSE("se-tap");el("game-modal").style.display="none";if(b.action)b.action();};btnGroup.appendChild(btn);});el("game-modal").style.display="flex";}
-function calculateStageRank(stg,turns){if(stg===5||stg===6){if(turns<=15)return["SSS",1000];if(turns<=20)return["S",600];if(turns<=35)return["A",300];if(turns<=50)return["B",100];return["C",50];}else if(stg===4){if(turns<=20)return["SSS",1000];if(turns<=28)return["S",600];if(turns<=40)return["A",300];if(turns<=50)return["B",100];return["C",50];}else{if(turns<=12)return["SSS",1000];if(turns<=16)return["S",600];if(turns<=22)return["A",300];if(turns<=30)return["B",100];return["C",50];}}
-function finishSession(resultType,ppr,multiplier=1.0){let totalDP=0;let earnedDP=0;clearedStagesLog.forEach(log=>{earnedDP+=log.dp;});savedData.dp=(savedData.dp||0);const curVal=stage*100+floor;const bestVal=savedData.highScore.stage*100+savedData.highScore.floor;let isNewRecord=false;if(curVal>bestVal){savedData.highScore.stage=stage;savedData.highScore.floor=floor;isNewRecord=true;}if(ppr>savedData.highScore.avg){savedData.highScore.avg=ppr;isNewRecord=true;}if(resultType==="EXTRA-WIN")savedData.clearedExtra=true;const now=new Date();const dateStr=`${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${("0"+now.getMinutes()).slice(-2)}`;let stgName=(stage===6)?"STAGE 5":(stage===5?"EXTRA":"S"+stage+"-"+floor+"F");let resultText=resultType;let gainedDP=0;const scoreDP=Math.floor(totalScore*0.2*multiplier);let rankDP=0;clearedStagesLog.forEach(log=>rankDP+=log.dp);gainedDP=scoreDP+rankDP;savedData.dp+=gainedDP;if(clearedStagesLog.length>0&&resultType==="RETURN"){const last=clearedStagesLog[clearedStagesLog.length-1];resultText=`CLEAR(${last.rank})`;}savedData.history.unshift({date:dateStr,stage:stage,floor:floor,stgName:stgName,result:resultText,dp:gainedDP,ppr:ppr,rt:calculateRating(ppr)});if(savedData.history.length>50)savedData.history.pop();updateTitleScore();saveToDrive();return{isNewRecord:isNewRecord,gainedDP:gainedDP};}
-function shuffleArray(array){for(let i=array.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[array[i],array[j]]=[array[j],array[i]];}return array;}
-function triggerEffect(el,dmg,isP){el.classList.remove("shake-small","shake-medium","shake-heavy","shake-ultimate");void el.offsetWidth;if(dmg>=150){el.classList.add("shake-ultimate");playSE("se-boom");}else if(dmg>=60){el.classList.add("shake-heavy");playSE("se-boom");}else{el.classList.add(dmg>=30?"shake-medium":"shake-small");playSE("se-hit");}const pop=document.createElement("div");pop.innerText=dmg;if(dmg>=150)pop.className="damage-popup dmg-ultimate";else if(dmg>=60)pop.className="damage-popup dmg-heavy";else if(dmg>=30)pop.className="damage-popup dmg-medium";else pop.className="damage-popup dmg-small";pop.style.left="50%";pop.style.top="50%";el.appendChild(pop);setTimeout(()=>pop.remove(),1500);}
-function animateValue(obj,s,e,d){if(obj)obj.innerHTML=e;}
-function addLog(t,type=""){const d=document.createElement("div");d.innerHTML=t;if(type)d.className="log-"+type;el("battle-log").prepend(d);}
-function showHistory(){const list=el("history-list");list.innerHTML="";if(!savedData.history||savedData.history.length===0){list.innerHTML="<div style='padding:20px; text-align:center;'>NO HISTORY</div>";}else{savedData.history.forEach(h=>{let resClass="res-lose";let resStr=h.result||"LOSE";if(resStr.includes("WIN")||resStr.includes("CLEAR"))resClass="res-win";if(resStr.includes("EXTRA"))resClass="res-extra";list.innerHTML+=`<div class='h-row'><div>${h.date}</div><div>${h.stgName}</div><div class='${resClass}'>${resStr}</div><div>+${h.dp} DP<br>Avg ${h.ppr.toFixed(1)}</div></div>`;});}playSE("se-tap");el("history-modal").style.display="flex";}
-function closeHistory(){playSE("se-tap");el("history-modal").style.display="none";}
-function resetSaveData(){if(confirm("【警告】現在のスロットのデータを完全に消去しますか？")){allSaveData[currentSlot]=null;selectSlot(currentSlot.replace("slot",""));saveToDrive();}}
-function exportSave(){navigator.clipboard.writeText(JSON.stringify(savedData)).then(()=>alert("現在のスロットのデータをコピーしました"));}
-function importSave(){const json=prompt("セーブデータ(JSON)を貼り付けてください");if(json){try{const d=JSON.parse(json);if(d.highScore&&d.history){savedData=d;updateTitleScore();saveToDrive();alert("読み込み完了");}}catch(e){alert("データ形式エラー");}}}
-function tapKey(key){if(el("game-screen").style.display==="none"||isProcessing)return;if(key==='ENT')handleEnter();else if(key==='BS'){if(currentInput.length>0)currentInput=currentInput.slice(0,-1);else if(turnInputs.length>0)currentInput=""+turnInputs.pop();playSE("se-tap");updateScoreDisplay();}else{if(currentInput.length<3){playSE("se-tap");currentInput+=key;updateScoreDisplay();}}}
-window.addEventListener("keydown",function(e){if(el("title-screen").style.display!=="none"){if(e.key==="1")cheatBuffer+=e.key;else cheatBuffer="";if(cheatBuffer.endsWith("1111")){playSE("se-item");savedData.dp=(savedData.dp||0)+5000;updateTitleScore();saveToDrive();cheatBuffer="";}}if(el("game-modal").style.display==="flex"&&e.key==="Enter"){const btns=document.getElementById("modal-buttons");if(btns.children.length===1){e.preventDefault();btns.children[0].click();}return;}if(waitingForChest){if(e.key==='Enter'){e.preventDefault();openChest();}return;}if(el("game-screen").style.display!=="none"&&!isProcessing){if(e.key>='0'&&e.key<='9'){if(currentInput.length<3){playSE("se-tap");currentInput+=e.key;updateScoreDisplay();}}if(e.key==='Backspace'){if(currentInput.length>0)currentInput=currentInput.slice(0,-1);else if(turnInputs.length>0)currentInput=""+turnInputs.pop();updateScoreDisplay();}if(e.key==='Enter')handleEnter();}});
-function updateScoreDisplay(){const slots=[el("slot-1"),el("slot-2"),el("slot-3")];slots.forEach((s,i)=>{s.className="score-slot";if(restrictInput&&i>0){s.classList.add("locked");s.innerText="X";return;}if(i<turnInputs.length){s.innerText=turnInputs[i];s.classList.add("filled");}else if(i===turnInputs.length){s.innerText=currentInput;s.classList.add("active");}else{s.innerText="";}});const currentThrow=turnInputs.length+1;el("btn-d1").className=currentThrow===1?"darts-btn active":"darts-btn";el("btn-d2").className=currentThrow===2?"darts-btn active":"darts-btn";el("btn-d3").className=currentThrow===3?"darts-btn active":"darts-btn";if(restrictInput){el("btn-d2").className="darts-btn disabled";el("btn-d3").className="darts-btn disabled";}}
-function getRankColor(r){if(r==="SSS")return"#00ffff";if(r==="S")return"#ffd700";if(r==="A")return"#ff5555";return"#fff";}
+// --- Shop & Deck ---
+function openCardShop() {
+    playSE("se-tap");
+    const list = el("pack-list"); list.innerHTML = "";
+    el("shop-dp-display").innerText = savedData.dp;
+    if (!savedData.cards) savedData.cards = {};
+
+    PACK_DATA.forEach(pack => {
+        const isUnlocked = (savedData.bestRanks && savedData.bestRanks[pack.unlockStage]);
+        if (!isUnlocked) return; 
+        const canBuy = savedData.dp >= pack.price;
+        const imgHTML = `<img src="${pack.img}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:50px; background:#333; color:#555;">📦</div>`;
+        const div = document.createElement("div");
+        div.className = "pack-item";
+        div.innerHTML = `<div class="pack-img-container">${imgHTML}</div><div class="pack-name">${pack.name}</div><div class="pack-desc">${pack.desc}</div><button class="pack-buy-btn" ${canBuy ? "" : "disabled"} onclick="buyPack('${pack.id}')">${canBuy ? `BUY (${pack.price} DP)` : "LACK DP"}</button>`;
+        list.appendChild(div);
+    });
+    if (list.innerHTML === "") list.innerHTML = "<div style='color:#666; width:100%; text-align:center;'>STAGE 1 CLEAR REQUIRED</div>";
+    el("card-shop-modal").style.display = "flex";
+}
+
+function buyPack(packId) {
+    const pack = PACK_DATA.find(p => p.id === packId);
+    if (!pack || savedData.dp < pack.price) return;
+    savedData.dp -= pack.price;
+    el("shop-dp-display").innerText = savedData.dp;
+    playSE("se-item");
+
+    const results = [];
+    for(let i=0; i<3; i++) {
+        const card = drawShopCard(packId); 
+        const isNew = !savedData.cards[card.id];
+        if (!savedData.cards[card.id]) savedData.cards[card.id] = 0;
+        savedData.cards[card.id]++;
+        results.push({ card: card, isNew: isNew });
+    }
+    saveToDrive();
+    showPackResult(results);
+}
+
+function drawShopCard(packId) {
+    const rand = Math.random() * 100;
+    let targetRarity = "N";
+    if (rand < 2) targetRarity = "UR";
+    else if (rand < 10) targetRarity = "SR";
+    else if (rand < 40) targetRarity = "R";
+    
+    let pool = CARD_DB.filter(c => c.rarity === targetRarity);
+    if(packId === "vol1") pool = pool.filter(c => c.id < 500);
+    else if(packId === "vol2") pool = pool.filter(c => c.id >= 500);
+    
+    if (pool.length === 0) return CARD_DB[0];
+    return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function showPackResult(results) {
+    const container = el("pack-results"); container.innerHTML = "";
+    results.forEach((res, index) => {
+        const c = res.card;
+        const cardEl = createCardElement(c, false, 1, 1);
+        cardEl.classList.add("result-card-anim");
+        cardEl.style.animationDelay = `${index * 0.3}s`;
+        if (res.isNew) {
+            const badge = document.createElement("div"); badge.className = "new-badge-overlay"; badge.innerText = "NEW!";
+            cardEl.appendChild(badge);
+        }
+        container.appendChild(cardEl);
+    });
+    const hasHighRare = results.some(r => r.card.rarity === "SR" || r.card.rarity === "UR");
+    if (hasHighRare) setTimeout(() => playSE("se-win"), 300); else playSE("se-buff");
+    el("pack-result-modal").style.display = "flex";
+}
+
+function closePackResult() { playSE("se-tap"); el("pack-result-modal").style.display = "none"; updateTitleScore(); }
+function closeCardShop() { playSE("se-tap"); el("card-shop-modal").style.display = "none"; updateTitleScore(); }
+
+// --- Collection ---
+function openCollection() { playSE("se-tap"); renderDeckEditor(); el("collection-modal").style.display = "flex"; }
+function closeCollection() { playSE("se-tap"); el("collection-modal").style.display = "none"; hideTooltip(); }
+
+function renderDeckEditor() {
+    if (!savedData.deck) savedData.deck = [];
+    savedData.deck.sort((a,b) => a - b);
+
+    const deckGrid = el("deck-grid"); deckGrid.innerHTML = "";
+    for (let i = 0; i < DECK_SIZE; i++) {
+        const cardId = savedData.deck[i]; 
+        if (cardId) {
+            const card = CARD_DB.find(c => c.id === cardId);
+            const totalOwned = savedData.cards[card.id] || 0;
+            const el = createCardElement(card, true, 0, totalOwned);
+            
+            // ★ v2.3.1: Hover detail for deck items
+            el.onmouseenter = () => showCardDetail(card);
+            
+            deckGrid.appendChild(el);
+        } else {
+            const div = document.createElement("div"); div.className = "deck-slot-empty"; div.innerText = "EMPTY";
+            deckGrid.appendChild(div);
+        }
+    }
+    
+    const deckCount = savedData.deck.length;
+    const countEl = el("deck-count"); countEl.innerText = deckCount;
+    if (deckCount < DECK_SIZE) { countEl.style.color = "#ff5555"; countEl.innerText += " (あと" + (DECK_SIZE - deckCount) + "枚)"; } 
+    else { countEl.style.color = "#00ff00"; countEl.innerText += " (OK!)"; }
+
+    const listGrid = el("card-grid"); listGrid.innerHTML = "";
+    if (!savedData.cards) savedData.cards = {};
+    let ownedCount = 0;
+
+    CARD_DB.forEach(card => {
+        const count = savedData.cards[card.id] || 0;
+        if (count > 0) ownedCount++;
+        const inDeckCount = savedData.deck.filter(id => id === card.id).length;
+        const remaining = count - inDeckCount; 
+        const el = createCardElement(card, false, remaining, count);
+        listGrid.appendChild(el);
+    });
+    el("collection-rate").innerText = `${Math.floor((ownedCount / CARD_DB.length) * 100)}%`;
+}
+
+// ★ v2.3.1: Updated to handle detail view
+function showCardDetail(card) {
+    const detailEl = el("deck-card-detail");
+    if(!detailEl) return;
+    detailEl.innerHTML = `<span class="detail-name">${card.name}</span>${card.desc}`;
+}
+
+function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0) {
+    const div = document.createElement("div");
+    const isOwned = (totalCount > 0 || isDeckItem);
+    // ★ v2.4.1 Fix: Better Not-Owned Style
+    const notOwnedClass = (!isOwned) ? "card-not-owned" : "";
+    
+    div.className = `collection-card rarity-${card.rarity} ${notOwnedClass}`;
+    const imgPath = `assets/cards/${card.id}.png`;
+    const fallbackIcon = card.type === "MAGIC" ? "🪄" : "⛓️";
+    const cost = (card.cost !== undefined) ? card.cost : "?";
+    
+    let shortDesc = card.desc;
+    if(shortDesc.length > 20) shortDesc = shortDesc.substring(0, 19) + "..";
+
+    const imgStyle = isDeckItem ? "height: 100%; border-radius: 4px;" : "";
+    const artStyle = isDeckItem ? "height: 100%;" : "";
+
+    div.innerHTML = `
+        <div class="card-cost-badge">${cost}</div>
+        <div class="card-count-badge">x${isDeckItem ? 1 : remainingCount}</div>
+        <div class="card-art" style="${artStyle}">
+            <img src="${imgPath}" style="${imgStyle}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <div class="card-placeholder" style="display:none;">${fallbackIcon}</div>
+        </div>
+        <div class="card-info">
+            <div class="card-name">${card.name}</div>
+            <div class="card-type">[${card.type}]</div>
+            ${(!isDeckItem && isOwned) ? `<div class="card-info-direct" style="display:block;">${shortDesc}</div>` : ''}
+        </div>
+    `;
+    div.onclick = function() {
+        if (!isOwned) return; 
+        if (isDeckItem) removeFromDeck(card.id); else addToDeck(card.id);
+    };
+    
+    div.onmouseenter = (e) => {
+        showCardDetail(card);
+        if (isDeckItem) showTooltip(card.name, card.desc, e); 
+    };
+    if (isDeckItem) {
+        div.onmouseleave = () => hideTooltip();
+    }
+    return div;
+}
+
+// --- Global Tooltip System ---
+function showTooltip(name, desc, e) {
+    const tt = el("global-tooltip");
+    el("gt-name").innerText = name;
+    el("gt-desc").innerText = desc;
+    tt.style.visibility = "visible";
+    tt.style.opacity = "1";
+    moveTooltip(e);
+    e.currentTarget.onmousemove = moveTooltip;
+}
+
+function moveTooltip(e) {
+    const tt = el("global-tooltip");
+    const offset = 15;
+    let left = e.clientX + offset;
+    let top = e.clientY + offset;
+    
+    if (left + tt.offsetWidth > window.innerWidth) left = e.clientX - tt.offsetWidth - offset;
+    if (top + tt.offsetHeight > window.innerHeight) top = e.clientY - tt.offsetHeight - offset;
+    
+    tt.style.left = left + "px";
+    tt.style.top = top + "px";
+}
+
+function hideTooltip() {
+    const tt = el("global-tooltip");
+    tt.style.visibility = "hidden";
+    tt.style.opacity = "0";
+}
+
+function addToDeck(cardId) {
+    hideTooltip();
+    const SAME_CARD_LIMIT = 3;
+    if (savedData.deck.length >= DECK_SIZE) { alert(`デッキは${DECK_SIZE}枚までです！`); return; }
+    const ownedCount = savedData.cards[cardId] || 0;
+    const currentInDeck = savedData.deck.filter(id => id === cardId).length;
+    if (currentInDeck >= ownedCount) { alert("これ以上持っていません！"); return; }
+    if (currentInDeck >= SAME_CARD_LIMIT) { alert(`「${getCardName(cardId)}」は3枚までです。`); return; }
+    
+    playSE("se-tap"); savedData.deck.push(cardId); saveToDrive(); renderDeckEditor(); 
+}
+
+function removeFromDeck(cardId) {
+    hideTooltip();
+    playSE("se-tap");
+    const index = savedData.deck.indexOf(cardId);
+    if (index > -1) { savedData.deck.splice(index, 1); }
+    saveToDrive(); renderDeckEditor();
+}
+
+function getCardName(id) { const c = CARD_DB.find(card => card.id === id); return c ? c.name : "カード"; }
+
+// ★ v2.4.1: Updated showDialog for autoClose
+function showDialog(title, text, type="normal", buttons=[{text:"OK", action:null}], autoClose=0) {
+    const box = el("modal-box-inner");
+    el("modal-title").innerText = title; el("modal-text").innerHTML = text; 
+    box.className = "modal-box"; el("modal-title").style.color = "#f9a826";
+    if (type === "clear") { box.classList.add("modal-clear"); el("modal-title").style.color = "#fff"; } 
+    else if (type === "warning") { box.classList.add("modal-warning"); el("modal-title").style.color = "#ff0000"; } 
+    else if (type === "item") { box.classList.add("modal-item"); el("modal-title").style.color = "#00ff00"; }
+
+    const btnGroup = el("modal-buttons"); btnGroup.innerHTML = "";
+    
+    // If autoClose is set, we might not need buttons, but keep them for manual skip
+    buttons.forEach(b => {
+        const btn = document.createElement("button"); btn.className = "modal-btn"; btn.innerText = b.text;
+        btn.onclick = function() { 
+            // Clear timeout if clicked manually
+            if(window.dialogTimeout) clearTimeout(window.dialogTimeout);
+            playSE("se-tap"); el("game-modal").style.display = "none"; 
+            if(b.action) b.action(); 
+        };
+        btnGroup.appendChild(btn);
+    });
+    el("game-modal").style.display = "flex";
+
+    if (autoClose > 0 && buttons.length > 0) {
+        const primaryAction = buttons[0].action;
+        window.dialogTimeout = setTimeout(() => {
+            el("game-modal").style.display = "none";
+            if(primaryAction) primaryAction();
+        }, autoClose);
+    }
+}
+
+function calculateStageRank(stg, turns) {
+    if (stg === 5 || stg === 6) { // Boss stages
+        if (turns <= 15) return ["SSS", 1000]; if (turns <= 20) return ["S", 600]; if (turns <= 35) return ["A", 300]; if (turns <= 50) return ["B", 100]; return ["C", 50]; 
+    }
+    else if (stg === 4) { if (turns <= 20) return ["SSS", 1000]; if (turns <= 28) return ["S", 600]; if (turns <= 40) return ["A", 300]; if (turns <= 50) return ["B", 100]; return ["C", 50]; } 
+    else { if (turns <= 12) return ["SSS", 1000]; if (turns <= 16) return ["S", 600]; if (turns <= 22) return ["A", 300]; if (turns <= 30) return ["B", 100]; return ["C", 50]; }
+}
+
+function finishSession(resultType, ppr, multiplier = 1.0) {
+    let totalDP = 0;
+    let earnedDP = 0;
+    clearedStagesLog.forEach(log => { earnedDP += log.dp; });
+    
+    savedData.dp = (savedData.dp || 0);
+
+    const curVal = stage * 100 + floor; const bestVal = savedData.highScore.stage * 100 + savedData.highScore.floor;
+    let isNewRecord = false; if (curVal > bestVal) { savedData.highScore.stage = stage; savedData.highScore.floor = floor; isNewRecord = true; }
+    if (ppr > savedData.highScore.avg) { savedData.highScore.avg = ppr; isNewRecord = true; }
+    if (resultType === "EXTRA-WIN") savedData.clearedExtra = true;
+
+    const now = new Date(); 
+    const dateStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${("0"+now.getMinutes()).slice(-2)}`;
+    let stgName = (stage === 6) ? "STAGE 5" : (stage===5 ? "EXTRA" : "S" + stage + "-" + floor + "F");
+    let resultText = resultType;
+    
+    let gainedDP = 0;
+    
+    const scoreDP = Math.floor(totalScore * 0.2 * multiplier);
+    let rankDP = 0;
+    clearedStagesLog.forEach(log => rankDP += log.dp);
+    gainedDP = scoreDP + rankDP;
+    
+    savedData.dp += gainedDP;
+
+    if (clearedStagesLog.length > 0 && resultType === "RETURN") {
+        const last = clearedStagesLog[clearedStagesLog.length-1];
+        resultText = `CLEAR(${last.rank})`;
+    }
+
+    // ★ v2.4.1 Fix: Safely save history
+    const historyItem = {
+        date: dateStr,
+        stage: stage,
+        floor: floor,
+        stgName: stgName,
+        result: resultText,
+        dp: gainedDP,
+        ppr: isNaN(ppr) ? 0 : parseFloat(ppr),
+        rt: calculateRating(isNaN(ppr) ? 0 : parseFloat(ppr))
+    };
+
+    if(!savedData.history) savedData.history = [];
+    savedData.history.unshift(historyItem);
+    if(savedData.history.length > 50) savedData.history.pop();
+    
+    updateTitleScore(); saveToDrive();
+    return { isNewRecord: isNewRecord, gainedDP: gainedDP };
+}
+
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
+function triggerEffect(el, dmg, isP) {
+    el.classList.remove("shake-small", "shake-medium", "shake-heavy", "shake-ultimate"); void el.offsetWidth;
+    if(dmg >= 150) { el.classList.add("shake-ultimate"); playSE("se-boom"); }
+    else if(dmg >= 60) { el.classList.add("shake-heavy"); playSE("se-boom"); }
+    else { el.classList.add(dmg>=30 ? "shake-medium" : "shake-small"); /* SE handled in processOneThrow */ }
+    
+    const pop = document.createElement("div"); pop.innerText=dmg; 
+    if(dmg >= 150) pop.className="damage-popup dmg-ultimate"; else if(dmg >= 60) pop.className="damage-popup dmg-heavy"; else if(dmg >= 30) pop.className="damage-popup dmg-medium"; else pop.className="damage-popup dmg-small";
+    pop.style.left="50%"; pop.style.top="50%"; el.appendChild(pop); setTimeout(()=>pop.remove(),1500);
+}
+
+function animateValue(obj, s, e, d) { if(obj) obj.innerHTML = e; }
+function addLog(t, type="") { const d=document.createElement("div"); d.innerHTML=t; if(type) d.className="log-"+type; el("battle-log").prepend(d); }
+
+function showHistory() {
+    const list = el("history-list"); list.innerHTML = "";
+    if(!savedData.history || savedData.history.length === 0) { list.innerHTML = "<div style='padding:20px; text-align:center;'>NO HISTORY</div>"; }
+    else {
+        savedData.history.forEach(h => {
+            let resClass = "res-lose"; let resStr = h.result || "LOSE";
+            if (resStr.includes("WIN") || resStr.includes("CLEAR")) resClass = "res-win";
+            if (resStr.includes("EXTRA")) resClass = "res-extra";
+            // ★ v2.4.1 Fix: Safe check for ppr
+            const pprVal = h.ppr ? h.ppr.toFixed(1) : "0.0";
+            list.innerHTML += `<div class='h-row'><div>${h.date}</div><div>${h.stgName}</div><div class='${resClass}'>${resStr}</div><div>+${h.dp} DP<br>Avg ${pprVal}</div></div>`;
+        });
+    }
+    playSE("se-tap"); el("history-modal").style.display = "flex";
+}
+function closeHistory() { playSE("se-tap"); el("history-modal").style.display = "none"; }
+function resetSaveData() { if(confirm("【警告】現在のスロットのデータを完全に消去しますか？")) { allSaveData[currentSlot] = null; selectSlot(currentSlot.replace("slot","")); saveToDrive(); } }
+function exportSave() { navigator.clipboard.writeText(JSON.stringify(savedData)).then(()=>alert("現在のスロットのデータをコピーしました")); }
+function importSave() { const json = prompt("セーブデータ(JSON)を貼り付けてください"); if(json) { try { const d = JSON.parse(json); if(d.highScore && d.history) { savedData = d; updateTitleScore(); saveToDrive(); alert("読み込み完了"); } } catch(e) { alert("データ形式エラー"); } } }
+
+// --- Debug & Keys ---
+function tapKey(key) {
+    if (el("game-screen").style.display === "none" || isProcessing) return;
+    if(key === 'ENT') handleEnter();
+    else if (key === 'BS') {
+        if (currentInput.length > 0) currentInput = currentInput.slice(0, -1);
+        else if (turnInputs.length > 0) currentInput = "" + turnInputs.pop();
+        playSE("se-tap"); updateScoreDisplay();
+    } else {
+        if (currentInput.length < 3) { playSE("se-tap"); currentInput += key; updateScoreDisplay(); }
+    }
+}
+
+window.addEventListener("keydown", function(e) {
+    if (el("title-screen").style.display !== "none") {
+        if (e.key === "1") cheatBuffer += e.key; else cheatBuffer = "";
+        if (cheatBuffer.endsWith("1111")) { 
+            playSE("se-item"); 
+            savedData.dp = (savedData.dp || 0) + 5000; 
+            updateTitleScore(); 
+            saveToDrive(); 
+            cheatBuffer = ""; 
+        }
+    }
+    if (el("game-modal").style.display === "flex" && e.key === "Enter") {
+        const btns = document.getElementById("modal-buttons");
+        if (btns.children.length === 1) { e.preventDefault(); btns.children[0].click(); } return;
+    }
+    if (waitingForChest) { if (e.key === 'Enter') { e.preventDefault(); openChest(); } return; }
+    if (el("game-screen").style.display !== "none" && !isProcessing) {
+        if (e.key >= '0' && e.key <= '9') { if (currentInput.length < 3) { playSE("se-tap"); currentInput += e.key; updateScoreDisplay(); } }
+        if (e.key === 'Backspace') { if (currentInput.length > 0) currentInput = currentInput.slice(0, -1); else if (turnInputs.length > 0) currentInput = "" + turnInputs.pop(); updateScoreDisplay(); }
+        if (e.key === 'Enter') handleEnter();
+    }
+});
+
+function updateScoreDisplay() {
+    const slots = [el("slot-1"), el("slot-2"), el("slot-3")];
+    slots.forEach((s, i) => { 
+        s.className = "score-slot"; 
+        if (restrictInput && i > 0) { s.classList.add("locked"); s.innerText = "X"; return; } 
+        if (i < turnInputs.length) { s.innerText = turnInputs[i]; s.classList.add("filled"); } 
+        else if (i === turnInputs.length) { s.innerText = currentInput; s.classList.add("active"); } 
+        else { s.innerText = ""; } 
+    });
+    const currentThrow = turnInputs.length + 1;
+    el("btn-d1").className = currentThrow === 1 ? "darts-btn active" : "darts-btn";
+    el("btn-d2").className = currentThrow === 2 ? "darts-btn active" : "darts-btn";
+    el("btn-d3").className = currentThrow === 3 ? "darts-btn active" : "darts-btn";
+    if(restrictInput) { el("btn-d2").className="darts-btn disabled"; el("btn-d3").className="darts-btn disabled"; }
+}
+
+function getRankColor(r) { if(r==="SSS") return "#00ffff"; if(r==="S") return "#ffd700"; if(r==="A") return "#ff5555"; return "#fff"; }
