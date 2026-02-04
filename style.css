@@ -542,3 +542,48 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     overflow-x: auto;
     width: 100%;
 }
+
+/* ★ v2.4 New: Bluetooth Connect Button */
+.connect-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid #00d2fc;
+    color: #00d2fc;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+    z-index: 100;
+}
+.connect-btn:hover {
+    background: #00d2fc;
+    color: #000;
+    box-shadow: 0 0 15px #00d2fc;
+}
+.connect-btn.connected {
+    border-color: #00ff00;
+    color: #00ff00;
+    box-shadow: 0 0 5px #00ff00;
+}
+
+/* ★ v2.4 New: Action Phase Lock (Disable UI during throws) */
+.ui-locked .item-btn, 
+.ui-locked .hand-card,
+.ui-locked .skill-btn {
+    opacity: 0.2 !important;
+    pointer-events: none !important;
+    filter: grayscale(100%);
+}
+
+.ui-locked-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 50;
+    background: rgba(0,0,0,0.1);
+    pointer-events: all; /* Block clicks */
+    cursor: not-allowed;
+}

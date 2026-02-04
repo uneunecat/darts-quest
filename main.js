@@ -1,6 +1,7 @@
-console.log("★ main.js is loaded! (v2.3.1 UI Polish)");
+console.log("★ main.js is loaded! (v2.4 Real-time Link)");
 
 // --- ★ GAME DATA CONFIG ★ ---
+// ... (GAME_DATA, CARD_DB, PACK_DATA は変更なし) ...
 const GAME_DATA = {
     enemies: {
         1: [
@@ -55,7 +56,6 @@ const GAME_DATA = {
 };
 
 const CARD_DB = [
-    // Vol.1
     { id: 101, name: "死者蘇生", rarity: "UR", type: "MAGIC", cost: 8, desc: "HPを最大値まで完全回復" },
     { id: 201, name: "サンダー・ボルト", rarity: "SR", type: "MAGIC", cost: 6, desc: "敵に100ダメージ＋スタン(1T行動不能)" },
     { id: 202, name: "強欲な壺", rarity: "SR", type: "MAGIC", cost: 0, desc: "MPを5回復する(上限10)" },
@@ -67,9 +67,6 @@ const CARD_DB = [
     { id: 403, name: "はさみ撃ち", rarity: "N", type: "TRAP", cost: 2, desc: "自分も20ダメージ受け、敵に80ダメージ" },
     { id: 404, name: "昼夜の大火事", rarity: "N", type: "MAGIC", cost: 3, desc: "敵に80ダメージ" },
     { id: 405, name: "突進", rarity: "N", type: "MAGIC", cost: 2, desc: "攻撃力2倍(次の1投のみ)" },
-
-    // Vol.2
-    // ★ v2.3.1 Balance Change: Cost 4 -> 1
     { id: 501, name: "天使の施し", rarity: "UR", type: "MAGIC", cost: 1, desc: "手札を1枚選んで捨て、カードを2枚引く。" },
     { id: 601, name: "ブラック・ホール", rarity: "SR", type: "MAGIC", cost: 7, desc: "敵に150ダメージ。ただし自分の手札を全て捨てる。" },
     { id: 602, name: "魔法の筒", rarity: "SR", type: "TRAP", cost: 4, desc: "敵の攻撃を無効化し、そのダメージをそのまま敵に与える。" },
@@ -84,23 +81,41 @@ const CARD_DB = [
 ];
 
 const PACK_DATA = [
-    { 
-        id: "vol1", 
-        name: "Vol.1 - Legend", 
-        price: 1000, 
-        desc: "伝説の始まり。基本魔法カード収録。", 
-        unlockStage: 1,
-        img: "assets/packs/vol1.png"
-    },
-    { 
-        id: "vol2", 
-        name: "Vol.2 - Awakening", 
-        price: 1500, 
-        desc: "テクニカルな戦略カードが登場。", 
-        unlockStage: 3, 
-        img: "assets/packs/vol2.png" 
-    }
+    { id: "vol1", name: "Vol.1 - Legend", price: 1000, desc: "伝説の始まり。基本魔法カード収録。", unlockStage: 1, img: "assets/packs/vol1.png" },
+    { id: "vol2", name: "Vol.2 - Awakening", price: 1500, desc: "テクニカルな戦略カードが登場。", unlockStage: 3, img: "assets/packs/vol2.png" }
 ];
+
+// --- ★ Bluetooth Config (v2.4) ★ ---
+const DL_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e'; // Nordic UART Service
+const DL_NOTIFY_UUID  = '6e40fff6-b5a3-f393-e0a9-e50e24dcca9e'; // Notify Characteristic
+
+const DL_SCORE_MAP = {
+    0x3c:60, 0x28:20, 0x50:60, 0x14:20, // 20
+    0x29:2,  0x15:1,  0x3d:3,  0x01:1,  // 1
+    0x3a:36, 0x26:18, 0x4e:54, 0x12:18, // 18
+    0x2c:8,  0x18:4,  0x40:12, 0x04:4,  // 4
+    0x35:26, 0x21:13, 0x49:39, 0x0d:13, // 13
+    0x2e:12, 0x1a:6,  0x42:18, 0x06:6,  // 6
+    0x32:20, 0x1e:10, 0x46:30, 0x0a:10, // 10
+    0x37:30, 0x23:15, 0x4b:45, 0x0f:15, // 15
+    0x2a:4,  0x16:2,  0x3e:6,  0x02:2,  // 2
+    0x39:34, 0x25:17, 0x4d:51, 0x11:17, // 17
+    0x2b:6,  0x17:3,  0x3f:9,  0x03:3,  // 3
+    0x3b:38, 0x27:19, 0x4f:57, 0x13:19, // 19
+    0x2f:14, 0x1b:7,  0x43:21, 0x07:7,  // 7
+    0x38:32, 0x24:16, 0x4c:48, 0x10:16, // 16
+    0x30:16, 0x1c:8,  0x44:24, 0x08:8,  // 8
+    0x33:22, 0x1f:11, 0x47:33, 0x0b:11, // 11
+    0x36:28, 0x22:14, 0x4a:42, 0x0e:14, // 14
+    0x31:18, 0x1d:9,  0x45:27, 0x09:9,  // 9
+    0x34:24, 0x20:12, 0x48:36, 0x0c:12, // 12
+    0x2d:10, 0x19:5,  0x41:15, 0x05:5,  // 5
+    0x51:50, 0x52:50, // BULL
+    0x54: "CHANGE" // CHANGE
+};
+
+let bluetoothDevice = null;
+let bluetoothServer = null;
 
 // --- Player State ---
 let player = { 
@@ -141,7 +156,6 @@ let savedData = { highScore: { stage: 1, floor: 1, avg: 0.0 }, history: [], clea
 // --- DOM Elements ---
 const el = (id) => document.getElementById(id);
 
-// --- Helper Functions ---
 function calculateRating(ppr) { 
     if(ppr < 30) return 1; if(ppr < 40) return 2; if(ppr < 45) return 3; if(ppr < 50) return 4; 
     if(ppr < 55) return 5; if(ppr < 60) return 6; if(ppr < 65) return 7; if(ppr < 70) return 8; 
@@ -189,7 +203,6 @@ function initSlotScreen() {
             let stgName = `STAGE ${data.highScore.stage}`;
             if(data.highScore.stage === 5) stgName = "EXTRA";
             if(data.highScore.stage === 6) stgName = "STAGE 5";
-            
             let stg = `${stgName} - ${data.highScore.floor}F`;
             let badge = data.clearedExtra ? "<br><span style='color:#f0f;font-weight:bold;'>★ EXTRA CLEARED</span>" : "";
             infoEl.innerHTML = `<div>${stg}</div><div style='color:#ffdd00;'>Avg: ${data.highScore.avg.toFixed(1)} (Rt ${calculateRating(data.highScore.avg)})</div><div style='color:#aaa;font-size:12px;'>DP: ${data.dp || 0}${badge}</div>`;
@@ -199,13 +212,10 @@ function initSlotScreen() {
 
 function selectSlot(n) {
     currentSlot = "slot"+n;
-    if(!allSaveData[currentSlot]) { 
-        allSaveData[currentSlot] = { highScore: { stage: 1, floor: 1, avg: 0.0 }, history: [], clearedExtra: false, dp: 0, bestRanks: {}, unlockedStage4: false, deck: [], cards: {} }; 
-    }
+    if(!allSaveData[currentSlot]) { allSaveData[currentSlot] = { highScore: { stage: 1, floor: 1, avg: 0.0 }, history: [], clearedExtra: false, dp: 0, bestRanks: {}, unlockedStage4: false, deck: [], cards: {} }; }
     savedData = allSaveData[currentSlot];
     if(!savedData.deck) savedData.deck = [];
     if(!savedData.cards) savedData.cards = {};
-    
     allSaveData.lastPlayed = n;
     updateTitleScore();
     playSE("se-tap");
@@ -225,24 +235,19 @@ function updateTitleScore() {
     let stg = `STAGE ${savedData.highScore.stage}`;
     if(savedData.highScore.stage === 5) stg = "EXTRA";
     if(savedData.highScore.stage === 6) stg = "STAGE 5";
-
     el("hs-reach").innerText = `${stg} - ${savedData.highScore.floor}F`;
     el("hs-avg").innerText = savedData.highScore.avg.toFixed(1);
     el("hs-rt").innerText = "Rt " + calculateRating(savedData.highScore.avg);
     el("dp-display").innerText = "DP: " + (savedData.dp || 0);
-
     updateStageButton(1, "btn-st1");
     updateStageButton(2, "btn-st2");
     updateStageButton(3, "btn-st3");
-    
     const canPlayStage4 = savedData.unlockedStage4 || (savedData.bestRanks && savedData.bestRanks[3]) || savedData.clearedExtra;
     el("btn-stage4").style.display = canPlayStage4 ? "flex" : "none";
     updateStageButton(4, "btn-stage4");
-
     const canPlayStage5 = (savedData.bestRanks && savedData.bestRanks[4]);
     el("btn-stage5").style.display = canPlayStage5 ? "flex" : "none";
     updateStageButton(6, "btn-stage5"); 
-
     el("btn-extra").style.display = savedData.clearedExtra ? "flex" : "none";
     updateStageButton(5, "btn-extra");
 }
@@ -251,18 +256,87 @@ function updateStageButton(stgNum, btnId) {
     const btn = el(btnId);
     if(!btn) return;
     const rank = savedData.bestRanks ? savedData.bestRanks[stgNum] : null;
-    
     btn.className = "stage-btn btn-default";
     if(stgNum===4) btn.classList.add("stage4-btn");
     if(stgNum===5) btn.classList.add("extra-btn");
     if(stgNum===6) btn.classList.add("stage5-btn"); 
-
     if(rank) {
         btn.classList.remove("btn-default", "stage4-btn", "stage5-btn", "extra-btn");
         if(rank === "SSS") btn.classList.add("btn-prism");
         else if(rank === "S") btn.classList.add("btn-gold");
         else if(rank === "A") btn.classList.add("btn-silver");
         else btn.classList.add("btn-copper");
+    }
+}
+
+// --- ★ Bluetooth Connection Logic (v2.4) ★ ---
+async function connectToBoard() {
+    try {
+        const btn = el("bt-connect-btn");
+        if(bluetoothDevice && bluetoothDevice.gatt.connected) {
+            alert("既に接続されています");
+            return;
+        }
+        
+        btn.innerText = "Scanning...";
+        const device = await navigator.bluetooth.requestDevice({
+            filters: [{ namePrefix: 'DARTSLIVE' }],
+            optionalServices: [DL_SERVICE_UUID]
+        });
+
+        bluetoothDevice = device;
+        device.addEventListener('gattserverdisconnected', onDisconnected);
+
+        const server = await device.gatt.connect();
+        bluetoothServer = server;
+        const service = await server.getPrimaryService(DL_SERVICE_UUID);
+        const characteristic = await service.getCharacteristic(DL_NOTIFY_UUID);
+
+        await characteristic.startNotifications();
+        characteristic.addEventListener('characteristicvaluechanged', handleBluetoothNotify);
+
+        btn.innerText = "📡 CONNECTED";
+        btn.classList.add("connected");
+        alert("ダーツボードに接続しました！");
+
+    } catch (error) {
+        console.error("BT Error:", error);
+        alert("接続に失敗しました: " + error);
+        const btn = el("bt-connect-btn");
+        btn.innerText = "📡 CONNECT BOARD";
+        btn.classList.remove("connected");
+    }
+}
+
+function onDisconnected(event) {
+    const btn = el("bt-connect-btn");
+    btn.innerText = "📡 CONNECT BOARD";
+    btn.classList.remove("connected");
+    alert("ダーツボードとの接続が切れました");
+}
+
+function handleBluetoothNotify(event) {
+    if (el("game-screen").style.display === "none" || isProcessing) return;
+    
+    const value = event.target.value;
+    // Python code logic: data[2] is the area ID
+    if (value.byteLength > 2) {
+        const areaId = value.getUint8(2);
+        const scoreData = DL_SCORE_MAP[areaId];
+        
+        if (scoreData !== undefined) {
+            if (scoreData === "CHANGE") {
+                if (turnInputs.length > 0) {
+                    // Force finish turn if CHANGE pressed but input exists
+                    // Or ignore. Let's make it finish turn for safety if 3 throws not met
+                    // But standard logic is 3 throws. Just ignore CHANGE for now or use as 'skip'
+                }
+            } else {
+                // It's a number score
+                playSE("se-hit");
+                processOneThrow(scoreData);
+            }
+        }
     }
 }
 
@@ -448,96 +522,122 @@ function checkOpeningSkill() {
     }
 }
 
-// --- Battle Action Logic ---
+// --- ★ v2.4 Real-time Battle Logic ★ ---
+
 function handleEnter() {
     if(isProcessing) return;
     if (currentInput !== "") {
         const val = parseInt(currentInput);
         if (!isNaN(val)) { 
             if (val < 0 || val > 60) { alert("単発の最大値は 60 (T20) です"); currentInput=""; updateScoreDisplay(); return; } 
-            playSE("se-tap"); turnInputs.push(val); currentInput = ""; 
-            if (restrictInput || turnInputs.length === 3) executeAttack(); else updateScoreDisplay(); 
+            
+            // ★ v2.4: Call processOneThrow instead of just pushing
+            processOneThrow(val);
+            
+            currentInput = ""; 
+            updateScoreDisplay();
         }
-    } else { if (turnInputs.length > 0) executeAttack(); }
+    }
 }
 
-function executeAttack() {
-    isProcessing = true; let totalScoreInTurn = 0; let weakHitInThisTurn = 0;
-    
-    let calculatedTotalDmg = 0;
-    
-    turnInputs.forEach((s, index) => {
-        let singleDmg = s;
-        
-        if (stage === 6 && floor === 5) {
-            if (singleDmg <= 20) {
-                singleDmg = 0;
-            }
-        }
+function processOneThrow(score) {
+    if (restrictInput && turnInputs.length > 0) return; // Restrict check
 
-        if (player.state.atkBonus > 0) {
-            singleDmg += player.state.atkBonus;
-            player.state.atkBonus = 0;
-        }
-
-        if (player.state.power) {
-            singleDmg = Math.floor(singleDmg * 2.0);
-            player.state.power = false;
-        }
-        
-        if (player.state.huge !== 0) {
-            if (player.state.huge === 1) singleDmg = Math.floor(singleDmg * 3.0);
-            else singleDmg = Math.floor(singleDmg * 0.5);
-            player.state.huge = 0;
-        }
-        
-        calculatedTotalDmg += singleDmg;
-        
-        if (player.state.weakLock || (s >= 51 && enemy.data.weak && (s % enemy.data.weak === 0))) weakHitInThisTurn++;
-    });
+    playSE("se-attack"); 
     
-    if (stage === 6 && floor === 5 && calculatedTotalDmg === 0 && turnInputs.reduce((a,b)=>a+b,0) > 0) {
-         playSE("se-warning"); addLog(">> 召雷弾！ 弱い攻撃(20以下)は無効化された！", "log-enemy");
+    // Calculate damage for THIS throw
+    let singleDmg = score;
+    let weakHit = false;
+
+    // Slifer (Stage 6 Floor 5) - Thunder Bullet
+    if (stage === 6 && floor === 5) {
+        if (singleDmg <= 20) {
+            singleDmg = 0;
+            addLog(">> 召雷弾！(20以下無効)", "log-enemy");
+        }
     }
 
-    let totalScoreInTurnRaw = 0;
-    turnInputs.forEach(s => totalScoreInTurnRaw += s);
-
-    if (stage === 4 && floor === 6 && currentTurn % 2 === 0 && totalScoreInTurnRaw < 80) {
-        playSE("se-warning"); addLog(">> 結界に阻まれた！(80点未満無効)", "log-enemy"); calculatedTotalDmg = 0;
+    // Apply Buffs (Consume immediately)
+    if (player.state.atkBonus > 0) {
+        singleDmg += player.state.atkBonus;
+        player.state.atkBonus = 0;
+    }
+    if (player.state.power) {
+        singleDmg = Math.floor(singleDmg * 2.0);
+        player.state.power = false;
+    }
+    if (player.state.huge !== 0) {
+        if (player.state.huge === 1) singleDmg = Math.floor(singleDmg * 3.0);
+        else singleDmg = Math.floor(singleDmg * 0.5);
+        player.state.huge = 0;
     }
 
-    playSE("se-attack"); totalGameTurns++;
-    totalScore += totalScoreInTurnRaw; totalDarts += turnInputs.length; 
+    // Weak Point Check
+    if (player.state.weakLock || (score >= 51 && enemy.data.weak && (score % enemy.data.weak === 0))) {
+        weakHit = true;
+    }
 
-    let finalDmg = calculatedTotalDmg;
-    if (stage === 4 && floor === 4 && currentTurn % 3 === 0) { finalDmg = Math.max(0, finalDmg - 50); }
-    if (enemy.state.guardType === 'cut') { finalDmg = Math.floor(finalDmg * 0.8); addLog("護封剣で軽減(20%)！", "system"); }
-    if (enemy.state.guardType === 'half') { finalDmg = Math.floor(finalDmg * 0.5); addLog("護封剣で半減(50%)！", "system"); }
-    if (enemy.state.guard) { finalDmg = Math.floor(finalDmg / 2); enemy.state.guard = false; addLog("敵の防御で半減！", "system"); }
+    // Enemy Defense Logic
+    if (stage === 4 && floor === 6 && currentTurn % 2 === 0) {
+        // Stage 4 Boss logic is "Total < 80". In real-time, this is hard.
+        // Let's adapt: "Single < 30 invalid" or keep original logic?
+        // Original: "Total Score < 80 invalid".
+        // Adaptation: We check cumulative score later, OR just apply flat reduction?
+        // Let's make it: "Single < 25 invalid" for real-time balance?
+        // OR: Just ignore this gimmick for v2.4 to keep simple, OR apply reduction.
+        // Let's implement: "Single < 30 invalid" for simplified realtime logic.
+        if (singleDmg < 30) {
+            singleDmg = 0;
+            addLog(">> 結界に阻まれた！(30未満無効)", "log-enemy");
+        }
+    }
+    
+    if (stage === 4 && floor === 4 && currentTurn % 3 === 0) { singleDmg = Math.max(0, singleDmg - 15); } // Hard skin (adapted)
+    if (enemy.state.guardType === 'cut') { singleDmg = Math.floor(singleDmg * 0.8); }
+    if (enemy.state.guardType === 'half') { singleDmg = Math.floor(singleDmg * 0.5); }
+    if (enemy.state.guard) { singleDmg = Math.floor(singleDmg / 2); enemy.state.guard = false; addLog("敵の防御で半減！", "system"); }
 
-    let remaining = enemy.hp - finalDmg; if (remaining === 0) isJustFinish = true; enemy.hp = Math.max(0, remaining);
+    // Apply Damage
+    enemy.hp = Math.max(0, enemy.hp - singleDmg);
+    if (enemy.hp === 0) isJustFinish = true; // Simplified just finish
 
-    if (weakHitInThisTurn > 0) {
-        dropGuaranteed = true; weakHitCount += weakHitInThisTurn; 
-        addLog(`★ WEAK HIT x${weakHitInThisTurn}!!`, "log-weak");
+    // Logs & Visuals
+    totalScore += score; // Stats only
+    turnInputs.push(score);
+    
+    if (weakHit) {
+        dropGuaranteed = true; weakHitCount++; 
+        addLog(`★ WEAK HIT!!`, "log-weak");
         if(!player.state.weakLock) { 
             if(el("se-weak")) playSE("se-weak"); 
             el("flash-overlay").className = "flash-purple"; 
             setTimeout(()=>el("flash-overlay").className="", 600); 
         }
     }
-    if(player.state.weakLock) { player.state.weakLock = false; addLog("Weak Lock 効果終了", "log-system"); }
+    if(player.state.weakLock) { player.state.weakLock = false; }
 
-    addLog(`攻撃！ ${finalDmg} ダメージ (${turnInputs.join('+')})`);
-    triggerEffect(el("enemy-panel"), finalDmg, false);
-    animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp; 
+    addLog(`${turnInputs.length}投目: ${singleDmg} ダメージ!`, "system");
+    triggerEffect(el("enemy-panel"), singleDmg, false);
+    animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 300); displayEnemyHP=enemy.hp; 
     
-    if (player.state.itemLock) {
-        player.state.itemLock = false;
-        addLog("封印が解除された", "log-system");
+    updateInfo(); // This will lock UI
+
+    // Check Win
+    if (enemy.hp <= 0) {
+        setTimeout(winBattle, 1000);
+        return;
     }
-    updateInfo();
+
+    // Check Turn End
+    if (turnInputs.length >= 3) {
+        setTimeout(finishPlayerTurn, 1000);
+    }
+}
+
+function finishPlayerTurn() {
+    // End of player's 3 throws
+    totalDarts += turnInputs.length;
+    totalGameTurns++;
     
     if (restrictInput) { restrictInput = false; addLog("束縛が解けた！", "log-system"); }
     if (enemy.state.guardType) { 
@@ -546,7 +646,7 @@ function executeAttack() {
     }
     
     turnInputs = []; currentInput = ""; updateScoreDisplay();
-    if(enemy.hp<=0) setTimeout(winBattle, 1000); else setTimeout(enemyTurn, 1000);
+    setTimeout(enemyTurn, 500);
 }
 
 // --- ★ CARD LOGIC (v2.0 Overhaul) ★ ---
@@ -564,6 +664,11 @@ function drawCard(isSilent = false) {
 
 function playHandCard(index) {
     if(isProcessing || waitingForChest) return;
+    // ★ v2.4: Card only usable before 1st throw
+    if (turnInputs.length > 0) {
+        addLog(">> 投擲中はカードを使えません！", "log-system");
+        return;
+    }
     
     if (player.state.itemLock) {
         addLog(">> 封印されていて使えない！", "log-system");
@@ -581,7 +686,6 @@ function playHandCard(index) {
         return;
     }
     
-    // ★ v2.3.1: Hide tooltip when played
     hideTooltip();
 
     if (card.id === 501) {
@@ -665,7 +769,6 @@ function executeDiscardAndEffect(discardIndex) {
     updateInfo();
 }
 
-// ★ v2.3.1: Show Card Detail Logic
 function showCardDetail(card) {
     const detailEl = el("deck-card-detail");
     if(!detailEl) return;
@@ -792,55 +895,18 @@ function enemyTurn() {
         doEnemyAttack(1.3); return;
     }
     
-    // ... (Other stages) ...
-    if(stage === 3) {
-        if(floor===2 && Math.random()<0.3) { 
-            showSkillCutin("誘惑の風", "wind"); setTimeout(() => { if(player.mp>0) { player.mp=Math.max(0,player.mp-1); enemy.hp=Math.min(enemy.hp+20,enemy.maxHp); addLog(">> [誘惑の風] MP吸収", "log-enemy"); } doEnemyAttack(1.0); }, 1200); return; 
-        }
-        if(floor===5) { 
-            enemy.state.atkBuff += 0.1; addLog(`>> [主人の加護] 攻撃力UP (現在x${(1.0+enemy.state.atkBuff).toFixed(1)})`, "log-enemy"); 
-            if(currentTurn % 4 === 0) { 
-                showSkillCutin("愛の鞭・ブレス", "fire"); setTimeout(() => { player.mp = 0; addLog(">> [愛の鞭] MP消滅＆大ダメージ", "log-enemy"); doEnemyAttack(2.0 * (1.0+enemy.state.atkBuff)); }, 1200); return; 
-            } 
-            doEnemyAttack(1.0 * (1.0+enemy.state.atkBuff)); return; 
-        }
-    }
-    if(stage===1) {
-        if(floor===3) { if(Math.random() < 0.2) { showSkillCutin("自己再生", "heal"); setTimeout(() => { enemy.hp = Math.min(enemy.hp + 20, enemy.maxHp); playSE("se-heal"); addLog(">> [自己再生] HP20回復", "log-heal"); animateValue(el("enemy-hp-value"),displayEnemyHP,enemy.hp,500); displayEnemyHP=enemy.hp; updateInfo(); endEnemyTurn(); }, 1200); return; } if(Math.random() < 0.4) { showSkillCutin("鉄壁の守り", "earth"); setTimeout(() => { enemy.state.guard = true; addLog(">> [鉄壁の守り] ダメージ半減", "log-enemy"); updateInfo(); endEnemyTurn(); }, 1200); return; } }
-        if(floor===5) { if(enemy.state.charge) { enemy.state.charge = false; showSkillCutin("森の破壊衝動", "earth"); setTimeout(() => { doEnemyAttack(3.0); }, 1200); return; } if(Math.random() < 0.3) { enemy.state.charge = true; addLog(`>> 力を溜めている…`, "log-enemy"); updateInfo(); endEnemyTurn(); return; } }
-    }
-    
-    if (stage === 4 && floor === 1 && Math.random() < 0.3) { 
-        showSkillCutin("トゥーン・ラッシュ", "wind"); setTimeout(() => { addLog(">> [速攻] 2回攻撃！", "log-enemy"); doEnemyAttack(0.7, {callback: () => { setTimeout(() => doEnemyAttack(0.7), 800); } }); }, 1200); return; 
-    }
-    if (stage === 4 && floor === 2 && currentTurn === 5) { 
-        showSkillCutin("死のびっくり箱", "fire"); setTimeout(() => { addLog(">> [死の箱] 999ダメージ！", "log-enemy"); doEnemyAttack(0, {fixedDmg: 999, ignoreShield: true}); }, 1200); return; 
-    }
-    if (stage === 4 && floor === 4 && currentTurn % 3 === 0) { 
-        showSkillCutin("トゥーン・スキン", "earth"); setTimeout(() => { addLog(">> [硬質化] 被ダメ-50", "log-enemy"); updateInfo(); endEnemyTurn(); }, 1200); return; 
-    }
-    if (stage === 4 && floor === 5 && currentTurn % 3 === 0) { 
-        showSkillCutin("幻想の儀式", "wind"); setTimeout(() => { addLog(">> [儀式] HP吸収", "log-enemy"); doEnemyAttack(1.2, {isDrain: true}); }, 1200); return; 
-    }
-    if (stage === 4 && floor === 6 && currentTurn % 2 === 0) { 
-        showSkillCutin("千眼の邪教神", "wind"); setTimeout(() => { addLog(">> [結界] 80点未満無効化！", "log-enemy"); doEnemyAttack(1.2); }, 1200); return; 
-    }
-    
-    if(stage===3) {
-        if(floor===1 && enemy.state.guardTurn > 0) { addLog(`>> 光の護封剣 (残り${enemy.state.guardTurn}T)`, "log-enemy"); doEnemyAttack(1.0); return; }
-        if(floor===3 && Math.random()<0.3) { showSkillCutin("サイバー・ボンテージ", "wind"); setTimeout(() => { restrictInput = true; addLog(">> [拘束] 次ターン1投制限！", "log-enemy"); doEnemyAttack(1.0); }, 1200); return; }
-        if(floor===4 && Math.random()<0.3) { showSkillCutin("トライアングル・エクスタシー", "wind"); setTimeout(() => { addLog(">> [3姉妹の連携] 3回攻撃！", "log-enemy"); doEnemyAttack(0.6, {callback: () => { setTimeout(() => doEnemyAttack(0.6, {callback: () => { setTimeout(() => doEnemyAttack(0.6), 600); } }), 600); } }); }, 1200); return; }
-    }
-    if(stage===2) {
-        if(floor===2 && Math.random()<0.3) { showSkillCutin("俊足の連撃", "fire"); setTimeout(() => { addLog(">> [俊足の連撃] 2回攻撃！", "log-enemy"); doEnemyAttack(0.7, {callback: () => { setTimeout(() => doEnemyAttack(0.7), 800); } }); }, 1200); return; }
-        if(floor===3 && Math.random()<0.3) { showSkillCutin("死肉の渇望", "fire"); setTimeout(() => { addLog(">> [死肉の渇望] 与ダメ吸収", "log-enemy"); doEnemyAttack(1.0, {isDrain: true}); }, 1200); return; }
-        if(floor===4 && enemy.hp <= enemy.maxHp * 0.5 && Math.random()<0.5) { showSkillCutin("狂暴化", "fire"); setTimeout(() => { addLog(">> [狂暴化] 攻撃1.5倍", "log-enemy"); doEnemyAttack(1.5); }, 1200); return; }
-        if(floor===5 && Math.random() < 0.3) { showSkillCutin("恐竜剣・兜割り", "earth"); setTimeout(() => { addLog(">> [BOSS] 兜割り！シールド無効", "log-enemy"); doEnemyAttack(1.8, {ignoreShield: true}); }, 1200); return; }
-    }
-    if(stage===1) {
-        if(floor===3) { if(Math.random() < 0.2) { showSkillCutin("自己再生", "heal"); setTimeout(() => { enemy.hp = Math.min(enemy.hp + 20, enemy.maxHp); playSE("se-heal"); addLog(">> [自己再生] HP20回復", "log-heal"); animateValue(el("enemy-hp-value"),displayEnemyHP,enemy.hp,500); displayEnemyHP=enemy.hp; updateInfo(); endEnemyTurn(); }, 1200); return; } if(Math.random() < 0.4) { showSkillCutin("鉄壁の守り", "earth"); setTimeout(() => { enemy.state.guard = true; addLog(">> [鉄壁の守り] ダメージ半減", "log-enemy"); updateInfo(); endEnemyTurn(); }, 1200); return; } }
-        if(floor===5) { if(enemy.state.charge) { enemy.state.charge = false; showSkillCutin("森の破壊衝動", "earth"); setTimeout(() => { doEnemyAttack(3.0); }, 1200); return; } if(Math.random() < 0.3) { enemy.state.charge = true; addLog(`>> 力を溜めている…`, "log-enemy"); updateInfo(); endEnemyTurn(); return; } }
-    }
+    // ... (Other stages - kept compact) ...
+    if(stage===3){ if(floor===2&&Math.random()<0.3){showSkillCutin("誘惑の風","wind");setTimeout(()=>{if(player.mp>0){player.mp=Math.max(0,player.mp-1);enemy.hp=Math.min(enemy.hp+20,enemy.maxHp);addLog(">> [誘惑の風] MP吸収","log-enemy");}doEnemyAttack(1.0);},1200);return;}
+    if(floor===5){enemy.state.atkBuff+=0.1;addLog(`>> [主人の加護] 攻撃力UP (x${(1.0+enemy.state.atkBuff).toFixed(1)})`,"log-enemy");if(currentTurn%4===0){showSkillCutin("愛の鞭・ブレス","fire");setTimeout(()=>{player.mp=0;addLog(">> [愛の鞭] MP消滅＆大ダメージ","log-enemy");doEnemyAttack(2.0*(1.0+enemy.state.atkBuff));},1200);return;}doEnemyAttack(1.0*(1.0+enemy.state.atkBuff));return;}}
+    if(stage===1){if(floor===4&&player.mp>0&&Math.random()<0.3){showSkillCutin("猛毒の鱗粉","earth");setTimeout(()=>{player.mp=Math.max(0,player.mp-1);addLog(">> [猛毒の鱗粉] MP1減少","log-enemy");doEnemyAttack(1.0);},1200);return;}}
+    if(stage===4&&floor===1&&Math.random()<0.3){showSkillCutin("トゥーン・ラッシュ","wind");setTimeout(()=>{addLog(">> [速攻] 2回攻撃！","log-enemy");doEnemyAttack(0.7,{callback:()=>{setTimeout(()=>doEnemyAttack(0.7),800);}});},1200);return;}
+    if(stage===4&&floor===2&&currentTurn===5){showSkillCutin("死のびっくり箱","fire");setTimeout(()=>{addLog(">> [死の箱] 999ダメージ！","log-enemy");doEnemyAttack(0,{fixedDmg:999,ignoreShield:true});},1200);return;}
+    if(stage===4&&floor===4&&currentTurn%3===0){showSkillCutin("トゥーン・スキン","earth");setTimeout(()=>{addLog(">> [硬質化] 被ダメ-50","log-enemy");updateInfo();endEnemyTurn();},1200);return;}
+    if(stage===4&&floor===5&&currentTurn%3===0){showSkillCutin("幻想の儀式","wind");setTimeout(()=>{addLog(">> [儀式] HP吸収","log-enemy");doEnemyAttack(1.2,{isDrain:true});},1200);return;}
+    if(stage===4&&floor===6&&currentTurn%2===0){showSkillCutin("千眼の邪教神","wind");setTimeout(()=>{addLog(">> [結界] 80点未満無効化！","log-enemy");doEnemyAttack(1.2);},1200);return;}
+    if(stage===3){if(floor===1&&enemy.state.guardTurn>0){addLog(`>> 光の護封剣 (残り${enemy.state.guardTurn}T)`,"log-enemy");doEnemyAttack(1.0);return;}if(floor===3&&Math.random()<0.3){showSkillCutin("サイバー・ボンテージ","wind");setTimeout(()=>{restrictInput=true;addLog(">> [拘束] 次ターン1投制限！","log-enemy");doEnemyAttack(1.0);},1200);return;}if(floor===4&&Math.random()<0.3){showSkillCutin("トライアングル・エクスタシー","wind");setTimeout(()=>{addLog(">> [3姉妹の連携] 3回攻撃！","log-enemy");doEnemyAttack(0.6,{callback:()=>{setTimeout(()=>doEnemyAttack(0.6,{callback:()=>{setTimeout(()=>doEnemyAttack(0.6),600);}}),600);}});},1200);return;}}
+    if(stage===2){if(floor===2&&Math.random()<0.3){showSkillCutin("俊足の連撃","fire");setTimeout(()=>{addLog(">> [俊足の連撃] 2回攻撃！","log-enemy");doEnemyAttack(0.7,{callback:()=>{setTimeout(()=>doEnemyAttack(0.7),800);}});},1200);return;}if(floor===3&&Math.random()<0.3){showSkillCutin("死肉の渇望","fire");setTimeout(()=>{addLog(">> [死肉の渇望] 与ダメ吸収","log-enemy");doEnemyAttack(1.0,{isDrain:true});},1200);return;}if(floor===4&&enemy.hp<=enemy.maxHp*0.5&&Math.random()<0.5){showSkillCutin("狂暴化","fire");setTimeout(()=>{addLog(">> [狂暴化] 攻撃1.5倍","log-enemy");doEnemyAttack(1.5);},1200);return;}if(floor===5&&Math.random()<0.3){showSkillCutin("恐竜剣・兜割り","earth");setTimeout(()=>{addLog(">> [BOSS] 兜割り！シールド無効","log-enemy");doEnemyAttack(1.8,{ignoreShield:true});},1200);return;}}
+    if(stage===1){if(floor===3){if(Math.random()<0.2){showSkillCutin("自己再生","heal");setTimeout(()=>{enemy.hp=Math.min(enemy.hp+20,enemy.maxHp);playSE("se-heal");addLog(">> [自己再生] HP20回復","log-heal");animateValue(el("enemy-hp-value"),displayEnemyHP,enemy.hp,500);displayEnemyHP=enemy.hp;updateInfo();endEnemyTurn();},1200);return;}if(Math.random()<0.4){showSkillCutin("鉄壁の守り","earth");setTimeout(()=>{enemy.state.guard=true;addLog(">> [鉄壁の守り] ダメージ半減","log-enemy");updateInfo();endEnemyTurn();},1200);return;}}if(floor===5){if(enemy.state.charge){enemy.state.charge=false;showSkillCutin("森の破壊衝動","earth");setTimeout(()=>{doEnemyAttack(3.0);},1200);return;}if(Math.random()<0.3){enemy.state.charge=true;addLog(`>> 力を溜めている…`,"log-enemy");updateInfo();endEnemyTurn();return;}}}
     
     doEnemyAttack(1.0);
 }
@@ -1103,7 +1169,13 @@ function returnToTitle() {
 // --- Utils ---
 function useItem(type) {
     if(isProcessing || waitingForChest) return;
-    // ★ v2.2 Lock check
+    
+    // ★ v2.4: Item only usable before 1st throw
+    if (turnInputs.length > 0) {
+        addLog(">> 投擲中はアイテムを使えません！", "log-system");
+        return;
+    }
+
     if (player.state.itemLock) { playSE("se-warning"); return; }
 
     if(type === 'potion' && player.items.potion > 0) { 
@@ -1230,14 +1302,43 @@ function updateInfo() {
     let ppr = 0; if(totalDarts>0) ppr = ((totalScore/totalDarts)*3); 
     el("avg-display").innerText=ppr.toFixed(1); el("rt-display").innerText=`(Rt ${calculateRating(ppr)})`;
     
-    // ★ v2.2.1 Fix: Item Button Visual
-    const isLocked = player.state.itemLock;
-    ["btn-potion", "btn-ether", "btn-seed"].forEach(id => {
-        const b = el(id);
-        if(isLocked) { b.classList.add("disabled"); b.style.opacity = "0.3"; }
-        else { b.classList.remove("disabled"); b.style.opacity = "1.0"; }
-    });
+    // ★ v2.4 UI Lock Logic
+    // If turnInputs has items (throwing phase), disable buttons visually
+    const isThrowing = turnInputs.length > 0;
+    const isLocked = player.state.itemLock || isThrowing;
     
+    const panel = el("player-panel").parentElement; // Right panel container
+    if (isThrowing) {
+        panel.classList.add("ui-locked");
+    } else {
+        panel.classList.remove("ui-locked");
+    }
+
+    const updateItemBtn = (btnId, count) => {
+        const b = el(btnId);
+        if (!b) return;
+        b.className = "item-btn"; 
+        
+        if (isLocked) {
+            b.classList.add("disabled");
+            b.style.opacity = "0.3";
+            b.style.cursor = "not-allowed";
+        } else {
+            b.style.opacity = "1.0";
+            if (count > 0) {
+                b.classList.add("has-item");
+                b.style.cursor = "pointer";
+            } else {
+                b.classList.add("disabled");
+                b.style.cursor = "default";
+            }
+        }
+    };
+
+    updateItemBtn("btn-potion", player.items.potion);
+    updateItemBtn("btn-ether", player.items.ether);
+    updateItemBtn("btn-seed", player.items.seed);
+
     el("btn-potion").innerHTML = `💊 薬草 x${player.items.potion}<span class="tooltip">HPを50回復</span>`;
     el("btn-ether").innerHTML = `⚗️ マナ x${player.items.ether}<span class="tooltip">MPを3回復</span>`;
     el("btn-seed").innerHTML = `🌱 種 x${player.items.seed}<span class="tooltip">最大HP+10上昇</span>`;
@@ -1283,6 +1384,10 @@ function renderHand() {
     handArea.innerHTML = "";
     el("hand-count-display").innerText = player.hand.length;
     
+    // Check locked state for cards
+    const isThrowing = turnInputs.length > 0;
+    const isCardLocked = player.state.itemLock || isThrowing;
+
     if (player.deckLocked) {
         el("battle-deck-count").innerText = "-";
         handArea.innerHTML = `<div class="hand-locked-msg">⚠️ NO DECK (DARTS ONLY)</div>`;
@@ -1296,7 +1401,7 @@ function renderHand() {
                 const cost = (card.cost !== undefined) ? card.cost : 99;
                 const div = document.createElement("div");
                 div.className = "hand-card";
-                if (player.mp < cost || player.state.itemLock) div.classList.add("disabled"); // Locked check
+                if (player.mp < cost || isCardLocked) div.classList.add("disabled");
 
                 const imgPath = `assets/cards/${card.id}.png`;
                 div.innerHTML = `<div class="hand-cost">${cost}</div><div class="card-art" style="height:100%; border:none;"><img src="${imgPath}" onerror="this.style.display='none'"></div>`;
@@ -1309,388 +1414,37 @@ function renderHand() {
     }
 }
 
-// --- Shop & Deck ---
-function openCardShop() {
-    playSE("se-tap");
-    const list = el("pack-list"); list.innerHTML = "";
-    el("shop-dp-display").innerText = savedData.dp;
-    if (!savedData.cards) savedData.cards = {};
-
-    PACK_DATA.forEach(pack => {
-        const isUnlocked = (savedData.bestRanks && savedData.bestRanks[pack.unlockStage]);
-        if (!isUnlocked) return; 
-        const canBuy = savedData.dp >= pack.price;
-        const imgHTML = `<img src="${pack.img}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:50px; background:#333; color:#555;">📦</div>`;
-        const div = document.createElement("div");
-        div.className = "pack-item";
-        div.innerHTML = `<div class="pack-img-container">${imgHTML}</div><div class="pack-name">${pack.name}</div><div class="pack-desc">${pack.desc}</div><button class="pack-buy-btn" ${canBuy ? "" : "disabled"} onclick="buyPack('${pack.id}')">${canBuy ? `BUY (${pack.price} DP)` : "LACK DP"}</button>`;
-        list.appendChild(div);
-    });
-    if (list.innerHTML === "") list.innerHTML = "<div style='color:#666; width:100%; text-align:center;'>STAGE 1 CLEAR REQUIRED</div>";
-    el("card-shop-modal").style.display = "flex";
-}
-
-function buyPack(packId) {
-    const pack = PACK_DATA.find(p => p.id === packId);
-    if (!pack || savedData.dp < pack.price) return;
-    savedData.dp -= pack.price;
-    el("shop-dp-display").innerText = savedData.dp;
-    playSE("se-item");
-
-    const results = [];
-    for(let i=0; i<3; i++) {
-        const card = drawShopCard(packId); 
-        const isNew = !savedData.cards[card.id];
-        if (!savedData.cards[card.id]) savedData.cards[card.id] = 0;
-        savedData.cards[card.id]++;
-        results.push({ card: card, isNew: isNew });
-    }
-    saveToDrive();
-    showPackResult(results);
-}
-
-function drawShopCard(packId) {
-    const rand = Math.random() * 100;
-    let targetRarity = "N";
-    if (rand < 2) targetRarity = "UR";
-    else if (rand < 10) targetRarity = "SR";
-    else if (rand < 40) targetRarity = "R";
-    
-    let pool = CARD_DB.filter(c => c.rarity === targetRarity);
-    if(packId === "vol1") pool = pool.filter(c => c.id < 500);
-    else if(packId === "vol2") pool = pool.filter(c => c.id >= 500);
-    
-    if (pool.length === 0) return CARD_DB[0];
-    return pool[Math.floor(Math.random() * pool.length)];
-}
-
-function showPackResult(results) {
-    const container = el("pack-results"); container.innerHTML = "";
-    results.forEach((res, index) => {
-        const c = res.card;
-        const cardEl = createCardElement(c, false, 1, 1);
-        cardEl.classList.add("result-card-anim");
-        cardEl.style.animationDelay = `${index * 0.3}s`;
-        if (res.isNew) {
-            const badge = document.createElement("div"); badge.className = "new-badge-overlay"; badge.innerText = "NEW!";
-            cardEl.appendChild(badge);
-        }
-        container.appendChild(cardEl);
-    });
-    const hasHighRare = results.some(r => r.card.rarity === "SR" || r.card.rarity === "UR");
-    if (hasHighRare) setTimeout(() => playSE("se-win"), 300); else playSE("se-buff");
-    el("pack-result-modal").style.display = "flex";
-}
-
-function closePackResult() { playSE("se-tap"); el("pack-result-modal").style.display = "none"; updateTitleScore(); }
-function closeCardShop() { playSE("se-tap"); el("card-shop-modal").style.display = "none"; updateTitleScore(); }
-
-// --- Collection ---
-function openCollection() { playSE("se-tap"); renderDeckEditor(); el("collection-modal").style.display = "flex"; }
-function closeCollection() { playSE("se-tap"); el("collection-modal").style.display = "none"; hideTooltip(); }
-
-function renderDeckEditor() {
-    if (!savedData.deck) savedData.deck = [];
-    savedData.deck.sort((a,b) => a - b);
-
-    const deckGrid = el("deck-grid"); deckGrid.innerHTML = "";
-    for (let i = 0; i < DECK_SIZE; i++) {
-        const cardId = savedData.deck[i]; 
-        if (cardId) {
-            const card = CARD_DB.find(c => c.id === cardId);
-            const totalOwned = savedData.cards[card.id] || 0;
-            const el = createCardElement(card, true, 0, totalOwned);
-            
-            // ★ v2.3.1: Hover detail for deck items
-            el.onmouseenter = () => showCardDetail(card);
-            
-            deckGrid.appendChild(el);
-        } else {
-            const div = document.createElement("div"); div.className = "deck-slot-empty"; div.innerText = "EMPTY";
-            deckGrid.appendChild(div);
-        }
-    }
-    
-    const deckCount = savedData.deck.length;
-    const countEl = el("deck-count"); countEl.innerText = deckCount;
-    if (deckCount < DECK_SIZE) { countEl.style.color = "#ff5555"; countEl.innerText += " (あと" + (DECK_SIZE - deckCount) + "枚)"; } 
-    else { countEl.style.color = "#00ff00"; countEl.innerText += " (OK!)"; }
-
-    const listGrid = el("card-grid"); listGrid.innerHTML = "";
-    if (!savedData.cards) savedData.cards = {};
-    let ownedCount = 0;
-
-    CARD_DB.forEach(card => {
-        const count = savedData.cards[card.id] || 0;
-        if (count > 0) ownedCount++;
-        const inDeckCount = savedData.deck.filter(id => id === card.id).length;
-        const remaining = count - inDeckCount; 
-        const el = createCardElement(card, false, remaining, count);
-        listGrid.appendChild(el);
-    });
-    el("collection-rate").innerText = `${Math.floor((ownedCount / CARD_DB.length) * 100)}%`;
-}
-
-// ★ v2.3.1: Updated to handle detail view
-function showCardDetail(card) {
-    const detailEl = el("deck-card-detail");
-    if(!detailEl) return;
-    detailEl.innerHTML = `<span class="detail-name">${card.name}</span>${card.desc}`;
-}
-
-function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0) {
-    const div = document.createElement("div");
-    const isOwned = (totalCount > 0 || isDeckItem);
-    const notOwnedClass = (!isOwned) ? "card-not-owned" : "";
-    div.className = `collection-card rarity-${card.rarity} ${notOwnedClass}`;
-    const imgPath = `assets/cards/${card.id}.png`;
-    const fallbackIcon = card.type === "MAGIC" ? "🪄" : "⛓️";
-    const cost = (card.cost !== undefined) ? card.cost : "?";
-    
-    let shortDesc = card.desc;
-    if(shortDesc.length > 20) shortDesc = shortDesc.substring(0, 19) + "..";
-
-    const imgStyle = isDeckItem ? "height: 100%; border-radius: 4px;" : "";
-    const artStyle = isDeckItem ? "height: 100%;" : "";
-
-    div.innerHTML = `
-        <div class="card-cost-badge">${cost}</div>
-        <div class="card-count-badge">x${isDeckItem ? 1 : remainingCount}</div>
-        <div class="card-art" style="${artStyle}">
-            <img src="${imgPath}" style="${imgStyle}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-            <div class="card-placeholder" style="display:none;">${fallbackIcon}</div>
-        </div>
-        <div class="card-info">
-            <div class="card-name">${card.name}</div>
-            <div class="card-type">[${card.type}]</div>
-            ${(!isDeckItem && isOwned) ? `<div class="card-info-direct" style="display:block;">${shortDesc}</div>` : ''}
-        </div>
-    `;
-    div.onclick = function() {
-        if (!isOwned) return; 
-        if (isDeckItem) removeFromDeck(card.id); else addToDeck(card.id);
-    };
-    
-    // ★ v2.3.1 Fix: Always show detail on hover (both list and deck)
-    div.onmouseenter = (e) => {
-        showCardDetail(card);
-        if (isDeckItem) showTooltip(card.name, card.desc, e); // Keep tooltip for deck view
-    };
-    if (isDeckItem) {
-        div.onmouseleave = () => hideTooltip();
-    }
-    return div;
-}
-
-// --- Global Tooltip System ---
-function showTooltip(name, desc, e) {
-    const tt = el("global-tooltip");
-    el("gt-name").innerText = name;
-    el("gt-desc").innerText = desc;
-    tt.style.visibility = "visible";
-    tt.style.opacity = "1";
-    moveTooltip(e);
-    e.currentTarget.onmousemove = moveTooltip;
-}
-
-function moveTooltip(e) {
-    const tt = el("global-tooltip");
-    const offset = 15;
-    let left = e.clientX + offset;
-    let top = e.clientY + offset;
-    
-    if (left + tt.offsetWidth > window.innerWidth) left = e.clientX - tt.offsetWidth - offset;
-    if (top + tt.offsetHeight > window.innerHeight) top = e.clientY - tt.offsetHeight - offset;
-    
-    tt.style.left = left + "px";
-    tt.style.top = top + "px";
-}
-
-function hideTooltip() {
-    const tt = el("global-tooltip");
-    tt.style.visibility = "hidden";
-    tt.style.opacity = "0";
-}
-
-function addToDeck(cardId) {
-    // ★ v2.3.1 Fix: Force hide tooltip before action
-    hideTooltip();
-    
-    const SAME_CARD_LIMIT = 3;
-    if (savedData.deck.length >= DECK_SIZE) { alert(`デッキは${DECK_SIZE}枚までです！`); return; }
-    const ownedCount = savedData.cards[cardId] || 0;
-    const currentInDeck = savedData.deck.filter(id => id === cardId).length;
-    if (currentInDeck >= ownedCount) { alert("これ以上持っていません！"); return; }
-    if (currentInDeck >= SAME_CARD_LIMIT) { alert(`「${getCardName(cardId)}」は3枚までです。`); return; }
-    
-    playSE("se-tap"); savedData.deck.push(cardId); saveToDrive(); renderDeckEditor(); 
-}
-
-function removeFromDeck(cardId) {
-    // ★ v2.3.1 Fix: Force hide tooltip before action
-    hideTooltip();
-    
-    playSE("se-tap");
-    const index = savedData.deck.indexOf(cardId);
-    if (index > -1) { savedData.deck.splice(index, 1); }
-    saveToDrive(); renderDeckEditor();
-}
-
-function getCardName(id) { const c = CARD_DB.find(card => card.id === id); return c ? c.name : "カード"; }
-
-// --- Helpers & Base Functions ---
-function showDialog(title, text, type="normal", buttons=[{text:"OK", action:null}]) {
-    const box = el("modal-box-inner");
-    el("modal-title").innerText = title; el("modal-text").innerHTML = text; 
-    box.className = "modal-box"; el("modal-title").style.color = "#f9a826";
-    if (type === "clear") { box.classList.add("modal-clear"); el("modal-title").style.color = "#fff"; } 
-    else if (type === "warning") { box.classList.add("modal-warning"); el("modal-title").style.color = "#ff0000"; } 
-    else if (type === "item") { box.classList.add("modal-item"); el("modal-title").style.color = "#00ff00"; }
-
-    const btnGroup = el("modal-buttons"); btnGroup.innerHTML = "";
-    buttons.forEach(b => {
-        const btn = document.createElement("button"); btn.className = "modal-btn"; btn.innerText = b.text;
-        btn.onclick = function() { playSE("se-tap"); el("game-modal").style.display = "none"; if(b.action) b.action(); };
-        btnGroup.appendChild(btn);
-    });
-    el("game-modal").style.display = "flex";
-}
-
-function calculateStageRank(stg, turns) {
-    if (stg === 5 || stg === 6) { // Boss stages
-        if (turns <= 15) return ["SSS", 1000]; if (turns <= 20) return ["S", 600]; if (turns <= 35) return ["A", 300]; if (turns <= 50) return ["B", 100]; return ["C", 50]; 
-    }
-    else if (stg === 4) { if (turns <= 20) return ["SSS", 1000]; if (turns <= 28) return ["S", 600]; if (turns <= 40) return ["A", 300]; if (turns <= 50) return ["B", 100]; return ["C", 50]; } 
-    else { if (turns <= 12) return ["SSS", 1000]; if (turns <= 16) return ["S", 600]; if (turns <= 22) return ["A", 300]; if (turns <= 30) return ["B", 100]; return ["C", 50]; }
-}
-
-function finishSession(resultType, ppr, multiplier = 1.0) {
-    let totalDP = 0;
-    let earnedDP = 0;
-    clearedStagesLog.forEach(log => { earnedDP += log.dp; });
-    
-    savedData.dp = (savedData.dp || 0);
-
-    const curVal = stage * 100 + floor; const bestVal = savedData.highScore.stage * 100 + savedData.highScore.floor;
-    let isNewRecord = false; if (curVal > bestVal) { savedData.highScore.stage = stage; savedData.highScore.floor = floor; isNewRecord = true; }
-    if (ppr > savedData.highScore.avg) { savedData.highScore.avg = ppr; isNewRecord = true; }
-    if (resultType === "EXTRA-WIN") savedData.clearedExtra = true;
-
-    const now = new Date(); 
-    const dateStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${("0"+now.getMinutes()).slice(-2)}`;
-    let stgName = (stage === 6) ? "STAGE 5" : (stage===5 ? "EXTRA" : "S" + stage + "-" + floor + "F");
-    let resultText = resultType;
-    
-    let gainedDP = 0;
-    
-    const scoreDP = Math.floor(totalScore * 0.2 * multiplier);
-    let rankDP = 0;
-    clearedStagesLog.forEach(log => rankDP += log.dp);
-    gainedDP = scoreDP + rankDP;
-    
-    savedData.dp += gainedDP;
-
-    if (clearedStagesLog.length > 0 && resultType === "RETURN") {
-        const last = clearedStagesLog[clearedStagesLog.length-1];
-        resultText = `CLEAR(${last.rank})`;
-    }
-
-    savedData.history.unshift({ date: dateStr, stage: stage, floor: floor, stgName: stgName, result: resultText, dp: gainedDP, ppr: ppr, rt: calculateRating(ppr) });
-    if(savedData.history.length > 50) savedData.history.pop();
-    updateTitleScore(); saveToDrive();
-    return { isNewRecord: isNewRecord, gainedDP: gainedDP };
-}
-
-function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-    }
-    return array;
-}
-
-function triggerEffect(el, dmg, isP) {
-    el.classList.remove("shake-small", "shake-medium", "shake-heavy", "shake-ultimate"); void el.offsetWidth;
-    if(dmg >= 150) { el.classList.add("shake-ultimate"); playSE("se-boom"); }
-    else if(dmg >= 60) { el.classList.add("shake-heavy"); playSE("se-boom"); }
-    else { el.classList.add(dmg>=30 ? "shake-medium" : "shake-small"); playSE("se-hit"); }
-    
-    const pop = document.createElement("div"); pop.innerText=dmg; 
-    if(dmg >= 150) pop.className="damage-popup dmg-ultimate"; else if(dmg >= 60) pop.className="damage-popup dmg-heavy"; else if(dmg >= 30) pop.className="damage-popup dmg-medium"; else pop.className="damage-popup dmg-small";
-    pop.style.left="50%"; pop.style.top="50%"; el.appendChild(pop); setTimeout(()=>pop.remove(),1500);
-}
-
-function animateValue(obj, s, e, d) { if(obj) obj.innerHTML = e; }
-function addLog(t, type="") { const d=document.createElement("div"); d.innerHTML=t; if(type) d.className="log-"+type; el("battle-log").prepend(d); }
-
-function showHistory() {
-    const list = el("history-list"); list.innerHTML = "";
-    if(!savedData.history || savedData.history.length === 0) { list.innerHTML = "<div style='padding:20px; text-align:center;'>NO HISTORY</div>"; }
-    else {
-        savedData.history.forEach(h => {
-            let resClass = "res-lose"; let resStr = h.result || "LOSE";
-            if (resStr.includes("WIN") || resStr.includes("CLEAR")) resClass = "res-win";
-            if (resStr.includes("EXTRA")) resClass = "res-extra";
-            list.innerHTML += `<div class='h-row'><div>${h.date}</div><div>${h.stgName}</div><div class='${resClass}'>${resStr}</div><div>+${h.dp} DP<br>Avg ${h.ppr.toFixed(1)}</div></div>`;
-        });
-    }
-    playSE("se-tap"); el("history-modal").style.display = "flex";
-}
-function closeHistory() { playSE("se-tap"); el("history-modal").style.display = "none"; }
-function resetSaveData() { if(confirm("【警告】現在のスロットのデータを完全に消去しますか？")) { allSaveData[currentSlot] = null; selectSlot(currentSlot.replace("slot","")); saveToDrive(); } }
-function exportSave() { navigator.clipboard.writeText(JSON.stringify(savedData)).then(()=>alert("現在のスロットのデータをコピーしました")); }
-function importSave() { const json = prompt("セーブデータ(JSON)を貼り付けてください"); if(json) { try { const d = JSON.parse(json); if(d.highScore && d.history) { savedData = d; updateTitleScore(); saveToDrive(); alert("読み込み完了"); } } catch(e) { alert("データ形式エラー"); } } }
-
-// --- Debug & Keys ---
-function tapKey(key) {
-    if (el("game-screen").style.display === "none" || isProcessing) return;
-    if(key === 'ENT') handleEnter();
-    else if (key === 'BS') {
-        if (currentInput.length > 0) currentInput = currentInput.slice(0, -1);
-        else if (turnInputs.length > 0) currentInput = "" + turnInputs.pop();
-        playSE("se-tap"); updateScoreDisplay();
-    } else {
-        if (currentInput.length < 3) { playSE("se-tap"); currentInput += key; updateScoreDisplay(); }
-    }
-}
-
-window.addEventListener("keydown", function(e) {
-    if (el("title-screen").style.display !== "none") {
-        if (e.key === "1") cheatBuffer += e.key; else cheatBuffer = "";
-        if (cheatBuffer.endsWith("1111")) { 
-            playSE("se-item"); 
-            savedData.dp = (savedData.dp || 0) + 5000; 
-            updateTitleScore(); 
-            saveToDrive(); 
-            cheatBuffer = ""; 
-        }
-    }
-    if (el("game-modal").style.display === "flex" && e.key === "Enter") {
-        const btns = document.getElementById("modal-buttons");
-        if (btns.children.length === 1) { e.preventDefault(); btns.children[0].click(); } return;
-    }
-    if (waitingForChest) { if (e.key === 'Enter') { e.preventDefault(); openChest(); } return; }
-    if (el("game-screen").style.display !== "none" && !isProcessing) {
-        if (e.key >= '0' && e.key <= '9') { if (currentInput.length < 3) { playSE("se-tap"); currentInput += e.key; updateScoreDisplay(); } }
-        if (e.key === 'Backspace') { if (currentInput.length > 0) currentInput = currentInput.slice(0, -1); else if (turnInputs.length > 0) currentInput = "" + turnInputs.pop(); updateScoreDisplay(); }
-        if (e.key === 'Enter') handleEnter();
-    }
-});
-
-function updateScoreDisplay() {
-    const slots = [el("slot-1"), el("slot-2"), el("slot-3")];
-    slots.forEach((s, i) => { 
-        s.className = "score-slot"; 
-        if (restrictInput && i > 0) { s.classList.add("locked"); s.innerText = "X"; return; } 
-        if (i < turnInputs.length) { s.innerText = turnInputs[i]; s.classList.add("filled"); } 
-        else if (i === turnInputs.length) { s.innerText = currentInput; s.classList.add("active"); } 
-        else { s.innerText = ""; } 
-    });
-    const currentThrow = turnInputs.length + 1;
-    el("btn-d1").className = currentThrow === 1 ? "darts-btn active" : "darts-btn";
-    el("btn-d2").className = currentThrow === 2 ? "darts-btn active" : "darts-btn";
-    el("btn-d3").className = currentThrow === 3 ? "darts-btn active" : "darts-btn";
-    if(restrictInput) { el("btn-d2").className="darts-btn disabled"; el("btn-d3").className="darts-btn disabled"; }
-}
-
-function getRankColor(r) { if(r==="SSS") return "#00ffff"; if(r==="S") return "#ffd700"; if(r==="A") return "#ff5555"; return "#fff"; }
+// --- Shop & Deck (Unchanged, compact) ---
+function openCardShop(){playSE("se-tap");const list=el("pack-list");list.innerHTML="";el("shop-dp-display").innerText=savedData.dp;if(!savedData.cards)savedData.cards={};PACK_DATA.forEach(pack=>{const isUnlocked=(savedData.bestRanks&&savedData.bestRanks[pack.unlockStage]);if(!isUnlocked)return;const canBuy=savedData.dp>=pack.price;const imgHTML=`<img src="${pack.img}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:50px; background:#333; color:#555;">📦</div>`;const div=document.createElement("div");div.className="pack-item";div.innerHTML=`<div class="pack-img-container">${imgHTML}</div><div class="pack-name">${pack.name}</div><div class="pack-desc">${pack.desc}</div><button class="pack-buy-btn" ${canBuy?"":"disabled"} onclick="buyPack('${pack.id}')">${canBuy?`BUY (${pack.price} DP)`:"LACK DP"}</button>`;list.appendChild(div);});if(list.innerHTML==="")list.innerHTML="<div style='color:#666; width:100%; text-align:center;'>STAGE 1 CLEAR REQUIRED</div>";el("card-shop-modal").style.display="flex";}
+function buyPack(packId){const pack=PACK_DATA.find(p=>p.id===packId);if(!pack||savedData.dp<pack.price)return;savedData.dp-=pack.price;el("shop-dp-display").innerText=savedData.dp;playSE("se-item");const results=[];for(let i=0;i<3;i++){const card=drawShopCard(packId);const isNew=!savedData.cards[card.id];if(!savedData.cards[card.id])savedData.cards[card.id]=0;savedData.cards[card.id]++;results.push({card:card,isNew:isNew});}saveToDrive();showPackResult(results);}
+function drawShopCard(packId){const rand=Math.random()*100;let targetRarity="N";if(rand<2)targetRarity="UR";else if(rand<10)targetRarity="SR";else if(rand<40)targetRarity="R";let pool=CARD_DB.filter(c=>c.rarity===targetRarity);if(packId==="vol1")pool=pool.filter(c=>c.id<500);else if(packId==="vol2")pool=pool.filter(c=>c.id>=500);if(pool.length===0)return CARD_DB[0];return pool[Math.floor(Math.random()*pool.length)];}
+function showPackResult(results){const container=el("pack-results");container.innerHTML="";results.forEach((res,index)=>{const c=res.card;const cardEl=createCardElement(c,false,1,1);cardEl.classList.add("result-card-anim");cardEl.style.animationDelay=`${index*0.3}s`;if(res.isNew){const badge=document.createElement("div");badge.className="new-badge-overlay";badge.innerText="NEW!";cardEl.appendChild(badge);}container.appendChild(cardEl);});const hasHighRare=results.some(r=>r.card.rarity==="SR"||r.card.rarity==="UR");if(hasHighRare)setTimeout(()=>playSE("se-win"),300);else playSE("se-buff");el("pack-result-modal").style.display="flex";}
+function closePackResult(){playSE("se-tap");el("pack-result-modal").style.display="none";updateTitleScore();}
+function closeCardShop(){playSE("se-tap");el("card-shop-modal").style.display="none";updateTitleScore();}
+function openCollection(){playSE("se-tap");renderDeckEditor();el("collection-modal").style.display="flex";}
+function closeCollection(){playSE("se-tap");el("collection-modal").style.display="none";hideTooltip();}
+function renderDeckEditor(){if(!savedData.deck)savedData.deck=[];savedData.deck.sort((a,b)=>a-b);const deckGrid=el("deck-grid");deckGrid.innerHTML="";for(let i=0;i<DECK_SIZE;i++){const cardId=savedData.deck[i];if(cardId){const card=CARD_DB.find(c=>c.id===cardId);const totalOwned=savedData.cards[card.id]||0;const el=createCardElement(card,true,0,totalOwned);el.onmouseenter=()=>showCardDetail(card);deckGrid.appendChild(el);}else{const div=document.createElement("div");div.className="deck-slot-empty";div.innerText="EMPTY";deckGrid.appendChild(div);}}const deckCount=savedData.deck.length;const countEl=el("deck-count");countEl.innerText=deckCount;if(deckCount<DECK_SIZE){countEl.style.color="#ff5555";countEl.innerText+=" (あと"+(DECK_SIZE-deckCount)+"枚)";}else{countEl.style.color="#00ff00";countEl.innerText+=" (OK!)";}const listGrid=el("card-grid");listGrid.innerHTML="";if(!savedData.cards)savedData.cards={};let ownedCount=0;CARD_DB.forEach(card=>{const count=savedData.cards[card.id]||0;if(count>0)ownedCount++;const inDeckCount=savedData.deck.filter(id=>id===card.id).length;const remaining=count-inDeckCount;const el=createCardElement(card,false,remaining,count);listGrid.appendChild(el);});el("collection-rate").innerText=`${Math.floor((ownedCount/CARD_DB.length)*100)}%`;}
+function showCardDetail(card){const detailEl=el("deck-card-detail");if(!detailEl)return;detailEl.innerHTML=`<span class="detail-name">${card.name}</span>${card.desc}`;}
+function createCardElement(card,isDeckItem,remainingCount=1,totalCount=0){const div=document.createElement("div");const isOwned=(totalCount>0||isDeckItem);const notOwnedClass=(!isOwned)?"card-not-owned":"";div.className=`collection-card rarity-${card.rarity} ${notOwnedClass}`;const imgPath=`assets/cards/${card.id}.png`;const fallbackIcon=card.type==="MAGIC"?"🪄":"⛓️";const cost=(card.cost!==undefined)?card.cost:"?";let shortDesc=card.desc;if(shortDesc.length>20)shortDesc=shortDesc.substring(0,19)+"..";const imgStyle=isDeckItem?"height: 100%; border-radius: 4px;":"";const artStyle=isDeckItem?"height: 100%;":"";div.innerHTML=`<div class="card-cost-badge">${cost}</div><div class="card-count-badge">x${isDeckItem?1:remainingCount}</div><div class="card-art" style="${artStyle}"><img src="${imgPath}" style="${imgStyle}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><div class="card-placeholder" style="display:none;">${fallbackIcon}</div></div><div class="card-info"><div class="card-name">${card.name}</div><div class="card-type">[${card.type}]</div>${(!isDeckItem&&isOwned)?`<div class="card-info-direct" style="display:block;">${shortDesc}</div>`:''}</div>`;div.onclick=function(){if(!isOwned)return;if(isDeckItem)removeFromDeck(card.id);else addToDeck(card.id);};div.onmouseenter=(e)=>{showCardDetail(card);if(isDeckItem)showTooltip(card.name,card.desc,e);};if(isDeckItem){div.onmouseleave=()=>hideTooltip();}return div;}
+function showTooltip(name,desc,e){const tt=el("global-tooltip");el("gt-name").innerText=name;el("gt-desc").innerText=desc;tt.style.visibility="visible";tt.style.opacity="1";moveTooltip(e);e.currentTarget.onmousemove=moveTooltip;}
+function moveTooltip(e){const tt=el("global-tooltip");const offset=15;let left=e.clientX+offset;let top=e.clientY+offset;if(left+tt.offsetWidth>window.innerWidth)left=e.clientX-tt.offsetWidth-offset;if(top+tt.offsetHeight>window.innerHeight)top=e.clientY-tt.offsetHeight-offset;tt.style.left=left+"px";tt.style.top=top+"px";}
+function hideTooltip(){const tt=el("global-tooltip");tt.style.visibility="hidden";tt.style.opacity="0";}
+function addToDeck(cardId){hideTooltip();const SAME_CARD_LIMIT=3;if(savedData.deck.length>=DECK_SIZE){alert(`デッキは${DECK_SIZE}枚までです！`);return;}const ownedCount=savedData.cards[cardId]||0;const currentInDeck=savedData.deck.filter(id=>id===cardId).length;if(currentInDeck>=ownedCount){alert("これ以上持っていません！");return;}if(currentInDeck>=SAME_CARD_LIMIT){alert(`「${getCardName(cardId)}」は3枚までです。`);return;}playSE("se-tap");savedData.deck.push(cardId);saveToDrive();renderDeckEditor();}
+function removeFromDeck(cardId){hideTooltip();playSE("se-tap");const index=savedData.deck.indexOf(cardId);if(index>-1){savedData.deck.splice(index,1);}saveToDrive();renderDeckEditor();}
+function getCardName(id){const c=CARD_DB.find(card=>card.id===id);return c?c.name:"カード";}
+function showDialog(title,text,type="normal",buttons=[{text:"OK",action:null}]){const box=el("modal-box-inner");el("modal-title").innerText=title;el("modal-text").innerHTML=text;box.className="modal-box";el("modal-title").style.color="#f9a826";if(type==="clear"){box.classList.add("modal-clear");el("modal-title").style.color="#fff";}else if(type==="warning"){box.classList.add("modal-warning");el("modal-title").style.color="#ff0000";}else if(type==="item"){box.classList.add("modal-item");el("modal-title").style.color="#00ff00";}const btnGroup=el("modal-buttons");btnGroup.innerHTML="";buttons.forEach(b=>{const btn=document.createElement("button");btn.className="modal-btn";btn.innerText=b.text;btn.onclick=function(){playSE("se-tap");el("game-modal").style.display="none";if(b.action)b.action();};btnGroup.appendChild(btn);});el("game-modal").style.display="flex";}
+function calculateStageRank(stg,turns){if(stg===5||stg===6){if(turns<=15)return["SSS",1000];if(turns<=20)return["S",600];if(turns<=35)return["A",300];if(turns<=50)return["B",100];return["C",50];}else if(stg===4){if(turns<=20)return["SSS",1000];if(turns<=28)return["S",600];if(turns<=40)return["A",300];if(turns<=50)return["B",100];return["C",50];}else{if(turns<=12)return["SSS",1000];if(turns<=16)return["S",600];if(turns<=22)return["A",300];if(turns<=30)return["B",100];return["C",50];}}
+function finishSession(resultType,ppr,multiplier=1.0){let totalDP=0;let earnedDP=0;clearedStagesLog.forEach(log=>{earnedDP+=log.dp;});savedData.dp=(savedData.dp||0);const curVal=stage*100+floor;const bestVal=savedData.highScore.stage*100+savedData.highScore.floor;let isNewRecord=false;if(curVal>bestVal){savedData.highScore.stage=stage;savedData.highScore.floor=floor;isNewRecord=true;}if(ppr>savedData.highScore.avg){savedData.highScore.avg=ppr;isNewRecord=true;}if(resultType==="EXTRA-WIN")savedData.clearedExtra=true;const now=new Date();const dateStr=`${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${("0"+now.getMinutes()).slice(-2)}`;let stgName=(stage===6)?"STAGE 5":(stage===5?"EXTRA":"S"+stage+"-"+floor+"F");let resultText=resultType;let gainedDP=0;const scoreDP=Math.floor(totalScore*0.2*multiplier);let rankDP=0;clearedStagesLog.forEach(log=>rankDP+=log.dp);gainedDP=scoreDP+rankDP;savedData.dp+=gainedDP;if(clearedStagesLog.length>0&&resultType==="RETURN"){const last=clearedStagesLog[clearedStagesLog.length-1];resultText=`CLEAR(${last.rank})`;}savedData.history.unshift({date:dateStr,stage:stage,floor:floor,stgName:stgName,result:resultText,dp:gainedDP,ppr:ppr,rt:calculateRating(ppr)});if(savedData.history.length>50)savedData.history.pop();updateTitleScore();saveToDrive();return{isNewRecord:isNewRecord,gainedDP:gainedDP};}
+function shuffleArray(array){for(let i=array.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[array[i],array[j]]=[array[j],array[i]];}return array;}
+function triggerEffect(el,dmg,isP){el.classList.remove("shake-small","shake-medium","shake-heavy","shake-ultimate");void el.offsetWidth;if(dmg>=150){el.classList.add("shake-ultimate");playSE("se-boom");}else if(dmg>=60){el.classList.add("shake-heavy");playSE("se-boom");}else{el.classList.add(dmg>=30?"shake-medium":"shake-small");playSE("se-hit");}const pop=document.createElement("div");pop.innerText=dmg;if(dmg>=150)pop.className="damage-popup dmg-ultimate";else if(dmg>=60)pop.className="damage-popup dmg-heavy";else if(dmg>=30)pop.className="damage-popup dmg-medium";else pop.className="damage-popup dmg-small";pop.style.left="50%";pop.style.top="50%";el.appendChild(pop);setTimeout(()=>pop.remove(),1500);}
+function animateValue(obj,s,e,d){if(obj)obj.innerHTML=e;}
+function addLog(t,type=""){const d=document.createElement("div");d.innerHTML=t;if(type)d.className="log-"+type;el("battle-log").prepend(d);}
+function showHistory(){const list=el("history-list");list.innerHTML="";if(!savedData.history||savedData.history.length===0){list.innerHTML="<div style='padding:20px; text-align:center;'>NO HISTORY</div>";}else{savedData.history.forEach(h=>{let resClass="res-lose";let resStr=h.result||"LOSE";if(resStr.includes("WIN")||resStr.includes("CLEAR"))resClass="res-win";if(resStr.includes("EXTRA"))resClass="res-extra";list.innerHTML+=`<div class='h-row'><div>${h.date}</div><div>${h.stgName}</div><div class='${resClass}'>${resStr}</div><div>+${h.dp} DP<br>Avg ${h.ppr.toFixed(1)}</div></div>`;});}playSE("se-tap");el("history-modal").style.display="flex";}
+function closeHistory(){playSE("se-tap");el("history-modal").style.display="none";}
+function resetSaveData(){if(confirm("【警告】現在のスロットのデータを完全に消去しますか？")){allSaveData[currentSlot]=null;selectSlot(currentSlot.replace("slot",""));saveToDrive();}}
+function exportSave(){navigator.clipboard.writeText(JSON.stringify(savedData)).then(()=>alert("現在のスロットのデータをコピーしました"));}
+function importSave(){const json=prompt("セーブデータ(JSON)を貼り付けてください");if(json){try{const d=JSON.parse(json);if(d.highScore&&d.history){savedData=d;updateTitleScore();saveToDrive();alert("読み込み完了");}}catch(e){alert("データ形式エラー");}}}
+function tapKey(key){if(el("game-screen").style.display==="none"||isProcessing)return;if(key==='ENT')handleEnter();else if(key==='BS'){if(currentInput.length>0)currentInput=currentInput.slice(0,-1);else if(turnInputs.length>0)currentInput=""+turnInputs.pop();playSE("se-tap");updateScoreDisplay();}else{if(currentInput.length<3){playSE("se-tap");currentInput+=key;updateScoreDisplay();}}}
+window.addEventListener("keydown",function(e){if(el("title-screen").style.display!=="none"){if(e.key==="1")cheatBuffer+=e.key;else cheatBuffer="";if(cheatBuffer.endsWith("1111")){playSE("se-item");savedData.dp=(savedData.dp||0)+5000;updateTitleScore();saveToDrive();cheatBuffer="";}}if(el("game-modal").style.display==="flex"&&e.key==="Enter"){const btns=document.getElementById("modal-buttons");if(btns.children.length===1){e.preventDefault();btns.children[0].click();}return;}if(waitingForChest){if(e.key==='Enter'){e.preventDefault();openChest();}return;}if(el("game-screen").style.display!=="none"&&!isProcessing){if(e.key>='0'&&e.key<='9'){if(currentInput.length<3){playSE("se-tap");currentInput+=e.key;updateScoreDisplay();}}if(e.key==='Backspace'){if(currentInput.length>0)currentInput=currentInput.slice(0,-1);else if(turnInputs.length>0)currentInput=""+turnInputs.pop();updateScoreDisplay();}if(e.key==='Enter')handleEnter();}});
+function updateScoreDisplay(){const slots=[el("slot-1"),el("slot-2"),el("slot-3")];slots.forEach((s,i)=>{s.className="score-slot";if(restrictInput&&i>0){s.classList.add("locked");s.innerText="X";return;}if(i<turnInputs.length){s.innerText=turnInputs[i];s.classList.add("filled");}else if(i===turnInputs.length){s.innerText=currentInput;s.classList.add("active");}else{s.innerText="";}});const currentThrow=turnInputs.length+1;el("btn-d1").className=currentThrow===1?"darts-btn active":"darts-btn";el("btn-d2").className=currentThrow===2?"darts-btn active":"darts-btn";el("btn-d3").className=currentThrow===3?"darts-btn active":"darts-btn";if(restrictInput){el("btn-d2").className="darts-btn disabled";el("btn-d3").className="darts-btn disabled";}}
+function getRankColor(r){if(r==="SSS")return"#00ffff";if(r==="S")return"#ffd700";if(r==="A")return"#ff5555";return"#fff";}
