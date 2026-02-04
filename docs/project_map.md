@@ -1,32 +1,47 @@
-# 🗺️ Project Architecture Map (v2.3)
+# 🗺️ Project Architecture Map (v2.4)
 
 ## 1. ファイル構成
 * `index.html`:
-    * **Stage Select:** ID 1〜6 (Extra=5, Stage5=6) のボタン配置。
-    * **Modals:** Shop (New Header), Deck Edit (Detail Area), History, etc.
+    * **Connect Button:** `#bt-connect-btn` (Bluetooth接続トリガー).
+    * **Stage Select:** ID 1〜6 (Extra=5, Stage5=6).
+    * **Modals:** Shop, Deck Edit (Detail View), History.
 * `style.css`:
-    * **UI:** `.stage5-btn` (Gold/Red), `.float-text-box` (z-index 9999).
-    * **Shop:** `.pack-item` (180px fixed width), `.pack-buy-btn` (Rich Gold).
-    * **Layout:** `.deck-grid` (5 columns fixed).
-* `main.js`: ゲームロジック集約（約1600行）。
+    * **UI Lock:** `.ui-locked` (投擲中の操作無効化).
+    * **Visuals:** `.connect-btn`, `.deck-card-detail`.
+* `main.js`:
+    * **Core Logic:** ゲーム進行、セーブロード、データ管理。
+    * **Bluetooth:** Web Bluetooth API連携ロジック。
 
-## 2. main.js ロジックマップ (v2.3 Focus)
-| Section ID | 内容 | 備考 |
-|:---|:---|:---|
-| **CONFIG** | `GAME_DATA` | ID:5(Extra), ID:6(Stage5) 定義 |
-| **STATE** | `player.state` | `itemLock` フラグ追加 |
-| **INIT/SCENE** | `setupStage` | IDに応じたBGM/背景切り替え, ログ修正 |
-| **BATTLE** | `executeAttack` | **召雷弾ロジック**, 巨大化(Half HP)ロジック |
-| **CARD** | `playHandCard` | `itemLock` チェック, ツールチップ消去 |
-| **AI** | `enemyTurn` | **再生** (HP全快), **粘着** (Lock) ロジック |
-| **UI** | `renderDeckEditor` | ホバー詳細表示 (`showCardDetail`) 追加 |
-| **UI** | `updateInfo` | Lock時のボタン無効化表示 |
+## 2. main.js ロジックマップ (v2.4 Focus)
 
-## 3. 重要な依存関係
-* **Stage IDs:**
-    * `1,2,3`: World 1
-    * `4,6`: World 2
-    * `5`: Extra
-* **Unlock Conditions:**
-    * Stage 4 Clear -> Stage 5 Unlock (`btn-stage5` visible)
-    * Stage 3 Clear -> Vol.2 Pack Unlock
+### A. Bluetooth Integration (New)
+* `connectToBoard()`: デバイススキャンとGATT接続。
+    * **Service UUID:** `6e400001-b5a3-f393-e0a9-e50e24dcca9e`
+    * **Notify UUID:** `6e40fff6-b5a3-f393-e0a9-e50e24dcca9e`
+* `handleBluetoothNotify(event)`: 通知受信ハンドラ。
+* `DL_SCORE_MAP`: バイト値(0x14等) → スコア(20)への変換テーブル。
+
+### B. Real-time Battle System (Refactored)
+* `processOneThrow(score)`: **【重要】** 1投ごとの処理を行う中核関数。
+    1. **Validation:** 入力制限チェック。
+    2. **Calculation:** バフ適用、弱点判定、ギミック判定（召雷弾など）。
+    3. **Execution:** ダメージ適用、HP減少アニメーション。
+    4. **Flow Control:** 勝利判定 or 3投終了判定 (`finishPlayerTurn`).
+* `finishPlayerTurn()`: プレイヤーのターン終了処理。敵ターンへ移行。
+
+### C. UI & State Management
+* `updateInfo()`: HP/MP表示に加え、`ui-locked` クラスの着脱（投擲中のボタン無効化）を管理。
+* `renderDeckEditor()`: ホバーイベント (`showCardDetail`) のバインド。
+
+### D. Data Structures
+* `GAME_DATA`: 敵キャラ、背景画像定義。
+* `CARD_DB`: 全カードのスペック定義。
+* `player.state`: `itemLock` (封印), `huge` (巨大化) などのバフフラグ。
+
+## 3. 重要な依存関係 & フロー
+1. **Input Flow:**
+   `Bluetooth Device` -> `handleBluetoothNotify` -> `processOneThrow`
+   `Keyboard (Enter)` -> `handleEnter` -> `processOneThrow`
+   
+2. **Turn Flow:**
+   `Tactics Phase` (Card/Item OK) -> `Input (1st Throw)` -> `Action Phase` (UI Locked) -> `processOneThrow` x3 -> `Enemy Turn` -> `Tactics Phase`
