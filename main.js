@@ -270,7 +270,7 @@ function updateStageButton(stgNum, btnId) {
     }
 }
 
-// --- ★ Bluetooth Connection Logic (v2.4) ★ ---
+// --- ★ Bluetooth Connection Logic (v2.4.2 Updated) ★ ---
 async function connectToBoard() {
     try {
         const btn = el("bt-connect-btn");
@@ -279,6 +279,10 @@ async function connectToBoard() {
             return;
         }
         
+        // ★ v2.4.2: Audio Unlock Strategy
+        // ユーザーアクションのタイミングで、全てのSEを一瞬再生してブラウザの制限を解除する
+        unlockAudioContext();
+
         btn.innerText = "Scanning...";
         const device = await navigator.bluetooth.requestDevice({
             filters: [{ namePrefix: 'DARTSLIVE' }],
@@ -298,7 +302,8 @@ async function connectToBoard() {
 
         btn.innerText = "📡 CONNECTED";
         btn.classList.add("connected");
-        alert("ダーツボードに接続しました！");
+        // alert("ダーツボードに接続しました！"); // アラートは没入感を削ぐのでログのみにする
+        addLog(">> ダーツボード接続成功！", "log-heal");
 
     } catch (error) {
         console.error("BT Error:", error);
@@ -309,11 +314,27 @@ async function connectToBoard() {
     }
 }
 
+// ★ v2.4.2: Helper to unlock audio on mobile/chrome
+function unlockAudioContext() {
+    const audioIds = ["se-single", "se-double", "se-triple", "se-bull", "se-dbull", "se-hit", "se-attack"];
+    audioIds.forEach(id => {
+        const audio = document.getElementById(id);
+        if (audio) {
+            audio.volume = 0; // Mute
+            audio.play().then(() => {
+                audio.pause();
+                audio.currentTime = 0;
+                audio.volume = 0.5; // Restore volume
+            }).catch(e => console.log("Audio unlock skipped:", e));
+        }
+    });
+}
+
 function onDisconnected(event) {
     const btn = el("bt-connect-btn");
     btn.innerText = "📡 CONNECT BOARD";
     btn.classList.remove("connected");
-    alert("ダーツボードとの接続が切れました");
+    addLog(">> ダーツボード切断", "log-enemy");
 }
 
 function handleBluetoothNotify(event) {
@@ -326,13 +347,12 @@ function handleBluetoothNotify(event) {
         
         if (scoreData !== undefined) {
             if (scoreData === "CHANGE") {
-                // Ignore CHANGE button
+                // Ignore CHANGE
             } else {
-                // scoreData is now [Score, Type]
                 const score = scoreData[0];
                 const type = scoreData[1];
                 
-                // ★ v2.4.1 SE Selection
+                // Play SE based on Type
                 if (type === 4) playSE("se-dbull");
                 else if (type === 3) playSE("se-bull");
                 else if (type === 2) playSE("se-triple");
@@ -527,7 +547,7 @@ function checkOpeningSkill() {
     }
 }
 
-// --- ★ v2.4 Real-time Battle Logic ★ ---
+// --- ★ v2.4.2 Real-time Battle Logic (Updated) ★ ---
 
 function handleEnter() {
     if(isProcessing) return;
@@ -544,7 +564,8 @@ function handleEnter() {
             processOneThrow(val);
             
             currentInput = ""; 
-            updateScoreDisplay();
+            // updateScoreDisplay is called inside processOneThrow now? No, need to clear currentInput display
+            updateScoreDisplay(); 
         }
     }
 }
@@ -552,10 +573,13 @@ function handleEnter() {
 function processOneThrow(score) {
     if (restrictInput && turnInputs.length > 0) return; 
 
-    // Calculate damage for THIS throw
+    // Play Attack SE (Character attack sound) - layered with Dart sound
+    // playSE("se-attack"); // Optional: Comment out if too noisy
+
     let singleDmg = score;
     let weakHit = false;
 
+    // ... (Damage Calculation Logic Unchanged) ...
     // Slifer (Stage 6 Floor 5) - Thunder Bullet
     if (stage === 6 && floor === 5) {
         if (singleDmg <= 20) {
@@ -564,32 +588,18 @@ function processOneThrow(score) {
         }
     }
 
-    // Apply Buffs (Consume immediately)
-    if (player.state.atkBonus > 0) {
-        singleDmg += player.state.atkBonus;
-        player.state.atkBonus = 0;
-    }
-    if (player.state.power) {
-        singleDmg = Math.floor(singleDmg * 2.0);
-        player.state.power = false;
-    }
+    if (player.state.atkBonus > 0) { singleDmg += player.state.atkBonus; player.state.atkBonus = 0; }
+    if (player.state.power) { singleDmg = Math.floor(singleDmg * 2.0); player.state.power = false; }
     if (player.state.huge !== 0) {
         if (player.state.huge === 1) singleDmg = Math.floor(singleDmg * 3.0);
         else singleDmg = Math.floor(singleDmg * 0.5);
         player.state.huge = 0;
     }
 
-    // Weak Point Check
-    if (player.state.weakLock || (score >= 51 && enemy.data.weak && (score % enemy.data.weak === 0))) {
-        weakHit = true;
-    }
+    if (player.state.weakLock || (score >= 51 && enemy.data.weak && (score % enemy.data.weak === 0))) { weakHit = true; }
 
-    // Enemy Defense Logic
     if (stage === 4 && floor === 6 && currentTurn % 2 === 0) {
-        if (singleDmg < 30) {
-            singleDmg = 0;
-            addLog(">> 結界に阻まれた！(30未満無効)", "log-enemy");
-        }
+        if (singleDmg < 30) { singleDmg = 0; addLog(">> 結界に阻まれた！(30未満無効)", "log-enemy"); }
     }
     
     if (stage === 4 && floor === 4 && currentTurn % 3 === 0) { singleDmg = Math.max(0, singleDmg - 15); } 
@@ -597,14 +607,16 @@ function processOneThrow(score) {
     if (enemy.state.guardType === 'half') { singleDmg = Math.floor(singleDmg * 0.5); }
     if (enemy.state.guard) { singleDmg = Math.floor(singleDmg / 2); enemy.state.guard = false; addLog("敵の防御で半減！", "system"); }
 
-    // Apply Damage
+    // Apply
     enemy.hp = Math.max(0, enemy.hp - singleDmg);
     if (enemy.hp === 0) isJustFinish = true; 
 
-    // Logs & Visuals
-    totalScore += score; // Stats only
-    turnInputs.push(score);
+    totalScore += score; 
+    turnInputs.push(score); // Add to history
     
+    // ★ v2.4.2 Fix: Update UI immediately to show the number in slot
+    updateScoreDisplay();
+
     if (weakHit) {
         dropGuaranteed = true; weakHitCount++; 
         addLog(`★ WEAK HIT!!`, "log-weak");
@@ -620,15 +632,13 @@ function processOneThrow(score) {
     triggerEffect(el("enemy-panel"), singleDmg, false);
     animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 300); displayEnemyHP=enemy.hp; 
     
-    updateInfo(); 
+    updateInfo(); // Lock UI
 
-    // Check Win
     if (enemy.hp <= 0) {
         setTimeout(winBattle, 1000);
         return;
     }
 
-    // Check Turn End
     if (turnInputs.length >= 3) {
         setTimeout(finishPlayerTurn, 1000);
     }
@@ -1066,7 +1076,8 @@ function openChest() {
     else { itemName = "魔法の聖水"; itemEffect = "MP 3 回復"; player.items.ether++; }
     
     updateInfo(); addLog(`宝箱: ${itemName} (${itemEffect}) を手に入れた`, "log-item");
-    // ★ v2.4.1: Auto Close
+    
+    // ★ v2.4.2 Fix: Auto close chest dialog after 2000ms
     showDialog("TREASURE!", `<span style="font-size:24px;color:#00ff00;">${itemName}</span> を手に入れた！<br>${itemEffect}<br>(アイテムボタンで使用可能)`, "item", [{text:"OK", action:nextStep}], 2000);
 }
 
@@ -1746,20 +1757,24 @@ function triggerEffect(el, dmg, isP) {
 function animateValue(obj, s, e, d) { if(obj) obj.innerHTML = e; }
 function addLog(t, type="") { const d=document.createElement("div"); d.innerHTML=t; if(type) d.className="log-"+type; el("battle-log").prepend(d); }
 
-function showHistory() {
-    const list = el("history-list"); list.innerHTML = "";
-    if(!savedData.history || savedData.history.length === 0) { list.innerHTML = "<div style='padding:20px; text-align:center;'>NO HISTORY</div>"; }
-    else {
-        savedData.history.forEach(h => {
-            let resClass = "res-lose"; let resStr = h.result || "LOSE";
-            if (resStr.includes("WIN") || resStr.includes("CLEAR")) resClass = "res-win";
-            if (resStr.includes("EXTRA")) resClass = "res-extra";
-            // ★ v2.4.1 Fix: Safe check for ppr
+// --- Helper Functions (Updated) ---
+function showHistory(){
+    const list=el("history-list");
+    list.innerHTML="";
+    if(!savedData.history||savedData.history.length===0){
+        list.innerHTML="<div style='padding:20px; text-align:center;'>NO HISTORY</div>";
+    }else{
+        savedData.history.forEach(h=>{
+            let resClass="res-lose"; let resStr=h.result||"LOSE";
+            if(resStr.includes("WIN")||resStr.includes("CLEAR")) resClass="res-win";
+            if(resStr.includes("EXTRA")) resClass="res-extra";
             const pprVal = h.ppr ? h.ppr.toFixed(1) : "0.0";
+            // The HTML structure is fine, CSS .h-row grid will fix the layout
             list.innerHTML += `<div class='h-row'><div>${h.date}</div><div>${h.stgName}</div><div class='${resClass}'>${resStr}</div><div>+${h.dp} DP<br>Avg ${pprVal}</div></div>`;
         });
     }
-    playSE("se-tap"); el("history-modal").style.display = "flex";
+    playSE("se-tap");
+    el("history-modal").style.display="flex";
 }
 function closeHistory() { playSE("se-tap"); el("history-modal").style.display = "none"; }
 function resetSaveData() { if(confirm("【警告】現在のスロットのデータを完全に消去しますか？")) { allSaveData[currentSlot] = null; selectSlot(currentSlot.replace("slot","")); saveToDrive(); } }
