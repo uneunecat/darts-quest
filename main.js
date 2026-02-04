@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v2.2.3 Final Hotfix)");
+console.log("★ main.js is loaded! (v2.3.1 Fix)");
 
 // --- ★ GAME DATA CONFIG ★ ---
 const GAME_DATA = {
@@ -50,7 +50,7 @@ const GAME_DATA = {
         4_1: "assets/bg_stage4_1.png",
         4_2: "assets/bg_stage4_2.png",
         5: "assets/bg_extra.png",
-        6: "assets/bg_stage5.png"
+        6: "assets/bg_stage5_1.png" // v2.3 Update: Correct BG for Stage 5
     }
 };
 
@@ -72,7 +72,7 @@ const CARD_DB = [
     { id: 501, name: "天使の施し", rarity: "UR", type: "MAGIC", cost: 4, desc: "手札を1枚選んで捨て、カードを2枚引く。" },
     { id: 601, name: "ブラック・ホール", rarity: "SR", type: "MAGIC", cost: 7, desc: "敵に150ダメージ。ただし自分の手札を全て捨てる。" },
     { id: 602, name: "魔法の筒", rarity: "SR", type: "TRAP", cost: 4, desc: "敵の攻撃を無効化し、そのダメージをそのまま敵に与える。" },
-    { id: 701, name: "巨大化", rarity: "R", type: "MAGIC", cost: 3, desc: "HP半分以下なら3倍、半分以上なら0.5倍" }, // ★ v2.2.3 Fix: Correct Description
+    { id: 701, name: "巨大化", rarity: "R", type: "MAGIC", cost: 3, desc: "HP半分以下なら3倍、半分以上なら0.5倍" },
     { id: 702, name: "地割れ", rarity: "R", type: "MAGIC", cost: 3, desc: "敵に40ダメージを与え、防御状態を解除する。" },
     { id: 703, name: "六芒星の呪縛", rarity: "R", type: "TRAP", cost: 3, desc: "敵の攻撃力を半減させ、さらにスタンさせる。" },
     { id: 801, name: "守備封じ", rarity: "N", type: "MAGIC", cost: 1, desc: "敵の防御状態を解除する。" },
@@ -140,6 +140,15 @@ let savedData = { highScore: { stage: 1, floor: 1, avg: 0.0 }, history: [], clea
 // --- DOM Elements ---
 const el = (id) => document.getElementById(id);
 
+// --- ★ Helper: Calculate Rating (Moved Up for Safety) ★ ---
+function calculateRating(ppr) { 
+    if(ppr < 30) return 1; if(ppr < 40) return 2; if(ppr < 45) return 3; if(ppr < 50) return 4; 
+    if(ppr < 55) return 5; if(ppr < 60) return 6; if(ppr < 65) return 7; if(ppr < 70) return 8; 
+    if(ppr < 75) return 9; if(ppr < 80) return 10; if(ppr < 85) return 11; if(ppr < 90) return 12; 
+    if(ppr < 95) return 13; if(ppr < 100) return 14; if(ppr < 110) return 15; if(ppr < 120) return 16; 
+    if(ppr < 130) return 17; return 18; 
+}
+
 // --- Initialization ---
 window.addEventListener('resize', resizeGame);
 window.addEventListener('load', () => {
@@ -182,6 +191,7 @@ function initSlotScreen() {
             
             let stg = `${stgName} - ${data.highScore.floor}F`;
             let badge = data.clearedExtra ? "<br><span style='color:#f0f;font-weight:bold;'>★ EXTRA CLEARED</span>" : "";
+            // ★ Use calculateRating here safely
             infoEl.innerHTML = `<div>${stg}</div><div style='color:#ffdd00;'>Avg: ${data.highScore.avg.toFixed(1)} (Rt ${calculateRating(data.highScore.avg)})</div><div style='color:#aaa;font-size:12px;'>DP: ${data.dp || 0}${badge}</div>`;
         }
     }
@@ -273,8 +283,8 @@ function startTransition(sel, continueMode) {
     if(sel===2) { t="荒れ狂う荒野"; s="Raging Wasteland"; }
     if(sel===3) { t="誘惑の迷宮"; s="Labyrinth of Temptation"; }
     if(sel===4) { t="幻想の狂宴"; s="Toon Nightmare"; warning=true; }
-    if(sel===5) { t="燃えたぎる火口"; s="Burning Crater"; warning=true; } // Extra
-    if(sel===6) { t="神の試練"; s="God's Testing Ground"; warning=true; } // Stage 5
+    if(sel===5) { t="燃えたぎる火口"; s="Burning Crater"; warning=true; } 
+    if(sel===6) { t="神の試練"; s="God's Testing Ground"; warning=true; } 
 
     el("chapter-title").innerText = t; 
     el("chapter-sub").innerText = s;
@@ -330,7 +340,6 @@ function setupStage(sel, continueMode) {
     }
 
     spawnEnemy();
-    // ★ v2.2.3 Fix: Correct Stage Log
     let logStageName = "STAGE " + stage;
     if(stage === 5) logStageName = "EXTRA";
     if(stage === 6) logStageName = "STAGE 5";
@@ -358,6 +367,8 @@ function spawnEnemy() {
 
         let bgKey = stage; 
         if (stage === 4) bgKey = floor >= 5 ? "4_2" : "4_1";
+        // ★ Fix: Correct BG for Stage 5
+        if (stage === 6) bgKey = 6; 
         if (GAME_DATA.bg[bgKey]) el("game-container").style.backgroundImage = `url('${GAME_DATA.bg[bgKey]}')`;
 
         let isBoss = false;
@@ -475,7 +486,6 @@ function executeAttack() {
             player.state.power = false;
         }
         
-        // ★ v2.2.3 Fix: Megamorph Logic (Half HP = x3, Else x0.5)
         if (player.state.huge !== 0) {
             if (player.state.huge === 1) singleDmg = Math.floor(singleDmg * 3.0);
             else singleDmg = Math.floor(singleDmg * 0.5);
@@ -554,7 +564,6 @@ function drawCard(isSilent = false) {
 }
 
 function playHandCard(index) {
-function playHandCard(index) {
     if(isProcessing || waitingForChest) return;
     
     if (player.state.itemLock) {
@@ -572,8 +581,7 @@ function playHandCard(index) {
         playSE("se-warning");
         return;
     }
-
-    // ★ v2.3.1 Fix: Force Hide Tooltip when card is played
+    
     hideTooltip();
 
     if (card.id === 501) {
@@ -657,6 +665,12 @@ function executeDiscardAndEffect(discardIndex) {
     updateInfo();
 }
 
+function showCardDetail(card) {
+    const detailEl = el("deck-card-detail");
+    if(!detailEl) return;
+    detailEl.innerHTML = `<span class="detail-name">${card.name}</span>${card.desc}`;
+}
+
 function applyCardEffect(card) {
     let msg = `Card: [${card.name}] `;
     switch(card.id) {
@@ -682,7 +696,6 @@ function applyCardEffect(card) {
             break;
         case 602: player.state.magicCylinder = true; msg += "魔法の筒をセット(反射待機)！"; break;
         case 701: 
-            // ★ v2.2.3 Fix: Megamorph Logic
             if (player.hp <= (player.maxHp * 0.5)) player.state.huge = 1; else player.state.huge = 2;
             msg += (player.state.huge===1) ? "HP劣勢…逆転の3倍パワー！" : "HP優勢…油断の0.5倍パワー…";
             break;
@@ -933,12 +946,6 @@ function endEnemyTurn() {
     }
     
     player.state.hexSeal = false; 
-    
-    // Reset Lock
-    if (player.state.itemLock) {
-        player.state.itemLock = false;
-        addLog("封印が解除された", "log-system");
-    }
 
     drawCard();
 
@@ -963,7 +970,6 @@ function winBattle() {
 }
 
 function checkDrop() {
-    // Check next stages
     if(stage === 5 && floor === 1) { nextStep(); return; } // Extra
     if(stage === 6 && floor === 5) { nextStep(); return; } // God
     if(stage === 4 && floor === 6) { nextStep(); return; } // Toon
@@ -1171,6 +1177,7 @@ function showSkillCutin(name, type) {
 function updateInfo() {
     if (!enemy.data) return;
 
+    // ★ v2.2.3 Fix: Stage Name Logic
     if(stage===6) { el("stage-display").innerText="STAGE 5"; el("floor-display").innerText=`${floor}F`; }
     else if(stage===5) { el("stage-display").innerText="EXTRA"; el("floor-display").innerText="FINAL"; }
     else if(stage===4) { el("stage-display").innerText="STAGE 4"; el("floor-display").innerText=`${floor}F`; }
@@ -1218,7 +1225,7 @@ function updateInfo() {
     let ppr = 0; if(totalDarts>0) ppr = ((totalScore/totalDarts)*3); 
     el("avg-display").innerText=ppr.toFixed(1); el("rt-display").innerText=`(Rt ${calculateRating(ppr)})`;
     
-    // ★ v2.2.2 Fix: Item Button Visual
+    // ★ v2.2.3 Fix: Item Button Visual Logic
     const isLocked = player.state.itemLock;
     
     // Helper to update specific button
@@ -1398,34 +1405,17 @@ function closeCardShop() { playSE("se-tap"); el("card-shop-modal").style.display
 function openCollection() { playSE("se-tap"); renderDeckEditor(); el("collection-modal").style.display = "flex"; }
 function closeCollection() { playSE("se-tap"); el("collection-modal").style.display = "none"; hideTooltip(); }
 
-// ★ v2.3.1: Updated to handle detail view
-function showCardDetail(card) {
-    const detailEl = el("deck-card-detail");
-    if(!detailEl) return;
-    detailEl.innerHTML = `<span class="detail-name">${card.name}</span>${card.desc}`;
-}
-
-function clearCardDetail() {
-    // Optional: clear or keep last hovered
-}
-
 function renderDeckEditor() {
     if (!savedData.deck) savedData.deck = [];
     savedData.deck.sort((a,b) => a - b);
 
     const deckGrid = el("deck-grid"); deckGrid.innerHTML = "";
-    
-    // Fill Deck Grid (5x4 = 20)
     for (let i = 0; i < DECK_SIZE; i++) {
         const cardId = savedData.deck[i]; 
         if (cardId) {
             const card = CARD_DB.find(c => c.id === cardId);
             const totalOwned = savedData.cards[card.id] || 0;
             const el = createCardElement(card, true, 0, totalOwned);
-            
-            // ★ v2.3.1: Hover detail for deck items
-            el.onmouseenter = () => showCardDetail(card);
-            
             deckGrid.appendChild(el);
         } else {
             const div = document.createElement("div"); div.className = "deck-slot-empty"; div.innerText = "EMPTY";
@@ -1433,7 +1423,6 @@ function renderDeckEditor() {
         }
     }
     
-    // ... (Count display logic) ...
     const deckCount = savedData.deck.length;
     const countEl = el("deck-count"); countEl.innerText = deckCount;
     if (deckCount < DECK_SIZE) { countEl.style.color = "#ff5555"; countEl.innerText += " (あと" + (DECK_SIZE - deckCount) + "枚)"; } 
@@ -1453,8 +1442,6 @@ function renderDeckEditor() {
     });
     el("collection-rate").innerText = `${Math.floor((ownedCount / CARD_DB.length) * 100)}%`;
 }
-
-// ... (createCardElement は変更なし、ただし上記でイベントハンドラを追加している点に注意) ...
 
 function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0) {
     const div = document.createElement("div");
@@ -1709,4 +1696,3 @@ function updateScoreDisplay() {
 }
 
 function getRankColor(r) { if(r==="SSS") return "#00ffff"; if(r==="S") return "#ffd700"; if(r==="A") return "#ff5555"; return "#fff"; }
-}
