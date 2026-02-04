@@ -1709,3 +1709,4 @@ function updateScoreDisplay() {
 }
 
 function getRankColor(r) { if(r==="SSS") return "#00ffff"; if(r==="S") return "#ffd700"; if(r==="A") return "#ff5555"; return "#fff"; }
+}
