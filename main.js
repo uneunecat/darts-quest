@@ -554,6 +554,7 @@ function drawCard(isSilent = false) {
 }
 
 function playHandCard(index) {
+function playHandCard(index) {
     if(isProcessing || waitingForChest) return;
     
     if (player.state.itemLock) {
@@ -571,6 +572,9 @@ function playHandCard(index) {
         playSE("se-warning");
         return;
     }
+
+    // ★ v2.3.1 Fix: Force Hide Tooltip when card is played
+    hideTooltip();
 
     if (card.id === 501) {
         if (player.hand.length <= 1) { 
@@ -1394,17 +1398,34 @@ function closeCardShop() { playSE("se-tap"); el("card-shop-modal").style.display
 function openCollection() { playSE("se-tap"); renderDeckEditor(); el("collection-modal").style.display = "flex"; }
 function closeCollection() { playSE("se-tap"); el("collection-modal").style.display = "none"; hideTooltip(); }
 
+// ★ v2.3.1: Updated to handle detail view
+function showCardDetail(card) {
+    const detailEl = el("deck-card-detail");
+    if(!detailEl) return;
+    detailEl.innerHTML = `<span class="detail-name">${card.name}</span>${card.desc}`;
+}
+
+function clearCardDetail() {
+    // Optional: clear or keep last hovered
+}
+
 function renderDeckEditor() {
     if (!savedData.deck) savedData.deck = [];
     savedData.deck.sort((a,b) => a - b);
 
     const deckGrid = el("deck-grid"); deckGrid.innerHTML = "";
+    
+    // Fill Deck Grid (5x4 = 20)
     for (let i = 0; i < DECK_SIZE; i++) {
         const cardId = savedData.deck[i]; 
         if (cardId) {
             const card = CARD_DB.find(c => c.id === cardId);
             const totalOwned = savedData.cards[card.id] || 0;
             const el = createCardElement(card, true, 0, totalOwned);
+            
+            // ★ v2.3.1: Hover detail for deck items
+            el.onmouseenter = () => showCardDetail(card);
+            
             deckGrid.appendChild(el);
         } else {
             const div = document.createElement("div"); div.className = "deck-slot-empty"; div.innerText = "EMPTY";
@@ -1412,6 +1433,7 @@ function renderDeckEditor() {
         }
     }
     
+    // ... (Count display logic) ...
     const deckCount = savedData.deck.length;
     const countEl = el("deck-count"); countEl.innerText = deckCount;
     if (deckCount < DECK_SIZE) { countEl.style.color = "#ff5555"; countEl.innerText += " (あと" + (DECK_SIZE - deckCount) + "枚)"; } 
@@ -1431,6 +1453,8 @@ function renderDeckEditor() {
     });
     el("collection-rate").innerText = `${Math.floor((ownedCount / CARD_DB.length) * 100)}%`;
 }
+
+// ... (createCardElement は変更なし、ただし上記でイベントハンドラを追加している点に注意) ...
 
 function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0) {
     const div = document.createElement("div");
