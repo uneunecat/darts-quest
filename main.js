@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v2.2.1 Fix)");
+console.log("★ main.js is loaded! (v2.2.3 Final Hotfix)");
 
 // --- ★ GAME DATA CONFIG ★ ---
 const GAME_DATA = {
@@ -72,7 +72,7 @@ const CARD_DB = [
     { id: 501, name: "天使の施し", rarity: "UR", type: "MAGIC", cost: 4, desc: "手札を1枚選んで捨て、カードを2枚引く。" },
     { id: 601, name: "ブラック・ホール", rarity: "SR", type: "MAGIC", cost: 7, desc: "敵に150ダメージ。ただし自分の手札を全て捨てる。" },
     { id: 602, name: "魔法の筒", rarity: "SR", type: "TRAP", cost: 4, desc: "敵の攻撃を無効化し、そのダメージをそのまま敵に与える。" },
-    { id: 701, name: "巨大化", rarity: "R", type: "MAGIC", cost: 3, desc: "自分のHPが敵より低ければ次の1投3倍。そうでなければ0.5倍。" },
+    { id: 701, name: "巨大化", rarity: "R", type: "MAGIC", cost: 3, desc: "HP半分以下なら3倍、半分以上なら0.5倍" }, // ★ v2.2.3 Fix: Correct Description
     { id: 702, name: "地割れ", rarity: "R", type: "MAGIC", cost: 3, desc: "敵に40ダメージを与え、防御状態を解除する。" },
     { id: 703, name: "六芒星の呪縛", rarity: "R", type: "TRAP", cost: 3, desc: "敵の攻撃力を半減させ、さらにスタンさせる。" },
     { id: 801, name: "守備封じ", rarity: "N", type: "MAGIC", cost: 1, desc: "敵の防御状態を解除する。" },
@@ -273,8 +273,8 @@ function startTransition(sel, continueMode) {
     if(sel===2) { t="荒れ狂う荒野"; s="Raging Wasteland"; }
     if(sel===3) { t="誘惑の迷宮"; s="Labyrinth of Temptation"; }
     if(sel===4) { t="幻想の狂宴"; s="Toon Nightmare"; warning=true; }
-    if(sel===5) { t="燃えたぎる火口"; s="Burning Crater"; warning=true; } 
-    if(sel===6) { t="神の試練"; s="God's Testing Ground"; warning=true; } 
+    if(sel===5) { t="燃えたぎる火口"; s="Burning Crater"; warning=true; } // Extra
+    if(sel===6) { t="神の試練"; s="God's Testing Ground"; warning=true; } // Stage 5
 
     el("chapter-title").innerText = t; 
     el("chapter-sub").innerText = s;
@@ -323,14 +323,18 @@ function setupStage(sel, continueMode) {
         } else {
             player.deck = shuffleArray([...savedData.deck]); 
             player.hand = []; player.discard = [];
-            for(let i=0; i<INITIAL_HAND; i++) drawCard(true); // Silent draw
+            for(let i=0; i<INITIAL_HAND; i++) drawCard(true); 
         }
     } else {
         addLog(">> 前ステージの状態を引き継ぎました", "log-system");
     }
 
     spawnEnemy();
-    addLog(`STAGE ${stage} START!`, "system"); 
+    // ★ v2.2.3 Fix: Correct Stage Log
+    let logStageName = "STAGE " + stage;
+    if(stage === 5) logStageName = "EXTRA";
+    if(stage === 6) logStageName = "STAGE 5";
+    addLog(`${logStageName} START!`, "system"); 
     resizeGame();
 }
 
@@ -365,19 +369,19 @@ function spawnEnemy() {
             el("enemy-panel").classList.add("extra-border"); 
             el("boss-label").innerText="☠️EXTRA BOSS"; el("boss-label").style.display="inline"; 
             enemy.maxHp=1500; 
-        } else if (stage === 6) { // ★ v2.2.1 Fix: Stage 5 Boss Logic
+        } else if (stage === 6) { // Stage 5 (God)
             let list = GAME_DATA.enemies[6];
             enemy.data = list[(floor-1)%list.length]; 
-            if(floor === 5) { // Only Floor 5 is BOSS Mode
+            if(floor === 5) {
                 isBoss=true; playBGM("bgm-extra");
                 el("game-container").classList.add("extra-mode");
                 el("boss-label").innerText="☠️GOD降臨"; el("boss-label").style.display="inline";
                 enemy.maxHp=2000;
             } else {
-                playBGM("bgm-battle"); // Normal battle music
-                el("game-container").classList.remove("boss-mode", "extra-mode"); // Reset modes
+                playBGM("bgm-boss"); 
+                el("game-container").classList.remove("boss-mode", "extra-mode"); 
                 el("boss-label").style.display="none";
-                enemy.maxHp = enemy.data.hp || 500; // Use data HP
+                enemy.maxHp = enemy.data.hp || 500; 
             }
         } else {
             let list = GAME_DATA.enemies[stage];
@@ -409,7 +413,7 @@ function spawnEnemy() {
         updateInfo();
         
         if(stage===6 && floor===5) addLog(`>>> 天空より雷鳴と共に ${enemy.name} が現れた！`, "log-skill"); 
-        else if (stage===6) addLog(`=== STAGE 5 - ${floor}F ===`, "system"); // ★ v2.2.1 Fix: Stage Name
+        else if (stage===6) addLog(`=== STAGE 5 - ${floor}F ===`, "system");
         else addLog(`=== STAGE ${stage} - ${floor}F ===`, "system");
 
         isProcessing = false;
@@ -471,6 +475,7 @@ function executeAttack() {
             player.state.power = false;
         }
         
+        // ★ v2.2.3 Fix: Megamorph Logic (Half HP = x3, Else x0.5)
         if (player.state.huge !== 0) {
             if (player.state.huge === 1) singleDmg = Math.floor(singleDmg * 3.0);
             else singleDmg = Math.floor(singleDmg * 0.5);
@@ -519,7 +524,6 @@ function executeAttack() {
     triggerEffect(el("enemy-panel"), finalDmg, false);
     animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp; 
     
-    // ★ v2.2.1 Fix: Unlock Items after Player Action
     if (player.state.itemLock) {
         player.state.itemLock = false;
         addLog("封印が解除された", "log-system");
@@ -674,7 +678,8 @@ function applyCardEffect(card) {
             break;
         case 602: player.state.magicCylinder = true; msg += "魔法の筒をセット(反射待機)！"; break;
         case 701: 
-            if (player.hp <= enemy.hp) player.state.huge = 1; else player.state.huge = 2;
+            // ★ v2.2.3 Fix: Megamorph Logic
+            if (player.hp <= (player.maxHp * 0.5)) player.state.huge = 1; else player.state.huge = 2;
             msg += (player.state.huge===1) ? "HP劣勢…逆転の3倍パワー！" : "HP優勢…油断の0.5倍パワー…";
             break;
         case 702: 
@@ -924,6 +929,12 @@ function endEnemyTurn() {
     }
     
     player.state.hexSeal = false; 
+    
+    // Reset Lock
+    if (player.state.itemLock) {
+        player.state.itemLock = false;
+        addLog("封印が解除された", "log-system");
+    }
 
     drawCard();
 
@@ -948,6 +959,7 @@ function winBattle() {
 }
 
 function checkDrop() {
+    // Check next stages
     if(stage === 5 && floor === 1) { nextStep(); return; } // Extra
     if(stage === 6 && floor === 5) { nextStep(); return; } // God
     if(stage === 4 && floor === 6) { nextStep(); return; } // Toon
@@ -1155,7 +1167,6 @@ function showSkillCutin(name, type) {
 function updateInfo() {
     if (!enemy.data) return;
 
-    // ★ v2.2.1 Fix: Stage Name Logic
     if(stage===6) { el("stage-display").innerText="STAGE 5"; el("floor-display").innerText=`${floor}F`; }
     else if(stage===5) { el("stage-display").innerText="EXTRA"; el("floor-display").innerText="FINAL"; }
     else if(stage===4) { el("stage-display").innerText="STAGE 4"; el("floor-display").innerText=`${floor}F`; }
@@ -1203,14 +1214,35 @@ function updateInfo() {
     let ppr = 0; if(totalDarts>0) ppr = ((totalScore/totalDarts)*3); 
     el("avg-display").innerText=ppr.toFixed(1); el("rt-display").innerText=`(Rt ${calculateRating(ppr)})`;
     
-    // ★ v2.2.1 Fix: Lock Visual (Re-enable if not locked)
+    // ★ v2.2.2 Fix: Item Button Visual
     const isLocked = player.state.itemLock;
-    ["btn-potion", "btn-ether", "btn-seed"].forEach(id => {
-        const b = el(id);
-        if(isLocked) { b.classList.add("disabled"); b.style.opacity = "0.3"; }
-        else { b.classList.remove("disabled"); b.style.opacity = "1.0"; }
-    });
     
+    // Helper to update specific button
+    const updateItemBtn = (btnId, count) => {
+        const b = el(btnId);
+        if (!b) return;
+        b.className = "item-btn"; // Reset class
+        
+        if (isLocked) {
+            b.classList.add("disabled");
+            b.style.opacity = "0.3";
+            b.style.cursor = "not-allowed";
+        } else {
+            b.style.opacity = "1.0";
+            if (count > 0) {
+                b.classList.add("has-item");
+                b.style.cursor = "pointer";
+            } else {
+                b.classList.add("disabled");
+                b.style.cursor = "default";
+            }
+        }
+    };
+
+    updateItemBtn("btn-potion", player.items.potion);
+    updateItemBtn("btn-ether", player.items.ether);
+    updateItemBtn("btn-seed", player.items.seed);
+
     el("btn-potion").innerHTML = `💊 薬草 x${player.items.potion}<span class="tooltip">HPを50回復</span>`;
     el("btn-ether").innerHTML = `⚗️ マナ x${player.items.ether}<span class="tooltip">MPを3回復</span>`;
     el("btn-seed").innerHTML = `🌱 種 x${player.items.seed}<span class="tooltip">最大HP+10上昇</span>`;
