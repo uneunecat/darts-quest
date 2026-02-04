@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v2.3.1 Fix)");
+console.log("★ main.js is loaded! (v2.3.1 UI Polish)");
 
 // --- ★ GAME DATA CONFIG ★ ---
 const GAME_DATA = {
@@ -50,7 +50,7 @@ const GAME_DATA = {
         4_1: "assets/bg_stage4_1.png",
         4_2: "assets/bg_stage4_2.png",
         5: "assets/bg_extra.png",
-        6: "assets/bg_stage5_1.png" // v2.3 Update: Correct BG for Stage 5
+        6: "assets/bg_stage5_1.png"
     }
 };
 
@@ -69,7 +69,8 @@ const CARD_DB = [
     { id: 405, name: "突進", rarity: "N", type: "MAGIC", cost: 2, desc: "攻撃力2倍(次の1投のみ)" },
 
     // Vol.2
-    { id: 501, name: "天使の施し", rarity: "UR", type: "MAGIC", cost: 4, desc: "手札を1枚選んで捨て、カードを2枚引く。" },
+    // ★ v2.3.1 Balance Change: Cost 4 -> 1
+    { id: 501, name: "天使の施し", rarity: "UR", type: "MAGIC", cost: 1, desc: "手札を1枚選んで捨て、カードを2枚引く。" },
     { id: 601, name: "ブラック・ホール", rarity: "SR", type: "MAGIC", cost: 7, desc: "敵に150ダメージ。ただし自分の手札を全て捨てる。" },
     { id: 602, name: "魔法の筒", rarity: "SR", type: "TRAP", cost: 4, desc: "敵の攻撃を無効化し、そのダメージをそのまま敵に与える。" },
     { id: 701, name: "巨大化", rarity: "R", type: "MAGIC", cost: 3, desc: "HP半分以下なら3倍、半分以上なら0.5倍" },
@@ -140,7 +141,7 @@ let savedData = { highScore: { stage: 1, floor: 1, avg: 0.0 }, history: [], clea
 // --- DOM Elements ---
 const el = (id) => document.getElementById(id);
 
-// --- ★ Helper: Calculate Rating (Moved Up for Safety) ★ ---
+// --- Helper Functions ---
 function calculateRating(ppr) { 
     if(ppr < 30) return 1; if(ppr < 40) return 2; if(ppr < 45) return 3; if(ppr < 50) return 4; 
     if(ppr < 55) return 5; if(ppr < 60) return 6; if(ppr < 65) return 7; if(ppr < 70) return 8; 
@@ -191,7 +192,6 @@ function initSlotScreen() {
             
             let stg = `${stgName} - ${data.highScore.floor}F`;
             let badge = data.clearedExtra ? "<br><span style='color:#f0f;font-weight:bold;'>★ EXTRA CLEARED</span>" : "";
-            // ★ Use calculateRating here safely
             infoEl.innerHTML = `<div>${stg}</div><div style='color:#ffdd00;'>Avg: ${data.highScore.avg.toFixed(1)} (Rt ${calculateRating(data.highScore.avg)})</div><div style='color:#aaa;font-size:12px;'>DP: ${data.dp || 0}${badge}</div>`;
         }
     }
@@ -367,7 +367,6 @@ function spawnEnemy() {
 
         let bgKey = stage; 
         if (stage === 4) bgKey = floor >= 5 ? "4_2" : "4_1";
-        // ★ Fix: Correct BG for Stage 5
         if (stage === 6) bgKey = 6; 
         if (GAME_DATA.bg[bgKey]) el("game-container").style.backgroundImage = `url('${GAME_DATA.bg[bgKey]}')`;
 
@@ -582,6 +581,7 @@ function playHandCard(index) {
         return;
     }
     
+    // ★ v2.3.1: Hide tooltip when played
     hideTooltip();
 
     if (card.id === 501) {
@@ -665,6 +665,7 @@ function executeDiscardAndEffect(discardIndex) {
     updateInfo();
 }
 
+// ★ v2.3.1: Show Card Detail Logic
 function showCardDetail(card) {
     const detailEl = el("deck-card-detail");
     if(!detailEl) return;
@@ -790,8 +791,8 @@ function enemyTurn() {
         } 
         doEnemyAttack(1.3); return;
     }
-    // ... (Keep other stage logics)
     
+    // ... (Other stages) ...
     if(stage === 3) {
         if(floor===2 && Math.random()<0.3) { 
             showSkillCutin("誘惑の風", "wind"); setTimeout(() => { if(player.mp>0) { player.mp=Math.max(0,player.mp-1); enemy.hp=Math.min(enemy.hp+20,enemy.maxHp); addLog(">> [誘惑の風] MP吸収", "log-enemy"); } doEnemyAttack(1.0); }, 1200); return; 
@@ -805,9 +806,8 @@ function enemyTurn() {
         }
     }
     if(stage===1) {
-        if(floor===4 && player.mp > 0 && Math.random()<0.3) { 
-            showSkillCutin("猛毒の鱗粉", "earth"); setTimeout(() => { player.mp = Math.max(0, player.mp - 1); addLog(">> [猛毒の鱗粉] MP1減少", "log-enemy"); doEnemyAttack(1.0); }, 1200); return; 
-        }
+        if(floor===3) { if(Math.random() < 0.2) { showSkillCutin("自己再生", "heal"); setTimeout(() => { enemy.hp = Math.min(enemy.hp + 20, enemy.maxHp); playSE("se-heal"); addLog(">> [自己再生] HP20回復", "log-heal"); animateValue(el("enemy-hp-value"),displayEnemyHP,enemy.hp,500); displayEnemyHP=enemy.hp; updateInfo(); endEnemyTurn(); }, 1200); return; } if(Math.random() < 0.4) { showSkillCutin("鉄壁の守り", "earth"); setTimeout(() => { enemy.state.guard = true; addLog(">> [鉄壁の守り] ダメージ半減", "log-enemy"); updateInfo(); endEnemyTurn(); }, 1200); return; } }
+        if(floor===5) { if(enemy.state.charge) { enemy.state.charge = false; showSkillCutin("森の破壊衝動", "earth"); setTimeout(() => { doEnemyAttack(3.0); }, 1200); return; } if(Math.random() < 0.3) { enemy.state.charge = true; addLog(`>> 力を溜めている…`, "log-enemy"); updateInfo(); endEnemyTurn(); return; } }
     }
     
     if (stage === 4 && floor === 1 && Math.random() < 0.3) { 
@@ -946,6 +946,12 @@ function endEnemyTurn() {
     }
     
     player.state.hexSeal = false; 
+    
+    // Reset Lock
+    if (player.state.itemLock) {
+        player.state.itemLock = false;
+        addLog("封印が解除された", "log-system");
+    }
 
     drawCard();
 
@@ -1177,7 +1183,6 @@ function showSkillCutin(name, type) {
 function updateInfo() {
     if (!enemy.data) return;
 
-    // ★ v2.2.3 Fix: Stage Name Logic
     if(stage===6) { el("stage-display").innerText="STAGE 5"; el("floor-display").innerText=`${floor}F`; }
     else if(stage===5) { el("stage-display").innerText="EXTRA"; el("floor-display").innerText="FINAL"; }
     else if(stage===4) { el("stage-display").innerText="STAGE 4"; el("floor-display").innerText=`${floor}F`; }
@@ -1225,35 +1230,14 @@ function updateInfo() {
     let ppr = 0; if(totalDarts>0) ppr = ((totalScore/totalDarts)*3); 
     el("avg-display").innerText=ppr.toFixed(1); el("rt-display").innerText=`(Rt ${calculateRating(ppr)})`;
     
-    // ★ v2.2.3 Fix: Item Button Visual Logic
+    // ★ v2.2.1 Fix: Item Button Visual
     const isLocked = player.state.itemLock;
+    ["btn-potion", "btn-ether", "btn-seed"].forEach(id => {
+        const b = el(id);
+        if(isLocked) { b.classList.add("disabled"); b.style.opacity = "0.3"; }
+        else { b.classList.remove("disabled"); b.style.opacity = "1.0"; }
+    });
     
-    // Helper to update specific button
-    const updateItemBtn = (btnId, count) => {
-        const b = el(btnId);
-        if (!b) return;
-        b.className = "item-btn"; // Reset class
-        
-        if (isLocked) {
-            b.classList.add("disabled");
-            b.style.opacity = "0.3";
-            b.style.cursor = "not-allowed";
-        } else {
-            b.style.opacity = "1.0";
-            if (count > 0) {
-                b.classList.add("has-item");
-                b.style.cursor = "pointer";
-            } else {
-                b.classList.add("disabled");
-                b.style.cursor = "default";
-            }
-        }
-    };
-
-    updateItemBtn("btn-potion", player.items.potion);
-    updateItemBtn("btn-ether", player.items.ether);
-    updateItemBtn("btn-seed", player.items.seed);
-
     el("btn-potion").innerHTML = `💊 薬草 x${player.items.potion}<span class="tooltip">HPを50回復</span>`;
     el("btn-ether").innerHTML = `⚗️ マナ x${player.items.ether}<span class="tooltip">MPを3回復</span>`;
     el("btn-seed").innerHTML = `🌱 種 x${player.items.seed}<span class="tooltip">最大HP+10上昇</span>`;
@@ -1416,6 +1400,10 @@ function renderDeckEditor() {
             const card = CARD_DB.find(c => c.id === cardId);
             const totalOwned = savedData.cards[card.id] || 0;
             const el = createCardElement(card, true, 0, totalOwned);
+            
+            // ★ v2.3.1: Hover detail for deck items
+            el.onmouseenter = () => showCardDetail(card);
+            
             deckGrid.appendChild(el);
         } else {
             const div = document.createElement("div"); div.className = "deck-slot-empty"; div.innerText = "EMPTY";
@@ -1441,6 +1429,13 @@ function renderDeckEditor() {
         listGrid.appendChild(el);
     });
     el("collection-rate").innerText = `${Math.floor((ownedCount / CARD_DB.length) * 100)}%`;
+}
+
+// ★ v2.3.1: Updated to handle detail view
+function showCardDetail(card) {
+    const detailEl = el("deck-card-detail");
+    if(!detailEl) return;
+    detailEl.innerHTML = `<span class="detail-name">${card.name}</span>${card.desc}`;
 }
 
 function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0) {
@@ -1475,8 +1470,13 @@ function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0)
         if (!isOwned) return; 
         if (isDeckItem) removeFromDeck(card.id); else addToDeck(card.id);
     };
+    
+    // ★ v2.3.1 Fix: Always show detail on hover (both list and deck)
+    div.onmouseenter = (e) => {
+        showCardDetail(card);
+        if (isDeckItem) showTooltip(card.name, card.desc, e); // Keep tooltip for deck view
+    };
     if (isDeckItem) {
-        div.onmouseenter = (e) => showTooltip(card.name, card.desc, e);
         div.onmouseleave = () => hideTooltip();
     }
     return div;
@@ -1513,6 +1513,9 @@ function hideTooltip() {
 }
 
 function addToDeck(cardId) {
+    // ★ v2.3.1 Fix: Force hide tooltip before action
+    hideTooltip();
+    
     const SAME_CARD_LIMIT = 3;
     if (savedData.deck.length >= DECK_SIZE) { alert(`デッキは${DECK_SIZE}枚までです！`); return; }
     const ownedCount = savedData.cards[cardId] || 0;
@@ -1524,6 +1527,9 @@ function addToDeck(cardId) {
 }
 
 function removeFromDeck(cardId) {
+    // ★ v2.3.1 Fix: Force hide tooltip before action
+    hideTooltip();
+    
     playSE("se-tap");
     const index = savedData.deck.indexOf(cardId);
     if (index > -1) { savedData.deck.splice(index, 1); }
@@ -1548,14 +1554,6 @@ function showDialog(title, text, type="normal", buttons=[{text:"OK", action:null
         btnGroup.appendChild(btn);
     });
     el("game-modal").style.display = "flex";
-}
-
-function calculateRating(ppr) { 
-    if(ppr < 30) return 1; if(ppr < 40) return 2; if(ppr < 45) return 3; if(ppr < 50) return 4; 
-    if(ppr < 55) return 5; if(ppr < 60) return 6; if(ppr < 65) return 7; if(ppr < 70) return 8; 
-    if(ppr < 75) return 9; if(ppr < 80) return 10; if(ppr < 85) return 11; if(ppr < 90) return 12; 
-    if(ppr < 95) return 13; if(ppr < 100) return 14; if(ppr < 110) return 15; if(ppr < 120) return 16; 
-    if(ppr < 130) return 17; return 18; 
 }
 
 function calculateStageRank(stg, turns) {
