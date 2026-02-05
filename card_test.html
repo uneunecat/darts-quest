@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rarity Effect Prototype</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            background-color: #111;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: #fff;
+            gap: 30px;
+        }
+        h1 { font-family: 'Courier New', monospace; text-shadow: 0 0 10px #fff; }
+        
+        .test-container {
+            display: flex;
+            gap: 30px;
+            padding: 40px;
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 15px;
+        }
+
+        /* テスト用にカードサイズを固定 */
+        .collection-card {
+            width: 140px !important;
+            height: 200px !important;
+            margin: 0;
+            transform: scale(1.0);
+            /* ★重要: 光があふれ出る表現のためにoverflow制限を解除 */
+            overflow: visible !important; 
+        }
+        
+        /* 内部要素のはみ出し防止のために、art/infoを包むラッパーが必要だが
+           今回は擬似要素(::after)をカードの上に被せる方式で対応 */
+
+        /* --- 💎 ここから新エフェクト定義 💎 --- */
+
+        /* === Common Shine Overlay Base === */
+        .card-shine {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 6px;
+            pointer-events: none;
+            z-index: 20;
+            mix-blend-mode: overlay; /* 光を合成 */
+        }
+
+        /* === 🥉 Rare (R): Metallic Sheen === */
+        .rarity-R {
+            border: 2px solid #b0c4de !important; /* Steel Blue */
+            box-shadow: 0 0 5px rgba(176, 196, 222, 0.5);
+        }
+        .rarity-R .card-shine {
+            background: linear-gradient(
+                135deg, 
+                transparent 40%, 
+                rgba(255, 255, 255, 0.6) 50%, 
+                transparent 60%
+            );
+            background-size: 300% 300%;
+            animation: sheen-R 4s infinite;
+        }
+        @keyframes sheen-R {
+            0% { background-position: 100% 100%; opacity: 0; }
+            20% { opacity: 1; }
+            40% { background-position: 0% 0%; opacity: 0; }
+            100% { opacity: 0; }
+        }
+
+        /* === 🥈 Super Rare (SR): Gold Foil & Sparkle === */
+        .rarity-SR {
+            border: 2px solid #ffd700 !important;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.6); /* Gold Glow */
+            animation: pulse-SR 2s infinite alternate;
+        }
+        .rarity-SR .card-shine {
+            /* 粒子感のあるノイズテクスチャの代用として、細かいグラデーションを使用 */
+            background-image: 
+                radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px),
+                radial-gradient(circle, rgba(255,215,0,0.6) 2px, transparent 2px);
+            background-size: 20px 20px, 15px 15px;
+            background-position: 0 0, 7px 7px;
+            opacity: 0.6;
+            mix-blend-mode: color-dodge;
+        }
+        @keyframes pulse-SR {
+            from { box-shadow: 0 0 10px rgba(255, 215, 0, 0.4); border-color: #daa520; }
+            to { box-shadow: 0 0 20px rgba(255, 215, 0, 0.8); border-color: #ffd700; }
+        }
+
+        /* === 🥇 Ultra Rare (UR): Rainbow Prism === */
+        .rarity-UR {
+            border: 2px solid transparent !important; /* 枠は擬似要素で作る */
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            /* 3D Tilt用設定 */
+            transform-style: preserve-3d;
+            transition: transform 0.1s;
+        }
+        
+        /* 🌈 Rotating Rainbow Border */
+        .rarity-UR::before {
+            content: "";
+            position: absolute;
+            top: -3px; left: -3px; right: -3px; bottom: -3px;
+            border-radius: 9px;
+            z-index: -1;
+            background: conic-gradient(
+                #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8f00ff, #ff0000
+            );
+            animation: spin-UR 4s linear infinite;
+        }
+        /* Mask to make it a border */
+        .rarity-UR::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #1a1a1a; /* Card BG color */
+            z-index: -1;
+            border-radius: 6px;
+        }
+
+        .rarity-UR .card-shine {
+            /* Holo Prism Effect */
+            background: linear-gradient(
+                115deg, 
+                transparent 20%, 
+                rgba(0, 255, 255, 0.4) 45%, 
+                rgba(255, 0, 255, 0.4) 55%, 
+                transparent 80%
+            );
+            background-size: 200% 200%;
+            mix-blend-mode: color-dodge;
+            animation: holo-UR 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes spin-UR { 100% { transform: rotate(360deg); } }
+        @keyframes holo-UR { 
+            0% { background-position: 0% 50%; opacity: 0.5; }
+            100% { background-position: 100% 50%; opacity: 0.8; }
+        }
+
+        /* Label */
+        .label { text-align: center; margin-top: 10px; color: #aaa; font-size: 12px; }
+
+    </style>
+</head>
+<body>
+
+    <h1>RARITY EFFECT PROTOTYPE</h1>
+
+    <div class="test-container">
+        
+        <div>
+            <div class="collection-card rarity-N">
+                <div class="card-cost-badge">1</div>
+                <div class="card-art"><img src="assets/cards/401.png"></div> <div class="card-info">
+                    <div class="card-name">火の粉</div>
+                    <div class="card-type">[MAGIC]</div>
+                    <div class="card-info-direct">敵に20ダメージ</div>
+                </div>
+            </div>
+            <div class="label">NORMAL</div>
+        </div>
+
+        <div>
+            <div class="collection-card rarity-R">
+                <div class="card-shine"></div> <div class="card-cost-badge">5</div>
+                <div class="card-art"><img src="assets/cards/301.png"></div> <div class="card-info">
+                    <div class="card-name">光の護封剣</div>
+                    <div class="card-type">[MAGIC]</div>
+                    <div class="card-info-direct">3ターンの間、受けるダメージを半減</div>
+                </div>
+            </div>
+            <div class="label">RARE (Metallic)</div>
+        </div>
+
+        <div>
+            <div class="collection-card rarity-SR">
+                <div class="card-shine"></div> <div class="card-cost-badge">6</div>
+                <div class="card-art"><img src="assets/cards/201.png"></div> <div class="card-info">
+                    <div class="card-name">サンダー・ボルト</div>
+                    <div class="card-type">[MAGIC]</div>
+                    <div class="card-info-direct">敵に100ダメージ＋スタン(1T行動不能)</div>
+                </div>
+            </div>
+            <div class="label">SUPER RARE (Gold Foil)</div>
+        </div>
+
+        <div>
+            <div class="collection-card rarity-UR">
+                <div class="card-shine"></div> <div class="card-cost-badge">1</div>
+                <div class="card-art"><img src="assets/cards/501.png"></div> <div class="card-info">
+                    <div class="card-name">天使の施し</div>
+                    <div class="card-type">[MAGIC]</div>
+                    <div class="card-info-direct">手札を1枚選んで捨て、カードを2枚引く。</div>
+                </div>
+            </div>
+            <div class="label">ULTRA RARE (Prism)</div>
+        </div>
+
+    </div>
+
+    <div style="font-size: 12px; color: #666;">
+        ※Hover simulation (PC): Move mouse over cards to see effects (if interactive)
+    </div>
+
+    <script>
+        const urCard = document.querySelector('.rarity-UR');
+        if(urCard) {
+            urCard.addEventListener('mousemove', (e) => {
+                const rect = urCard.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                
+                const rotateX = ((y - centerY) / centerY) * -20; // Max 20deg
+                const rotateY = ((x - centerX) / centerX) * 20;
+
+                urCard.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.1)`;
+            });
+            urCard.addEventListener('mouseleave', () => {
+                urCard.style.transform = `scale(1.0)`;
+            });
+        }
+    </script>
+
+</body>
+</html>
