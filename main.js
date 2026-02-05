@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v2.6.0 Complete)");
+console.log("★ main.js is loaded! (v2.6.2 Ultimate Fix)");
 const el = (id) => document.getElementById(id);
 function calculateRating(ppr) { if(ppr<30)return 1;if(ppr<40)return 2;if(ppr<45)return 3;if(ppr<50)return 4;if(ppr<55)return 5;if(ppr<60)return 6;if(ppr<65)return 7;if(ppr<70)return 8;if(ppr<75)return 9;if(ppr<80)return 10;if(ppr<85)return 11;if(ppr<90)return 12;if(ppr<95)return 13;if(ppr<100)return 14;if(ppr<110)return 15;if(ppr<120)return 16;if(ppr<130)return 17;return 18; }
 function shuffleArray(array){for(let i=array.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[array[i],array[j]]=[array[j],array[i]];}return array;}
@@ -8,6 +8,7 @@ function playBGM(id) { if(currentBgmId === id) return; stopAllBGM(); const a=doc
 function playSE(id) { const a=document.getElementById(id); if(a){ a.currentTime=0; a.volume=0.5; a.play().catch(e=>{}); } }
 function triggerFloatText(text, targetEl) { if(!targetEl) return; const float = document.createElement("div"); float.className = "float-text-box"; float.innerText = text; const rect = targetEl.getBoundingClientRect(); document.body.appendChild(float); const left = rect.left + (rect.width / 2) - 30; const top = rect.top; float.style.left = `${left}px`; float.style.top = `${top}px`; float.style.position = "fixed"; setTimeout(() => float.remove(), 1500); }
 function triggerEffect(el,dmg,isP){el.classList.remove("shake-small","shake-medium","shake-heavy","shake-ultimate");void el.offsetWidth;if(dmg>=150){el.classList.add("shake-ultimate");playSE("se-boom");}else if(dmg>=60){el.classList.add("shake-heavy");playSE("se-boom");}else{el.classList.add(dmg>=30?"shake-medium":"shake-small");}const pop=document.createElement("div");pop.innerText=dmg;if(dmg>=150)pop.className="damage-popup dmg-ultimate";else if(dmg>=60)pop.className="damage-popup dmg-heavy";else if(dmg>=30)pop.className="damage-popup dmg-medium";else pop.className="damage-popup dmg-small";pop.style.left="50%";pop.style.top="50%";el.appendChild(pop);setTimeout(()=>pop.remove(),1500);}
+function resizeGame() { const scaler = el('game-scaler'); const winW = window.innerWidth; const winH = window.innerHeight; const baseW = 900; const baseH = 620; const scale = Math.min(winW / baseW, winH / baseH) * 0.95; if(scaler) scaler.style.transform = `scale(${scale})`; }
 
 const GAME_DATA = {
     enemies: {
@@ -173,7 +174,7 @@ function openDiscardSelector(cardIndex, cost) { pendingCardIndex = cardIndex; pe
 function closeCardSelector() { el("card-selector-modal").style.display = "none"; pendingCardIndex = -1; }
 function executeDiscardAndEffect(discardIndex) { if(pendingCardIndex === -1) return; player.mp -= pendingCardCost; const discardId = player.hand[discardIndex]; const firstRm = Math.max(pendingCardIndex, discardIndex); const secondRm = Math.min(pendingCardIndex, discardIndex); player.hand.splice(firstRm, 1); player.hand.splice(secondRm, 1); player.discard.push(501); player.discard.push(discardId); playSE("se-heal"); addLog("手札を捨て、2枚ドロー！", "log-skill"); drawCard(); drawCard(); closeCardSelector(); updateInfo(); }
 function showCardDetail(card) { const detailEl = el("deck-card-detail"); if(!detailEl) return; detailEl.innerHTML = `<span class="detail-name">${card.name}</span>${card.desc}`; }
-// ★ v2.6.0: NEW UI FUNCTIONS (Announcer & Chips)
+// ★ v2.6.2: NEW UI FUNCTIONS (Announcer & Chips)
 function announce(text, type="normal") {
     const ann = el("battle-announcer"); if(!ann) return;
     ann.innerText = text; ann.className = "announcer-visible";
@@ -181,11 +182,8 @@ function announce(text, type="normal") {
     if(type==="log-skill" || type==="log-weak") ann.classList.add("ann-warn");
     setTimeout(() => { ann.className = ""; }, 2000);
 }
-// Bridge function to replace old log with Announcer
 function addLog(text, type="") {
-    // Console log for debug history
     console.log(`[${type}] ${text}`);
-    // Announce important events
     if (type === "log-enemy" || type === "log-skill" || type === "log-weak" || type === "log-heal" || text.includes("WEAK") || text.includes("無効") || text.includes("倒した")) {
         announce(text, type);
     }
@@ -195,7 +193,7 @@ function updateStateChips() {
     area.innerHTML = "";
     if(enemy.state.toonSkin) area.innerHTML += `<div class='state-chip chip-guard'><span class='chip-icon'>🛡️</span>-15 SKIN</div>`;
     if(enemy.state.barrierLimit > 0) area.innerHTML += `<div class='state-chip chip-guard'><span class='chip-icon'>🚫</span><${enemy.state.barrierLimit} NULL</div>`;
-    if(stage===6 && floor===5) area.innerHTML += `<div class='state-chip chip-bad'><span class='chip-icon'>⚡</span><15 NULL</div>`; // Passive
+    if(stage===6 && floor===5) area.innerHTML += `<div class='state-chip chip-bad'><span class='chip-icon'>⚡</span><15 NULL</div>`; 
     if(player.state.itemLock) area.innerHTML += `<div class='state-chip chip-bad'><span class='chip-icon'>🕸️</span>LOCKED</div>`;
     if(player.state.guardTurn > 0) area.innerHTML += `<div class='state-chip chip-buff'><span class='chip-icon'>⚔️</span>GUARD ${player.state.guardTurn}</div>`;
 }
