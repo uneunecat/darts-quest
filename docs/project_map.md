@@ -1,55 +1,43 @@
-# 🗺️ Project Architecture Map (v2.5.9)
+# 🗺️ Project Architecture Map (v2.6.6)
 
-## 1. System Overview
-本プロジェクトは、`index.html` (View), `style.css` (Visuals), `main.js` (Logic) の3ファイルで構成されるシングルページアプリケーション（SPA）です。
-外部ライブラリには依存せず、標準の Web Bluetooth API と DOM操作のみで構築されています。
+## 1. File Structure
+* **index.html:** アプリの骨格。`#game-screen` 内に左右パネルのレイアウトを持つ。
+    * *Note:* `battle-announcer`, `active-states` は `main.js` によって動的に挿入されるため、ソースには記述されていない場合がある。
+* **style.css:** 全てのデザイン定義。
+    * `.announcer-visible`, `.state-chip` など、新UI用クラスが含まれる。
+* **main.js:** ゲームロジックの全て。
 
-## 2. `main.js` Logic Flow & Dependencies
+## 2. `main.js` Code Structure (v2.6.6 Optimized)
+コードは「定義順序」を厳守して構成されています。
 
-### A. Initialization & Setup
-* **Entry Point:** `window.onload` -> `loadGameData()` -> `initSlotScreen()`.
-* **Game Start:** `initGameSession()` -> `setupStage()` -> `spawnEnemy()`.
-    * *Safety:* `spawnEnemy` 内で `player.state.itemLock = false` を実行し、前戦の状態異常を持ち越さない。
+### Section 1: Utilities & Definitions (Top of File)
+* **Helper Functions:** `el`, `playSE`, `announce`, `updateStateChips` など。これらを冒頭に置くことで、どこからでも安全に呼び出せるようにしている。
+* **Constants:** `GAME_DATA` (敵データ), `CARD_DB` (カード効果), `DL_SCORE_MAP` (ダーツ信号変換)。
+* **Global Variables:** `player`, `enemy`, `stage`, `turnInputs` など。
 
-### B. The Battle Loop (Core)
-このループがゲームの心臓部です。
+### Section 2: Initialization & Event Listeners
+* `window.onload` -> `resizeGame` -> `loadGameData` -> `initSlotScreen`。
+* `setupStage` 内で `battle-announcer` 等のDOM要素が存在しない場合、`document.createElement` で生成・挿入する (Injection Logic)。
 
-1.  **Input Handling:**
-    * `handleBluetoothNotify()` (BLE) or `handleEnter()` (Keyboard)
-    * ↓ calls
-    * `processOneThrow(score)`
-2.  **Process One Throw (Action Phase):**
-    * **Validation:** `restrictInput` チェック。
-    * **Calculation:** `player.state` (Buffs) と `enemy.state` (Barriers) を参照して `singleDmg` を決定。
-    * **Execution:** `enemy.hp` 減算、`totalScore/totalDarts` 更新（PPR用）、SE再生。
-    * **Branching:**
-        * Enemy Dead? -> `winBattle()`
-        * 3 Throws Done? -> `finishPlayerTurn()`
-3.  **Turn Transition:**
-    * `finishPlayerTurn()`: プレイヤー側のバフ解除、`itemLock` 解除、`turnInputs` リセット。
-    * ↓ calls
-    * `enemyTurn()`: 敵のAIロジック。スキル発動 (`enemy.state` フラグセット) -> 攻撃。
-    * ↓ calls
-    * `endEnemyTurn()`: ターン数加算、MP回復、ドロー処理。
+### Section 3: Core Battle Logic
+* **`processOneThrow(score)`:** ダーツ入力時のメインループ。
+    * `enemy.state` フラグを見てダメージ計算。
+    * `announce` を呼んで演出。
+* **`finishPlayerTurn()`:** プレイヤーフェーズ終了。状態異常（Item Lock等）の解除。
+* **`enemyTurn()`:** 敵のAI。確率分岐でスキルを使用し、`enemy.state` フラグを立てる（例: `toonSkin = true`）。
+* **`endEnemyTurn()`:** ターン更新、MP回復、ドロー。
 
-### C. Critical Functions Inventory (Do Not Delete)
-以下の関数群は、UI操作や進行に必須であり、Minify時に消失しないよう注意が必要です。
+### Section 4: Player Actions (UI / Card / Shop)
+* **`playHandCard(index)`:** カード使用処理。`applyCardEffect` へ分岐。
+* **`openCardShop()` / `buyPack()`:** ガチャシステム。
+* **`updateInfo()`:** 画面描画の集約点。`updateStateChips` や `renderHand` もここから呼ばれる。
 
-* **Card/Item Operations:**
-    * `drawCard()`: デッキから手札へ。
-    * `playHandCard(index)`: カード使用のエントリーポイント。
-    * `applyCardEffect(card)`: カードIDごとの効果switch文。
-    * `openDiscardSelector()` / `executeDiscardAndEffect()`: 天使の施し等の処理。
-    * `useItem(type)`: ポーション等の使用。
-* **Shop System:**
-    * `openCardShop()`: モーダル展開。
-    * `buyPack()` / `drawShopCard()`: ガチャロジック。
-    * `showPackResult()`: 結果表示演出。
-* **Visual Helpers:**
-    * `createCardElement()`: レアリティに応じたHTML構造（URの`inner-mask`含む）を生成。
-    * `updateInfo()`: HPバー色、MP発光、PPR計算などのDOM更新。
+## 3. Critical Checkpoints for Future Dev
+今後の改修時は、以下のポイントを遵守すること。
 
-## 3. CSS Architecture (`style.css`)
-* **Visual Logic:** クラスベースの装飾（`.rarity-UR`, `.boss-mode`, `.player-danger`）。
-* **Layout Safety:** `.card-info` に `align-items: flex-start !important` を適用し、Flexboxのレイアウト崩れを防止。
-* **Effects:** `mix-blend-mode: overlay/color-dodge` を使用した「光」の表現。
+1.  **State Management:**
+    * 敵の防御スキル等は、必ず `enemy.state` にフラグを持たせ、`processOneThrow` で判定する。「ターン数」で判定しないこと（ズレるため）。
+2.  **UI Injection:**
+    * HTMLを直接触らず JS だけで完結させるため、新規UI要素を追加する場合は `setupStage` 内の生成ロジックを確認・追記すること。
+3.  **Function Integrity:**
+    * `drawCard`, `renderHand`, `updateVisuals` は依存関係が強いため、削除や移動をする際は細心の注意を払うこと。
