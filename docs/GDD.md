@@ -60,3 +60,8 @@ LocalStorage `darts_quest_save` に保存。
 * `deck`: Array<int> - 所持しているカードIDのリスト。
 * `cards`: Object<id, count> - カードの所持数。
 * `history`: Array<Object> - 過去の対戦履歴（50件）。
+
+* Update: v2.7.0-alpha
+Visual Update:
+アナウンサー演出を強化（フォント変更、背景帯追加、アニメーション調整）。
+敵の「鉄壁の守り」や「光の護封剣」などの防御行動が、HPバー下のステートチップエリアに可視化されるように変更

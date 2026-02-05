@@ -235,14 +235,34 @@ function updateVisuals() {
     const dropBadge = el("enemy-drop-badge"); const enemyPanel = el("enemy-panel"); 
     if(player.state.weakLock || dropGuaranteed) { if(dropBadge) dropBadge.style.display = "block"; if(enemyPanel) enemyPanel.classList.add("drop-chance"); } else { if(dropBadge) dropBadge.style.display = "none"; if(enemyPanel) enemyPanel.classList.remove("drop-chance"); } 
 }
+// ★ State Chips Update Logic (Enemy Guard Included)
 function updateStateChips() {
-    const area = el("active-states"); if(!area) return;
+    const area = el("active-states"); if (!area) return;
     area.innerHTML = "";
-    if(enemy.state.toonSkin) area.innerHTML += `<div class='state-chip chip-guard'><span class='chip-icon'>🛡️</span>-15 SKIN</div>`;
-    if(enemy.state.barrierLimit > 0) area.innerHTML += `<div class='state-chip chip-guard'><span class='chip-icon'>🚫</span><${enemy.state.barrierLimit} NULL</div>`;
-    if(stage===6 && floor===5) area.innerHTML += `<div class='state-chip chip-bad'><span class='chip-icon'>⚡</span><15 NULL</div>`; 
-    if(player.state.itemLock) area.innerHTML += `<div class='state-chip chip-bad'><span class='chip-icon'>🕸️</span>LOCKED</div>`;
-    if(player.state.guardTurn > 0) area.innerHTML += `<div class='state-chip chip-buff'><span class='chip-icon'>⚔️</span>GUARD ${player.state.guardTurn}</div>`;
+
+    // --- ENEMY STATES ---
+    // 特殊装甲 (Toon)
+    if (enemy.state.toonSkin) area.innerHTML += `<div class='state-chip chip-guard'><span class='chip-icon'>🛡️</span>-15 SKIN</div>`;
+    // バリア (Threshold)
+    if (enemy.state.barrierLimit > 0) area.innerHTML += `<div class='state-chip chip-guard'><span class='chip-icon'>🚫</span><${enemy.state.barrierLimit} NULL</div>`;
+    // 神のパッシブ
+    if (stage === 6 && floor === 5) area.innerHTML += `<div class='state-chip chip-bad'><span class='chip-icon'>⚡</span><15 NULL</div>`;
+
+    // ★ NEW: 敵の防御スキル (1ターン半減など)
+    if (enemy.state.guard) {
+        area.innerHTML += `<div class='state-chip chip-guard' style='border-color:#ffff00; color:#ffffcc;'><span class='chip-icon'>🛡️</span>DEFENSE</div>`;
+    }
+    // ★ NEW: 敵の持続防御 (護封剣など)
+    if (enemy.state.guardType) {
+        const label = enemy.state.guardType === 'half' ? 'HALF' : 'GUARD';
+        area.innerHTML += `<div class='state-chip chip-guard' style='border-color:#ffff00; color:#ffffcc;'><span class='chip-icon'>⚔️</span>${label} ${enemy.state.guardTurn}</div>`;
+    }
+
+    // --- PLAYER STATES ---
+    // 状態異常: アイテム封印
+    if (player.state.itemLock) area.innerHTML += `<div class='state-chip chip-bad'><span class='chip-icon'>🕸️</span>LOCKED</div>`;
+    // プレイヤーの防御 (護封剣)
+    if (player.state.guardTurn > 0) area.innerHTML += `<div class='state-chip chip-buff'><span class='chip-icon'>⚔️</span>GUARD ${player.state.guardTurn}</div>`;
 }
 // ★ v2.6.6 Fixed: renderHand Definition Added
 function renderHand() {

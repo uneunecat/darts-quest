@@ -73,10 +73,55 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .score-slot { display: inline-block; width: 60px; border-bottom: 2px solid #555; text-align: center; margin: 0 5px; color: #888; } .score-slot.active { border-bottom: 2px solid #00d2fc; color: #fff; font-weight: bold; } .score-slot.filled { color: #00d2fc; } .score-slot.locked { color: #555; border-bottom: 2px dashed #333; }
 .keyboard-hint { text-align: center; color: #888; font-size: 14px; margin-top: 30px; border: 1px dashed #444; padding: 10px; border-radius: 5px; }
 #battle-log { display: none !important; }
-/* ★ v2.6.0 New UI: Announcer & State Chips */
-#battle-announcer { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); width: 80%; text-align: center; font-family: 'Impact', sans-serif; font-size: 40px; color: #fff; text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 0 0 20px #00d2fc; pointer-events: none; z-index: 2000; opacity: 0; transition: opacity 0.3s; }
-.announcer-visible { opacity: 1 !important; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-.ann-danger { color: #ff0000; text-shadow: 0 0 20px #ff0000; } .ann-warn { color: #ffd700; text-shadow: 0 0 20px #ffd700; }
+/* ★ Battle Announcer 2.0 (Juicy & Cinematic) */
+#battle-announcer {
+    position: absolute;
+    top: 25%;
+    /* 少し上に配置して敵が見えるように */
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-family: 'Cinzel Decorative', cursive;
+    /* ファンタジー感のあるフォント */
+    font-size: 50px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 0 10px #00d2fc, 0 0 20px #000;
+    pointer-events: none;
+    z-index: 2500;
+    opacity: 0;
+    transform: scale(1.5);
+    /* 拡大状態から入る */
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    background: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.8) 15%, rgba(0, 0, 0, 0.8) 85%, transparent 100%);
+    padding: 15px 0;
+    letter-spacing: 2px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    white-space: nowrap;
+}
+
+/* 表示時のアニメーション状態 */
+.announcer-visible {
+    opacity: 1 !important;
+    transform: scale(1.0) !important;
+}
+
+/* 敵の攻撃・脅威 */
+.ann-danger {
+    color: #ff3333;
+    text-shadow: 0 0 10px #ff0000, 2px 2px 0 #000;
+    border-top: 1px solid rgba(255, 0, 0, 0.5);
+    border-bottom: 1px solid rgba(255, 0, 0, 0.5);
+    background: linear-gradient(90deg, transparent 0%, rgba(50, 0, 0, 0.9) 20%, rgba(50, 0, 0, 0.9) 80%, transparent 100%) !important;
+}
+
+/* 警告・スキル発動 */
+.ann-warn {
+    color: #ffd700;
+    text-shadow: 0 0 10px #ffd700, 2px 2px 0 #000;
+}
 #active-states { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin-top: 5px; min-height: 30px; width: 100%; }
 .state-chip { background: rgba(0,0,0,0.8); border: 1px solid #777; border-radius: 15px; padding: 2px 10px; font-size: 12px; color: #fff; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); animation: slideIn 0.3s; }
 .chip-icon { font-size: 14px; } .chip-buff { border-color: #ff0000; color: #ffcccc; } .chip-guard { border-color: #00d2fc; color: #ccffff; } .chip-bad { border-color: #d0f; color: #ffccff; }
