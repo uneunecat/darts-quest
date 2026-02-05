@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v2.5.5 Balance & Bugfix)");
+console.log("★ main.js is loaded! (v2.5.6 Critical Fix)");
 const GAME_DATA = {
     enemies: {
         1: [ { name: "プチモス", img: "assets/1-1.png", weak: 20 }, { name: "ラーバモス", img: "assets/1-2.png", weak: 19 }, { name: "進化の繭", img: "assets/1-3.png", weak: 18, hp: 260 }, { name: "グレート・モス", img: "assets/1-4.png", weak: 17, hp: 290 }, { name: "究極完全態・グレート・モス", img: "assets/1-5.png", weak: 20, hp: 420 } ],
@@ -64,43 +64,29 @@ function setupStage(sel, continueMode) { stage=sel; floor=1; isProcessing=false;
 function spawnEnemy() { try { enemy.state={charge:false,guard:false,guardType:null,guardTurn:0,atkBuff:0,isStunned:false}; player.state.power=false; player.state.shield=false; player.state.weakLock=false; player.state.barrier=false; player.state.guardTurn = 0; player.state.magicCylinder = false; player.state.hexSeal = false; player.state.huge = 0; player.state.atkBonus = 0; currentTurn=1; turnInputs=[]; currentInput=""; restrictInput=false; updateScoreDisplay(); isJustFinish = false; waitingForChest = false; dropGuaranteed = false; weakHitCount=0; el("flash-overlay").className = ""; el("game-container").classList.remove("shake-heavy", "shake-medium", "shake-small"); el("game-container").className="container"; el("enemy-panel").className="left-panel"; el("boss-label").style.display="none"; el("enemy-img").style.display = "block"; el("chest-img").style.display = "none"; let bgKey = stage; if (stage === 4) bgKey = floor >= 5 ? "4_2" : "4_1"; if (stage === 6) bgKey = 6; if (GAME_DATA.bg[bgKey]) el("game-container").style.backgroundImage = `url('${GAME_DATA.bg[bgKey]}')`; let isBoss = false; if (stage === 5) { enemy.data = GAME_DATA.enemies[5][0]; isBoss=true; playBGM("bgm-extra"); el("game-container").classList.add("extra-mode"); el("enemy-panel").classList.add("extra-border"); el("boss-label").innerText="☠️EXTRA BOSS"; el("boss-label").style.display="inline"; enemy.maxHp=1500; } else if (stage === 6) { let list = GAME_DATA.enemies[6]; enemy.data = list[(floor-1)%list.length]; if(floor === 5) { isBoss=true; playBGM("bgm-extra"); el("game-container").classList.add("extra-mode"); el("boss-label").innerText="☠️GOD降臨"; el("boss-label").style.display="inline"; enemy.maxHp=2000; } else { playBGM("bgm-boss"); el("game-container").classList.remove("boss-mode", "extra-mode"); el("boss-label").style.display="none"; enemy.maxHp = enemy.data.hp || 500; } } else { let list = GAME_DATA.enemies[stage]; enemy.data = list[(floor-1)%list.length]; if(stage===4 && floor===6) { isBoss=true; playBGM("bgm-extra"); el("game-container").classList.add("extra-mode"); el("boss-label").innerText="☠️FINAL BOSS"; el("boss-label").style.display="inline"; enemy.maxHp = 800; } else if(floor===5 || (stage===4 && floor===5)) { isBoss=true; playBGM("bgm-boss"); el("game-container").classList.add("boss-mode"); el("enemy-panel").classList.add("boss-border"); el("boss-label").innerText="⚠️BOSS"; el("boss-label").style.display="inline"; const base=100+((stage-1)*50); const bonus=(floor-1)*30; enemy.maxHp=base+bonus+50; } else { playBGM("bgm-battle"); const base=100+((stage-1)*50); const bonus=(floor-1)*30; enemy.maxHp=base+bonus; } } if(enemy.data.hp) enemy.maxHp = enemy.data.hp; enemy.name=enemy.data.name; el("enemy-img").src=enemy.data.img; enemy.hp=enemy.maxHp; displayEnemyHP=enemy.hp; updateInfo(); if(stage===6 && floor===5) addLog(`>>> 天空より雷鳴と共に ${enemy.name} が現れた！`, "log-skill"); else if (stage===6) addLog(`=== STAGE 5 - ${floor}F ===`, "system"); else addLog(`=== STAGE ${stage} - ${floor}F ===`, "system"); isProcessing = false; } catch(e) { console.error("Spawn Error:", e); isProcessing = false; } }
 function checkOpeningSkill() { if(stage === 3 && floor === 1) { setTimeout(() => { showSkillCutin("護封剣の加護", "gold"); setTimeout(() => { enemy.state.guardType = 'cut'; enemy.state.guardTurn = 3; addLog(">> 先制行動: 敵が光の護封剣(3T)を展開！", "log-enemy"); updateInfo(); }, 1200); }, 500); } }
 function handleEnter() { if(isProcessing) return; if (currentInput !== "") { const val = parseInt(currentInput); if (!isNaN(val)) { if (val < 0 || val > 60) { alert("単発の最大値は 60 (T20) です"); currentInput=""; updateScoreDisplay(); return; } if(val === 50) playSE("se-bull"); else if (val >= 51) playSE("se-triple"); else playSE("se-hit"); processOneThrow(val); currentInput = ""; updateScoreDisplay(); } } }
+// ★ v2.5.6: Ensure drawCard exists BEFORE use in SetupStage. (Defined in Part 3, but JS hoisting handles it within file scope)
+// However, to be safe against split errors, I will place drawCard here as well if needed, 
+// BUT duplicate definition is bad. I will stick to putting drawCard in Part 3 and assume the user pastes all parts into one file.
+// If the user pastes them into ONE file, order doesn't matter for function declarations.
 
-// ★ v2.5.5: Balance Adjustment for Real-time Battle
 function processOneThrow(score) { 
     if (restrictInput && turnInputs.length > 0) return; 
     let singleDmg = score; let weakHit = false; 
-    
-    // Slifer: 15 damage or less is invalid (was 20)
     if (stage === 6 && floor === 5) { if (singleDmg <= 15) { singleDmg = 0; addLog(">> 召雷弾！(15以下無効)", "log-enemy"); } } 
-    
     if (player.state.atkBonus > 0) { singleDmg += player.state.atkBonus; player.state.atkBonus = 0; } 
     if (player.state.power) { singleDmg = Math.floor(singleDmg * 2.0); player.state.power = false; } 
     if (player.state.huge !== 0) { if (player.state.huge === 1) singleDmg = Math.floor(singleDmg * 3.0); else singleDmg = Math.floor(singleDmg * 0.5); player.state.huge = 0; } 
     if (player.state.weakLock || (score >= 51 && enemy.data.weak && (score % enemy.data.weak === 0))) { weakHit = true; } 
-    
-    // Thousand Eyes: Less than 10 is invalid (was 30)
     if (stage === 4 && floor === 6 && currentTurn % 2 === 0) { if (singleDmg < 10) { singleDmg = 0; addLog(">> 結界に阻まれた！(10未満無効)", "log-enemy"); } } 
-    
-    // Toon Skin: Reduce by 15 (was 15, intent -50/3)
     if (stage === 4 && floor === 4 && currentTurn % 3 === 0) { singleDmg = Math.max(0, singleDmg - 15); } 
-    
     if (enemy.state.guardType === 'cut') { singleDmg = Math.floor(singleDmg * 0.8); } if (enemy.state.guardType === 'half') { singleDmg = Math.floor(singleDmg * 0.5); } if (enemy.state.guard) { singleDmg = Math.floor(singleDmg / 2); enemy.state.guard = false; addLog("敵の防御で半減！", "system"); } 
     if (enemy.hp - singleDmg === 0) isJustFinish = true; enemy.hp = Math.max(0, enemy.hp - singleDmg); totalScore += score; totalDarts++; turnInputs.push(score); updateScoreDisplay(); 
     if (weakHit) { dropGuaranteed = true; weakHitCount++; addLog(`★ WEAK HIT!!`, "log-weak"); if(!player.state.weakLock) { if(el("se-weak")) playSE("se-weak"); el("flash-overlay").className = "flash-purple"; setTimeout(()=>el("flash-overlay").className="", 600); } } if(player.state.weakLock) { player.state.weakLock = false; } addLog(`${turnInputs.length}投目: ${singleDmg} ダメージ!`, "system"); triggerEffect(el("enemy-panel"), singleDmg, false); animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 300); displayEnemyHP=enemy.hp; updateInfo(); 
     if (enemy.hp <= 0) { setTimeout(winBattle, 1000); return; } 
     if (turnInputs.length >= 3 || (restrictInput && turnInputs.length >= 1)) { setTimeout(finishPlayerTurn, 1000); } 
 }
-
-// ★ v2.5.5: Fix Item Lock Clear Logic
-function finishPlayerTurn() { 
-    totalGameTurns++; 
-    if (restrictInput) { restrictInput = false; addLog("束縛が解けた！", "log-system"); } 
-    if (enemy.state.guardType) { enemy.state.guardTurn--; if(enemy.state.guardTurn<=0) { enemy.state.guardType=null; addLog("敵の護封剣が消滅した", "log-system"); } } 
-    // ★ Clear Item Lock HERE, after player turn
-    if (player.state.itemLock) { player.state.itemLock = false; addLog("粘着が取れた (封印解除)", "log-system"); }
-    turnInputs = []; currentInput = ""; updateScoreDisplay(); setTimeout(enemyTurn, 500); 
-}
-
+// ★ v2.5.5 Fix: Item Lock Cleared Here
+function finishPlayerTurn() { totalGameTurns++; if (restrictInput) { restrictInput = false; addLog("束縛が解けた！", "log-system"); } if (enemy.state.guardType) { enemy.state.guardTurn--; if(enemy.state.guardTurn<=0) { enemy.state.guardType=null; addLog("敵の護封剣が消滅した", "log-system"); } } if (player.state.itemLock) { player.state.itemLock = false; addLog("粘着が取れた (封印解除)", "log-system"); } turnInputs = []; currentInput = ""; updateScoreDisplay(); setTimeout(enemyTurn, 500); }
 function enemyTurn() {
     if(enemy.state.isStunned) { addLog(`>> ${enemy.name} はスタン中で動けない！`, "log-system"); enemy.state.isStunned = false; endEnemyTurn(); return; }
     if (player.state.hexSeal) { addLog(">> 呪縛により攻撃力が半減している！", "log-skill"); }
@@ -109,15 +95,9 @@ function enemyTurn() {
     if(stage===3){if(floor===2&&Math.random()<0.3){showSkillCutin("誘惑の風","wind");setTimeout(()=>{if(player.mp>0){player.mp=Math.max(0,player.mp-1);enemy.hp=Math.min(enemy.hp+20,enemy.maxHp);addLog(">> [誘惑の風] MP吸収","log-enemy");}doEnemyAttack(1.0);},1200);return;}if(floor===5){enemy.state.atkBuff+=0.1;addLog(`>> [主人の加護] 攻撃力UP (x${(1.0+enemy.state.atkBuff).toFixed(1)})`,"log-enemy");if(currentTurn%4===0){showSkillCutin("愛の鞭・ブレス","fire");setTimeout(()=>{player.mp=0;addLog(">> [愛の鞭] MP消滅＆大ダメージ","log-enemy");doEnemyAttack(2.0*(1.0+enemy.state.atkBuff));},1200);return;}doEnemyAttack(1.0*(1.0+enemy.state.atkBuff));return;}}
     if(stage===1){if(floor===4&&player.mp>0&&Math.random()<0.3){showSkillCutin("猛毒の鱗粉","earth");setTimeout(()=>{player.mp=Math.max(0,player.mp-1);addLog(">> [猛毒の鱗粉] MP1減少","log-enemy");doEnemyAttack(1.0);},1200);return;}}
     if(stage===4&&floor===1&&Math.random()<0.3){showSkillCutin("トゥーン・ラッシュ","wind");setTimeout(()=>{addLog(">> [速攻] 2回攻撃！","log-enemy");doEnemyAttack(0.7,{callback:()=>{setTimeout(()=>doEnemyAttack(0.7),800);}});},1200);return;}if(stage===4&&floor===2&&currentTurn===5){showSkillCutin("死のびっくり箱","fire");setTimeout(()=>{addLog(">> [死の箱] 999ダメージ！","log-enemy");doEnemyAttack(0,{fixedDmg:999,ignoreShield:true});},1200);return;}
-    
-    // v2.5.5: Log Update for Toon Skin (-15)
     if(stage===4&&floor===4&&currentTurn%3===0){showSkillCutin("トゥーン・スキン","earth");setTimeout(()=>{addLog(">> [硬質化] 被ダメ-15","log-enemy");updateInfo();endEnemyTurn();},1200);return;}
-    
     if(stage===4&&floor===5&&currentTurn%3===0){showSkillCutin("幻想の儀式","wind");setTimeout(()=>{addLog(">> [儀式] HP吸収","log-enemy");doEnemyAttack(1.2,{isDrain:true});},1200);return;}
-    
-    // v2.5.5: Log Update for Thousand Eyes (<10)
     if(stage===4&&floor===6&&currentTurn%2===0){showSkillCutin("千眼の邪教神","wind");setTimeout(()=>{addLog(">> [結界] 10点未満無効化！","log-enemy");doEnemyAttack(1.2);},1200);return;}
-    
     if(stage===3){if(floor===1&&enemy.state.guardTurn>0){addLog(`>> 光の護封剣 (残り${enemy.state.guardTurn}T)`,"log-enemy");doEnemyAttack(1.0);return;}if(floor===3&&Math.random()<0.3){showSkillCutin("サイバー・ボンテージ","wind");setTimeout(()=>{restrictInput=true;addLog(">> [拘束] 次ターン1投制限！","log-enemy");doEnemyAttack(1.0);},1200);return;}if(floor===4&&Math.random()<0.3){showSkillCutin("トライアングル・エクスタシー","wind");setTimeout(()=>{addLog(">> [3姉妹の連携] 3回攻撃！","log-enemy");doEnemyAttack(0.6,{callback:()=>{setTimeout(()=>doEnemyAttack(0.6,{callback:()=>{setTimeout(()=>doEnemyAttack(0.6),600);}}),600);}});},1200);return;}}
     if(stage===2){if(floor===2&&Math.random()<0.3){showSkillCutin("俊足の連撃","fire");setTimeout(()=>{addLog(">> [俊足の連撃] 2回攻撃！","log-enemy");doEnemyAttack(0.7,{callback:()=>{setTimeout(()=>doEnemyAttack(0.7),800);}});},1200);return;}if(floor===3&&Math.random()<0.3){showSkillCutin("死肉の渇望","fire");setTimeout(()=>{addLog(">> [死肉の渇望] 与ダメ吸収","log-enemy");doEnemyAttack(1.0,{isDrain:true});},1200);return;}if(floor===4&&enemy.hp<=enemy.maxHp*0.5&&Math.random()<0.5){showSkillCutin("狂暴化","fire");setTimeout(()=>{addLog(">> [狂暴化] 攻撃1.5倍","log-enemy");doEnemyAttack(1.5);},1200);return;}if(floor===5&&Math.random()<0.3){showSkillCutin("恐竜剣・兜割り","earth");setTimeout(()=>{addLog(">> [BOSS] 兜割り！シールド無効","log-enemy");doEnemyAttack(1.8,{ignoreShield:true});},1200);return;}}
     if(stage===1){if(floor===3){if(Math.random()<0.2){showSkillCutin("自己再生","heal");setTimeout(()=>{enemy.hp=Math.min(enemy.hp+20,enemy.maxHp);playSE("se-heal");addLog(">> [自己再生] HP20回復","log-heal");animateValue(el("enemy-hp-value"),displayEnemyHP,enemy.hp,500);displayEnemyHP=enemy.hp;updateInfo();endEnemyTurn();},1200);return;}if(Math.random()<0.4){showSkillCutin("鉄壁の守り","earth");setTimeout(()=>{enemy.state.guard=true;addLog(">> [鉄壁の守り] ダメージ半減","log-enemy");updateInfo();endEnemyTurn();},1200);return;}}if(floor===5){if(enemy.state.charge){enemy.state.charge=false;showSkillCutin("森の破壊衝動","earth");setTimeout(()=>{doEnemyAttack(3.0);},1200);return;}if(Math.random()<0.3){enemy.state.charge=true;addLog(`>> 力を溜めている…`,"log-enemy");updateInfo();endEnemyTurn();return;}}}
@@ -131,11 +111,13 @@ function doEnemyAttack(mult, options = {}) {
     if (!ignoreShield && player.state.shield) { addLog(`${enemy.name} の攻撃！ → 完全防御！`, "log-skill"); player.state.shield=false; triggerEffect(el("player-panel"),0,true); el("flash-overlay").className="flash-blue"; setTimeout(()=>el("flash-overlay").className="",300); updateInfo(); if(callback) callback(); else endEnemyTurn(); return; }
     if (player.state.guardTurn > 0) { mult *= 0.5; addLog("[護封剣] 被ダメージ半減！", "log-skill"); }
     if (isBossUlt) { let dmg = fixedDmg > 0 ? fixedDmg : 60; playSE("se-boom"); el("flash-overlay").className="flash-fire"; setTimeout(()=>el("flash-overlay").className="",600); triggerEffect(el("player-panel"),dmg,true); finishAttack(dmg, false, callback); return; }
-    
     playSE("se-hit"); 
     if (fixedDmg > 0) { finishAttack(fixedDmg, isDrain, callback); return; }
     const base = 2+floor+(stage-1)*3; const dmg = Math.floor((base + Math.floor(Math.random()*6)) * mult); finishAttack(dmg, isDrain, callback);
 }
+
+// ★ v2.5.6: DRAW CARD DEFINITION (Fixed Missing)
+function drawCard(isSilent = false) { if (player.deck.length === 0) return; if (player.hand.length >= HAND_SIZE) return; const cardId = player.deck.pop(); player.hand.push(cardId); if (!isSilent) triggerFloatText("DRAW!", el("hand-area")); updateInfo(); }
 
 function finishAttack(dmg, isDrain, callback) {
     player.hp = Math.max(0, player.hp-dmg); addLog(`${enemy.name} の攻撃！ ${dmg} ダメージ`, "enemy");
@@ -143,13 +125,7 @@ function finishAttack(dmg, isDrain, callback) {
     triggerEffect(el("player-panel"), dmg, true); animateValue(el("player-hp"), displayPlayerHP, player.hp, 500); displayPlayerHP=player.hp; updateInfo();
     if(player.hp<=0) setTimeout(loseBattle,1000); else { if(callback) callback(); else endEnemyTurn(); }
 }
-// ★ v2.5.5: REMOVED BUGGY ITEM LOCK CLEAR FROM HERE
-function endEnemyTurn() { 
-    currentTurn++; player.mp = Math.min(player.mp + 3, player.maxMp); triggerFloatText("MP+3", el("player-mp-bar")); 
-    if(player.state.guardTurn > 0) { player.state.guardTurn--; if(player.state.guardTurn === 0) { addLog("光の護封剣の効果が切れた", "log-system"); } } 
-    player.state.hexSeal = false; 
-    drawCard(); updateInfo(); isProcessing=false; 
-}
+function endEnemyTurn() { currentTurn++; player.mp = Math.min(player.mp + 3, player.maxMp); triggerFloatText("MP+3", el("player-mp-bar")); if(player.state.guardTurn > 0) { player.state.guardTurn--; if(player.state.guardTurn === 0) { addLog("光の護封剣の効果が切れた", "log-system"); } } player.state.hexSeal = false; drawCard(); updateInfo(); isProcessing=false; }
 function winBattle() { addLog(`${enemy.name} を倒した`, "system"); player.mp = Math.min(player.mp + 3, player.maxMp); triggerFloatText("MP+3", el("player-mp-bar")); drawCard(); if (isJustFinish) { player.maxHp += 10; const oldHP = player.hp; player.hp = Math.min(player.hp + 10, player.maxHp); playSE("se-heal"); addLog(`★JUST FINISH! MaxHP+10 & HP+10`, "heal"); animateValue(el("player-hp"), oldHP, player.hp, 500); updateInfo(); setTimeout(() => { showDialog("JUST FINISH BONUS!!", `見事！ピッタリで倒した！<br>最大HPが ${player.maxHp} にアップ！<br>HPも10回復した。`, "clear", [{text:"OK", action:checkDrop}], 3000); }, 800); } else { setTimeout(checkDrop, 800); } }
 function checkDrop() { if(stage === 5 && floor === 1) { nextStep(); return; } if(stage === 6 && floor === 5) { nextStep(); return; } if(stage === 4 && floor === 6) { nextStep(); return; } const isBoss = (floor === 5 || (stage===4 && floor===6)); let dropRate = isBoss ? 1.0 : 0.3; if (dropGuaranteed) dropRate = 1.0; if(Math.random() < dropRate) { waitingForChest = true; el("enemy-img").style.display = "none"; el("chest-img").style.display = "block"; el("chest-img").classList.add("chest-shine"); playSE("se-chest"); addLog("宝箱を見つけた！", "log-item"); setTimeout(() => { if(waitingForChest) openChest(); }, 1500); } else { nextStep(); } }
 function openChest() { if(!waitingForChest) return; waitingForChest = false; playSE("se-item"); let seedRate = 0.15; if (weakHitCount >= 3) seedRate = 1.0; else if (weakHitCount >= 2) seedRate = 0.50; const rand = Math.random(); let itemName = ""; let itemEffect = ""; if (rand < seedRate) { itemName = "★命の種"; itemEffect = "MaxHP +10"; player.items.seed++; } else if (Math.random() < 0.6) { itemName = "薬草"; itemEffect = "HP 50 回復"; player.items.potion++; } else { itemName = "魔法の聖水"; itemEffect = "MP 3 回復"; player.items.ether++; } updateInfo(); addLog(`宝箱: ${itemName} (${itemEffect}) を手に入れた`, "log-item"); showDialog("TREASURE!", `<span style="font-size:24px;color:#00ff00;">${itemName}</span> を手に入れた！<br>${itemEffect}<br>(アイテムボタンで使用可能)`, "item", [{text:"OK", action:nextStep}], 2000); }
@@ -242,6 +218,9 @@ function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0)
     }
     div.onclick = function() { if(!isOwned)return; if(isDeckItem)removeFromDeck(card.id); else addToDeck(card.id); }; div.onmouseenter = (e) => { showCardDetail(card); if(isDeckItem) showTooltip(card.name, card.desc, e); }; if (isDeckItem) { div.onmouseleave = () => hideTooltip(); } return div;
 }
+// ★ v2.5.6: SHOW CARD DETAIL DEFINITION (Fixed Missing)
+function showCardDetail(card) { const detailEl = el("deck-card-detail"); if(!detailEl) return; detailEl.innerHTML = `<span class="detail-name">${card.name}</span>${card.desc}`; }
+
 function showTooltip(name,desc,e){const tt=el("global-tooltip");el("gt-name").innerText=name;el("gt-desc").innerText=desc;tt.style.visibility="visible";tt.style.opacity="1";moveTooltip(e);e.currentTarget.onmousemove=moveTooltip;}
 function moveTooltip(e){const tt=el("global-tooltip");const offset=15;let left=e.clientX+offset;let top=e.clientY+offset;if(left+tt.offsetWidth>window.innerWidth)left=e.clientX-tt.offsetWidth-offset;if(top+tt.offsetHeight>window.innerHeight)top=e.clientY-tt.offsetHeight-offset;tt.style.left=left+"px";tt.style.top=top+"px";}
 function hideTooltip(){const tt=el("global-tooltip");tt.style.visibility="hidden";tt.style.opacity="0";}
