@@ -77,9 +77,9 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 #battle-announcer {
     position: absolute;
     top: 25%;
-    left: 50%; /* 中央配置の基準点 */
-    transform: translate(-50%, -50%) scale(1.5); /* translateで中央補正 */
-    width: 90%; /* 画面幅の90%に収める */
+    left: 50%;
+    transform: translate(-50%, -50%) scale(1.5);
+    width: 90%;
     text-align: center;
     font-family: 'Cinzel Decorative', cursive;
     font-size: 50px;
@@ -93,20 +93,21 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     background: linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.8) 15%, rgba(0,0,0,0.8) 85%, transparent 100%);
     padding: 15px 0;
     letter-spacing: 2px;
+    
+    /* ★レイアウト修正: 縦並びを強制 */
     display: flex;
+    flex-direction: column; /* ここが重要 */
     justify-content: center;
     align-items: center;
     
-    /* 改行設定の変更 */
-    white-space: pre-wrap; /* 改行コードを反映しつつ、幅に合わせて折り返す */
-    word-wrap: break-word; /* 長い単語も折り返す */
-    line-height: 1.2; /* 行間を少し広げる */
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    line-height: 1.2;
 }
 
-/* 表示時のアニメーション状態 */
 .announcer-visible {
     opacity: 1 !important;
-    transform: translate(-50%, -50%) scale(1.0) !important; /* 表示時も中央揃えを維持 */
+    transform: translate(-50%, -50%) scale(1.0) !important;
 }
 
 /* 敵の攻撃・脅威 */
