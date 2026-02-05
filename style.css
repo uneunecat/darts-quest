@@ -126,50 +126,55 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .card-grid { flex: 1; overflow-y: auto; min-height: 0; padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); grid-auto-rows: max-content; gap: 10px; align-content: start; }
 .deck-slot-empty { width: 50px; height: 75px; border: 1px dashed #555; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #444; font-size: 10px; background: rgba(0,0,0,0.2); }
 
-/* --- CARD STYLE (v2.5 Enhanced) --- */
-.collection-card { position: relative; width: 100%; border-radius: 6px; cursor: pointer; transition: transform 0.1s; background: #1a1a1a; border: 2px solid #555; overflow: hidden; display: flex; flex-direction: column; z-index: 10; box-sizing: border-box; }
+/* --- CARD STYLE (v2.5.1 Enhanced) --- */
+.collection-card { position: relative; width: 100%; border-radius: 6px; cursor: pointer; transition: transform 0.1s; background: #1a1a1a; display: flex; flex-direction: column; z-index: 10; box-sizing: border-box; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
 .collection-card:hover { transform: scale(1.05); z-index: 100; border-color: #fff; }
-.card-art { width: 100%; aspect-ratio: 4/3; background: #000; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid #333; }
+.card-art { width: 100%; height: 55%; background: #000; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #333; }
 .card-art img { width: 100%; height: 100%; object-fit: cover; }
-.card-info { padding: 4px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
-/* v2.5: UI Tweaks */
-.card-name { font-size: 10px; font-weight: bold; color: #fff; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.card-type { font-size: 8px; color: #aaa; margin-top: 2px; }
-.card-info-direct { font-size: 9px; color: #ccc; background: rgba(0,0,0,0.3); padding: 2px; margin-top: 2px; border-radius: 2px; line-height: 1.2; }
+.card-info { padding: 4px; flex: 1; display: flex; flex-direction: column; background: linear-gradient(to bottom, #222, #1a1a1a); }
+/* v2.5.1 UI Polish */
+.card-name { font-size: 10px; font-weight: 900; color: #fff; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-type { font-size: 8px; color: #888; margin-bottom: 2px; }
+.card-info-direct { font-size: 9px; color: #ccc; text-align: left; padding: 1px; margin-top: 1px; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
 .card-cost-badge { position: absolute; top: 0; left: 0; background: #00d2fc; color: #000; font-weight: bold; font-size: 10px; padding: 1px 5px; border-bottom-right-radius: 4px; z-index: 5; }
 .card-count-badge { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.8); color: #fff; font-size: 9px; padding: 1px 4px; border-radius: 3px; border: 1px solid #555; z-index: 5; }
 
-/* --- v2.5 RARITY EFFECTS --- */
-/* Common Shine Overlay */
+/* --- v2.5.1 RARITY EFFECTS (Silver / Gold / Rainbow) --- */
 .card-shine { position: absolute; top: 0; left: 0; right: 0; bottom: 0; border-radius: 6px; pointer-events: none; z-index: 20; mix-blend-mode: overlay; }
 
-/* RARE */
-.rarity-R { border-color: #b0c4de !important; box-shadow: 0 0 5px rgba(176, 196, 222, 0.5); }
-.rarity-R .card-shine { background: linear-gradient(135deg, transparent 40%, rgba(255, 255, 255, 0.6) 50%, transparent 60%); background-size: 300% 300%; animation: sheen-R 4s infinite; }
-@keyframes sheen-R { 0% { background-position: 100% 100%; opacity: 0; } 20% { opacity: 1; } 40% { background-position: 0% 0%; opacity: 0; } 100% { opacity: 0; } }
+/* NORMAL (Matte) */
+.rarity-N { border: 2px solid #444; } .rarity-N .card-name { color: #fff; }
 
-/* SUPER RARE */
-.rarity-SR { border-color: #ffd700 !important; box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); animation: pulse-SR 2s infinite alternate; }
-.rarity-SR .card-shine { background-image: radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px), radial-gradient(circle, rgba(255,215,0,0.6) 2px, transparent 2px); background-size: 20px 20px, 15px 15px; background-position: 0 0, 7px 7px; opacity: 0.6; mix-blend-mode: color-dodge; }
-@keyframes pulse-SR { from { box-shadow: 0 0 5px rgba(255, 215, 0, 0.3); border-color: #daa520; } to { box-shadow: 0 0 15px rgba(255, 215, 0, 0.7); border-color: #ffd700; } }
+/* RARE (Silver Metallic) */
+.rarity-R { border: 2px solid transparent; background-image: linear-gradient(#1a1a1a, #1a1a1a), linear-gradient(135deg, #777, #fff, #777); background-origin: border-box; background-clip: content-box, border-box; box-shadow: 0 0 5px rgba(255, 255, 255, 0.2); }
+.rarity-R .card-name { background: linear-gradient(to bottom, #fff 20%, #999 80%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 1px rgba(255,255,255,0.5); }
+.rarity-R .card-shine { background: linear-gradient(120deg, transparent 40%, rgba(255,255,255,0.4) 50%, transparent 60%); background-size: 300% 300%; animation: sheen-move 5s infinite; }
 
-/* ULTRA RARE (v2.5 Fixed: Rotating Border) */
-.rarity-UR { border: none !important; padding: 2px; position: relative; overflow: hidden; box-shadow: 0 0 15px rgba(0, 255, 255, 0.5); }
-.rarity-UR::before { content: ""; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: conic-gradient(#ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8f00ff, #ff0000); animation: spin-UR 4s linear infinite; z-index: -2; }
-.rarity-UR::after { content: ""; position: absolute; top: 2px; left: 2px; right: 2px; bottom: 2px; background: #1a1a1a; z-index: -1; border-radius: 4px; }
-.rarity-UR .card-shine { background: linear-gradient(115deg, transparent 20%, rgba(0, 255, 255, 0.4) 45%, rgba(255, 0, 255, 0.4) 55%, transparent 80%); background-size: 200% 200%; mix-blend-mode: color-dodge; animation: holo-UR 3s ease-in-out infinite alternate; }
-@keyframes spin-UR { 100% { transform: rotate(360deg); } } @keyframes holo-UR { 0% { background-position: 0% 50%; opacity: 0.5; } 100% { background-position: 100% 50%; opacity: 0.8; } }
+/* SUPER RARE (Gold Liquid) */
+.rarity-SR { border: 2px solid transparent; background-image: linear-gradient(#1a1a1a, #1a1a1a), linear-gradient(135deg, #b8860b, #ffd700, #b8860b); background-origin: border-box; background-clip: content-box, border-box; box-shadow: 0 0 10px rgba(218, 165, 32, 0.4); }
+.rarity-SR .card-name { background: linear-gradient(to bottom, #ffd700 20%, #b8860b 80%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 2px rgba(218, 165, 32, 0.5); }
+.rarity-SR .card-shine { background: linear-gradient(115deg, transparent 20%, rgba(255, 215, 0, 0.15) 40%, rgba(255, 255, 255, 0.5) 50%, rgba(255, 215, 0, 0.15) 60%, transparent 80%); background-size: 250% 250%; animation: sheen-move 3s infinite reverse; }
+
+/* ULTRA RARE (Rainbow Prism & Spin) */
+.rarity-UR { border: 2px solid transparent; box-shadow: 0 0 15px rgba(0, 255, 255, 0.5); overflow: hidden; padding: 0; }
+.rarity-UR::before { content: ""; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: conic-gradient(#ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8f00ff, #ff0000); animation: spin-UR 4s linear infinite; z-index: 0; }
+.rarity-UR .inner-mask { position: absolute; top: 2px; left: 2px; right: 2px; bottom: 2px; background: #1a1a1a; z-index: 1; border-radius: 4px; display: flex; flex-direction: column; overflow: hidden; }
+.rarity-UR .card-name { background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000); background-size: 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: rainbow-text 3s linear infinite; font-weight: 900; }
+.rarity-UR .card-shine { background: linear-gradient(135deg, rgba(255,255,255,0) 30%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 70%); background-size: 200% 200%; animation: sheen-move 2.5s infinite; z-index: 10; mix-blend-mode: color-dodge; }
+
+@keyframes sheen-move { 0% { background-position: 100% 100%; } 100% { background-position: 0% 0%; } }
+@keyframes spin-UR { 100% { transform: rotate(360deg); } }
+@keyframes rainbow-text { 0% { background-position: 0%; } 100% { background-position: 200%; } }
 
 /* --- Special Style for Deck Column (Tiny Cards) --- */
-.in-deck-card { width: 50px !important; height: 75px !important; flex-shrink: 0; border: 1px solid #777; padding: 0 !important; /* Reset padding for UR border trick */ }
+.in-deck-card { width: 50px !important; height: 75px !important; flex-shrink: 0; border: 1px solid #777; padding: 0 !important; background: #222 !important; }
 .in-deck-card .card-art { height: 100%; border: none; border-radius: 4px; }
 .in-deck-card .card-art img { height: 100%; border-radius: 4px; }
 .in-deck-card .card-cost-badge { font-size: 8px; padding: 0 3px; display: block !important; top: 0; left: 0; }
 .in-deck-card .card-count-badge { display: none; } 
 .in-deck-card .card-info { display: none; }
-.in-deck-card .card-shine { display: none; } /* Hide effect in deck to save perf */
-/* Fix UR border in deck */
-.rarity-UR.in-deck-card { border: 1px solid #00ffff !important; padding: 0; } 
+.in-deck-card .card-shine { display: none; } 
+.rarity-UR.in-deck-card { border: 1px solid #00ffff !important; } 
 .rarity-UR.in-deck-card::before, .rarity-UR.in-deck-card::after { display: none; }
 
 .card-not-owned { filter: grayscale(100%) opacity(0.4); border-color: #333; pointer-events: none; }
