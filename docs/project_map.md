@@ -1,47 +1,40 @@
-# 🗺️ Project Architecture Map (v2.4)
+# 🗺️ Project Architecture Map (v2.4.4)
 
 ## 1. ファイル構成
 * `index.html`:
-    * **Connect Button:** `#bt-connect-btn` (Bluetooth接続トリガー).
-    * **Stage Select:** ID 1〜6 (Extra=5, Stage5=6).
-    * **Modals:** Shop, Deck Edit (Detail View), History.
+    * **Connect Button:** `#bt-connect-btn` (Audio Unlockトリガー兼用).
+    * **Stage Select:** ID 1〜6.
+    * **Audio:** SEファイル定義（se-single〜se-dbull 追加済み）.
 * `style.css`:
-    * **UI Lock:** `.ui-locked` (投擲中の操作無効化).
-    * **Visuals:** `.connect-btn`, `.deck-card-detail`.
+    * **Deck UI:** `.deck-grid .collection-card` (極小カード用スタイル) vs `.card-grid` (通常リスト用) の分離。
+    * **Modal:** `#card-selector-modal` のレスポンシブ対応とテキスト表示。
 * `main.js`:
-    * **Core Logic:** ゲーム進行、セーブロード、データ管理。
-    * **Bluetooth:** Web Bluetooth API連携ロジック。
+    * **Core Logic:** ゲームループ、セーブロード、PPR計算。
+    * **Bluetooth:** Web Bluetooth API連携。
 
-## 2. main.js ロジックマップ (v2.4 Focus)
+## 2. main.js ロジックマップ
 
-### A. Bluetooth Integration (New)
-* `connectToBoard()`: デバイススキャンとGATT接続。
-    * **Service UUID:** `6e400001-b5a3-f393-e0a9-e50e24dcca9e`
-    * **Notify UUID:** `6e40fff6-b5a3-f393-e0a9-e50e24dcca9e`
-* `handleBluetoothNotify(event)`: 通知受信ハンドラ。
-* `DL_SCORE_MAP`: バイト値(0x14等) → スコア(20)への変換テーブル。
+### A. Battle System (`processOneThrow`)
+* **役割:** 1投ごとの処理を行う中核関数。
+* **処理フロー:**
+    1. 入力バリデーション（ロック中か？）
+    2. ダメージ計算（バフ、召雷弾、弱点）
+    3. `totalDarts` 加算 & `totalScore` 加算 **(v2.4.4 Fixed)**
+    4. HP減算 & 演出（SE再生）
+    5. 勝利判定 (`winBattle`) or ターン継続判定
 
-### B. Real-time Battle System (Refactored)
-* `processOneThrow(score)`: **【重要】** 1投ごとの処理を行う中核関数。
-    1. **Validation:** 入力制限チェック。
-    2. **Calculation:** バフ適用、弱点判定、ギミック判定（召雷弾など）。
-    3. **Execution:** ダメージ適用、HP減少アニメーション。
-    4. **Flow Control:** 勝利判定 or 3投終了判定 (`finishPlayerTurn`).
-* `finishPlayerTurn()`: プレイヤーのターン終了処理。敵ターンへ移行。
+### B. UI / UX Logic
+* **PPR Display (`updateInfo`):** 正しい分母（実際に投げた数）で計算。
+* **Deck Editor (`createCardElement`):** `isDeckItem` フラグに基づき、`in-deck-card` / `in-list-card` クラスを付与してスタイル制御。
+* **Auto Progress:** `checkDrop`, `openChest` 内で `setTimeout` を使用した自動遷移。
 
-### C. UI & State Management
-* `updateInfo()`: HP/MP表示に加え、`ui-locked` クラスの着脱（投擲中のボタン無効化）を管理。
-* `renderDeckEditor()`: ホバーイベント (`showCardDetail`) のバインド。
+### C. Bluetooth & Audio
+* `connectToBoard()`:
+    * 接続時に `unlockAudioContext()` を呼び出し、モバイルブラウザでのSE再生制限を解除。
+* `handleBluetoothNotify()`:
+    * 受信データからエリアタイプ（S/D/T/BULL）を判定し、対応するSEを再生。
 
-### D. Data Structures
-* `GAME_DATA`: 敵キャラ、背景画像定義。
-* `CARD_DB`: 全カードのスペック定義。
-* `player.state`: `itemLock` (封印), `huge` (巨大化) などのバフフラグ。
-
-## 3. 重要な依存関係 & フロー
-1. **Input Flow:**
-   `Bluetooth Device` -> `handleBluetoothNotify` -> `processOneThrow`
-   `Keyboard (Enter)` -> `handleEnter` -> `processOneThrow`
-   
-2. **Turn Flow:**
-   `Tactics Phase` (Card/Item OK) -> `Input (1st Throw)` -> `Action Phase` (UI Locked) -> `processOneThrow` x3 -> `Enemy Turn` -> `Tactics Phase`
+## 3. 重要なデータ構造
+* **`DL_SCORE_MAP`:**
+    * Key: Byte Value (0x14)
+    * Value: `[Score, Type]` (例: `[20, 0]` = 20点シングル)
