@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v2.5.6 Critical Fix)");
+console.log("★ main.js is loaded! (v2.5.7 Stable)");
 const GAME_DATA = {
     enemies: {
         1: [ { name: "プチモス", img: "assets/1-1.png", weak: 20 }, { name: "ラーバモス", img: "assets/1-2.png", weak: 19 }, { name: "進化の繭", img: "assets/1-3.png", weak: 18, hp: 260 }, { name: "グレート・モス", img: "assets/1-4.png", weak: 17, hp: 290 }, { name: "究極完全態・グレート・モス", img: "assets/1-5.png", weak: 20, hp: 420 } ],
@@ -64,11 +64,6 @@ function setupStage(sel, continueMode) { stage=sel; floor=1; isProcessing=false;
 function spawnEnemy() { try { enemy.state={charge:false,guard:false,guardType:null,guardTurn:0,atkBuff:0,isStunned:false}; player.state.power=false; player.state.shield=false; player.state.weakLock=false; player.state.barrier=false; player.state.guardTurn = 0; player.state.magicCylinder = false; player.state.hexSeal = false; player.state.huge = 0; player.state.atkBonus = 0; currentTurn=1; turnInputs=[]; currentInput=""; restrictInput=false; updateScoreDisplay(); isJustFinish = false; waitingForChest = false; dropGuaranteed = false; weakHitCount=0; el("flash-overlay").className = ""; el("game-container").classList.remove("shake-heavy", "shake-medium", "shake-small"); el("game-container").className="container"; el("enemy-panel").className="left-panel"; el("boss-label").style.display="none"; el("enemy-img").style.display = "block"; el("chest-img").style.display = "none"; let bgKey = stage; if (stage === 4) bgKey = floor >= 5 ? "4_2" : "4_1"; if (stage === 6) bgKey = 6; if (GAME_DATA.bg[bgKey]) el("game-container").style.backgroundImage = `url('${GAME_DATA.bg[bgKey]}')`; let isBoss = false; if (stage === 5) { enemy.data = GAME_DATA.enemies[5][0]; isBoss=true; playBGM("bgm-extra"); el("game-container").classList.add("extra-mode"); el("enemy-panel").classList.add("extra-border"); el("boss-label").innerText="☠️EXTRA BOSS"; el("boss-label").style.display="inline"; enemy.maxHp=1500; } else if (stage === 6) { let list = GAME_DATA.enemies[6]; enemy.data = list[(floor-1)%list.length]; if(floor === 5) { isBoss=true; playBGM("bgm-extra"); el("game-container").classList.add("extra-mode"); el("boss-label").innerText="☠️GOD降臨"; el("boss-label").style.display="inline"; enemy.maxHp=2000; } else { playBGM("bgm-boss"); el("game-container").classList.remove("boss-mode", "extra-mode"); el("boss-label").style.display="none"; enemy.maxHp = enemy.data.hp || 500; } } else { let list = GAME_DATA.enemies[stage]; enemy.data = list[(floor-1)%list.length]; if(stage===4 && floor===6) { isBoss=true; playBGM("bgm-extra"); el("game-container").classList.add("extra-mode"); el("boss-label").innerText="☠️FINAL BOSS"; el("boss-label").style.display="inline"; enemy.maxHp = 800; } else if(floor===5 || (stage===4 && floor===5)) { isBoss=true; playBGM("bgm-boss"); el("game-container").classList.add("boss-mode"); el("enemy-panel").classList.add("boss-border"); el("boss-label").innerText="⚠️BOSS"; el("boss-label").style.display="inline"; const base=100+((stage-1)*50); const bonus=(floor-1)*30; enemy.maxHp=base+bonus+50; } else { playBGM("bgm-battle"); const base=100+((stage-1)*50); const bonus=(floor-1)*30; enemy.maxHp=base+bonus; } } if(enemy.data.hp) enemy.maxHp = enemy.data.hp; enemy.name=enemy.data.name; el("enemy-img").src=enemy.data.img; enemy.hp=enemy.maxHp; displayEnemyHP=enemy.hp; updateInfo(); if(stage===6 && floor===5) addLog(`>>> 天空より雷鳴と共に ${enemy.name} が現れた！`, "log-skill"); else if (stage===6) addLog(`=== STAGE 5 - ${floor}F ===`, "system"); else addLog(`=== STAGE ${stage} - ${floor}F ===`, "system"); isProcessing = false; } catch(e) { console.error("Spawn Error:", e); isProcessing = false; } }
 function checkOpeningSkill() { if(stage === 3 && floor === 1) { setTimeout(() => { showSkillCutin("護封剣の加護", "gold"); setTimeout(() => { enemy.state.guardType = 'cut'; enemy.state.guardTurn = 3; addLog(">> 先制行動: 敵が光の護封剣(3T)を展開！", "log-enemy"); updateInfo(); }, 1200); }, 500); } }
 function handleEnter() { if(isProcessing) return; if (currentInput !== "") { const val = parseInt(currentInput); if (!isNaN(val)) { if (val < 0 || val > 60) { alert("単発の最大値は 60 (T20) です"); currentInput=""; updateScoreDisplay(); return; } if(val === 50) playSE("se-bull"); else if (val >= 51) playSE("se-triple"); else playSE("se-hit"); processOneThrow(val); currentInput = ""; updateScoreDisplay(); } } }
-// ★ v2.5.6: Ensure drawCard exists BEFORE use in SetupStage. (Defined in Part 3, but JS hoisting handles it within file scope)
-// However, to be safe against split errors, I will place drawCard here as well if needed, 
-// BUT duplicate definition is bad. I will stick to putting drawCard in Part 3 and assume the user pastes all parts into one file.
-// If the user pastes them into ONE file, order doesn't matter for function declarations.
-
 function processOneThrow(score) { 
     if (restrictInput && turnInputs.length > 0) return; 
     let singleDmg = score; let weakHit = false; 
@@ -85,7 +80,6 @@ function processOneThrow(score) {
     if (enemy.hp <= 0) { setTimeout(winBattle, 1000); return; } 
     if (turnInputs.length >= 3 || (restrictInput && turnInputs.length >= 1)) { setTimeout(finishPlayerTurn, 1000); } 
 }
-// ★ v2.5.5 Fix: Item Lock Cleared Here
 function finishPlayerTurn() { totalGameTurns++; if (restrictInput) { restrictInput = false; addLog("束縛が解けた！", "log-system"); } if (enemy.state.guardType) { enemy.state.guardTurn--; if(enemy.state.guardTurn<=0) { enemy.state.guardType=null; addLog("敵の護封剣が消滅した", "log-system"); } } if (player.state.itemLock) { player.state.itemLock = false; addLog("粘着が取れた (封印解除)", "log-system"); } turnInputs = []; currentInput = ""; updateScoreDisplay(); setTimeout(enemyTurn, 500); }
 function enemyTurn() {
     if(enemy.state.isStunned) { addLog(`>> ${enemy.name} はスタン中で動けない！`, "log-system"); enemy.state.isStunned = false; endEnemyTurn(); return; }
@@ -116,9 +110,48 @@ function doEnemyAttack(mult, options = {}) {
     const base = 2+floor+(stage-1)*3; const dmg = Math.floor((base + Math.floor(Math.random()*6)) * mult); finishAttack(dmg, isDrain, callback);
 }
 
-// ★ v2.5.6: DRAW CARD DEFINITION (Fixed Missing)
 function drawCard(isSilent = false) { if (player.deck.length === 0) return; if (player.hand.length >= HAND_SIZE) return; const cardId = player.deck.pop(); player.hand.push(cardId); if (!isSilent) triggerFloatText("DRAW!", el("hand-area")); updateInfo(); }
-
+function playHandCard(index) {
+    if(isProcessing || waitingForChest) return; if (turnInputs.length > 0) { addLog(">> 投擲中はカードを使えません！", "log-system"); return; } if (player.state.itemLock) { addLog(">> 封印されていて使えない！", "log-system"); playSE("se-warning"); return; }
+    const cardId = player.hand[index]; const card = CARD_DB.find(c => c.id === cardId); let cost = (card.cost !== undefined) ? card.cost : 99; if (player.mp < cost) { addLog(`MPが足りません！(必要: ${cost})`, "log-system"); playSE("se-warning"); return; }
+    hideTooltip();
+    if (card.id === 501) { if (player.hand.length <= 1) { addLog("捨てる手札がありません！", "log-system"); return; } openDiscardSelector(index, cost); return; }
+    player.mp -= cost; playSE("se-buff"); applyCardEffect(card); player.hand.splice(index, 1); player.discard.push(cardId); updateInfo();
+}
+let pendingCardIndex = -1; let pendingCardCost = 0;
+function openDiscardSelector(cardIndex, cost) { pendingCardIndex = cardIndex; pendingCardCost = cost; const discardCandidates = []; player.hand.forEach((cid, idx) => { if (idx !== cardIndex) { const c = CARD_DB.find(cd => cd.id === cid); discardCandidates.push({ id: cid, name: c.name, desc: c.desc, originalIndex: idx }); } }); const modal = el("card-selector-modal"); const grid = el("cs-grid"); grid.innerHTML = ""; discardCandidates.forEach(item => { const div = document.createElement("div"); div.className = "collection-card"; div.innerHTML = `<div class="card-art"><img src="assets/cards/${item.id}.png"></div><div class="card-info"><div class="card-name" style="font-size:9px;">${item.name}</div><div class="card-info-direct">${item.desc}</div></div>`; div.onclick = () => executeDiscardAndEffect(item.originalIndex); grid.appendChild(div); }); modal.style.display = "flex"; }
+function closeCardSelector() { el("card-selector-modal").style.display = "none"; pendingCardIndex = -1; }
+function executeDiscardAndEffect(discardIndex) { if(pendingCardIndex === -1) return; player.mp -= pendingCardCost; const discardId = player.hand[discardIndex]; const firstRm = Math.max(pendingCardIndex, discardIndex); const secondRm = Math.min(pendingCardIndex, discardIndex); player.hand.splice(firstRm, 1); player.hand.splice(secondRm, 1); player.discard.push(501); player.discard.push(discardId); playSE("se-heal"); addLog("手札を捨て、2枚ドロー！", "log-skill"); drawCard(); drawCard(); closeCardSelector(); updateInfo(); }
+function showCardDetail(card) { const detailEl = el("deck-card-detail"); if(!detailEl) return; detailEl.innerHTML = `<span class="detail-name">${card.name}</span>${card.desc}`; }
+function applyCardEffect(card) {
+    let msg = `Card: [${card.name}] `;
+    switch(card.id) {
+        case 101: player.hp = player.maxHp; msg += "HP完全回復！"; playSE("se-heal"); break;
+        case 201: const dmg201 = 100; enemy.hp = Math.max(0, enemy.hp - dmg201); enemy.state.isStunned = true; msg += `100ダメージ＆スタン！`; playSE("se-boom"); triggerEffect(el("enemy-panel"), dmg201, false); break;
+        case 202: player.mp = Math.min(player.mp + 5, player.maxMp); msg += "MPチャージ(+5)！"; break;
+        case 301: player.state.guardTurn = 3; msg += "3ターン防御(被ダメ半減)！"; break;
+        case 302: if (enemy.state.charge) { enemy.state.charge = false; enemy.state.isStunned = true; msg += "チャージ解除＆スタン！"; playSE("se-hit"); } else { msg += "不発(敵はチャージしていない)"; } break;
+        case 303: player.state.barrier = true; msg += "バリア展開(次攻撃無効＆反撃)！"; break;
+        case 401: const dmg401 = 20; enemy.hp = Math.max(0, enemy.hp - dmg401); msg += "20ダメージ！"; playSE("se-attack"); triggerEffect(el("enemy-panel"), dmg401, false); break;
+        case 402: player.hp = Math.min(player.hp + 50, player.maxHp); msg += "HP50回復"; playSE("se-heal"); break;
+        case 403: player.hp = Math.max(1, player.hp - 20); const dmg403 = 80; enemy.hp = Math.max(0, enemy.hp - dmg403); msg += "自傷20＆敵に80ダメージ！"; playSE("se-attack"); triggerEffect(el("player-panel"), 20, true); triggerEffect(el("enemy-panel"), dmg403, false); break;
+        case 404: const dmg404 = 80; enemy.hp = Math.max(0, enemy.hp - dmg404); msg += "80ダメージ！"; playSE("se-attack"); triggerEffect(el("enemy-panel"), dmg404, false); break;
+        case 405: player.state.power = true; msg += "攻撃力2倍(このターン)！"; break;
+        case 601: const dmg601 = 150; enemy.hp = Math.max(0, enemy.hp - dmg601); while(player.hand.length > 0) player.discard.push(player.hand.pop()); msg += "全手札を犠牲に150ダメージ！"; playSE("se-boom"); triggerEffect(el("enemy-panel"), dmg601, false); break;
+        case 602: player.state.magicCylinder = true; msg += "魔法の筒をセット(反射待機)！"; break;
+        case 701: if (player.hp <= (player.maxHp * 0.5)) player.state.huge = 1; else player.state.huge = 2; msg += (player.state.huge===1) ? "HP劣勢…逆転の3倍パワー！" : "HP優勢…油断の0.5倍パワー…"; break;
+        case 702: const dmg702 = 40; enemy.hp = Math.max(0, enemy.hp - dmg702); if(enemy.state.guard) { enemy.state.guard = false; msg += "40ダメ＆敵の防御を破壊！"; } else msg += "40ダメージ！"; triggerEffect(el("enemy-panel"), dmg702, false); break;
+        case 703: player.state.hexSeal = true; enemy.state.isStunned = true; msg += "六芒星の呪縛！(弱体化＆スタン)"; break;
+        case 801: if(enemy.state.guard) { enemy.state.guard = false; msg += "敵の防御を解除した！"; } else msg += "敵は防御していなかった"; break;
+        case 802: const dmg802 = 40; enemy.hp = Math.max(0, enemy.hp - dmg802); msg += "40ダメージ！"; triggerEffect(el("enemy-panel"), dmg802, false); break;
+        case 803: player.hp = Math.min(player.hp + 30, player.maxHp); player.state.atkBonus = 20; msg += "HP30回復＆次撃+20！"; playSE("se-heal"); break;
+        case 804: if (player.discard.length === 0) { msg += "墓地にカードがない…"; break; } const magics = player.discard.filter(did => { const c = CARD_DB.find(cd => cd.id === did); return c.type === "MAGIC"; }); if (magics.length === 0) { msg += "墓地に魔法がない…"; break; } const salvId = magics[Math.floor(Math.random() * magics.length)]; const dIndex = player.discard.indexOf(salvId); player.discard.splice(dIndex, 1); player.hand.push(salvId); msg += `墓地から「${CARD_DB.find(c=>c.id===salvId).name}」を回収！`; break;
+        case 805: player.hp = Math.max(1, player.hp - 50); const dmg805 = 150; enemy.hp = Math.max(0, enemy.hp - dmg805); msg += "自傷50＆敵に150ダメージ！"; triggerEffect(el("player-panel"), 50, true); triggerEffect(el("enemy-panel"), dmg805, false); break;
+        default: msg += "(発動)"; break;
+    }
+    addLog(msg, "log-skill"); animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp; animateValue(el("player-hp"), displayPlayerHP, player.hp, 500); displayPlayerHP=player.hp;
+    if (enemy.hp <= 0) setTimeout(winBattle, 800);
+}
 function finishAttack(dmg, isDrain, callback) {
     player.hp = Math.max(0, player.hp-dmg); addLog(`${enemy.name} の攻撃！ ${dmg} ダメージ`, "enemy");
     if(isDrain) { const heal = Math.floor(dmg * 0.5); if(heal > 0) { enemy.hp = Math.min(enemy.hp + heal, enemy.maxHp); addLog(`>> 敵が HP${heal} 吸収した！`, "log-enemy"); animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp; } }
@@ -218,9 +251,7 @@ function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0)
     }
     div.onclick = function() { if(!isOwned)return; if(isDeckItem)removeFromDeck(card.id); else addToDeck(card.id); }; div.onmouseenter = (e) => { showCardDetail(card); if(isDeckItem) showTooltip(card.name, card.desc, e); }; if (isDeckItem) { div.onmouseleave = () => hideTooltip(); } return div;
 }
-// ★ v2.5.6: SHOW CARD DETAIL DEFINITION (Fixed Missing)
 function showCardDetail(card) { const detailEl = el("deck-card-detail"); if(!detailEl) return; detailEl.innerHTML = `<span class="detail-name">${card.name}</span>${card.desc}`; }
-
 function showTooltip(name,desc,e){const tt=el("global-tooltip");el("gt-name").innerText=name;el("gt-desc").innerText=desc;tt.style.visibility="visible";tt.style.opacity="1";moveTooltip(e);e.currentTarget.onmousemove=moveTooltip;}
 function moveTooltip(e){const tt=el("global-tooltip");const offset=15;let left=e.clientX+offset;let top=e.clientY+offset;if(left+tt.offsetWidth>window.innerWidth)left=e.clientX-tt.offsetWidth-offset;if(top+tt.offsetHeight>window.innerHeight)top=e.clientY-tt.offsetHeight-offset;tt.style.left=left+"px";tt.style.top=top+"px";}
 function hideTooltip(){const tt=el("global-tooltip");tt.style.visibility="hidden";tt.style.opacity="0";}
