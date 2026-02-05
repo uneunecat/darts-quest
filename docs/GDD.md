@@ -1,5 +1,5 @@
 # 📘 DARTS QUEST - Game Design Document
-**Version:** 2.4.4 (Stable Release)
+**Version:** 2.5.2 (Visual Polish)
 **Last Updated:** 2024-05-XX
 
 ## 1. プロジェクト概要
@@ -7,48 +7,39 @@
 * **ジャンル:** リアルタイム・ダーツRPG
 * **コンセプト:**
     * "Your Skill is Your Weapon"（あなたのダーツスキルが攻撃力になる）
-    * 物理ダーツボード（DARTSLIVE HOME）との完全連動による没入感。
-    * ハンズフリーで快適に進行できる「投げるだけ」のプレイ体験。
+    * 物理ダーツボード（DARTSLIVE HOME）との完全連動。
+    * TCG（トレーディングカードゲーム）のような収集と戦略の楽しさ。
 
 ## 2. ゲームシステム仕様
 
-### A. リアルタイム・バトルフロー (v2.4 Base)
+### A. リアルタイム・バトルフロー
 1.  **Tactics Phase (戦略フェーズ):**
     * ターン開始時。カード使用、アイテム使用が可能。
 2.  **Action Phase (アクションフェーズ):**
-    * 1投目がヒットした瞬間に移行。**UI操作（カード・アイテム）はロック**される。
-    * 1投ごとにダメージ計算・HP減少処理が即時実行される。
-    * 敵HPが0になった時点で即勝利（残りの投擲権は破棄）。
+    * 1投目がヒットした瞬間にUIロック。
+    * 1投ごとに即時ダメージ反映。敵HP0で即勝利。
 3.  **Enemy Turn:**
     * 3投終了後、敵が攻撃。
 
-### B. 入力システム
-* **Bluetooth:** DARTSLIVE HOMEからの信号（BLE）を受信し、エリアIDをスコアに変換。
-* **Manual:** テンキー入力＋Enter。
-* **オート進行:** 宝箱ドロップ〜アイテム入手〜次ステージへの遷移は、一定時間経過で自動的に進む。
-
-### C. ステータス・計算式
+### B. ステータス・計算式
 * **PPR (Avg):** `(総スコア / 総投擲数) * 3`
-    * ※v2.4.4にて、途中決着時の投擲数カウント漏れを修正済み。
+    * ※v2.4.4にて計算式を適正化済み。
 * **Damage:** `(Throw Score + Buff) * Multiplier`
-    * 状態異常（Weak Lock, 召雷弾など）により変動。
 
-## 3. データ一覧 (Summary)
+## 3. アートワーク・演出仕様 (v2.5 Updated)
 
-### 👾 Boss Data
-* **Stage 1:** 究極完全態・グレート・モス (HP 420)
-* **Stage 2:** 剣竜 (HP 540)
-* **Stage 3:** ハーピィズペット竜 (HP 550)
-* **Stage 4:** サウザンド・アイズ (HP 800 / 30以下無効)
-* **Extra:** 真紅眼の黒竜 (HP 1500)
-* **Stage 5 (God):** オシリスの天空竜 (HP 2000 / 20以下無効 / 再生)
+### 🃏 Card Rarity Design
+| Rarity | Frame Color | Text Color | Animation Effect | Concept |
+|:---:|:---|:---|:---|:---|
+| **N** | Dark Gray | White | None | Basic / Matte |
+| **R** | Silver Grad | Silver Grad | **Sharp Sheen** (Linear wipe) | Metallic / Sharp |
+| **SR** | Gold Grad | Gold Grad | **Liquid Flow** (Reverse linear) | Luxury / Wealth |
+| **UR** | **Rainbow Spin** | **Rainbow** | **Holo Shimmer** (Oscillating) | Prism / Godly |
 
-### 🎴 Key Cards (Vol.1 & Vol.2)
-* **天使の施し (UR):** コスト1。手札1捨て2ドロー。最強の回転率。
-* **強欲な壺 (SR):** コスト0。MP+5。
-* **巨大化 (R):** HP半分以下で次撃3倍。逆転の切り札。
-* **魔法の筒 (SR):** 敵攻撃反射。対ボス用兵器。
+### 🔊 Sound Effects
+* **Hit Sounds:** Single, Double, Triple, Bull, D-Bull で個別のSEを再生。
+* **Audio Unlock:** Bluetooth接続時に全SEをミュート再生し、モバイルブラウザでの再生制限を解除。
 
 ## 4. 今後の展望
-* **World 3:** 太陽神ラーの翼神竜、および「墓守」シリーズの実装。
-* **Endless Mode:** 育成したステータスで挑むサバイバルランキング。
+* **World 3 Implementation:** 墓守シリーズ、ラーの翼神竜。
+* **Online Ranking:** Firebase等を用いたハイスコアランキングの実装。
