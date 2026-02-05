@@ -73,16 +73,15 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .score-slot { display: inline-block; width: 60px; border-bottom: 2px solid #555; text-align: center; margin: 0 5px; color: #888; } .score-slot.active { border-bottom: 2px solid #00d2fc; color: #fff; font-weight: bold; } .score-slot.filled { color: #00d2fc; } .score-slot.locked { color: #555; border-bottom: 2px dashed #333; }
 .keyboard-hint { text-align: center; color: #888; font-size: 14px; margin-top: 30px; border: 1px dashed #444; padding: 10px; border-radius: 5px; }
 #battle-log { display: none !important; }
-/* ★ Battle Announcer 2.0 (Juicy & Cinematic) */
+/* ★ Battle Announcer 2.0 (Responsive Fix) */
 #battle-announcer {
     position: absolute;
     top: 25%;
-    /* 少し上に配置して敵が見えるように */
-    left: 0;
-    width: 100%;
+    left: 50%; /* 中央配置の基準点 */
+    transform: translate(-50%, -50%) scale(1.5); /* translateで中央補正 */
+    width: 90%; /* 画面幅の90%に収める */
     text-align: center;
     font-family: 'Cinzel Decorative', cursive;
-    /* ファンタジー感のあるフォント */
     font-size: 50px;
     font-weight: bold;
     color: #fff;
@@ -90,22 +89,24 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     pointer-events: none;
     z-index: 2500;
     opacity: 0;
-    transform: scale(1.5);
-    /* 拡大状態から入る */
     transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    background: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.8) 15%, rgba(0, 0, 0, 0.8) 85%, transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.8) 15%, rgba(0,0,0,0.8) 85%, transparent 100%);
     padding: 15px 0;
     letter-spacing: 2px;
     display: flex;
     justify-content: center;
     align-items: center;
-    white-space: nowrap;
+    
+    /* 改行設定の変更 */
+    white-space: pre-wrap; /* 改行コードを反映しつつ、幅に合わせて折り返す */
+    word-wrap: break-word; /* 長い単語も折り返す */
+    line-height: 1.2; /* 行間を少し広げる */
 }
 
 /* 表示時のアニメーション状態 */
 .announcer-visible {
     opacity: 1 !important;
-    transform: scale(1.0) !important;
+    transform: translate(-50%, -50%) scale(1.0) !important; /* 表示時も中央揃えを維持 */
 }
 
 /* 敵の攻撃・脅威 */

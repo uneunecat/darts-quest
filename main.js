@@ -231,38 +231,39 @@ function updateVisuals() {
     if(el("player-lock-badge")) { el("player-lock-badge").style.display = player.state.itemLock ? "block" : "none"; } 
     if(el("player-guard-badge")) { if(player.state.shield) { el("player-guard-badge").style.display = "block"; el("player-guard-badge").innerText = "SHIELD"; } else if(player.state.guardTurn > 0) { el("player-guard-badge").style.display = "block"; el("player-guard-badge").innerText = "GUARD " + player.state.guardTurn; } else { el("player-guard-badge").style.display = "none"; } } 
     if(el("enemy-buff-badge")) el("enemy-buff-badge").style.display = enemy.state.charge ? "block" : "none"; 
-    if(el("enemy-guard-badge")) el("enemy-guard-badge").style.display = (enemy.state.guard || enemy.state.guardType) ? "block" : "none"; 
+    
+    // ★削除: 敵の右上のガードバッジ処理を削除 (チップで表示するため不要)
+    // if(el("enemy-guard-badge")) el("enemy-guard-badge").style.display = ...; 
+    if(el("enemy-guard-badge")) el("enemy-guard-badge").style.display = "none"; // 強制非表示
+
     const dropBadge = el("enemy-drop-badge"); const enemyPanel = el("enemy-panel"); 
     if(player.state.weakLock || dropGuaranteed) { if(dropBadge) dropBadge.style.display = "block"; if(enemyPanel) enemyPanel.classList.add("drop-chance"); } else { if(dropBadge) dropBadge.style.display = "none"; if(enemyPanel) enemyPanel.classList.remove("drop-chance"); } 
 }
-// ★ State Chips Update Logic (Enemy Guard Included)
+// ステートチップの更新（プレイヤー情報を敵エリアから削除）
 function updateStateChips() {
-    const area = el("active-states"); if (!area) return;
+    const area = el("active-states"); if(!area) return;
     area.innerHTML = "";
 
-    // --- ENEMY STATES ---
+    // --- ENEMY STATES ONLY ---
     // 特殊装甲 (Toon)
-    if (enemy.state.toonSkin) area.innerHTML += `<div class='state-chip chip-guard'><span class='chip-icon'>🛡️</span>-15 SKIN</div>`;
+    if(enemy.state.toonSkin) area.innerHTML += `<div class='state-chip chip-guard'><span class='chip-icon'>🛡️</span>-15 SKIN</div>`;
     // バリア (Threshold)
-    if (enemy.state.barrierLimit > 0) area.innerHTML += `<div class='state-chip chip-guard'><span class='chip-icon'>🚫</span><${enemy.state.barrierLimit} NULL</div>`;
+    if(enemy.state.barrierLimit > 0) area.innerHTML += `<div class='state-chip chip-guard'><span class='chip-icon'>🚫</span><${enemy.state.barrierLimit} NULL</div>`;
     // 神のパッシブ
-    if (stage === 6 && floor === 5) area.innerHTML += `<div class='state-chip chip-bad'><span class='chip-icon'>⚡</span><15 NULL</div>`;
-
-    // ★ NEW: 敵の防御スキル (1ターン半減など)
-    if (enemy.state.guard) {
+    if(stage===6 && floor===5) area.innerHTML += `<div class='state-chip chip-bad'><span class='chip-icon'>⚡</span><15 NULL</div>`;
+    
+    // 敵の防御スキル
+    if(enemy.state.guard) {
         area.innerHTML += `<div class='state-chip chip-guard' style='border-color:#ffff00; color:#ffffcc;'><span class='chip-icon'>🛡️</span>DEFENSE</div>`;
     }
-    // ★ NEW: 敵の持続防御 (護封剣など)
-    if (enemy.state.guardType) {
+    // 敵の持続防御
+    if(enemy.state.guardType) {
         const label = enemy.state.guardType === 'half' ? 'HALF' : 'GUARD';
         area.innerHTML += `<div class='state-chip chip-guard' style='border-color:#ffff00; color:#ffffcc;'><span class='chip-icon'>⚔️</span>${label} ${enemy.state.guardTurn}</div>`;
     }
 
-    // --- PLAYER STATES ---
-    // 状態異常: アイテム封印
-    if (player.state.itemLock) area.innerHTML += `<div class='state-chip chip-bad'><span class='chip-icon'>🕸️</span>LOCKED</div>`;
-    // プレイヤーの防御 (護封剣)
-    if (player.state.guardTurn > 0) area.innerHTML += `<div class='state-chip chip-buff'><span class='chip-icon'>⚔️</span>GUARD ${player.state.guardTurn}</div>`;
+    // ★削除: ここにあった PLAYER STATES の描画処理を削除しました。
+    // プレイヤーの状態は右側のパネル（player-guard-badge等）で既に表示されています。
 }
 // ★ v2.6.6 Fixed: renderHand Definition Added
 function renderHand() {
