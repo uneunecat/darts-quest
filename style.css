@@ -37,10 +37,8 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .stage4-btn { display: none; background: linear-gradient(145deg, #2a0f4a, #1a0530); color: #e0b0ff; border: 2px solid #9932cc; } .stage4-btn:hover { border-color: #ba55d3; box-shadow: 0 0 20px #ba55d3; }
 .extra-btn { display: none; background: linear-gradient(145deg, #4a0f1c, #300a10); color: #ff99aa; border: 2px solid #ff0055; } .extra-btn:hover { border-color: #ff0000; box-shadow: 0 0 20px #ff0000; }
 .stage5-btn { display: none; background: linear-gradient(145deg, #b8860b, #8b0000); color: #fff; border: 2px solid #ffd700; text-shadow: 0 0 5px #ffd700; } .stage5-btn:hover { border-color: #fff; box-shadow: 0 0 20px #ffd700; }
-/* ★ v2.5.4: Danger Button for un-cleared Stage 5 */
 .btn-danger { background: linear-gradient(145deg, #330000, #110000); color: #ff5555; border: 2px solid #ff0000; box-shadow: 0 0 15px #550000; }
 .btn-danger:hover { background: #550000; box-shadow: 0 0 20px #ff0000; border-color: #fff; }
-
 .game-screen { display: none; padding: 20px; box-sizing: border-box; height: 100%; position: relative; z-index:1; }
 .home-btn { position: absolute; top: 15px; left: 15px; background: #333; color: #fff; border: 1px solid #555; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 14px; z-index: 50; opacity: 0.7; }
 .header-info { display: flex; justify-content: center; align-items: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; font-size: 24px; font-weight: bold; color: #f9a826; gap: 40px; text-shadow: 2px 2px 0 #000; }
@@ -57,13 +55,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .hp-bar-bg { width: 90%; height: 24px; background: #333; margin: 5px auto; border-radius: 12px; overflow: hidden; border: 1px solid #555; position: relative; }
 .hp-bar-fill { height: 100%; width: 100%; transition: width 0.3s; }
 .bar-overlay-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; color: #fff; font-weight: bold; font-size: 16px; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; z-index: 5; font-family: 'Verdana', sans-serif; letter-spacing: 1px; }
-/* ★ v2.5.4: HP Bar Color Variants */
-.enemy-fill { background: #e94560; } 
-.player-fill { background: #00d2fc; } 
-.player-warning { background: #ffd700; }
-.player-danger { background: #ff0000; }
-.sp-fill { background: #ffd700; }
-
+.enemy-fill { background: #e94560; } .player-fill { background: #00d2fc; } .player-warning { background: #ffd700; } .player-danger { background: #ff0000; } .sp-fill { background: #ffd700; }
 .status-badge { position: absolute; top: -10px; right: -5px; padding: 5px 10px; border-radius: 8px; font-weight: bold; font-size: 16px; display: none; animation: popIn 0.3s; z-index: 10; box-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
 .badge-buff { background-color: #e94560; color: white; border: 2px solid #fff; } .badge-guard { background-color: #00d2fc; color: black; border: 2px solid #fff; } .badge-heal { background-color: #28a745; color: white; border: 2px solid #fff; } .badge-drop { left: -10px; right: auto; background-color: #d0f; color: white; border: 2px solid #fff; display:none; }
 .right-panel { flex: 1; display: flex; flex-direction: column; position: relative; }
@@ -162,10 +154,8 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 @keyframes spin-UR { 100% { transform: rotate(360deg); } }
 @keyframes rainbow-text { 0% { background-position: 0%; } 100% { background-position: 200%; } }
 @keyframes holo-shimmer { 0% { background-position: 0% 50%; opacity: 0.3; } 100% { background-position: 100% 50%; opacity: 0.7; } }
-/* ★ v2.5.4: MP Glow Animation */
 @keyframes mp-glow { 0% { box-shadow: 0 0 5px #00d2fc, inset 0 0 2px #fff; } 50% { box-shadow: 0 0 15px #00ffff, inset 0 0 5px #fff; } 100% { box-shadow: 0 0 5px #00d2fc, inset 0 0 2px #fff; } }
 .mp-max-glow { animation: mp-glow 1.5s infinite; border-color: #00ffff !important; background-color: #00ffff !important; }
-
 .in-deck-card { width: 50px !important; height: 75px !important; flex-shrink: 0; border: 1px solid #777; padding: 0 !important; background: #222 !important; }
 .in-deck-card .card-art { height: 100%; border: none; border-radius: 4px; }
 .in-deck-card .card-art img { height: 100%; border-radius: 4px; }
