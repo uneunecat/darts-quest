@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v2.5.1 Visual Polish)");
+console.log("★ main.js is loaded! (v2.5.2 Final Polish)");
 const GAME_DATA = {
     enemies: {
         1: [ { name: "プチモス", img: "assets/1-1.png", weak: 20 }, { name: "ラーバモス", img: "assets/1-2.png", weak: 19 }, { name: "進化の繭", img: "assets/1-3.png", weak: 18, hp: 260 }, { name: "グレート・モス", img: "assets/1-4.png", weak: 17, hp: 290 }, { name: "究極完全態・グレート・モス", img: "assets/1-5.png", weak: 20, hp: 420 } ],
@@ -161,28 +161,17 @@ function openCollection(){playSE("se-tap");renderDeckEditor();el("collection-mod
 function closeCollection(){playSE("se-tap");el("collection-modal").style.display="none";hideTooltip();}
 function renderDeckEditor(){ if(!savedData.deck)savedData.deck=[]; savedData.deck.sort((a,b)=>a-b); const deckGrid=el("deck-grid"); deckGrid.innerHTML=""; for(let i=0;i<DECK_SIZE;i++){ const cardId=savedData.deck[i]; if(cardId){ const card=CARD_DB.find(c=>c.id===cardId); const totalOwned=savedData.cards[card.id]||0; const el=createCardElement(card, true, 0, totalOwned); el.onmouseenter=()=>showCardDetail(card); deckGrid.appendChild(el); }else{ const div=document.createElement("div"); div.className="deck-slot-empty"; div.innerText="EMPTY"; deckGrid.appendChild(div); } } const deckCount=savedData.deck.length; const countEl=el("deck-count"); countEl.innerText=deckCount; if(deckCount<DECK_SIZE){countEl.style.color="#ff5555";countEl.innerText+=" (あと"+(DECK_SIZE-deckCount)+"枚)";}else{countEl.style.color="#00ff00";countEl.innerText+=" (OK!)";} const listGrid=el("card-grid"); listGrid.innerHTML=""; if(!savedData.cards)savedData.cards={}; let ownedCount=0; CARD_DB.forEach(card=>{ const count=savedData.cards[card.id]||0; if(count>0)ownedCount++; const inDeckCount=savedData.deck.filter(id=>id===card.id).length; const remaining=count-inDeckCount; const el=createCardElement(card, false, remaining, count); listGrid.appendChild(el); }); el("collection-rate").innerText=`${Math.floor((ownedCount/CARD_DB.length)*100)}%`; }
 
-// ★ v2.5.1 FIX: UR HTML Structure
+// ★ v2.5.2 FIX: UR HTML Structure (Kept same as v2.5.1)
 function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0) {
     const div = document.createElement("div"); const isOwned = (totalCount > 0 || isDeckItem); const notOwnedClass = (!isOwned) ? "card-not-owned" : ""; const typeClass = isDeckItem ? "in-deck-card" : "in-list-card";
     div.className = `collection-card rarity-${card.rarity} ${notOwnedClass} ${typeClass}`;
     const imgPath = `assets/cards/${card.id}.png`; const fallbackIcon = card.type === "MAGIC" ? "🪄" : "⛓️"; const cost = (card.cost !== undefined) ? card.cost : "?";
     let shortDesc = card.desc; if(shortDesc.length > 20) shortDesc = shortDesc.substring(0, 19) + "..";
-    
-    // UR Structure: Needs .inner-mask wrapper
     if (card.rarity === "UR" && !isDeckItem) {
-        div.innerHTML = `
-            <div class="inner-mask">
-                <div class="card-cost-badge">${cost}</div>
-                <div class="card-count-badge">x${remainingCount}</div>
-                <div class="card-shine"></div>
-                <div class="card-art"><img src="${imgPath}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><div class="card-placeholder" style="display:none;">${fallbackIcon}</div></div>
-                <div class="card-info"><div class="card-name">${card.name}</div><div class="card-type">[${card.type}]</div>${isOwned ? `<div class="card-info-direct">${shortDesc}</div>` : ''}</div>
-            </div>`;
+        div.innerHTML = `<div class="inner-mask"><div class="card-cost-badge">${cost}</div><div class="card-count-badge">x${remainingCount}</div><div class="card-shine"></div><div class="card-art"><img src="${imgPath}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><div class="card-placeholder" style="display:none;">${fallbackIcon}</div></div><div class="card-info"><div class="card-name">${card.name}</div><div class="card-type">[${card.type}]</div>${isOwned ? `<div class="card-info-direct">${shortDesc}</div>` : ''}</div></div>`;
     } else {
-        // Standard Structure
         div.innerHTML = `<div class="card-cost-badge">${cost}</div><div class="card-count-badge">x${isDeckItem ? 1 : remainingCount}</div><div class="card-shine"></div><div class="card-art"><img src="${imgPath}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><div class="card-placeholder" style="display:none;">${fallbackIcon}</div></div><div class="card-info"><div class="card-name">${card.name}</div><div class="card-type">[${card.type}]</div>${(!isDeckItem && isOwned) ? `<div class="card-info-direct">${shortDesc}</div>` : ''}</div>`;
     }
-    
     div.onclick = function() { if(!isOwned)return; if(isDeckItem)removeFromDeck(card.id); else addToDeck(card.id); }; div.onmouseenter = (e) => { showCardDetail(card); if(isDeckItem) showTooltip(card.name, card.desc, e); }; if (isDeckItem) { div.onmouseleave = () => hideTooltip(); } return div;
 }
 
