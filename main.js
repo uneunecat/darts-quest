@@ -399,31 +399,35 @@ async function buyPack(packId) {
     if(prompt) prompt.style.opacity = 1;
 }
 
-// 開封実行 (Phase 2 -> 3 -> 4)
+/* --- main.js (Part 2: Unboxing Logic Update) --- */
+
+// 開封実行 (SE変更 & レイアウト修正版)
 async function proceedToOpen() {
     const packImg = el("opening-pack");
     const prompt = el("opening-prompt");
     const rays = el("god-rays");
     const whiteOut = el("white-out");
     
-    // ガード: 要素がない、または既に進行中なら無視
     if (!packImg || packImg.classList.contains("anim-charge")) return;
 
     // --- Phase 2: The Charge (蓄積) ---
     if(prompt) prompt.style.display = "none";
     packImg.classList.remove("anim-breath");
-    packImg.classList.add("anim-charge"); // 振動開始
-    if(rays) rays.classList.add("rays-active"); // 後光回転
-    playSE("se-warning"); // エネルギー音
+    packImg.classList.add("anim-charge");
+    if(rays) rays.classList.add("rays-active");
+    
+    // ★ SE変更: 警告音 -> 能力アップ音 (エネルギー充填感)
+    playSE("se-buff"); 
 
-    // 1.5秒溜める
     await wait(1500);
 
     // --- Phase 3: The Reveal (解放) ---
-    playSE("se-boom"); // 爆発音
-    if(whiteOut) whiteOut.classList.add("white-out-anim"); // ホワイトアウト開始
+    // ★ SE変更: 爆発音 -> 回復音 (浄化・解放感)
+    playSE("se-heal"); 
     
-    // カード抽選 & Climax Sort (レアリティ昇順ソート)
+    if(whiteOut) whiteOut.classList.add("white-out-anim");
+    
+    // カード抽選 & ソート
     const results = [];
     const rarityScore = { "N": 1, "R": 2, "SR": 3, "UR": 4 };
     for(let i=0; i<3; i++) {
@@ -433,23 +437,25 @@ async function proceedToOpen() {
         savedData.cards[card.id]++;
         results.push({ card, isNew, score: rarityScore[card.rarity] });
     }
-    // ソート: スコアの低い順 (最後が一番高レア)
     results.sort((a, b) => a.score - b.score);
-    saveToDrive(); // 保存
+    saveToDrive();
 
-    // ホワイトアウトの輝きが最大になったタイミング(0.5秒後)で画面切り替え
     await wait(500);
     
-    // DOMをカードリザルトに書き換え
     const stage = el("opening-stage");
-    if(!stage) return; // 安全策
+    if(!stage) return;
     stage.innerHTML = `<div class="reveal-stage" id="reveal-stage"></div>`;
     const revealContainer = el("reveal-stage");
 
-    // カード要素の生成（まだ非表示）
+    // カード生成 (リザルト画面用)
     results.forEach(res => {
         const cardEl = createCardElement(res.card, false, 1, savedData.cards[res.card.id]);
-        cardEl.classList.add("card-appear"); // 初期透明
+        cardEl.classList.add("card-appear");
+        
+        // ★ 修正: リザルト画面ではクリックによるデッキ追加/削除を無効化
+        // (長押し拡大機能は createCardElement 内で付与されているのでそのまま有効)
+        cardEl.onclick = null; 
+        
         if(res.isNew) {
             const badge = document.createElement("div");
             badge.className = "new-badge-overlay";
@@ -459,18 +465,17 @@ async function proceedToOpen() {
         revealContainer.appendChild(cardEl);
     });
 
-    // 順次表示アニメーション
+    // 順次表示
     const cards = revealContainer.children;
     for(let i=0; i<3; i++) {
-        await wait(300); // 間隔
+        await wait(300);
         const c = results[i].card;
         const elm = cards[i];
         
-        // レアリティ別演出
         if (c.rarity === "UR") {
-            playSE("se-win"); // ファンファーレ
+            playSE("se-win");
             elm.classList.add("card-show-ur");
-            triggerEffect(document.body, 100, false); // 画面揺れ
+            triggerEffect(document.body, 100, false);
         } else if (c.rarity === "SR") {
             playSE("se-double");
             elm.classList.add("card-show-sr");
@@ -483,9 +488,8 @@ async function proceedToOpen() {
     // --- Phase 4: The Choice (決断) ---
     await wait(800);
     
-    // ボタンエリア生成
     const btnArea = document.createElement("div");
-    btnArea.className = "action-buttons";
+    btnArea.className = "action-buttons"; // CSSで絶対配置・下部固定済み
     const packData = PACK_DATA.find(p => p.id === currentPackId);
     const price = packData ? packData.price : 1000;
     const canBuyAgain = savedData.dp >= price;
@@ -499,16 +503,10 @@ async function proceedToOpen() {
     `;
     
     el("pack-results").appendChild(btnArea);
-    
-    // フェードイン
     requestAnimationFrame(() => btnArea.classList.add("visible"));
     
-    isOpeningPack = false; // 操作ロック解除（キー入力待ちへ）
+    isOpeningPack = false;
 }
-/* =========================================
-   ★ NEW: Legendary Unboxing Logic (End)
-   ========================================= */
-// リザルト閉じる処理 (安全装置付き)
 function closePackResult() {
     if (isOpeningPack) return; // 演出中は閉じさせない (誤操作防止)
     
@@ -523,17 +521,119 @@ function closeCardShop() { playSE("se-tap"); el("card-shop-modal").style.display
 function openCollection() { playSE("se-tap"); renderDeckEditor(); el("collection-modal").style.display = "flex"; }
 function closeCollection() { playSE("se-tap"); el("collection-modal").style.display = "none"; hideTooltip(); }
 function renderDeckEditor() { if (!savedData.deck) savedData.deck = []; savedData.deck.sort((a, b) => a - b); const deckGrid = el("deck-grid"); deckGrid.innerHTML = ""; for (let i = 0; i < DECK_SIZE; i++) { const cardId = savedData.deck[i]; if (cardId) { const card = CARD_DB.find(c => c.id === cardId); const totalOwned = savedData.cards[card.id] || 0; const el = createCardElement(card, true, 0, totalOwned); el.onmouseenter = () => showCardDetail(card); deckGrid.appendChild(el); } else { const div = document.createElement("div"); div.className = "deck-slot-empty"; div.innerText = "EMPTY"; deckGrid.appendChild(div); } } const deckCount = savedData.deck.length; const countEl = el("deck-count"); countEl.innerText = deckCount; if (deckCount < DECK_SIZE) { countEl.style.color = "#ff5555"; countEl.innerText += " (あと" + (DECK_SIZE - deckCount) + "枚)"; } else { countEl.style.color = "#00ff00"; countEl.innerText += " (OK!)"; } const listGrid = el("card-grid"); listGrid.innerHTML = ""; if (!savedData.cards) savedData.cards = {}; let ownedCount = 0; CARD_DB.forEach(card => { const count = savedData.cards[card.id] || 0; if (count > 0) ownedCount++; const inDeckCount = savedData.deck.filter(id => id === card.id).length; const remaining = count - inDeckCount; const el = createCardElement(card, false, remaining, count); listGrid.appendChild(el); }); el("collection-rate").innerText = `${Math.floor((ownedCount / CARD_DB.length) * 100)}%`; }
+/* --- main.js (Part 1: Card Creation & Zoom Logic) --- */
+
+// カード要素生成 (長押し対応版)
 function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0) {
-    const div = document.createElement("div"); const isOwned = (totalCount > 0 || isDeckItem); const notOwnedClass = (!isOwned) ? "card-not-owned" : ""; const typeClass = isDeckItem ? "in-deck-card" : "in-list-card";
+    const div = document.createElement("div");
+    const isOwned = (totalCount > 0 || isDeckItem);
+    const notOwnedClass = (!isOwned) ? "card-not-owned" : "";
+    const typeClass = isDeckItem ? "in-deck-card" : "in-list-card";
+    
     div.className = `collection-card rarity-${card.rarity} ${notOwnedClass} ${typeClass}`;
-    const imgPath = `assets/cards/${card.id}.png`; const fallbackIcon = card.type === "MAGIC" ? "🪄" : "⛓️"; const cost = (card.cost !== undefined) ? card.cost : "?";
-    let shortDesc = card.desc; if (shortDesc.length > 20) shortDesc = shortDesc.substring(0, 19) + "..";
+    
+    const imgPath = `assets/cards/${card.id}.png`;
+    const fallbackIcon = card.type === "MAGIC" ? "🪄" : "⛓️";
+    const cost = (card.cost !== undefined) ? card.cost : "?";
+    let shortDesc = card.desc;
+    if(shortDesc.length > 20) shortDesc = shortDesc.substring(0, 19) + "..";
+
+    // HTML構造 (URかそれ以外かで分岐)
     if (card.rarity === "UR" && !isDeckItem) {
         div.innerHTML = `<div class="inner-mask"><div class="card-cost-badge">${cost}</div><div class="card-count-badge">x${remainingCount}</div><div class="card-shine"></div><div class="card-art"><img src="${imgPath}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><div class="card-placeholder" style="display:none;">${fallbackIcon}</div></div><div class="card-info"><div class="card-name">${card.name}</div><div class="card-type">[${card.type}]</div>${isOwned ? `<div class="card-info-direct">${shortDesc}</div>` : ''}</div></div>`;
     } else {
         div.innerHTML = `<div class="card-cost-badge">${cost}</div><div class="card-count-badge">x${isDeckItem ? 1 : remainingCount}</div><div class="card-shine"></div><div class="card-art"><img src="${imgPath}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><div class="card-placeholder" style="display:none;">${fallbackIcon}</div></div><div class="card-info"><div class="card-name">${card.name}</div><div class="card-type">[${card.type}]</div>${(!isDeckItem && isOwned) ? `<div class="card-info-direct">${shortDesc}</div>` : ''}</div>`;
     }
-    div.onclick = function () { if (!isOwned) return; if (isDeckItem) removeFromDeck(card.id); else addToDeck(card.id); }; div.onmouseenter = (e) => { showCardDetail(card); if (isDeckItem) showTooltip(card.name, card.desc, e); }; if (isDeckItem) { div.onmouseleave = () => hideTooltip(); } return div;
+
+    // ★ クリックと長押しの共存ロジック
+    // デッキ編集画面やリスト画面でのみクリック有効 (リザルト画面でのクリック無効化は呼び出し元で制御)
+    div.onclick = function(e) {
+        if (div.dataset.longPressed === "true") {
+            div.dataset.longPressed = "false"; // フラグ消費
+            return; // 長押し直後のクリックは無視
+        }
+        if (!isOwned) return;
+        if (isDeckItem) removeFromDeck(card.id);
+        else addToDeck(card.id);
+    };
+
+    // マウスオーバー詳細
+    div.onmouseenter = (e) => { 
+        showCardDetail(card); 
+        if(isDeckItem) showTooltip(card.name, card.desc, e); 
+    };
+    if (isDeckItem) { div.onmouseleave = () => hideTooltip(); }
+
+    // ★ 長押しセットアップ (所持している場合のみ)
+    if (isOwned || isDeckItem) {
+        setupLongPress(div, card);
+    }
+
+    return div;
+}
+
+// 長押し判定ロジック
+function setupLongPress(element, card) {
+    let pressTimer;
+    const LONG_PRESS_DURATION = 500; // 0.5秒
+
+    const start = (e) => {
+        // 右クリック等は除外
+        if (e.type === "mousedown" && e.button !== 0) return;
+        element.dataset.longPressed = "false";
+        pressTimer = setTimeout(() => {
+            element.dataset.longPressed = "true";
+            showZoomCard(card); // ズーム実行
+            if (navigator.vibrate) navigator.vibrate(50); // 微振動フィードバック
+        }, LONG_PRESS_DURATION);
+    };
+
+    const cancel = () => {
+        if (pressTimer) clearTimeout(pressTimer);
+    };
+
+    element.addEventListener("mousedown", start);
+    element.addEventListener("touchstart", start, {passive: true});
+    element.addEventListener("mouseup", cancel);
+    element.addEventListener("mouseleave", cancel);
+    element.addEventListener("touchend", cancel);
+    element.addEventListener("touchmove", cancel); // 指が動いたらキャンセル
+}
+
+// ズーム表示関数
+function showZoomCard(card) {
+    let overlay = document.getElementById("card-zoom-overlay");
+    // オーバーレイがなければ生成 (Injection)
+    if (!overlay) {
+        overlay = document.createElement("div");
+        overlay.id = "card-zoom-overlay";
+        overlay.onclick = closeZoomCard; // タップで閉じる
+        document.body.appendChild(overlay);
+    }
+
+    const imgPath = `assets/cards/${card.id}.png`;
+    overlay.innerHTML = `
+        <img src="${imgPath}" class="zoom-card-img">
+        <div class="zoom-info-box">
+            <div class="zoom-name">${card.name} <span style="font-size:14px; color:#aaa;">(${card.rarity})</span></div>
+            <div class="zoom-desc">${card.desc}</div>
+            <div class="zoom-close-hint">TAP TO CLOSE</div>
+        </div>
+    `;
+    
+    overlay.style.display = "flex";
+    // フェードイン
+    requestAnimationFrame(() => overlay.classList.add("visible"));
+    playSE("se-tap");
+}
+
+// ズーム閉じる
+function closeZoomCard() {
+    const overlay = document.getElementById("card-zoom-overlay");
+    if (overlay) {
+        overlay.classList.remove("visible");
+        setTimeout(() => { overlay.style.display = "none"; }, 200);
+    }
 }
 function showCardDetail(card) { const detailEl = el("deck-card-detail"); if (!detailEl) return; detailEl.innerHTML = `<span class="detail-name">${card.name}</span>${card.desc}`; }
 function showTooltip(name, desc, e) { const tt = el("global-tooltip"); el("gt-name").innerText = name; el("gt-desc").innerText = desc; tt.style.visibility = "visible"; tt.style.opacity = "1"; moveTooltip(e); e.currentTarget.onmousemove = moveTooltip; }

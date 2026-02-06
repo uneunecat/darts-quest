@@ -387,3 +387,103 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     transition: opacity 0.5s;
 }
 .action-buttons.visible { opacity: 1; }
+
+/* =========================================
+   ★ NEW: Zoom & Layout Refinement
+   ========================================= */
+
+/* モーダルの表示領域制限を解除（カードがはみ出しても切れないように） */
+.modal-box {
+    overflow: visible !important;
+}
+.pack-results-container {
+    overflow: visible !important;
+}
+
+/* アクションボタン：画面下部に固定配置 */
+.action-buttons {
+    position: absolute;
+    bottom: 30px;
+    left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    opacity: 0;
+    transition: opacity 0.5s;
+    z-index: 100;
+    pointer-events: none; /* 表示されるまでクリック不可 */
+}
+.action-buttons.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* リザルト配置：間隔を広げて干渉を防ぐ */
+.reveal-stage {
+    gap: 25px; /* 広めに */
+    margin-bottom: 40px; /* ボタンエリア分の余白 */
+}
+
+/* 拡大表示（Zoom）オーバーレイ */
+#card-zoom-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 9999;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+    backdrop-filter: blur(5px);
+}
+#card-zoom-overlay.visible {
+    opacity: 1;
+}
+
+/* 拡大カード画像 */
+.zoom-card-img {
+    width: auto;
+    height: 60vh;
+    max-width: 90%;
+    border-radius: 15px;
+    box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
+    margin-bottom: 20px;
+    animation: zoom-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes zoom-pop {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1.0); opacity: 1; }
+}
+
+/* 拡大時のテキスト情報 */
+.zoom-info-box {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    max-width: 80%;
+    color: #fff;
+}
+.zoom-name {
+    font-size: 24px;
+    font-weight: bold;
+    color: #ffd700;
+    margin-bottom: 10px;
+    text-shadow: 0 0 10px #000;
+    font-family: 'Cinzel Decorative', serif;
+}
+.zoom-desc {
+    font-size: 16px;
+    line-height: 1.6;
+    color: #ddd;
+    font-family: 'Roboto Mono', monospace;
+}
+.zoom-close-hint {
+    margin-top: 15px;
+    font-size: 12px;
+    color: #888;
+}
