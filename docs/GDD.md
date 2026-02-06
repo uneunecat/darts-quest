@@ -1,51 +1,56 @@
 # 📘 DARTS QUEST - Game Design Document
-**Version:** 2.9.0 (Stable)
+**Version:** 2.10.0 (Stable)
 **Last Updated:** 2026-02-06
 
 ## 1. プロジェクト概要
 * **タイトル:** DARTS QUEST
 * **ジャンル:** Darts RPG (Physical Interaction)
 * **コアコンセプト:** "Throw to Attack"
-    * ダーツの「精度（Accuracy）」とカードゲームの「戦略（Strategy）」を融合させたスキルベースRPG。
+    * 物理ダーツボード（DARTSLIVE HOME）のBluetooth信号をリアルタイムでRPGのアクションに変換。
 
-## 2. ゲームシステム詳細
+## 2. システム要件 & UX (v2.10 Update)
 
-### A. Battle Cycle
-1.  **Tactics Phase:** 投げる前の準備フェーズ。カード・アイテム使用可能。
-2.  **Action Phase:** ダーツ入力（3投）。敵HPを0にすれば勝利。
-3.  **Enemy Turn:** 敵の行動。攻撃、スキル、回復を行う。
+### A. Audio Architecture (3-Channel Mixing)
+プレイヤーの「爽快感」と「快適性」を両立させるため、音声を3つのチャンネルで管理する。
 
-### B. Card System (全20種)
-v2.9.0にてバランス調整実施。魔法（MAGIC）と罠（TRAP）に分類される。
+| Channel | Role | Default Vol | Targets |
+|:---|:---|:---:|:---|
+| **BGM** | 雰囲気演出 | 30% | All Background Music |
+| **SYSTEM** | 情報伝達 | 50% | UI Click, Heal, Buff, Warning, Chest |
+| **ATTACK** | **打撃感・報酬** | **80%** | **Hit, Weak, Explosion, Magic, Damage** |
 
-| ID | Name | Type | Cost | Effect Summary | Note |
-|:---|:---|:---:|:---:|:---|:---|
-| 101 | 死者蘇生 | MAGIC | 8 | HP完全回復 | UR / 起死回生 |
-| 201 | サンダー・ボルト | MAGIC | 6 | 100ダメ + 確定スタン | SR / 足止め最強 |
-| 202 | **強欲な壺** | MAGIC | **2** | **2枚ドロー** | **v2.9 Reworked** |
-| 301 | 光の護封剣 | MAGIC | 5 | 3ターン被ダメ半減 | 防御の要 |
-| 303 | 聖なるバリア | TRAP | 4 | 攻撃無効 + 50ダメ | カウンター |
-| 401 | **火の粉** | MAGIC | 1 | **30ダメージ** | **v2.9 Buffed** |
-| 501 | 天使の施し | MAGIC | 1 | 手札1枚捨てて2枚ドロー | UR / サイクル加速 |
-| 601 | ブラック・ホール | MAGIC | 7 | 全手札捨て + 150ダメ | SR / 最後の一撃 |
-| 703 | **六芒星の呪縛** | **TRAP** | 3 | **被弾時半減 + スタン** | **v2.9 Reworked** |
-| 802 | **火あぶりの刑** | MAGIC | 2 | **60ダメージ** | **v2.9 Buffed** |
-| 805 | 最終戦争 | MAGIC | 5 | 自傷50 + 150ダメ | ハイリスク火力 |
+* **Global Persistence:**
+    * 音量設定は `darts_quest_config` キーでLocalStorageに独立保存される。
+    * ゲーム進行データ（`darts_quest_save`）のリセット影響を受けない。
 
-### C. Ranking System (Turn Attack)
-クリアにかかった総ターン数で評価が決まる。
+## 3. 画面構成 (HUD)
 
-| Stage | SSS (Perfect) | S (Great) | A (Good) | B (Clear) |
-|:---|:---:|:---:|:---:|:---:|
-| **1 ~ 3** | <= 12 | <= 16 | <= 22 | <= 30 |
-| **4 ~ 6** | **<= 25** | **<= 35** | **<= 50** | **<= 70** |
+### A. Title Screen
+* **Top Left:** [⚙️ CONFIG] - 音量設定モーダルを開く。
+* **Top Right:** [📡 CONNECT] - ダーツボード接続。
+* **Center:** ロゴ、ハイスコア、ステージ選択。
 
-## 3. Enemy Logic
-* **必殺技仕様:**
-    * ボスが放つ「サンダー・フォース」等の固定ダメージ技も、プレイヤーの防御スキル（シールド、護封剣）や敵へのデバフ（六芒星）によって**軽減可能**となった。(v2.9 Fix)
+### B. Battle Screen
+* **Effect & Feedback:**
+    * 攻撃ヒット時、画面揺れ（Shake Effect）と共に「ATTACK SE」が再生される。
+    * 設定により攻撃音のみを大きくすることで、打撃感を強調可能。
 
-## 4. データ構造
-LocalStorage `darts_quest_save` に保存。
-* `deck`: Array<int> (カードID)
-* `cards`: Object<id: count> (所持数)
-* `highScore`: { stage, floor, avg }
+## 4. ゲームバランス (v2.9.2 Base)
+* **Rank System:**
+    * Stage 4~6 のSSSランク基準は「25ターン以内」。
+    * 敵撃破ターンも正しくカウントされるようロジックが修正済み。
+* **Card Logic:**
+    * **強欲な壺:** Cost 2 / Draw 2
+    * **天使の施し:** Cost 2 / Discard 1 -> Draw 3
+    * **六芒星の呪縛:** Trap / 被弾時半減＆スタン
+
+## 5. データ構造
+* **Save Data (`darts_quest_save`):** ゲーム進行、デッキ、所持カード。
+* **Global Config (`darts_quest_config`):**
+    ```json
+    {
+      "bgmVolume": 0.3,
+      "sysVolume": 0.5,
+      "atkVolume": 0.8
+    }
+    ```
