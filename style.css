@@ -1491,3 +1491,118 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     .hand-wrapper { gap: 10px; justify-content: center; width: 100%; }
     .side-block { min-height: auto; } /* スマホでは高さ固定を解除 */
 }
+
+/* =========================================
+   ★ v2.11.4 FINAL REFINEMENT (Add to end of file)
+   ========================================= */
+
+/* --- Darts Score (Horizontal Fixed Layout) --- */
+.darts-horizontal-box {
+    display: flex;
+    justify-content: space-between;
+    gap: 5px;
+    margin-bottom: 5px;
+}
+.score-cell {
+    flex: 1;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid #444;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 5px 0;
+}
+.score-label {
+    font-size: 10px; color: #888; margin-bottom: 2px;
+}
+.score-val {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 24px; /* Big! */
+    font-weight: bold;
+    color: #555;
+    height: 30px; line-height: 30px;
+}
+/* Score Colors */
+.score-val.filled { color: #00d2fc; text-shadow: 0 0 5px rgba(0, 210, 252, 0.5); }
+.score-val.active { color: #fff; animation: pulse-white 1s infinite; }
+.score-val.high { color: #ffd700; text-shadow: 0 0 5px #ffd700; } /* 50+ */
+.score-val.low { color: #888; } 
+
+@keyframes pulse-white { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+/* --- Mega HP (Even Bigger, Lower Position) --- */
+.enemy-hp-container {
+    bottom: -80px !important; /* Move down */
+    width: 100%;
+}
+.hp-mega-text {
+    font-size: 140px !important; /* Huge! */
+    text-shadow: 5px 5px 0 #000, 0 0 30px rgba(255,0,0,0.3);
+    font-family: 'Impact', sans-serif;
+    letter-spacing: -5px;
+    line-height: 1;
+    color: #fff;
+}
+
+/* --- Trap Slot (Fixed Position & Card Back) --- */
+.trap-slot-container {
+    position: absolute;
+    bottom: 20px;
+    left: 20px; /* Fixed at left bottom of battle area */
+    z-index: 60;
+}
+.trap-slot {
+    width: 80px; height: 120px;
+    border: 2px dashed #555; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; font-size: 12px; color: #555; font-weight: bold;
+    background: rgba(0,0,0,0.5);
+    transition: all 0.3s;
+}
+.trap-slot.set {
+    border: 2px solid #aaa;
+    background: #222;
+    color: transparent;
+    box-shadow: 0 0 15px rgba(0,0,0,0.8);
+    position: relative;
+    overflow: hidden;
+}
+/* Card Back Design (CSS Pattern) */
+.trap-slot.set::after {
+    content: ''; position: absolute; top: 4px; left: 4px; right: 4px; bottom: 4px;
+    background: repeating-linear-gradient(
+        45deg,
+        #4a0000,
+        #4a0000 10px,
+        #2a0000 10px,
+        #2a0000 20px
+    );
+    border: 1px solid #6a0000;
+    border-radius: 4px;
+}
+.trap-slot.set:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0 20px #d32f2f;
+    border-color: #d32f2f;
+    cursor: help; /* Tooltip hint */
+}
+
+/* --- Hand Center Adjustment --- */
+.hand-overlay-container {
+    /* Trap slot is separated, so center the hand */
+    align-items: center !important; 
+    padding-left: 0 !important;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 900px) {
+    .trap-slot-container {
+        position: relative; /* Flow normally on mobile */
+        bottom: auto; left: auto;
+        margin-bottom: 10px;
+        display: flex; justify-content: center; width: 100%;
+    }
+    .hp-mega-text { font-size: 90px !important; }
+    .score-val { font-size: 20px; }
+}

@@ -168,7 +168,7 @@
                     
                     <div class="battle-side-info">
                         <div class="battle-header-info">
-                            <div class="stg-info-row"><span id="stage-display">STAGE 1</span> <span id="floor-display">1F</span> <span class="boss-label" id="boss-label">BOSS</span></div>
+                            <div class="stg-info-row"><span id="stage-display">STAGE 1</span> <span style="display:inline-block; width:20px;"></span> <span id="floor-display">1F</span> <span class="boss-label" id="boss-label">BOSS</span></div>
                             <div class="turn-info-row" id="turn-display">TURN 1</div>
                         </div>
 
@@ -179,10 +179,10 @@
                         </div>
 
                         <div class="side-block score-block-fixed">
-                            <div class="darts-stack">
-                                <div class="dart-row"><span>1st</span><span class="score-slot" id="slot-1-side">0</span></div>
-                                <div class="dart-row"><span>2nd</span><span class="score-slot" id="slot-2-side">0</span></div>
-                                <div class="dart-row"><span>3rd</span><span class="score-slot" id="slot-3-side">0</span></div>
+                            <div class="darts-horizontal-box">
+                                <div class="score-cell"><div class="score-label">1</div><div class="score-val" id="slot-1-side">--</div></div>
+                                <div class="score-cell"><div class="score-label">2</div><div class="score-val" id="slot-2-side">--</div></div>
+                                <div class="score-cell"><div class="score-label">3</div><div class="score-val" id="slot-3-side">--</div></div>
                             </div>
                             <div class="darts-indicator">
                                 <span id="d-dot-1" class="d-dot">●</span><span id="d-dot-2" class="d-dot">●</span><span id="d-dot-3" class="d-dot">●</span>
@@ -220,20 +220,24 @@
                     </div>
 
                     <div class="battle-main-stage" id="enemy-panel">
+                        
+                        <div class="trap-slot-container">
+                            <div id="trap-slot" class="trap-slot empty">SET<br>TRAP</div>
+                        </div>
+
                         <div class="enemy-visual-area">
                             <img id="enemy-img" src="" alt="Enemy">
                             <img id="chest-img" src="assets/img_chest.png" alt="Chest" onclick="openChest()">
                             
                             <div class="enemy-hp-container">
-                                <div id="enemy-name" style="display:none;"></div> <div id="enemy-hp-value" class="hp-mega-text">100</div>
-                                <div class="hp-bar-bg big-bar"><div class="hp-bar-fill enemy-fill" id="enemy-hp-bar"></div></div>
+                                <div id="enemy-hp-value" class="hp-mega-text">100</div>
+                                <div id="enemy-name" style="display:none;"></div>
                             </div>
                         </div>
 
                         <div class="hand-overlay-container">
                             <div class="deck-info">DECK: <span id="battle-deck-count">0</span> | HAND: <span id="hand-count-display">0</span></div>
                             <div class="hand-wrapper">
-                                <div id="trap-slot" class="trap-slot empty">SET<br>TRAP</div>
                                 <div class="hand-area" id="hand-area"></div>
                             </div>
                         </div>
