@@ -510,3 +510,99 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .hidden-force {
     display: none !important;
 }
+
+/* =========================================
+   ★ FIX v2.8.3: Deck Edit Layout Restoration
+   ========================================= */
+
+/* 1. 左右分割レイアウトの強制復元 */
+.modal-body-split {
+    display: flex !important; /* 絶対にFlexboxにする */
+    flex-direction: row !important; /* 横並び */
+    gap: 15px;
+    flex: 1;
+    min-height: 0; /* 内部スクロールのために必須 */
+    overflow: hidden;
+    padding: 10px 15px;
+    box-sizing: border-box;
+}
+
+/* 2. カラムの伸長設定 */
+.deck-column {
+    flex: 0 0 35% !important; /* 左側は35%幅固定 */
+    display: flex !important;
+    flex-direction: column !important;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    border: 1px solid #333;
+    padding: 5px;
+    max-height: 100%;
+}
+
+.list-column {
+    flex: 1 !important; /* 右側は残り全部 */
+    display: flex !important;
+    flex-direction: column !important;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    border: 1px solid #333;
+    padding: 5px;
+    max-height: 100%;
+}
+
+/* 3. グリッドエリアのスクロール確保 */
+.deck-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, 50px) !important; /* 50px幅で埋める */
+    gap: 5px !important;
+    justify-content: center;
+    align-content: start;
+    overflow-y: auto !important;
+    flex: 1;
+    padding: 5px;
+}
+
+.card-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)) !important;
+    gap: 10px;
+    align-content: start;
+    overflow-y: auto !important;
+    flex: 1;
+    padding: 10px;
+}
+
+/* 4. デッキ内カードのサムネイル化（詳細度を上げて強制適用） */
+.collection-card.in-deck-card {
+    width: 50px !important;
+    height: 75px !important;
+    flex-shrink: 0;
+    border: 1px solid #777;
+    margin: 0 !important;
+    background: #222 !important;
+}
+
+/* デッキ内カードの画像調整 */
+.collection-card.in-deck-card .card-art {
+    height: 100% !important;
+    border: none !important;
+}
+.collection-card.in-deck-card .card-art img {
+    height: 100% !important;
+    object-fit: cover;
+}
+
+/* 邪魔な要素を確実に消す */
+.collection-card.in-deck-card .card-info,
+.collection-card.in-deck-card .card-count-badge,
+.collection-card.in-deck-card .card-shine {
+    display: none !important;
+}
+
+/* コストバッジの微調整 */
+.collection-card.in-deck-card .card-cost-badge {
+    font-size: 8px !important;
+    padding: 0 3px !important;
+    display: block !important;
+    z-index: 20;
+}
