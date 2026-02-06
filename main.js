@@ -3,9 +3,52 @@ const el = (id) => document.getElementById(id);
 function calculateRating(ppr) { if (ppr < 30) return 1; if (ppr < 40) return 2; if (ppr < 45) return 3; if (ppr < 50) return 4; if (ppr < 55) return 5; if (ppr < 60) return 6; if (ppr < 65) return 7; if (ppr < 70) return 8; if (ppr < 75) return 9; if (ppr < 80) return 10; if (ppr < 85) return 11; if (ppr < 90) return 12; if (ppr < 95) return 13; if (ppr < 100) return 14; if (ppr < 110) return 15; if (ppr < 120) return 16; if (ppr < 130) return 17; return 18; }
 function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[array[i], array[j]] = [array[j], array[i]]; } return array; }
 function animateValue(obj, s, e, d) { if (obj) obj.innerHTML = e; }
-function stopAllBGM() { const audio = ["bgm-title", "bgm-battle", "bgm-boss", "bgm-extra", "bgm-win", "bgm-lose"]; audio.forEach(id => { const el = document.getElementById(id); if (el) { el.pause(); el.currentTime = 0; } }); currentBgmId = ""; }
-function playBGM(id) { if (currentBgmId === id) return; stopAllBGM(); const a = document.getElementById(id); if (a) { currentBgmId = id; a.volume = 0.3; a.play().catch(e => { console.log("BGM Play Error:", e); }); } }
-function playSE(id) { const a = document.getElementById(id); if (a) { a.currentTime = 0; a.volume = 0.5; a.play().catch(e => { }); } }
+/* --- main.js (Part 1: Audio Config & Engine v2.10.0) --- */
+
+// グローバル設定 (ブラウザ保存)
+let gameConfig = { bgmVolume: 0.3, sysVolume: 0.5, atkVolume: 0.8 };
+function loadGameConfig() {
+    const saved = localStorage.getItem("darts_quest_config");
+    if (saved) { try { gameConfig = { ...gameConfig, ...JSON.parse(saved) }; } catch(e){} }
+}
+loadGameConfig(); // 起動時にロード
+function saveGameConfig() { localStorage.setItem("darts_quest_config", JSON.stringify(gameConfig)); }
+
+// 音声エンジン (タグベース)
+function stopAllBGM() { 
+    const audio = ["bgm-title", "bgm-battle", "bgm-boss", "bgm-extra", "bgm-win", "bgm-lose"]; 
+    audio.forEach(id => { const el = document.getElementById(id); if (el) { el.pause(); el.currentTime = 0; } }); 
+    currentBgmId = ""; 
+}
+function playBGM(id) { 
+    if (currentBgmId === id) return; 
+    stopAllBGM(); 
+    const a = document.getElementById(id); 
+    if (a) { 
+        currentBgmId = id; 
+        a.volume = gameConfig.bgmVolume; // 設定値を適用
+        a.play().catch(e => { console.log("BGM Error:", e); }); 
+    } 
+}
+// BGM音量のリアルタイム更新（設定画面用）
+function updateCurrentBgmVolume() {
+    if (currentBgmId) {
+        const a = document.getElementById(currentBgmId);
+        if (a) a.volume = gameConfig.bgmVolume;
+    }
+}
+function playSE(id) { 
+    const a = document.getElementById(id); 
+    if (a) { 
+        a.currentTime = 0; 
+        // 攻撃系かシステム系かで音量を分岐
+        const attackSEs = ["se-hit", "se-weak", "se-attack", "se-boom", "se-damage", "se-single", "se-double", "se-triple", "se-bull", "se-dbull"];
+        if (attackSEs.includes(id)) a.volume = gameConfig.atkVolume;
+        else a.volume = gameConfig.sysVolume;
+        
+        if (a.volume > 0.01) a.play().catch(e => {}); 
+    } 
+}
 function triggerFloatText(text, targetEl) { if (!targetEl) return; const float = document.createElement("div"); float.className = "float-text-box"; float.innerText = text; const rect = targetEl.getBoundingClientRect(); document.body.appendChild(float); const left = rect.left + (rect.width / 2) - 30; const top = rect.top; float.style.left = `${left}px`; float.style.top = `${top}px`; float.style.position = "fixed"; setTimeout(() => float.remove(), 1500); }
 function triggerEffect(el, dmg, isP) { el.classList.remove("shake-small", "shake-medium", "shake-heavy", "shake-ultimate"); void el.offsetWidth; if (dmg >= 150) { el.classList.add("shake-ultimate"); playSE("se-boom"); } else if (dmg >= 60) { el.classList.add("shake-heavy"); playSE("se-boom"); } else { el.classList.add(dmg >= 30 ? "shake-medium" : "shake-small"); } const pop = document.createElement("div"); pop.innerText = dmg; if (dmg >= 150) pop.className = "damage-popup dmg-ultimate"; else if (dmg >= 60) pop.className = "damage-popup dmg-heavy"; else if (dmg >= 30) pop.className = "damage-popup dmg-medium"; else pop.className = "damage-popup dmg-small"; pop.style.left = "50%"; pop.style.top = "50%"; el.appendChild(pop); setTimeout(() => pop.remove(), 1500); }
 function resizeGame() { const scaler = el('game-scaler'); const winW = window.innerWidth; const winH = window.innerHeight; const baseW = 900; const baseH = 620; const scale = Math.min(winW / baseW, winH / baseH) * 0.95; if (scaler) scaler.style.transform = `scale(${scale})`; }
@@ -938,3 +981,87 @@ window.addEventListener("keydown", function(e) {
 });
 function updateScoreDisplay() { const slots = [el("slot-1"), el("slot-2"), el("slot-3")]; slots.forEach((s, i) => { s.className = "score-slot"; if (restrictInput && i > 0) { s.classList.add("locked"); s.innerText = "X"; return; } if (i < turnInputs.length) { s.innerText = turnInputs[i]; s.classList.add("filled"); } else if (i === turnInputs.length) { s.innerText = currentInput; s.classList.add("active"); } else { s.innerText = ""; } }); const currentThrow = turnInputs.length + 1; el("btn-d1").className = currentThrow === 1 ? "darts-btn active" : "darts-btn"; el("btn-d2").className = currentThrow === 2 ? "darts-btn active" : "darts-btn"; el("btn-d3").className = currentThrow === 3 ? "darts-btn active" : "darts-btn"; if (restrictInput) { el("btn-d2").className = "darts-btn disabled"; el("btn-d3").className = "darts-btn disabled"; } }
 function getRankColor(r) { if (r === "SSS") return "#00ffff"; if (r === "S") return "#ffd700"; if (r === "A") return "#ff5555"; return "#fff"; }
+
+/* --- main.js (Part 2: Config UI & Injection v2.10.0) --- */
+
+// 設定モーダルの表示
+function openConfigModal() {
+    let modal = el("config-modal");
+    if (!modal) {
+        // モーダル要素の生成（初回のみ）
+        modal = document.createElement("div");
+        modal.id = "config-modal";
+        document.body.appendChild(modal);
+    }
+    
+    // HTML構築
+    modal.innerHTML = `
+        <div class="config-box">
+            <div class="config-title">AUDIO CONFIG</div>
+            <div class="config-row">
+                <div class="config-label"><span>BGM (Music)</span><span id="val-bgm">${Math.round(gameConfig.bgmVolume*100)}%</span></div>
+                <input type="range" class="config-slider" min="0" max="100" value="${gameConfig.bgmVolume*100}" oninput="updateConfigVal('bgm', this.value)">
+            </div>
+            <div class="config-row">
+                <div class="config-label"><span>SYSTEM SE</span><span id="val-sys">${Math.round(gameConfig.sysVolume*100)}%</span></div>
+                <input type="range" class="config-slider" min="0" max="100" value="${gameConfig.sysVolume*100}" oninput="updateConfigVal('sys', this.value)">
+            </div>
+            <div class="config-row">
+                <div class="config-label"><span style="color:#ffaaaa;">ATTACK SE (Hit)</span><span id="val-atk" style="color:#ff4444;">${Math.round(gameConfig.atkVolume*100)}%</span></div>
+                <input type="range" class="config-slider slider-atk" min="0" max="100" value="${gameConfig.atkVolume*100}" oninput="updateConfigVal('atk', this.value)">
+            </div>
+            <div class="config-buttons">
+                <button class="btn-conf btn-reset" onclick="resetConfig()">RESET</button>
+                <button class="btn-conf btn-save" onclick="closeConfig()">CLOSE</button>
+            </div>
+        </div>
+    `;
+    modal.style.display = "flex";
+    playSE("se-tap");
+}
+
+// 設定値の更新処理
+window.updateConfigVal = function(type, val) {
+    const floatVal = val / 100;
+    if (type === 'bgm') {
+        gameConfig.bgmVolume = floatVal;
+        el("val-bgm").innerText = val + "%";
+        updateCurrentBgmVolume(); // BGMは即座に反映
+    } else if (type === 'sys') {
+        gameConfig.sysVolume = floatVal;
+        el("val-sys").innerText = val + "%";
+    } else if (type === 'atk') {
+        gameConfig.atkVolume = floatVal;
+        el("val-atk").innerText = val + "%";
+    }
+};
+
+window.resetConfig = function() {
+    gameConfig = { bgmVolume: 0.3, sysVolume: 0.5, atkVolume: 0.8 };
+    playSE("se-tap");
+    openConfigModal(); // 再描画
+    updateCurrentBgmVolume();
+};
+
+window.closeConfig = function() {
+    saveGameConfig();
+    playSE("se-tap");
+    el("config-modal").style.display = "none";
+};
+
+// ★ タイトル画面の更新関数にフックしてボタンを追加
+const originalUpdateTitleScore = updateTitleScore;
+updateTitleScore = function() {
+    originalUpdateTitleScore(); // 元の処理を実行
+    
+    // コンフィグボタンがなければ追加する
+    if (!document.getElementById("btn-config-entry")) {
+        const titleScreen = el("title-screen");
+        const btn = document.createElement("div");
+        btn.id = "btn-config-entry";
+        btn.className = "config-btn-title";
+        btn.innerText = "⚙️ CONFIG";
+        btn.onclick = openConfigModal;
+        titleScreen.appendChild(btn);
+    }
+};

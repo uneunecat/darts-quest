@@ -606,3 +606,125 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     display: block !important;
     z-index: 20;
 }
+
+/* =========================================
+   ★ NEW: Config Modal & Sliders (v2.10.0)
+   ========================================= */
+
+/* コンフィグボタン (タイトル画面用) */
+.config-btn-title {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid #555;
+    color: #ccc;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 14px;
+    cursor: pointer;
+    z-index: 20;
+    transition: all 0.2s;
+}
+.config-btn-title:hover {
+    background: #333;
+    color: #fff;
+    border-color: #888;
+}
+
+/* コンフィグモーダル全体 */
+#config-modal {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 9999;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(5px);
+}
+
+/* 設定ボックス */
+.config-box {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+    border: 2px solid #444;
+    border-radius: 15px;
+    padding: 30px;
+    width: 85%;
+    max-width: 400px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    color: #fff;
+    font-family: 'Roboto Mono', monospace;
+}
+
+.config-title {
+    text-align: center;
+    font-size: 24px;
+    margin-bottom: 25px;
+    color: #ffd700;
+    font-family: 'Cinzel Decorative', serif;
+    border-bottom: 1px solid #444;
+    padding-bottom: 10px;
+}
+
+/* 各スライダー行 */
+.config-row {
+    margin-bottom: 20px;
+}
+.config-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #aaa;
+}
+.config-val {
+    color: #00ffff;
+    font-weight: bold;
+}
+
+/* スライダー本体のカスタマイズ */
+.config-slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    background: #444;
+    border-radius: 3px;
+    outline: none;
+    transition: background 0.2s;
+}
+.config-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #00ffff;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+.config-slider.slider-atk::-webkit-slider-thumb {
+    background: #ff4444; /* 攻撃音は赤 */
+    box-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
+}
+
+/* ボタンエリア */
+.config-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 30px;
+    gap: 15px;
+}
+.btn-conf {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    font-family: 'Roboto Mono', monospace;
+}
+.btn-reset { background: #444; color: #ccc; }
+.btn-save { background: #00ffff; color: #000; box-shadow: 0 0 15px rgba(0, 255, 255, 0.3); }
