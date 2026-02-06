@@ -1175,3 +1175,30 @@ returnToTitle = function() {
     el("stage-select-screen").style.display = "none";
     updateTitleScore();
 };
+
+/* --- FIX: updateTitleScore for v2.11 --- */
+function updateTitleScore() {
+    // 1. ハイスコア・DPの更新
+    let stg = `STAGE ${savedData.highScore.stage}`;
+    if (savedData.highScore.stage === 5) stg = "EXTRA";
+    if (savedData.highScore.stage === 6) stg = "STAGE 5";
+    
+    // 要素が存在する場合のみ更新（安全策）
+    if(el("hs-reach")) el("hs-reach").innerText = `${stg} - ${savedData.highScore.floor}F`;
+    if(el("hs-avg")) el("hs-avg").innerText = savedData.highScore.avg.toFixed(1);
+    if(el("hs-rt")) el("hs-rt").innerText = "Rt " + calculateRating(savedData.highScore.avg);
+    if(el("dp-display")) el("dp-display").innerText = "DP: " + (savedData.dp || 0);
+
+    // 2. コンフィグボタンの生成（存在しなければ）
+    if (!document.getElementById("btn-config-entry")) {
+        const titleScreen = el("title-screen");
+        if(titleScreen) {
+            const btn = document.createElement("div");
+            btn.id = "btn-config-entry";
+            btn.className = "config-btn-title";
+            btn.innerText = "⚙️ CONFIG";
+            btn.onclick = openConfigModal;
+            titleScreen.appendChild(btn);
+        }
+    }
+}
