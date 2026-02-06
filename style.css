@@ -611,11 +611,11 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
    ★ NEW: Config Modal & Sliders (v2.10.0)
    ========================================= */
 
-/* コンフィグボタン (タイトル画面用) */
+/* コンフィグボタン (タイトル画面用 - 左上に配置変更) */
 .config-btn-title {
     position: absolute;
     top: 20px;
-    right: 20px;
+    left: 20px; /* ★ FIX: 右上(CONNECTボタン)と被るため左上へ移動 */
     background: rgba(0, 0, 0, 0.6);
     border: 1px solid #555;
     color: #ccc;
@@ -624,7 +624,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     font-family: 'Roboto Mono', monospace;
     font-size: 14px;
     cursor: pointer;
-    z-index: 20;
+    z-index: 200;
     transition: all 0.2s;
 }
 .config-btn-title:hover {
