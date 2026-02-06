@@ -1,54 +1,51 @@
 # 📘 DARTS QUEST - Game Design Document
-**Version:** 2.8.3 (Stable)
+**Version:** 2.9.0 (Stable)
 **Last Updated:** 2026-02-06
 
 ## 1. プロジェクト概要
 * **タイトル:** DARTS QUEST
 * **ジャンル:** Darts RPG (Physical Interaction)
 * **コアコンセプト:** "Throw to Attack"
-    * 物理ダーツボード（DARTSLIVE HOME）のBluetooth信号、またはデバッグ用キーパッドからの入力をリアルタイムでRPGのアクションに変換。
-    * プレイヤーの「ダーツスキル（精度・PPR）」が攻略の鍵となるスキルベースRPG。
+    * ダーツの「精度（Accuracy）」とカードゲームの「戦略（Strategy）」を融合させたスキルベースRPG。
 
-## 2. 画面構成 (HUD 2.1)
-
-### A. Main Battle Screen
-* **Center Overlay (Battle Announcer):** * スキル発動やクリティカルヒットなどの重要アクションを、画面中央に縦並び（名称＋効果）でカットイン表示。
-    * 視線移動を減らすため、動的な情報のみをフィルタリングして表示。
-* **Left Panel (Enemy):** * 敵グラフィック、HPバー、および防御状態（State Chips）の可視化エリア。
-    * 敵の状態（ガード、無効化バリアなど）はアイコン付きチップで常時表示される。
-* **Right Panel (Player):** * ステータス（HP/MP/Avg）、手札エリア、アイテムボタン、スコア履歴。
-
-### B. Sub Screens
-* **Deck Edit:** * 左カラム：現在のデッキ（サムネイル表示、最大20枚）。
-    * 右カラム：所持カードリスト（クリックでデッキに追加）。
-    * **長押しズーム:** 任意のカードを長押しすることで、詳細情報を拡大オーバーレイ表示可能。
-* **Card Shop:** * DP（ダーツポイント）を消費してパックを購入。
-    * **Legendary Unboxing:** 落下・振動・発光を組み合わせたシネマティックな開封演出。
-
-## 3. ゲームシステム詳細
+## 2. ゲームシステム詳細
 
 ### A. Battle Cycle
-1.  **Tactics Phase:** 投擲前。カード使用（MP消費）、アイテム使用が可能。
-2.  **Action Phase:** 1投目を検知するとUIロック。3投投げるか敵撃破まで継続。
-3.  **Enemy Turn:** 敵のAI行動（攻撃、スキル、回復）。ターン終了時にプレイヤーのMP回復(+3)とドロー。
+1.  **Tactics Phase:** 投げる前の準備フェーズ。カード・アイテム使用可能。
+2.  **Action Phase:** ダーツ入力（3投）。敵HPを0にすれば勝利。
+3.  **Enemy Turn:** 敵の行動。攻撃、スキル、回復を行う。
 
-### B. Card & Gacha System
-* **種類:** 全20種（MAGIC / TRAP）。
-* **パック仕様:**
-    * **Vol.1 (Legend):** ID 100~499 のカードを排出。
-    * **Vol.2 (Awakening):** ID 500~899 のカードを排出。
-* **排出ロジック:** * レアリティ抽選（UR:3%, SR:12%, R:30%, N:55%）を行い、該当パック内のリストから選出。
-    * **Climax Sort:** 排出された3枚は演出上、低レア→高レアの順に表示される。
+### B. Card System (全20種)
+v2.9.0にてバランス調整実施。魔法（MAGIC）と罠（TRAP）に分類される。
 
-### C. Enemy Logic (Sample)
-* **Toon Dragon (4-4):** 常時ダメージ-15軽減 (Chip: `🛡️ -15 SKIN`)。
-* **GOD (6-5):** 15以下のダメージを無効化 (Chip: `⚡ <15 NULL`)。
-* **Rare Drop:** Weak Pointへのヒット回数に応じてドロップ率が変化。
+| ID | Name | Type | Cost | Effect Summary | Note |
+|:---|:---|:---:|:---:|:---|:---|
+| 101 | 死者蘇生 | MAGIC | 8 | HP完全回復 | UR / 起死回生 |
+| 201 | サンダー・ボルト | MAGIC | 6 | 100ダメ + 確定スタン | SR / 足止め最強 |
+| 202 | **強欲な壺** | MAGIC | **2** | **2枚ドロー** | **v2.9 Reworked** |
+| 301 | 光の護封剣 | MAGIC | 5 | 3ターン被ダメ半減 | 防御の要 |
+| 303 | 聖なるバリア | TRAP | 4 | 攻撃無効 + 50ダメ | カウンター |
+| 401 | **火の粉** | MAGIC | 1 | **30ダメージ** | **v2.9 Buffed** |
+| 501 | 天使の施し | MAGIC | 1 | 手札1枚捨てて2枚ドロー | UR / サイクル加速 |
+| 601 | ブラック・ホール | MAGIC | 7 | 全手札捨て + 150ダメ | SR / 最後の一撃 |
+| 703 | **六芒星の呪縛** | **TRAP** | 3 | **被弾時半減 + スタン** | **v2.9 Reworked** |
+| 802 | **火あぶりの刑** | MAGIC | 2 | **60ダメージ** | **v2.9 Buffed** |
+| 805 | 最終戦争 | MAGIC | 5 | 自傷50 + 150ダメ | ハイリスク火力 |
 
-## 4. データ構造 (SavedData)
-LocalStorage `darts_quest_save` にJSON形式で保存。
-* `highScore`: { stage, floor, avg }
-* `dp`: 所持ポイント
-* `deck`: Array<int> (カードID配列)
+### C. Ranking System (Turn Attack)
+クリアにかかった総ターン数で評価が決まる。
+
+| Stage | SSS (Perfect) | S (Great) | A (Good) | B (Clear) |
+|:---|:---:|:---:|:---:|:---:|
+| **1 ~ 3** | <= 12 | <= 16 | <= 22 | <= 30 |
+| **4 ~ 6** | **<= 25** | **<= 35** | **<= 50** | **<= 70** |
+
+## 3. Enemy Logic
+* **必殺技仕様:**
+    * ボスが放つ「サンダー・フォース」等の固定ダメージ技も、プレイヤーの防御スキル（シールド、護封剣）や敵へのデバフ（六芒星）によって**軽減可能**となった。(v2.9 Fix)
+
+## 4. データ構造
+LocalStorage `darts_quest_save` に保存。
+* `deck`: Array<int> (カードID)
 * `cards`: Object<id: count> (所持数)
-* `history`: Array<Object> (プレイ履歴)
+* `highScore`: { stage, floor, avg }
