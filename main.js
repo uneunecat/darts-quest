@@ -139,6 +139,7 @@ function processOneThrow(score) {
     // ★ FIX: 敵撃破時にターンを加算する
     if (enemy.hp <= 0) { 
         totalGameTurns++; // 現在のターンを消費したとみなす
+        isProcessing = true;
         setTimeout(winBattle, 1000); 
         return; 
     } 
@@ -342,7 +343,10 @@ function applyCardEffect(card) {
     announce(announcerHTML, "log-skill");
     animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp; 
     animateValue(el("player-hp"), displayPlayerHP, player.hp, 500); displayPlayerHP=player.hp;
-    if (enemy.hp <= 0) setTimeout(winBattle, 800);
+    if (enemy.hp <= 0) {
+        isProcessing = true; // <--- これを追加！！！
+        setTimeout(winBattle, 800);
+    }
 }
 // 501用: 捨てるカード選択モーダル (引数不要に)
 function openDiscardSelector() { 
