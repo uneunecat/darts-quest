@@ -135,7 +135,33 @@ function saveToDrive() { allSaveData[currentSlot] = savedData; localStorage.setI
 function initSlotScreen() { for (let i = 1; i <= 3; i++) { const key = "slot" + i; const data = allSaveData[key]; const infoEl = el("info-" + i); if (!data) { infoEl.innerHTML = "<div class='slot-empty'>NO DATA<br>- Start New Game -</div>"; } else { let stgName = `STAGE ${data.highScore.stage}`; if (data.highScore.stage === 5) stgName = "EXTRA"; if (data.highScore.stage === 6) stgName = "STAGE 5"; let stg = `${stgName} - ${data.highScore.floor}F`; let badge = data.clearedExtra ? "<br><span style='color:#f0f;font-weight:bold;'>★ EXTRA CLEARED</span>" : ""; infoEl.innerHTML = `<div>${stg}</div><div style='color:#ffdd00;'>Avg: ${data.highScore.avg.toFixed(1)} (Rt ${calculateRating(data.highScore.avg)})</div><div style='color:#aaa;font-size:12px;'>DP: ${data.dp || 0}${badge}</div>`; } } }
 function selectSlot(n) { currentSlot = "slot" + n; if (!allSaveData[currentSlot]) { allSaveData[currentSlot] = { highScore: { stage: 1, floor: 1, avg: 0.0 }, history: [], clearedExtra: false, dp: 0, bestRanks: {}, unlockedStage4: false, deck: [], cards: {} }; } savedData = allSaveData[currentSlot]; if (!savedData.deck) savedData.deck = []; if (!savedData.cards) savedData.cards = {}; allSaveData.lastPlayed = n; updateTitleScore(); playSE("se-tap"); playBGM("bgm-title"); el("slot-screen").style.display = "none"; el("title-screen").style.display = "flex"; }
 function backToSlots() { stopAllBGM(); el("title-screen").style.display = "none"; el("slot-screen").style.display = "flex"; initSlotScreen(); }
-function updateTitleScore() { let stg = `STAGE ${savedData.highScore.stage}`; if (savedData.highScore.stage === 5) stg = "EXTRA"; if (savedData.highScore.stage === 6) stg = "STAGE 5"; el("hs-reach").innerText = `${stg} - ${savedData.highScore.floor}F`; el("hs-avg").innerText = savedData.highScore.avg.toFixed(1); el("hs-rt").innerText = "Rt " + calculateRating(savedData.highScore.avg); el("dp-display").innerText = "DP: " + (savedData.dp || 0); updateStageButton(1, "btn-st1"); updateStageButton(2, "btn-st2"); updateStageButton(3, "btn-st3"); const canPlayStage4 = savedData.unlockedStage4 || (savedData.bestRanks && savedData.bestRanks[3]) || savedData.clearedExtra; el("btn-stage4").style.display = canPlayStage4 ? "flex" : "none"; updateStageButton(4, "btn-stage4"); const canPlayStage5 = (savedData.bestRanks && savedData.bestRanks[4]); el("btn-stage5").style.display = canPlayStage5 ? "flex" : "none"; updateStageButton(6, "btn-stage5"); el("btn-extra").style.display = savedData.clearedExtra ? "flex" : "none"; updateStageButton(5, "btn-extra"); }
+function updateTitleScore() {
+    // 1. ハイスコア・DPの更新
+    let stg = `STAGE ${savedData.highScore.stage}`;
+    if (savedData.highScore.stage === 5) stg = "EXTRA";
+    if (savedData.highScore.stage === 6) stg = "STAGE 5";
+    
+    // 要素が存在する場合のみ更新（安全策）
+    if(el("hs-reach")) el("hs-reach").innerText = `${stg} - ${savedData.highScore.floor}F`;
+    if(el("hs-avg")) el("hs-avg").innerText = savedData.highScore.avg.toFixed(1);
+    if(el("hs-rt")) el("hs-rt").innerText = "Rt " + calculateRating(savedData.highScore.avg);
+    if(el("dp-display")) el("dp-display").innerText = "DP: " + (savedData.dp || 0);
+
+    // 2. コンフィグボタンの生成（存在しなければ）
+    if (!document.getElementById("btn-config-entry")) {
+        const titleScreen = el("title-screen");
+        if(titleScreen) {
+            const btn = document.createElement("div");
+            btn.id = "btn-config-entry";
+            btn.className = "config-btn-title";
+            btn.innerText = "⚙️ CONFIG";
+            btn.onclick = openConfigModal;
+            titleScreen.appendChild(btn);
+        }
+    }
+    
+    // ※以前ここにあった btn-st1, btn-stage4 等への操作は削除しました
+}
 function updateStageButton(stgNum, btnId) { const btn = el(btnId); if (!btn) return; const rank = savedData.bestRanks ? savedData.bestRanks[stgNum] : null; btn.className = "stage-btn btn-default"; if (stgNum === 4) btn.classList.add("stage4-btn"); if (stgNum === 5) btn.classList.add("extra-btn"); if (stgNum === 6) { if (!rank) btn.className = "stage-btn btn-danger"; else btn.classList.add("stage5-btn"); } if (rank) { btn.classList.remove("btn-default", "stage4-btn", "stage5-btn", "extra-btn", "btn-danger"); if (rank === "SSS") btn.classList.add("btn-prism"); else if (rank === "S") btn.classList.add("btn-gold"); else if (rank === "A") btn.classList.add("btn-silver"); else btn.classList.add("btn-copper"); } }
 async function connectToBoard() { try { const btn = el("bt-connect-btn"); if (bluetoothDevice && bluetoothDevice.gatt.connected) { alert("既に接続されています"); return; } unlockAudioContext(); btn.innerText = "Scanning..."; const device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'DARTSLIVE' }], optionalServices: [DL_SERVICE_UUID] }); bluetoothDevice = device; device.addEventListener('gattserverdisconnected', onDisconnected); const server = await device.gatt.connect(); bluetoothServer = server; const service = await server.getPrimaryService(DL_SERVICE_UUID); const characteristic = await service.getCharacteristic(DL_NOTIFY_UUID); await characteristic.startNotifications(); characteristic.addEventListener('characteristicvaluechanged', handleBluetoothNotify); btn.innerText = "📡 CONNECTED"; btn.classList.add("connected"); addLog(">> ダーツボード接続成功！", "log-heal"); } catch (error) { console.error("BT Error:", error); alert("接続に失敗しました: " + error); const btn = el("bt-connect-btn"); btn.innerText = "📡 CONNECT BOARD"; btn.classList.remove("connected"); } }
 function unlockAudioContext() { const audioIds = ["se-single", "se-double", "se-triple", "se-bull", "se-dbull", "se-hit", "se-attack"]; audioIds.forEach(id => { const audio = document.getElementById(id); if (audio) { audio.volume = 0; audio.play().then(() => { audio.pause(); audio.currentTime = 0; audio.volume = 0.5; }).catch(e => console.log("Audio unlock skipped:", e)); } }); }
