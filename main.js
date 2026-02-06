@@ -324,28 +324,46 @@ let currentPackId = "";
 // ユーティリティ: 指定ミリ秒待機
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// カード抽選ロジック (新規追加)
+/* --- main.js (Part 1: Pack Content Logic Fix) --- */
+
+// カード抽選ロジック (パックID対応版)
 function drawShopCard(packId) {
-    // 重み付け抽選: N=55%, R=30%, SR=12%, UR=3%
+    // 1. レアリティ抽選 (重み付け)
     const rand = Math.random() * 100;
     let targetRarity = "N";
     if (rand < 3) targetRarity = "UR";
     else if (rand < 15) targetRarity = "SR";
     else if (rand < 45) targetRarity = "R";
 
-    // パックごとの排出対象フィルタリング (簡易実装: 全カードからレアリティ一致を抽出)
-    let candidates = CARD_DB.filter(c => c.rarity === targetRarity);
+    // 2. パックごとの収録カード定義
+    // Vol.1: ID 100~499 / Vol.2: ID 500~899
+    let minId = 0, maxId = 999;
+    if (packId === "vol1") { minId = 100; maxId = 499; }
+    else if (packId === "vol2") { minId = 500; maxId = 899; }
+
+    // 3. 候補リスト作成 (レアリティ かつ ID範囲内)
+    let candidates = CARD_DB.filter(c => 
+        c.rarity === targetRarity && c.id >= minId && c.id <= maxId
+    );
     
-    // 該当レアリティがない場合（念のため）、Nから選ぶ
-    if (candidates.length === 0) candidates = CARD_DB.filter(c => c.rarity === "N");
+    // 該当なしの場合（例: Vol.1にURがない場合など）のフォールバック
+    if (candidates.length === 0) {
+        // 同パック内のNカードに落とす
+        candidates = CARD_DB.filter(c => c.rarity === "N" && c.id >= minId && c.id <= maxId);
+    }
+    // それでもなければ全カードのN（安全装置）
+    if (candidates.length === 0) {
+        candidates = CARD_DB.filter(c => c.rarity === "N");
+    }
 
     // ランダムに1枚決定
     return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
 // パック購入プロセス (Async Control)
+// パック購入プロセス (OKボタン非表示処理を追加)
 async function buyPack(packId) {
-    if (isOpeningPack) return; // 連打防止
+    if (isOpeningPack) return;
     
     const pack = PACK_DATA.find(p => p.id === packId);
     if (!pack || savedData.dp < pack.price) {
@@ -366,14 +384,18 @@ async function buyPack(packId) {
     const modal = el("pack-result-modal");
     const container = el("pack-results");
     modal.style.display = "flex";
-    container.innerHTML = ""; // クリア
+    container.innerHTML = "";
     
-    // 古いボタン要素が残っていたら削除（安全策）
+    // ★ FIX: 静的な「OK」ボタンを探して非表示にする
+    // (modal-boxの直下にある button タグを対象とする)
+    const staticBtn = modal.querySelector(".modal-box > button.modal-btn");
+    if (staticBtn) staticBtn.style.display = "none";
+
+    // 古い動的ボタンがあれば削除
     const oldBtn = document.querySelector(".action-buttons");
     if(oldBtn) oldBtn.remove();
 
-    // --- Phase 1: The Arrival (降臨) ---
-    // DOM生成
+    // --- Phase 1: The Arrival ---
     container.innerHTML = `
         <div id="opening-stage">
             <div class="god-rays" id="god-rays"></div>
@@ -383,12 +405,9 @@ async function buyPack(packId) {
         <div class="white-out-overlay" id="white-out"></div>
     `;
     
-    playSE("se-chest"); // 着地音
-    
-    // 着地待ち (1秒)
+    playSE("se-chest");
     await wait(1000);
     
-    // 呼吸アニメーションへ移行 & プロンプト表示
     const packImg = el("opening-pack");
     if(packImg) {
         packImg.classList.remove("anim-drop");
@@ -507,15 +526,21 @@ async function proceedToOpen() {
     
     isOpeningPack = false;
 }
+// リザルト閉じる処理 (OKボタン復帰処理を追加)
 function closePackResult() {
-    if (isOpeningPack) return; // 演出中は閉じさせない (誤操作防止)
+    if (isOpeningPack) return;
     
     playSE("se-tap");
-    el("pack-result-modal").style.display = "none";
-    el("pack-results").innerHTML = ""; // DOMをクリアして次の演出に備える
+    const modal = el("pack-result-modal");
+    modal.style.display = "none";
+    el("pack-results").innerHTML = "";
     
-    updateTitleScore(); // 所持DPなどの表示更新
-    currentPackId = ""; // IDリセット
+    // ★ FIX: 静的な「OK」ボタンを表示状態に戻す（念のため）
+    const staticBtn = modal.querySelector(".modal-box > button.modal-btn");
+    if (staticBtn) staticBtn.style.display = "inline-block";
+
+    updateTitleScore();
+    currentPackId = "";
 }
 function closeCardShop() { playSE("se-tap"); el("card-shop-modal").style.display = "none"; updateTitleScore(); }
 function openCollection() { playSE("se-tap"); renderDeckEditor(); el("collection-modal").style.display = "flex"; }
