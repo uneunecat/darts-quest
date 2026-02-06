@@ -109,24 +109,28 @@ const GAME_DATA = {
 };
 /* --- main.js (Part 1: Card Database Update v2.9.0) --- */
 
+/* --- main.js UPDATE: CARD_DB (Description Fix) --- */
 const CARD_DB = [
     { id: 101, name: "死者蘇生", rarity: "UR", type: "MAGIC", cost: 8, desc: "HPを最大値まで完全回復" },
     { id: 201, name: "サンダー・ボルト", rarity: "SR", type: "MAGIC", cost: 6, desc: "敵に100ダメージ＋スタン(1T行動不能)" },
     { id: 202, name: "強欲な壺", rarity: "SR", type: "MAGIC", cost: 2, desc: "MPを2消費し、カードを2枚引く。(手札上限5枚)" },
     { id: 301, name: "光の護封剣", rarity: "R", type: "MAGIC", cost: 5, desc: "3ターンの間、受けるダメージを半減" },
-    { id: 302, name: "落とし穴", rarity: "R", type: "TRAP", cost: 3, desc: "敵のチャージ状態を強制解除" },
-    { id: 303, name: "聖なるバリア", rarity: "R", type: "TRAP", cost: 4, desc: "次の敵の攻撃を無効化し、50ダメージ与える" },
+    
+    // ★ FIX: 落とし穴 (効果テキスト変更)
+    { id: 302, name: "落とし穴", rarity: "R", type: "TRAP", cost: 3, desc: "【罠】敵モンスター出現時、50ダメージ＋1Tスタン" },
+    
+    { id: 303, name: "聖なるバリア", rarity: "R", type: "TRAP", cost: 4, desc: "【罠】敵の攻撃を無効化し、50ダメージ与える" },
     { id: 401, name: "火の粉", rarity: "N", type: "MAGIC", cost: 1, desc: "敵に30ダメージ" },
     { id: 402, name: "治療の神", rarity: "N", type: "MAGIC", cost: 4, desc: "HPを50回復" },
-    { id: 403, name: "はさみ撃ち", rarity: "N", type: "TRAP", cost: 2, desc: "自分も20ダメージ受け、敵に80ダメージ" },
+    
+    // ★ FIX: はさみ撃ち (効果テキスト変更)
+    { id: 403, name: "はさみ撃ち", rarity: "N", type: "TRAP", cost: 2, desc: "【罠】敵から攻撃を受けたら敵に80ダメージ" },
+    
     { id: 404, name: "昼夜の大火事", rarity: "N", type: "MAGIC", cost: 3, desc: "敵に80ダメージ" },
     { id: 405, name: "突進", rarity: "N", type: "MAGIC", cost: 2, desc: "攻撃力2倍(次の1投のみ)" },
-
-    // ★ UPDATE: 天使の施し (コスト1→2, 2ドロー→3ドロー)
     { id: 501, name: "天使の施し", rarity: "UR", type: "MAGIC", cost: 2, desc: "手札を1枚選んで捨て、カードを3枚引く。" },
-
     { id: 601, name: "ブラック・ホール", rarity: "SR", type: "MAGIC", cost: 7, desc: "敵に150ダメージ。ただし自分の手札を全て捨てる。" },
-    { id: 602, name: "魔法の筒", rarity: "SR", type: "TRAP", cost: 4, desc: "敵の攻撃を無効化し、そのダメージをそのまま敵に与える。" },
+    { id: 602, name: "魔法の筒", rarity: "SR", type: "TRAP", cost: 4, desc: "【罠】敵の攻撃を無効化し、そのダメージをそのまま敵に与える。" },
     { id: 701, name: "巨大化", rarity: "R", type: "MAGIC", cost: 3, desc: "HP半分以下なら3倍、半分以上なら0.5倍" },
     { id: 702, name: "地割れ", rarity: "R", type: "MAGIC", cost: 3, desc: "敵に40ダメージを与え、防御状態を解除する。" },
     { id: 703, name: "六芒星の呪縛", rarity: "R", type: "TRAP", cost: 3, desc: "【罠】敵の攻撃を半減し、さらに敵をスタン(1T行動不能)させる。" },
@@ -208,16 +212,62 @@ function initGameSession(startStage, continueMode = false) {
     startTransition(startStage, continueMode);
 }
 function startTransition(sel, continueMode) { let t = "STAGE " + sel; let s = ""; let warning = false; if (sel === 1) { t = "旅立ちの森"; s = "Forest of Beginnings"; } if (sel === 2) { t = "荒れ狂う荒野"; s = "Raging Wasteland"; } if (sel === 3) { t = "誘惑の迷宮"; s = "Labyrinth of Temptation"; } if (sel === 4) { t = "幻想の狂宴"; s = "Toon Nightmare"; warning = true; } if (sel === 5) { t = "燃えたぎる火口"; s = "Burning Crater"; warning = true; } if (sel === 6) { t = "神の試練"; s = "God's Testing Ground"; warning = true; } el("chapter-title").innerText = t; el("chapter-sub").innerText = s; const ch = el("chapter-screen"); if (warning) { playSE("se-warning"); ch.classList.add("chapter-extra"); } else { playSE("se-tap"); ch.classList.remove("chapter-extra"); } el("black-curtain").classList.add("fade-in"); setTimeout(() => { el("title-screen").style.display = "none"; ch.style.display = "flex"; ch.style.opacity = 1; setupStage(sel, continueMode); setTimeout(() => { ch.style.opacity = 0; setTimeout(() => { ch.style.display = "none"; el("black-curtain").classList.remove("fade-in"); checkOpeningSkill(); }, 1000); }, warning ? 4000 : 2500); }, 1000); }
+/* --- main.js FIX: setupStage (不要なDOM操作を削除) --- */
 function setupStage(sel, continueMode) {
-    stage = sel; floor = 1; isProcessing = false; extraBossTurnCount = 0; currentTurn = 1; stageStartTurn = totalGameTurns; if (!continueMode) totalDarts = 0; el("avg-display").innerText = "0.0"; el("rt-display").innerText = "(Rt -)"; el("battle-log").innerHTML = ""; el("game-screen").style.display = "block";
+    stage = sel; 
+    floor = 1; 
+    isProcessing = false; 
+    extraBossTurnCount = 0; 
+    currentTurn = 1; 
+    stageStartTurn = totalGameTurns; 
+    
+    if(!continueMode) totalDarts = 0; 
+    
+    // UI初期化
+    if(el("avg-display")) el("avg-display").innerText="0.0"; 
+    if(el("rt-display")) el("rt-display").innerText="(Rt -)"; 
+    el("battle-log").innerHTML=""; 
+    el("game-screen").style.display="block"; 
+    
+    // アナウンサーの生成 (なければ作る)
     const enemyPanel = el("enemy-panel");
-    if (!document.getElementById("battle-announcer")) { const announcer = document.createElement("div"); announcer.id = "battle-announcer"; enemyPanel.appendChild(announcer); }
-    if (!document.getElementById("active-states")) { const stateArea = document.createElement("div"); stateArea.id = "active-states"; const hpBar = el("enemy-hp-bar").parentElement; hpBar.parentNode.insertBefore(stateArea, hpBar.nextSibling); }
+    if (enemyPanel && !document.getElementById("battle-announcer")) { 
+        const announcer = document.createElement("div"); 
+        announcer.id = "battle-announcer"; 
+        enemyPanel.appendChild(announcer); 
+    }
+    
+    // ★削除: active-states の生成ロジックを削除 (サイドバーに常設されたため不要)
+    
+    // State初期化
+    player.state = { power:false, shield:false, weakLock:false, barrier:false, guardTurn:0, magicCylinder:false, hexSealTrap:false, huge:0, atkBonus:0, itemLock:false }; 
+    player.setCard = null; // 罠セット枠リセット
 
-    // ★ UPDATE: hexSealTrap を追加 (Trap用)
-    player.state = { power: false, shield: false, weakLock: false, barrier: false, guardTurn: 0, magicCylinder: false, hexSealTrap: false, huge: 0, atkBonus: 0, itemLock: false };
-
-    if (!continueMode) { player.mp = 3; player.deckLocked = false; if (!savedData.deck || savedData.deck.length < DECK_SIZE) { player.deckLocked = true; player.deck = []; player.hand = []; player.discard = []; addLog(`⚠ デッキ不完全(${DECK_SIZE}枚未満): カード機能封鎖`, "log-system"); } else { player.deck = shuffleArray([...savedData.deck]); player.hand = []; player.discard = []; for (let i = 0; i < INITIAL_HAND; i++) drawCard(true); } } else { addLog(">> 前ステージの状態を引き継ぎました", "log-system"); } spawnEnemy(); let logStageName = "STAGE " + stage; if (stage === 5) logStageName = "EXTRA"; if (stage === 6) logStageName = "STAGE 5"; addLog(`${logStageName} START!`, "system"); resizeGame();
+    // デッキ初期化
+    if (!continueMode) { 
+        player.mp = 3; 
+        player.deckLocked = false; 
+        if (!savedData.deck || savedData.deck.length < DECK_SIZE) { 
+            player.deckLocked = true; 
+            player.deck = []; player.hand = []; player.discard = []; 
+            addLog(`⚠ デッキ不完全: カード機能封鎖`, "log-system"); 
+        } else { 
+            player.deck = shuffleArray([...savedData.deck]); 
+            player.hand = []; player.discard = []; 
+            for(let i=0; i<INITIAL_HAND; i++) drawCard(true); 
+        } 
+    } else { 
+        addLog(">> 前ステージの状態を引き継ぎました", "log-system"); 
+    } 
+    
+    spawnEnemy(); 
+    
+    let logStageName = "STAGE " + stage; 
+    if(stage === 5) logStageName = "EXTRA"; 
+    if(stage === 6) logStageName = "STAGE 5"; 
+    addLog(`${logStageName} START!`, "system"); 
+    
+    resizeGame(); 
 }
 function spawnEnemy() {
     try {
