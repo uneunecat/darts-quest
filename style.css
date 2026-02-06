@@ -1406,128 +1406,88 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     .hand-card:hover { transform: none; } /* No hover on mobile */
 }
 
+/* `style.css` の末尾に追記（v2.11.2のCSSをこれで上書きしてください） */
+
 /* =========================================
-   ★ v2.11.2 IMMERSIVE FIX
+   ★ v2.11.3 UI FIX & TRAP SET
    ========================================= */
 
-/* --- Wrapper --- */
-.battle-container-wrapper {
-    display: flex;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
+/* --- Fixed Height Side Blocks --- */
+.side-block {
+    background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; border: 1px solid #333;
+    display: flex; flex-direction: column; justify-content: center; /* 内容を中央寄せ */
+}
+/* 各ボックスの固定高さ設定 (内容が収まるように調整) */
+.enemy-block-fixed { min-height: 110px; }
+.score-block-fixed { min-height: 110px; }
+.player-block-fixed { min-height: 140px; }
+
+/* ラベル削除に伴う調整 */
+.side-val-lg { font-size: 18px; margin-bottom: 8px; }
+
+/* State Chips */
+.state-chips-container { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; min-height: 20px; }
+.status-chip {
+    font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase;
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+.chip-guard { background: #444; color: #ccc; border: 1px solid #888; }
+.chip-charge { background: #d32f2f; color: #fff; border: 1px solid #ff5252; animation: pulse-red 1s infinite; }
+.chip-stun { background: #fbc02d; color: #000; border: 1px solid #ffeb3b; }
+.chip-buff { background: #1976d2; color: #fff; border: 1px solid #64b5f6; }
+.chip-lock { background: #38006b; color: #fff; border: 1px solid #6a1b9a; }
+.chip-barrier { background: #00796b; color: #fff; border: 1px solid #4db6ac; }
+
+/* MP Dots */
+.mp-dots-container { display: flex; gap: 3px; flex: 1; align-items: center; }
+.mp-dot { width: 8px; height: 8px; border-radius: 50%; background: #333; border: 1px solid #555; }
+.mp-dot.active { background: #00d2fc; border-color: #fff; box-shadow: 0 0 5px #00d2fc; }
+
+/* --- Mega Enemy HP --- */
+.hp-mega-text {
+    font-family: 'Impact', sans-serif;
+    font-size: 100px; /* ★ FIX: 超巨大化 */
+    color: #fff;
+    text-shadow: 4px 4px 0 #000, 0 0 20px rgba(255,0,0,0.5);
+    line-height: 0.9;
+    margin-bottom: -10px;
 }
 
-/* Left Zone */
-.battle-side-info {
-    flex: 0 0 280px;
-    background: rgba(0, 0, 0, 0.85);
-    border-right: 2px solid #444;
+/* --- Trap Slot & Hand Layout --- */
+.hand-wrapper {
     display: flex;
-    flex-direction: column;
-    padding: 15px;
-    box-sizing: border-box;
+    align-items: flex-end; /* 下揃え */
     gap: 15px;
-    z-index: 20;
-    overflow-y: auto; /* コンテンツが多い場合用 */
+    pointer-events: auto;
 }
 
-/* Right Zone */
-.battle-main-stage {
-    flex: 1;
+.trap-slot {
+    width: 80px; height: 120px;
+    border: 2px dashed #555; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; font-size: 12px; color: #555; font-weight: bold;
+    background: rgba(0,0,0,0.3);
+    transition: all 0.3s;
+    flex-shrink: 0;
+}
+.trap-slot.empty { /* デフォルト状態 */ }
+.trap-slot.set {
+    border: 2px solid #d32f2f; /* 罠っぽい赤枠 */
+    background: repeating-linear-gradient(45deg, #222, #222 10px, #333 10px, #333 20px);
+    color: transparent; /* 文字を隠す */
+    box-shadow: 0 0 10px rgba(255,0,0,0.3);
     position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: transparent !important; border: none !important; box-shadow: none !important;
+}
+.trap-slot.set::after { /* 伏せカードの背面イメージ */
+    content: ''; position: absolute; top:0; left:0; width:100%; height:100%;
+    background: url('assets/card_back.png') no-repeat center/cover;
+    opacity: 0.8; border-radius: 4px;
 }
 
-/* --- Components --- */
-.battle-header-info { border-bottom: 1px solid #555; padding-bottom: 10px; }
-.stg-info-row { font-size: 18px; color: #f9a826; font-weight: bold; font-family: 'Cinzel Decorative'; margin-right: 10px; }
-.stg-info-row span { margin-right: 10px; }
-.turn-info-row { font-size: 14px; color: #ccc; }
-
-.side-block { background: rgba(255,255,255,0.05); border-radius: 8px; padding: 10px; border: 1px solid #333; }
-.side-label { font-size: 10px; color: #00d2fc; margin-bottom: 5px; border-bottom: 1px solid #444; display: block; letter-spacing: 1px; }
-.side-val-lg { font-size: 16px; color: #fff; font-weight: bold; text-shadow: 0 0 5px #000; margin-bottom: 5px; }
-
-/* Score Stack */
-.darts-stack { display: flex; flex-direction: column; gap: 5px; }
-.dart-row { display: flex; justify-content: space-between; align-items: center; font-family: 'Roboto Mono'; font-size: 14px; color: #aaa; }
-.dart-row .score-slot { width: 40px; text-align: right; color: #fff; font-weight: bold; font-size: 18px; border-bottom: 1px solid #555; display:inline-block; }
-.darts-indicator { display: flex; gap: 5px; justify-content: center; margin-top: 5px; }
-.d-dot { color: #333; font-size: 10px; } .d-dot.active { color: #00d2fc; text-shadow: 0 0 5px #00d2fc; } .d-dot.filled { color: #00d2fc; }
-
-/* Player Stats */
-.p-status-row { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; font-size: 12px; }
-.p-label-text { font-size: 10px; color: #aaa; width: 20px; flex-shrink: 0; }
-.small-bar { flex: 1; height: 10px !important; margin: 0 !important; border-radius: 4px; background: #222; border: 1px solid #555; }
-.p-val { font-family: 'Roboto Mono'; font-weight: bold; color: #fff; font-size: 11px; width: 60px; text-align: right; }
-.item-row { display: flex; gap: 5px; margin-top: 10px; }
-.item-btn { flex: 1; height: 35px; padding: 0 !important; font-size: 10px; background: #333; border: 1px solid #555; color: #ccc; cursor: pointer; }
-.item-btn.has-item { background: #663399; color: #fff; border-color: #c080ff; }
-
-.home-btn-side { margin-top: auto; background: #333; color: #aaa; border: 1px solid #555; padding: 10px; cursor: pointer; border-radius: 5px; width: 100%; }
-.home-btn-side:hover { background: #555; color: #fff; }
-
-/* Main Stage */
-.enemy-visual-area {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 60%;
-    margin-bottom: 120px;
-}
-#enemy-img { height: 100%; max-height: 350px; object-fit: contain; filter: drop-shadow(0 0 20px rgba(0,0,0,0.8)); z-index: 5; transition: transform 0.1s; }
-#chest-img { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; z-index: 10; cursor: pointer; filter: drop-shadow(0 0 15px gold); }
-
-.enemy-hp-container { position: absolute; bottom: -40px; width: 80%; max-width: 500px; text-align: center; z-index: 10; }
-.big-bar { height: 30px !important; border: 2px solid #fff; box-shadow: 0 0 10px #000; background: #222; }
-.hp-big-text { font-family: 'Impact', sans-serif; font-size: 60px; color: #fff; text-shadow: 3px 3px 0 #000; line-height: 1; }
-
-/* Card Overlay */
-.hand-overlay-container {
-    position: absolute; bottom: 10px; left: 0; width: 100%; height: 140px;
-    display: flex; flex-direction: column; align-items: center; z-index: 50; pointer-events: none;
-}
-.hand-area { pointer-events: auto; display: flex; gap: 10px; justify-content: center; width: 100%; overflow-x: visible; }
-.hand-card { width: 80px !important; height: 120px !important; background: #1a1a1a; border: 2px solid #888; border-radius: 6px; position: relative; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.5); flex-shrink: 0; }
-.hand-card:hover { transform: translateY(-20px) scale(1.1); z-index: 100; border-color: #fff; }
-
-/* --- Mobile Optimization --- */
+/* スマホ対応 */
 @media (max-width: 900px) {
-    .battle-container-wrapper {
-        flex-direction: column;
-        overflow-y: auto;
-        height: auto;
-        min-height: 100vh; /* FIX: Force full height */
-        padding-bottom: 20px;
-        background: transparent;
-    }
-    
-    .battle-side-info {
-        flex: none; width: 100%; border-right: none; border-bottom: 2px solid #444; gap: 10px; padding: 10px;
-    }
-    
-    .battle-side-info .side-block { order: 2; }
-    .battle-header-info { order: 1; display: flex; justify-content: space-between; align-items: center; }
-    .home-btn-side { order: 0; margin-bottom: 10px; padding: 5px; font-size: 12px; width: 80px; align-self: flex-end; }
-
-    .darts-stack { flex-direction: row; justify-content: space-around; }
-    .dart-row { flex-direction: column; font-size: 10px; }
-    .dart-row .score-slot { width: 50px; text-align: center; font-size: 16px; }
-
-    .battle-main-stage { flex: none; height: auto; margin-top: 10px; overflow: visible; }
-    .enemy-visual-area { height: 250px; margin-bottom: 10px; }
-    .enemy-hp-container { bottom: 0; position: relative; }
-    
-    .hand-overlay-container { position: relative; bottom: auto; left: auto; height: 130px; margin-top: 20px; width: 100%; pointer-events: auto; }
-    .hand-area { justify-content: flex-start; padding: 0 10px; overflow-x: auto; }
-    .hand-card { width: 70px !important; height: 105px !important; }
-    .hand-card:hover { transform: none; }
+    .hp-mega-text { font-size: 70px; } /* スマホでは少し控えめに */
+    .trap-slot { width: 70px; height: 105px; font-size: 10px; }
+    .hand-wrapper { gap: 10px; justify-content: center; width: 100%; }
+    .side-block { min-height: auto; } /* スマホでは高さ固定を解除 */
 }
