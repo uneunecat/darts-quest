@@ -54,8 +54,6 @@ function triggerEffect(el, dmg, isP) { el.classList.remove("shake-small", "shake
 function resizeGame() {
     const scaler = el('game-scaler');
     if (!scaler) return;
-    
-    // PC (幅900px以上) のみスケーリング有効
     if (window.innerWidth >= 900) {
         const winW = window.innerWidth;
         const winH = window.innerHeight;
@@ -65,17 +63,12 @@ function resizeGame() {
         scaler.style.transform = `scale(${scale})`;
         scaler.style.width = "900px";
         scaler.style.height = "620px";
-        scaler.style.position = "static"; // 中央配置用
-        
-        // Body scroll lock
+        scaler.style.position = "static"; 
         document.body.style.overflow = "hidden";
     } else {
-        // Mobile: スケール解除 & 流動レイアウト
         scaler.style.transform = "none";
         scaler.style.width = "100%";
         scaler.style.height = "auto";
-        
-        // Body scroll unlock
         document.body.style.overflowY = "auto";
     }
 }
@@ -159,7 +152,6 @@ window.addEventListener('load', () => {
     resizeGame(); 
     loadGameData(); 
     initSlotScreen();
-    // モバイル用スクロール許可設定
     if (window.innerWidth < 900) document.body.style.overflowY = "auto";
 });
 
@@ -539,38 +531,76 @@ function renderHand() {
 }
 function updateInfo() {
     if (!enemy.data) return;
-    // ステージ表示
-    if(stage===6) { el("stage-display").innerText="STAGE 5"; el("floor-display").innerText=`${floor}F`; } 
-    else if(stage===5) { el("stage-display").innerText="EXTRA"; el("floor-display").innerText="FINAL"; } 
-    else if(stage===4) { el("stage-display").innerText="STAGE 4"; el("floor-display").innerText=`${floor}F`; } 
-    else { el("stage-display").innerText=`STAGE ${stage}`; el("floor-display").innerText=`${floor}F`; } 
-    // ★ UPDATE: 総ターン数を併記 (完了したターン数 + 現在のターン1)
-    // 敵ターン中などは totalGameTurns が既に加算されている場合があるため、
-    // 簡易的に「常に+1」だとズレる可能性がありますが、
-    // プレイ中の目安としては「(totalGameTurns - stageStartTurn) + 1」が最も直感的です。
+    
+    // 安全更新ヘルパー
+    const setText = (id, text) => { const e = el(id); if(e) e.innerText = text; };
+    const setHTML = (id, html) => { const e = el(id); if(e) e.innerHTML = html; };
+    
+    let stgDisp = `STAGE ${stage}`;
+    if(stage===5) stgDisp = "EXTRA";
+    if(stage===6) stgDisp = "STAGE 5";
+    
+    setText("stage-display", stgDisp);
+    setText("floor-display", stage===5?"FINAL":`${floor}F`);
+    
     const currentTotal = (totalGameTurns - stageStartTurn) + 1;
-    el("turn-display").innerHTML = `TURN ${currentTurn} <span style="font-size:16px; color:#888;">(Total ${currentTotal})</span>`;    const elName = el("enemy-name"); elName.innerText = enemy.name; elName.style.fontSize = (enemy.name.length > 12) ? "12px" : ((enemy.name.length > 9) ? "15px" : "18px"); const hpVal = el("enemy-hp-value"); hpVal.innerText = enemy.hp; hpVal.className = "hp-big-text"; if (enemy.hp <= 60) hpVal.classList.add("hp-danger"); else if (enemy.hp <= 180) hpVal.classList.add("hp-warning"); let weakText = ""; if (player.state.weakLock) weakText = "<span style='color:#f0f; animation:blink 0.5s infinite;'>★ WEAK LOCK ACTIVE ★</span>"; else { let baseText = "WEAK: " + enemy.data.weak + "+"; if (weakHitCount > 0) { let color = weakHitCount >= 3 ? "#ff0000" : (weakHitCount >= 2 ? "#ffa500" : "#ffff00"); let msg = weakHitCount >= 3 ? "ULTRA CHANCE!!!" : (weakHitCount >= 2 ? "SUPER CHANCE!!" : "DROP CHANCE UP!"); weakText = `${baseText} <span style='color:${color}; text-shadow:0 0 5px ${color}; margin-left:5px;'>✨ ${msg}</span>`; } else { weakText = baseText; } } el("weak-display").innerHTML = weakText; el("enemy-hp-bar").style.width = Math.max(0, (enemy.hp / enemy.maxHp) * 100) + "%";
-    const playerHpPct = (player.hp / player.maxHp) * 100;
-    el("player-hp-bar").style.width = Math.max(0, playerHpPct) + "%";
-    el("player-hp-bar").className = "hp-bar-fill";
-    if (playerHpPct <= 20) el("player-hp-bar").classList.add("player-danger");
-    else if (playerHpPct <= 50) el("player-hp-bar").classList.add("player-warning");
-    else el("player-hp-bar").classList.add("player-fill");
-    el("player-hp").innerText = player.hp; el("player-max-hp").innerText = player.maxHp;
-    const mpContainer = el("player-mp-bar"); mpContainer.innerHTML = ""; mpContainer.style.width = "100%";
-    for (let i = 0; i < player.maxMp; i++) {
-        const dot = document.createElement("div"); dot.className = "mp-dot";
-        if (i < player.mp) { dot.classList.add("active"); if (player.mp === player.maxMp) dot.classList.add("mp-max-glow"); }
-        mpContainer.appendChild(dot);
+    setHTML("turn-display", `TURN ${currentTurn} <span style="font-size:12px; color:#888;">(Total ${currentTotal})</span>`);
+    
+    // Enemy (Side & Main)
+    setText("enemy-name-side", enemy.name);
+    // Main側はダミーIDがあるが更新不要ならスキップ、必要なら以下:
+    setText("enemy-name", enemy.name);
+
+    setText("enemy-hp-value", enemy.hp);
+    const hpVal = el("enemy-hp-value");
+    if(hpVal) {
+        hpVal.className = "hp-big-text";
+        if (enemy.hp <= 60) hpVal.classList.add("hp-danger");
+        else if (enemy.hp <= 180) hpVal.classList.add("hp-warning");
     }
-    el("player-mp").innerText = player.mp; el("player-max-mp").innerText = player.maxMp;
-    updateVisuals(); renderHand(); updateStateChips();
-    let ppr = 0; if (totalDarts > 0) { ppr = (totalScore / totalDarts) * 3; } el("avg-display").innerText = ppr.toFixed(1); el("rt-display").innerText = `(Rt ${calculateRating(ppr)})`;
-    const isThrowing = turnInputs.length > 0;
-    const isLocked = player.state.itemLock || isThrowing;
-    const panel = el("player-panel").parentElement;
-    if (isLocked) { panel.classList.add("ui-locked"); } else { panel.classList.remove("ui-locked"); }
-    const updateItemBtn = (btnId, count) => { const b = el(btnId); if (!b) return; b.className = "item-btn"; if (isLocked) { b.classList.add("disabled"); b.style.opacity = "0.3"; b.style.cursor = "not-allowed"; } else { b.style.opacity = "1.0"; if (count > 0) { b.classList.add("has-item"); b.style.cursor = "pointer"; } else { b.classList.add("disabled"); b.style.cursor = "default"; } } }; updateItemBtn("btn-potion", player.items.potion); updateItemBtn("btn-ether", player.items.ether); updateItemBtn("btn-seed", player.items.seed); el("btn-potion").innerHTML = `💊 薬草 x${player.items.potion}<span class="tooltip">HPを50回復</span>`; el("btn-ether").innerHTML = `⚗️ マナ x${player.items.ether}<span class="tooltip">MPを3回復</span>`; el("btn-seed").innerHTML = `🌱 種 x${player.items.seed}<span class="tooltip">最大HP+10上昇</span>`;
+
+    // Weak & State
+    let weakText = player.state.weakLock ? "★LOCK" : `WEAK: ${enemy.data.weak}+`;
+    if(weakHitCount > 0) weakText += " <span style='color:#f0f;'>CHANCE!</span>";
+    setHTML("weak-display", weakText);
+    
+    if(el("enemy-hp-bar")) el("enemy-hp-bar").style.width = Math.max(0, (enemy.hp / enemy.maxHp) * 100) + "%";
+
+    // Player
+    setText("player-hp", player.hp);
+    setText("player-max-hp", player.maxHp);
+    const pHpPct = (player.hp / player.maxHp) * 100;
+    if(el("player-hp-bar")) {
+        el("player-hp-bar").style.width = Math.max(0, pHpPct) + "%";
+        el("player-hp-bar").className = "hp-bar-fill player-fill";
+        if(pHpPct <= 20) el("player-hp-bar").classList.add("player-danger");
+    }
+
+    setText("player-mp", player.mp);
+    setText("player-max-mp", player.maxMp);
+    if(el("player-mp-bar")) el("player-mp-bar").style.width = Math.max(0, (player.mp / player.maxMp) * 100) + "%";
+
+    updateVisuals(); 
+    renderHand(); 
+    updateStateChips();
+    
+    let ppr = totalDarts > 0 ? (totalScore / totalDarts) * 3 : 0;
+    setText("avg-display", ppr.toFixed(1));
+    setText("rt-display", `(Rt ${calculateRating(ppr)})`);
+
+    // Items
+    const updateItemBtn = (btnId, count, icon) => { 
+        const b = el(btnId); 
+        if (!b) return; 
+        b.innerHTML = `${icon}x${count}`;
+        b.className = "item-btn"; 
+        if (player.state.itemLock || turnInputs.length > 0) b.classList.add("disabled");
+        else if (count > 0) b.classList.add("has-item"); 
+        else b.classList.add("disabled"); 
+    };
+    updateItemBtn("btn-potion", player.items.potion, "💊"); 
+    updateItemBtn("btn-ether", player.items.ether, "⚗️"); 
+    updateItemBtn("btn-seed", player.items.seed, "🌱");
 }
 function openCardShop() { playSE("se-tap"); const list = el("pack-list"); list.innerHTML = ""; el("shop-dp-display").innerText = savedData.dp; if (!savedData.cards) savedData.cards = {}; PACK_DATA.forEach(pack => { const isUnlocked = (savedData.bestRanks && savedData.bestRanks[pack.unlockStage]); if (!isUnlocked) return; const canBuy = savedData.dp >= pack.price; const imgHTML = `<img src="${pack.img}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:50px; background:#333; color:#555;">📦</div>`; const div = document.createElement("div"); div.className = "pack-item"; div.innerHTML = `<div class="pack-img-container">${imgHTML}</div><div class="pack-name">${pack.name}</div><div class="pack-desc">${pack.desc}</div><button class="pack-buy-btn" ${canBuy ? "" : "disabled"} onclick="buyPack('${pack.id}')">${canBuy ? `BUY (${pack.price} DP)` : "LACK DP"}</button>`; list.appendChild(div); }); if (list.innerHTML === "") list.innerHTML = "<div style='color:#666; width:100%; text-align:center;'>STAGE 1 CLEAR REQUIRED</div>"; el("card-shop-modal").style.display = "flex"; }
 /* =========================================
@@ -1039,34 +1069,24 @@ window.addEventListener("keydown", function(e) {
     }
 });
 function updateScoreDisplay() {
-    // スロットの更新 (Slot 1-3)
-    const slots = [el("slot-1"), el("slot-2"), el("slot-3")];
-    slots.forEach((s, i) => {
-        if (!s) return;
-        s.className = "score-slot";
-        if (i < turnInputs.length) {
-            s.innerText = turnInputs[i];
-            s.classList.add("filled");
-            s.style.color = "#00d2fc"; // 確定済み
-        } else if (i === turnInputs.length) {
-            s.innerText = currentInput; // 入力中
-            s.classList.add("active");
-            s.style.color = "#fff";
-        } else {
-            s.innerText = "--";
-            s.style.color = "#555";
-        }
+    // Side Slots (slot-1-side...)
+    [1, 2, 3].forEach((i) => {
+        const sideSlot = el(`slot-${i}-side`);
+        const mainSlot = el(`slot-${i}`); // Hidden logic slot
+        const val = (i-1 < turnInputs.length) ? turnInputs[i-1] : ((i-1 === turnInputs.length) ? currentInput : "--");
+        const styleClass = (i-1 < turnInputs.length) ? "filled" : ((i-1 === turnInputs.length) ? "active" : "");
+        
+        if(sideSlot) { sideSlot.innerText = val; sideSlot.style.color = styleClass==="filled"?"#00d2fc":(styleClass==="active"?"#fff":"#555"); }
+        if(mainSlot) { mainSlot.innerText = val; }
     });
 
-    // ダーツインジケーター (●●●) の更新
-    // ※HTML変更によりIDが再利用されているためクラス操作のみ行う
-    const currentThrow = turnInputs.length + 1;
-    const dots = [el("btn-d1"), el("btn-d2"), el("btn-d3")]; // インジケーター用IDとして再定義
-    dots.forEach((d, i) => {
-        if(d) {
-            d.className = "d-dot";
-            if (i < turnInputs.length) d.classList.add("filled"); // 投げ終わった
-            else if (i === turnInputs.length) d.classList.add("active"); // 今投げるところ
+    // Indicators (d-dot-1...)
+    [1, 2, 3].forEach((i) => {
+        const dot = el(`d-dot-${i}`);
+        if(dot) {
+            dot.className = "d-dot";
+            if (i-1 < turnInputs.length) dot.classList.add("filled");
+            else if (i-1 === turnInputs.length) dot.classList.add("active");
         }
     });
 }
