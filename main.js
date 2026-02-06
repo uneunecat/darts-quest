@@ -51,7 +51,34 @@ function playSE(id) {
 }
 function triggerFloatText(text, targetEl) { if (!targetEl) return; const float = document.createElement("div"); float.className = "float-text-box"; float.innerText = text; const rect = targetEl.getBoundingClientRect(); document.body.appendChild(float); const left = rect.left + (rect.width / 2) - 30; const top = rect.top; float.style.left = `${left}px`; float.style.top = `${top}px`; float.style.position = "fixed"; setTimeout(() => float.remove(), 1500); }
 function triggerEffect(el, dmg, isP) { el.classList.remove("shake-small", "shake-medium", "shake-heavy", "shake-ultimate"); void el.offsetWidth; if (dmg >= 150) { el.classList.add("shake-ultimate"); playSE("se-boom"); } else if (dmg >= 60) { el.classList.add("shake-heavy"); playSE("se-boom"); } else { el.classList.add(dmg >= 30 ? "shake-medium" : "shake-small"); } const pop = document.createElement("div"); pop.innerText = dmg; if (dmg >= 150) pop.className = "damage-popup dmg-ultimate"; else if (dmg >= 60) pop.className = "damage-popup dmg-heavy"; else if (dmg >= 30) pop.className = "damage-popup dmg-medium"; else pop.className = "damage-popup dmg-small"; pop.style.left = "50%"; pop.style.top = "50%"; el.appendChild(pop); setTimeout(() => pop.remove(), 1500); }
-function resizeGame() { const scaler = el('game-scaler'); const winW = window.innerWidth; const winH = window.innerHeight; const baseW = 900; const baseH = 620; const scale = Math.min(winW / baseW, winH / baseH) * 0.95; if (scaler) scaler.style.transform = `scale(${scale})`; }
+function resizeGame() {
+    const scaler = el('game-scaler');
+    if (!scaler) return;
+    
+    // PC (幅900px以上) のみスケーリング有効
+    if (window.innerWidth >= 900) {
+        const winW = window.innerWidth;
+        const winH = window.innerHeight;
+        const baseW = 900;
+        const baseH = 620;
+        const scale = Math.min(winW / baseW, winH / baseH) * 0.95;
+        scaler.style.transform = `scale(${scale})`;
+        scaler.style.width = "900px";
+        scaler.style.height = "620px";
+        scaler.style.position = "static"; // 中央配置用
+        
+        // Body scroll lock
+        document.body.style.overflow = "hidden";
+    } else {
+        // Mobile: スケール解除 & 流動レイアウト
+        scaler.style.transform = "none";
+        scaler.style.width = "100%";
+        scaler.style.height = "auto";
+        
+        // Body scroll unlock
+        document.body.style.overflowY = "auto";
+    }
+}
 function announce(text, type = "normal") {
     const ann = el("battle-announcer"); if (!ann) return;
     ann.innerHTML = text; // innerText から innerHTML に変更してタグを有効化
@@ -128,7 +155,13 @@ let allSaveData = { "slot1": null, "slot2": null, "slot3": null, "lastPlayed": 1
 let pendingCardIndex = -1; let pendingCardCost = 0;
 
 window.addEventListener('resize', resizeGame);
-window.addEventListener('load', () => { resizeGame(); loadGameData(); initSlotScreen(); });
+window.addEventListener('load', () => { 
+    resizeGame(); 
+    loadGameData(); 
+    initSlotScreen();
+    // モバイル用スクロール許可設定
+    if (window.innerWidth < 900) document.body.style.overflowY = "auto";
+});
 
 function loadGameData() { const saved = localStorage.getItem(SAVE_KEY); if (saved) { try { allSaveData = JSON.parse(saved); } catch (e) { console.error(e); } } if (!allSaveData.slot1) allSaveData.slot1 = null; if (!allSaveData.slot2) allSaveData.slot2 = null; if (!allSaveData.slot3) allSaveData.slot3 = null; }
 function saveToDrive() { allSaveData[currentSlot] = savedData; localStorage.setItem(SAVE_KEY, JSON.stringify(allSaveData)); }
@@ -1005,7 +1038,38 @@ window.addEventListener("keydown", function(e) {
         if (e.key === 'Enter') handleEnter();
     }
 });
-function updateScoreDisplay() { const slots = [el("slot-1"), el("slot-2"), el("slot-3")]; slots.forEach((s, i) => { s.className = "score-slot"; if (restrictInput && i > 0) { s.classList.add("locked"); s.innerText = "X"; return; } if (i < turnInputs.length) { s.innerText = turnInputs[i]; s.classList.add("filled"); } else if (i === turnInputs.length) { s.innerText = currentInput; s.classList.add("active"); } else { s.innerText = ""; } }); const currentThrow = turnInputs.length + 1; el("btn-d1").className = currentThrow === 1 ? "darts-btn active" : "darts-btn"; el("btn-d2").className = currentThrow === 2 ? "darts-btn active" : "darts-btn"; el("btn-d3").className = currentThrow === 3 ? "darts-btn active" : "darts-btn"; if (restrictInput) { el("btn-d2").className = "darts-btn disabled"; el("btn-d3").className = "darts-btn disabled"; } }
+function updateScoreDisplay() {
+    // スロットの更新 (Slot 1-3)
+    const slots = [el("slot-1"), el("slot-2"), el("slot-3")];
+    slots.forEach((s, i) => {
+        if (!s) return;
+        s.className = "score-slot";
+        if (i < turnInputs.length) {
+            s.innerText = turnInputs[i];
+            s.classList.add("filled");
+            s.style.color = "#00d2fc"; // 確定済み
+        } else if (i === turnInputs.length) {
+            s.innerText = currentInput; // 入力中
+            s.classList.add("active");
+            s.style.color = "#fff";
+        } else {
+            s.innerText = "--";
+            s.style.color = "#555";
+        }
+    });
+
+    // ダーツインジケーター (●●●) の更新
+    // ※HTML変更によりIDが再利用されているためクラス操作のみ行う
+    const currentThrow = turnInputs.length + 1;
+    const dots = [el("btn-d1"), el("btn-d2"), el("btn-d3")]; // インジケーター用IDとして再定義
+    dots.forEach((d, i) => {
+        if(d) {
+            d.className = "d-dot";
+            if (i < turnInputs.length) d.classList.add("filled"); // 投げ終わった
+            else if (i === turnInputs.length) d.classList.add("active"); // 今投げるところ
+        }
+    });
+}
 function getRankColor(r) { if (r === "SSS") return "#00ffff"; if (r === "S") return "#ffd700"; if (r === "A") return "#ff5555"; return "#fff"; }
 
 /* --- main.js (Part 2: Config UI & Injection v2.10.0) --- */

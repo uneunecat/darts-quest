@@ -131,18 +131,15 @@
             <div class="title-screen" id="title-screen">
                 <div class="title-logo">DARTS<br>QUEST</div>
                 <button id="bt-connect-btn" class="connect-btn" onclick="connectToBoard()">📡 CONNECT BOARD</button>
-                
                 <div class="highscore-box">
                     <div class="dp-display" id="dp-display">DP: 0</div>
                     <div class="hs-row">
                         <div><div class="hs-label">BEST REACH</div><div class="hs-value" id="hs-reach">--</div></div>
                         <div><div class="hs-label">BEST AVG</div><div class="hs-value"><span id="hs-avg">--</span><span id="hs-rt" class="rt-badge">Rt -</span></div></div>
                     </div>
-                    
                     <div class="main-actions" style="margin-top:20px; display:flex; flex-direction:column; gap:10px; align-items:center;">
                         <button class="stage-btn btn-gold" onclick="openStageSelect()" style="width:200px; height:60px; font-size:22px;">GAME START</button>
                     </div>
-
                     <div class="title-buttons" style="margin-top:15px;">
                         <button class="sub-btn" style="color:#e94560; border-color:#e94560;" onclick="openCardShop()">🎴 SHOP</button>
                         <button class="sub-btn" style="color:#00d2fc; border-color:#00d2fc;" onclick="openCollection()">📂 DECK</button>
@@ -163,82 +160,87 @@
                     <div style="color:#fff; font-family:'Cinzel Decorative'; font-size:24px;">SELECT STAGE</div>
                     <div style="width:50px;"></div>
                 </div>
-                <div class="stage-list-container" id="stage-list-container">
-                    </div>
+                <div class="stage-list-container" id="stage-list-container"></div>
             </div>
 
             <div class="game-screen" id="game-screen" style="display:none;">
-                <div class="battle-header">
-                    <button class="home-btn" onclick="returnToTitle()">🏠 EXIT</button>
-                    <div class="header-center">
-                        <span id="stage-display">STAGE 1</span>
-                        <span id="turn-display">TURN 1 (Total 1)</span>
-                    </div>
-                    <div class="header-right">
-                        <span id="floor-display">1F</span><span class="boss-label" id="boss-label">⚠️BOSS</span>
-                    </div>
-                </div>
-
-                <div class="battle-main" id="enemy-panel"> <div class="enemy-hud-top">
-                        <div class="status-badge badge-buff" id="enemy-buff-badge">CHARGE!</div>
-                        <div class="status-badge badge-drop" id="enemy-drop-badge">ITEM CHANCE!</div>
-                        <div class="weak-display" id="weak-display">WEAK: 20</div>
-                    </div>
+                <div class="battle-container-wrapper">
                     
-                    <div class="enemy-center-visual">
-                        <img id="enemy-img" src="" alt="Enemy">
-                        <img id="chest-img" src="assets/img_chest.png" alt="Chest" onclick="openChest()">
-                        <div class="enemy-hp-overlay">
-                            <div id="enemy-name">Enemy Name</div>
-                            <div id="enemy-hp-value" class="hp-big-text">100</div>
-                            <div class="hp-bar-bg"><div class="hp-bar-fill enemy-fill" id="enemy-hp-bar"></div></div>
-                            <div id="active-states"></div> </div>
-                    </div>
-                    
-                    <div id="battle-log"></div> </div>
+                    <div class="battle-side-info">
+                        <div class="battle-header-info">
+                            <div class="stg-info-row"><span id="stage-display">STAGE 1</span> <span id="floor-display">1F</span> <span class="boss-label" id="boss-label">BOSS</span></div>
+                            <div class="turn-info-row" id="turn-display">TURN 1</div>
+                        </div>
 
-                <div class="hud-layer">
-                    <div class="player-stats-box" id="player-panel">
-                        <div class="status-badge badge-buff" id="player-buff-badge">ATK UP</div>
-                        <div class="status-badge badge-guard" id="player-guard-badge">SHIELD</div>
-                        <div class="status-badge badge-guard" id="player-lock-badge" style="background:#555;">SEALED</div>
+                        <div class="side-block">
+                            <div class="side-label">ENEMY INFO</div>
+                            <div id="enemy-name" class="side-val-lg">Enemy Name</div>
+                            <div class="weak-display" id="weak-display">WEAK: 20</div>
+                            <div id="active-states"></div>
+                        </div>
+
+                        <div class="side-block">
+                            <div class="side-label">DARTS SCORE</div>
+                            <div class="darts-stack">
+                                <div class="dart-row"><span>1st</span><span class="score-slot" id="slot-1">0</span></div>
+                                <div class="dart-row"><span>2nd</span><span class="score-slot" id="slot-2">0</span></div>
+                                <div class="dart-row"><span>3rd</span><span class="score-slot" id="slot-3">0</span></div>
+                            </div>
+                            <div class="darts-indicator">
+                                <span id="btn-d1" class="d-dot">●</span><span id="btn-d2" class="d-dot">●</span><span id="btn-d3" class="d-dot">●</span>
+                            </div>
+                        </div>
+
+                        <div class="side-block player-block" id="player-panel">
+                            <div class="side-label">PLAYER</div>
+                            <div class="p-status-row">
+                                <span>HP</span>
+                                <div class="hp-bar-bg small-bar"><div class="hp-bar-fill player-fill" id="player-hp-bar"></div></div>
+                                <span class="p-val"><span id="player-hp">100</span></span>
+                            </div>
+                            <div class="p-status-row">
+                                <span>MP</span>
+                                <div class="hp-bar-bg small-bar" style="border-color:#00d2fc;"><div class="hp-bar-fill mp-fill" id="player-mp-bar"></div></div>
+                                <span class="p-val"><span id="player-mp">3</span></span>
+                            </div>
+                            <div class="avg-row">Avg: <span id="avg-display">0.0</span> <span id="rt-display">(Rt -)</span></div>
+                            
+                            <div class="item-row">
+                                <button class="item-btn" id="btn-potion" onclick="useItem('potion')">💊x0</button>
+                                <button class="item-btn" id="btn-ether" onclick="useItem('ether')">⚗️x0</button>
+                                <button class="item-btn" id="btn-seed" onclick="useItem('seed')">🌱x0</button>
+                            </div>
+                            
+                            <div style="display:none;">
+                                <div id="player-buff-badge"></div><div id="player-guard-badge"></div><div id="player-lock-badge"></div>
+                                <div id="enemy-buff-badge"></div><div id="enemy-drop-badge"></div>
+                            </div>
+                        </div>
                         
-                        <div class="p-stat-row">
-                            <span class="p-label">HP</span>
-                            <div class="hp-bar-bg small-bar">
-                                <div class="hp-bar-fill player-fill" id="player-hp-bar" style="width:100%;"></div>
-                                <div class="bar-overlay-text"><span id="player-hp">100</span>/<span id="player-max-hp">100</span></div>
-                            </div>
-                        </div>
-                        <div class="p-stat-row">
-                            <span class="p-label">MP</span>
-                            <div class="hp-bar-bg small-bar" style="border-color:#00d2fc;">
-                                <div class="hp-bar-fill mp-fill" id="player-mp-bar" style="width:100%;"></div>
-                                <div class="bar-overlay-text"><span id="player-mp">3</span>/<span id="player-max-mp">10</span></div>
-                            </div>
-                        </div>
-                        <div class="avg-display">Avg: <span id="avg-display">0.0</span> <span id="rt-display">(Rt -)</span></div>
+                        <button class="home-btn-side" onclick="returnToTitle()">🏠 EXIT GAME</button>
                     </div>
 
-                    <div class="darts-score-box">
-                        <div class="darts-selector"><div class="darts-btn" id="btn-d1">1</div><div class="darts-btn" id="btn-d2">2</div><div class="darts-btn" id="btn-d3">3</div></div>
-                        <div class="score-display" id="score-display"><span class="score-slot active" id="slot-1">0</span><span class="score-slot" id="slot-2">0</span><span class="score-slot" id="slot-3">0</span></div>
-                    </div>
-                </div>
+                    <div class="battle-main-stage" id="enemy-panel">
+                        <div class="enemy-visual-area">
+                            <img id="enemy-img" src="" alt="Enemy">
+                            <img id="chest-img" src="assets/img_chest.png" alt="Chest" onclick="openChest()">
+                            
+                            <div class="enemy-hp-container">
+                                <div id="enemy-hp-value" class="hp-big-text">100</div>
+                                <div class="hp-bar-bg big-bar"><div class="hp-bar-fill enemy-fill" id="enemy-hp-bar"></div></div>
+                            </div>
+                        </div>
 
-                <div class="battle-footer">
-                    <div class="item-area">
-                        <button class="item-btn" id="btn-potion" onclick="useItem('potion')">💊<br>x0</button>
-                        <button class="item-btn" id="btn-ether" onclick="useItem('ether')">⚗️<br>x0</button>
-                        <button class="item-btn" id="btn-seed" onclick="useItem('seed')">🌱<br>x0</button>
+                        <div class="hand-overlay-container">
+                            <div class="deck-info">DECK: <span id="battle-deck-count">0</span> | HAND: <span id="hand-count-display">0</span></div>
+                            <div class="hand-area" id="hand-area"></div>
+                        </div>
                     </div>
                     
-                    <div class="hand-container">
-                        <div class="deck-info">DECK: <span id="battle-deck-count">0</span> | HAND: <span id="hand-count-display">0</span></div>
-                        <div class="hand-area" id="hand-area"></div>
-                    </div>
+                    <div id="battle-log"></div>
                 </div>
             </div>
+
         </div>
     </div>
 

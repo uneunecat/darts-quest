@@ -1189,3 +1189,219 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     }
     .hand-card:hover { transform: translateY(-30px) scale(1.3) !important; z-index: 1000; border-color: #fff !important; box-shadow: 0 0 15px #fff; }
 }
+
+/* =========================================
+   ★ v2.11.1 IMMERSIVE ARCADE LAYOUT
+   ========================================= */
+
+/* --- Wrapper & Split Layout --- */
+.battle-container-wrapper {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Left Zone (Info) */
+.battle-side-info {
+    flex: 0 0 280px; /* PC Fixed Width */
+    background: rgba(0, 0, 0, 0.85);
+    border-right: 2px solid #444;
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    box-sizing: border-box;
+    gap: 15px;
+    z-index: 20;
+}
+
+/* Right Zone (Main) */
+.battle-main-stage {
+    flex: 1;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    /* Main ID 'enemy-panel' styles reset */
+    background: transparent !important; border: none !important; box-shadow: none !important;
+}
+
+/* --- Side Components --- */
+.battle-header-info { border-bottom: 1px solid #555; padding-bottom: 10px; margin-bottom: 5px; }
+.stg-info-row { font-size: 18px; color: #f9a826; font-weight: bold; font-family: 'Cinzel Decorative'; }
+.turn-info-row { font-size: 14px; color: #ccc; }
+
+.side-block { background: rgba(255,255,255,0.05); border-radius: 8px; padding: 10px; border: 1px solid #333; }
+.side-label { font-size: 10px; color: #00d2fc; margin-bottom: 5px; border-bottom: 1px solid #444; display: block; letter-spacing: 1px; }
+.side-val-lg { font-size: 16px; color: #fff; font-weight: bold; text-shadow: 0 0 5px #000; margin-bottom: 5px; }
+
+/* Score Stack */
+.darts-stack { display: flex; flex-direction: column; gap: 5px; }
+.dart-row { display: flex; justify-content: space-between; align-items: center; font-family: 'Roboto Mono'; font-size: 14px; color: #aaa; }
+.dart-row .score-slot { width: 60px; text-align: right; color: #fff; font-weight: bold; font-size: 18px; border-bottom: 1px solid #555; }
+.darts-indicator { display: flex; gap: 5px; justify-content: center; margin-top: 5px; }
+.d-dot { color: #333; font-size: 10px; } .d-dot.active { color: #00d2fc; text-shadow: 0 0 5px #00d2fc; }
+
+/* Player Stats */
+.p-status-row { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; font-size: 12px; }
+.p-val { font-family: 'Roboto Mono'; font-weight: bold; color: #fff; }
+.item-row { display: flex; gap: 5px; margin-top: 10px; }
+.item-btn { flex: 1; height: 35px; padding: 0 !important; font-size: 10px; }
+
+.home-btn-side { margin-top: auto; background: #333; color: #aaa; border: 1px solid #555; padding: 10px; cursor: pointer; border-radius: 5px; }
+.home-btn-side:hover { background: #555; color: #fff; }
+
+/* --- Main Stage Components --- */
+.enemy-visual-area {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 60%;
+    margin-bottom: 120px; /* Space for cards */
+}
+#enemy-img {
+    height: 100%;
+    max-height: 350px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 20px rgba(0,0,0,0.8));
+    z-index: 5;
+    transition: transform 0.1s;
+}
+#chest-img {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    z-index: 10;
+    cursor: pointer;
+    filter: drop-shadow(0 0 15px gold);
+}
+
+.enemy-hp-container {
+    position: absolute;
+    bottom: -40px;
+    width: 80%;
+    max-width: 500px;
+    text-align: center;
+    z-index: 10;
+}
+.big-bar { height: 30px !important; border: 2px solid #fff; box-shadow: 0 0 10px #000; background: #222; }
+
+/* --- Card Overlay (Portrait Style) --- */
+.hand-overlay-container {
+    position: absolute;
+    bottom: 10px;
+    left: 0;
+    width: 100%;
+    height: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 50;
+    pointer-events: none; /* Let clicks pass through empty areas */
+}
+.hand-area {
+    pointer-events: auto;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    width: 100%;
+    overflow-x: visible; /* Allow pop-up */
+}
+/* Card Style (Vertical & Big) */
+.hand-card {
+    width: 80px !important;
+    height: 120px !important;
+    background: #1a1a1a;
+    border: 2px solid #888;
+    border-radius: 6px;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    flex-shrink: 0;
+}
+.hand-card:hover {
+    transform: translateY(-20px) scale(1.1);
+    box-shadow: 0 0 20px rgba(255,255,255,0.5);
+    z-index: 100;
+    border-color: #fff;
+}
+.hand-cost { font-size: 12px; padding: 2px 6px; }
+
+/* =========================================
+   ★ MOBILE OPTIMIZATION (Vertical Scroll)
+   ========================================= */
+@media (max-width: 900px) {
+    /* Disable Scale Transform via JS Logic (Handled in main.js) */
+    
+    /* Change Split to Vertical Stack */
+    .battle-container-wrapper {
+        flex-direction: column;
+        overflow-y: auto; /* Allow Scroll */
+        height: auto;
+        min-height: 100%;
+        padding-bottom: 20px;
+    }
+
+    /* Left Info becomes Top Info */
+    .battle-side-info {
+        flex: none;
+        width: 100%;
+        border-right: none;
+        border-bottom: 2px solid #444;
+        gap: 10px;
+        padding: 10px;
+    }
+    
+    /* Reorder Side Blocks for Mobile */
+    .battle-side-info .side-block { order: 2; }
+    .battle-header-info { order: 1; display: flex; justify-content: space-between; align-items: center; }
+    .home-btn-side { order: 0; margin-bottom: 10px; padding: 5px; font-size: 12px; width: 80px; align-self: flex-end; }
+
+    /* Score: Horizontal on Mobile */
+    .darts-stack { flex-direction: row; justify-content: space-around; }
+    .dart-row { flex-direction: column; font-size: 10px; }
+    .dart-row .score-slot { width: 50px; text-align: center; font-size: 16px; }
+
+    /* Main Stage */
+    .battle-main-stage {
+        flex: none;
+        height: auto;
+        margin-top: 10px;
+        overflow: visible;
+    }
+    .enemy-visual-area {
+        height: 250px;
+        margin-bottom: 10px;
+    }
+    .enemy-hp-container {
+        bottom: 0;
+        position: relative;
+    }
+    
+    /* Hand: Horizontal Scroll */
+    .hand-overlay-container {
+        position: relative;
+        bottom: auto;
+        left: auto;
+        height: 130px;
+        margin-top: 20px;
+        width: 100%;
+        pointer-events: auto;
+    }
+    .hand-area {
+        justify-content: flex-start;
+        padding: 0 10px;
+        overflow-x: auto;
+    }
+    .hand-card {
+        width: 70px !important;
+        height: 105px !important;
+    }
+    .hand-card:hover { transform: none; } /* No hover on mobile */
+}
