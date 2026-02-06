@@ -10,7 +10,6 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
     <audio id="bgm-title" loop src="assets/bgm_title.mp3"></audio>
     <audio id="bgm-battle" loop src="assets/bgm_battle.mp3"></audio>
     <audio id="bgm-boss" loop src="assets/bgm_boss.mp3"></audio>
@@ -45,7 +44,6 @@
                 <div class="chapter-title" id="chapter-title">STAGE 1</div>
                 <div class="chapter-sub" id="chapter-sub">Title</div>
             </div>
-
             <div id="skill-cutin">
                 <div class="cutin-bg"></div>
                 <div class="cutin-text" id="cutin-text-val">SKILL NAME</div>
@@ -59,17 +57,15 @@
                     <div class="slot-card" onclick="selectSlot(3)" id="card-3"><div class="slot-header">SLOT 3</div><div class="slot-info" id="info-3">Loading...</div></div>
                 </div>
             </div>
-
+            
             <div class="modal-overlay" id="game-modal">
                 <div class="modal-box" id="modal-box-inner">
                     <div class="modal-title" id="modal-title">TITLE</div>
                     <div class="modal-text" id="modal-text">Message</div>
-                    <div id="modal-buttons" class="btn-group">
-                        <button class="modal-btn" id="modal-btn">OK</button>
-                    </div>
+                    <div id="modal-buttons" class="btn-group"><button class="modal-btn" id="modal-btn">OK</button></div>
                 </div>
             </div>
-
+            
             <div class="modal-overlay" id="history-modal" style="display:none;">
                 <div class="modal-box history-box">
                     <div class="modal-title" style="color:#00d2fc;">PLAY HISTORY</div>
@@ -81,11 +77,11 @@
 
             <div class="modal-overlay" id="card-shop-modal" style="display:none;">
                 <div class="modal-box shop-box">
-                    <div style="display:flex; justify-content:space-between; align-items:center; width:100%; padding: 0 20px; box-sizing: border-box; flex-shrink: 0; margin-bottom: 10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; width:100%; padding:0 20px; box-sizing:border-box; flex-shrink:0; margin-bottom:10px;">
                         <div class="modal-title" style="color:#e94560; margin:0; padding:0;">CARD SHOP</div>
                         <button class="header-close-btn" onclick="closeCardShop()">×</button>
                     </div>
-                    <div style="color:#aaa; margin-bottom:10px; padding: 0 20px; text-align: left; width: 100%; box-sizing: border-box;">
+                    <div style="color:#aaa; margin-bottom:10px; padding:0 20px; text-align:left; width:100%; box-sizing:border-box;">
                         所持DP: <span id="shop-dp-display" style="color:#ffd700; font-weight:bold;">0</span>
                     </div>
                     <div class="pack-list" id="pack-list"></div>
@@ -109,21 +105,14 @@
                             <button class="header-close-btn" onclick="closeCollection()">×</button>
                         </div>
                     </div>
-
                     <div class="modal-body-split">
                         <div class="deck-column">
-                            <div class="column-header">
-                                ▼ YOUR DECK (<span id="deck-count" style="color:#ffd700;">0</span>/20)
-                            </div>
+                            <div class="column-header">▼ YOUR DECK (<span id="deck-count" style="color:#ffd700;">0</span>/20)</div>
                             <div class="deck-grid" id="deck-grid"></div>
-                            <div id="deck-card-detail" class="deck-card-detail">
-                                <div style="color:#aaa; font-size:12px; text-align:center; padding-top:20px;">Hover card to see details</div>
-                            </div>
+                            <div id="deck-card-detail" class="deck-card-detail"><div style="color:#aaa; font-size:12px; text-align:center; padding-top:20px;">Hover card to see details</div></div>
                         </div>
                         <div class="list-column">
-                            <div class="column-header">
-                                ▼ CARD LIST <span style="font-size:10px; color:#aaa;">(Click to Add)</span>
-                            </div>
+                            <div class="column-header">▼ CARD LIST <span style="font-size:10px; color:#aaa;">(Click to Add)</span></div>
                             <div class="card-grid" id="card-grid"></div>
                         </div>
                     </div>
@@ -141,135 +130,119 @@
 
             <div class="title-screen" id="title-screen">
                 <div class="title-logo">DARTS<br>QUEST</div>
-                
                 <button id="bt-connect-btn" class="connect-btn" onclick="connectToBoard()">📡 CONNECT BOARD</button>
                 
                 <div class="highscore-box">
                     <div class="dp-display" id="dp-display">DP: 0</div>
                     <div class="hs-row">
                         <div><div class="hs-label">BEST REACH</div><div class="hs-value" id="hs-reach">--</div></div>
-                        <div><div class="hs-label">BEST AVG (PPR)</div><div class="hs-value"><span id="hs-avg">--</span><span id="hs-rt" class="rt-badge">Rt -</span></div></div>
+                        <div><div class="hs-label">BEST AVG</div><div class="hs-value"><span id="hs-avg">--</span><span id="hs-rt" class="rt-badge">Rt -</span></div></div>
                     </div>
-                    <div class="title-buttons">
-                        <button class="sub-btn" style="color:#e94560; border-color:#e94560;" onclick="openCardShop()">🎴 CARD SHOP</button>
-                        <button class="sub-btn" style="color:#00d2fc; border-color:#00d2fc;" onclick="openCollection()">📂 CARDS</button>
+                    
+                    <div class="main-actions" style="margin-top:20px; display:flex; flex-direction:column; gap:10px; align-items:center;">
+                        <button class="stage-btn btn-gold" onclick="openStageSelect()" style="width:200px; height:60px; font-size:22px;">GAME START</button>
+                    </div>
+
+                    <div class="title-buttons" style="margin-top:15px;">
+                        <button class="sub-btn" style="color:#e94560; border-color:#e94560;" onclick="openCardShop()">🎴 SHOP</button>
+                        <button class="sub-btn" style="color:#00d2fc; border-color:#00d2fc;" onclick="openCollection()">📂 DECK</button>
                         <button class="sub-btn" onclick="showHistory()">📜 HISTORY</button>
-                        <button class="sub-btn" onclick="exportSave()">📤 EXPORT</button>
-                        <button class="sub-btn" onclick="importSave()">📥 IMPORT</button>
-                        <button class="sub-btn reset-btn" onclick="resetSaveData()">🗑️ RESET SLOT</button>
                         <button class="sub-btn" onclick="backToSlots()">↩️ SLOTS</button>
                     </div>
-                </div>
-                <p style="margin-bottom:20px; font-size:18px; color:#aaa; font-family: 'Cinzel Decorative';">SELECT STAGE</p>
-                <div class="stage-select">
-                    <div style="display:flex; gap:10px;">
-                        <button class="stage-btn btn-default" id="btn-st1" onclick="initGameSession(1)">STAGE 1</button>
-                        <button class="stage-btn btn-default" id="btn-st2" onclick="initGameSession(2)">STAGE 2</button>
-                        <button class="stage-btn btn-default" id="btn-st3" onclick="initGameSession(3)">STAGE 3</button>
-                        <button class="stage-btn extra-btn" id="btn-extra" style="display:none;" onclick="initGameSession(5)">EXTRA</button>
-                    </div>
-                    <div style="display:flex; gap:10px; margin-top:10px;">
-                        <button class="stage-btn stage4-btn" id="btn-stage4" onclick="initGameSession(4)">STAGE 4</button>
-                        <button class="stage-btn stage5-btn" id="btn-stage5" style="display:none;" onclick="initGameSession(6)">STAGE 5</button>
+                    <div style="font-size:10px; color:#555; margin-top:10px;">
+                        <span onclick="exportSave()" style="cursor:pointer;">[EXPORT]</span> 
+                        <span onclick="importSave()" style="cursor:pointer;">[IMPORT]</span>
+                        <span onclick="resetSaveData()" style="cursor:pointer; color:#522;">[RESET]</span>
                     </div>
                 </div>
             </div>
 
-            <div class="game-screen" id="game-screen">
-                <button class="home-btn" onclick="returnToTitle()">🏠 TITLE</button>
-                <div class="header-info">
-                    <span id="stage-display">STAGE 1</span>
-                    <span id="turn-display">TURN 1</span>
-                    <div><span id="floor-display">1F</span><span class="boss-label" id="boss-label">⚠️BOSS</span></div>
+            <div id="stage-select-screen" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10; flex-direction:column; padding:20px; box-sizing:border-box;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <button class="sub-btn" onclick="closeStageSelect()">↩️ BACK</button>
+                    <div style="color:#fff; font-family:'Cinzel Decorative'; font-size:24px;">SELECT STAGE</div>
+                    <div style="width:50px;"></div>
                 </div>
-                <div class="main-area">
-                    <div class="left-panel" id="enemy-panel">
-                        <div class="status-badge badge-buff" id="enemy-buff-badge">CHARGE!</div>
-                        <div class="status-badge badge-guard" id="enemy-guard-badge">GUARD</div>
-                        <div class="status-badge badge-drop" id="enemy-drop-badge">ITEM CHANCE!</div>
-                        <div class="enemy-image-container">
-                            <img id="enemy-img" src="" alt="Enemy">
-                            <img id="chest-img" src="assets/img_chest.png" alt="Chest" onclick="openChest()">
-                        </div>
-                        <div class="status-area">
-                            <div id="enemy-name">Loading...</div>
-                            <div id="enemy-hp-value" class="hp-big-text">100</div>
-                            <div class="weak-display" id="weak-display"></div>
-                            <div class="hp-bar-bg"><div class="hp-bar-fill enemy-fill" id="enemy-hp-bar"></div></div>
-                        </div>
-                        <div id="battle-log"></div>
+                <div class="stage-list-container" id="stage-list-container">
                     </div>
-                    <div class="right-panel">
-                        <div class="player-box" id="player-panel">
-                            <div class="status-badge badge-buff" id="player-buff-badge" style="right: auto; left: 10px;">ATK x1.5</div>
-                            <div class="status-badge badge-guard" id="player-guard-badge" style="right: auto; left: 10px;">SHIELD</div>
-                            <div class="status-badge badge-guard" id="player-lock-badge" style="right: auto; left: 80px; background-color:#555; color:#fff;">SEALED</div>
-                            
-                            <div class="status-area">
-                                <div class="hp-bar-bg">
-                                    <div class="hp-bar-fill player-fill" id="player-hp-bar" style="width:100%;"></div>
-                                    <div class="bar-overlay-text"><span id="player-hp">100</span> / <span id="player-max-hp">100</span></div>
-                                </div>
-                                <div class="hp-bar-bg" style="border-color:#00d2fc;">
-                                    <div class="hp-bar-fill mp-fill" id="player-mp-bar" style="width:100%;"></div>
-                                    <div class="bar-overlay-text">MP: <span id="player-mp">3</span> / <span id="player-max-mp">10</span></div>
-                                </div>
-                            </div>
-                            <div class="stats-text">Avg: <span class="avg-score" id="avg-display">0.0</span> <span class="avg-score" id="rt-display" style="font-size:14px;">(Rt -)</span></div>
-                        </div>
-                        
-                        <div class="hand-container">
-                            <div style="font-size:10px; color:#aaa; margin-bottom:2px; display:flex; justify-content:space-between;">
-                                <span>HAND (<span id="hand-count-display">0</span>/5)</span>
-                                <span>DECK: <span id="battle-deck-count" style="color:#fff;">0</span></span>
-                            </div>
-                            <div class="hand-area" id="hand-area">
-                                <div class="hand-card-empty">NO CARD</div>
-                            </div>
-                        </div>
+            </div>
 
-                        <div class="item-area">
-                            <button class="item-btn" id="btn-potion" onclick="useItem('potion')">💊 薬草 x0<span class="tooltip">HPを50回復 (使い切り)</span></button>
-                            <button class="item-btn" id="btn-ether" onclick="useItem('ether')">⚗️ マナ x0<span class="tooltip">MPを3回復 (使い切り)</span></button>
-                            <button class="item-btn" id="btn-seed" onclick="useItem('seed')">🌱 種 x0<span class="tooltip">最大HP+10上昇 (使い切り)</span></button>
+            <div class="game-screen" id="game-screen" style="display:none;">
+                <div class="battle-header">
+                    <button class="home-btn" onclick="returnToTitle()">🏠 EXIT</button>
+                    <div class="header-center">
+                        <span id="stage-display">STAGE 1</span>
+                        <span id="turn-display">TURN 1 (Total 1)</span>
+                    </div>
+                    <div class="header-right">
+                        <span id="floor-display">1F</span><span class="boss-label" id="boss-label">⚠️BOSS</span>
+                    </div>
+                </div>
+
+                <div class="battle-main" id="enemy-panel"> <div class="enemy-hud-top">
+                        <div class="status-badge badge-buff" id="enemy-buff-badge">CHARGE!</div>
+                        <div class="status-badge badge-drop" id="enemy-drop-badge">ITEM CHANCE!</div>
+                        <div class="weak-display" id="weak-display">WEAK: 20</div>
+                    </div>
+                    
+                    <div class="enemy-center-visual">
+                        <img id="enemy-img" src="" alt="Enemy">
+                        <img id="chest-img" src="assets/img_chest.png" alt="Chest" onclick="openChest()">
+                        <div class="enemy-hp-overlay">
+                            <div id="enemy-name">Enemy Name</div>
+                            <div id="enemy-hp-value" class="hp-big-text">100</div>
+                            <div class="hp-bar-bg"><div class="hp-bar-fill enemy-fill" id="enemy-hp-bar"></div></div>
+                            <div id="active-states"></div> </div>
+                    </div>
+                    
+                    <div id="battle-log"></div> </div>
+
+                <div class="hud-layer">
+                    <div class="player-stats-box" id="player-panel">
+                        <div class="status-badge badge-buff" id="player-buff-badge">ATK UP</div>
+                        <div class="status-badge badge-guard" id="player-guard-badge">SHIELD</div>
+                        <div class="status-badge badge-guard" id="player-lock-badge" style="background:#555;">SEALED</div>
+                        
+                        <div class="p-stat-row">
+                            <span class="p-label">HP</span>
+                            <div class="hp-bar-bg small-bar">
+                                <div class="hp-bar-fill player-fill" id="player-hp-bar" style="width:100%;"></div>
+                                <div class="bar-overlay-text"><span id="player-hp">100</span>/<span id="player-max-hp">100</span></div>
+                            </div>
                         </div>
+                        <div class="p-stat-row">
+                            <span class="p-label">MP</span>
+                            <div class="hp-bar-bg small-bar" style="border-color:#00d2fc;">
+                                <div class="hp-bar-fill mp-fill" id="player-mp-bar" style="width:100%;"></div>
+                                <div class="bar-overlay-text"><span id="player-mp">3</span>/<span id="player-max-mp">10</span></div>
+                            </div>
+                        </div>
+                        <div class="avg-display">Avg: <span id="avg-display">0.0</span> <span id="rt-display">(Rt -)</span></div>
+                    </div>
+
+                    <div class="darts-score-box">
                         <div class="darts-selector"><div class="darts-btn" id="btn-d1">1</div><div class="darts-btn" id="btn-d2">2</div><div class="darts-btn" id="btn-d3">3</div></div>
                         <div class="score-display" id="score-display"><span class="score-slot active" id="slot-1">0</span><span class="score-slot" id="slot-2">0</span><span class="score-slot" id="slot-3">0</span></div>
-                        <div id="mobile-keypad">
-                            <div class="key-row">
-                                <button class="key-btn" onclick="tapKey('7')">7</button>
-                                <button class="key-btn" onclick="tapKey('8')">8</button>
-                                <button class="key-btn" onclick="tapKey('9')">9</button>
-                            </div>
-                            <div class="key-row">
-                                <button class="key-btn" onclick="tapKey('4')">4</button>
-                                <button class="key-btn" onclick="tapKey('5')">5</button>
-                                <button class="key-btn" onclick="tapKey('6')">6</button>
-                            </div>
-                            <div class="key-row">
-                                <button class="key-btn" onclick="tapKey('1')">1</button>
-                                <button class="key-btn" onclick="tapKey('2')">2</button>
-                                <button class="key-btn" onclick="tapKey('3')">3</button>
-                            </div>
-                            <div class="key-row">
-                                <button class="key-btn key-func" onclick="tapKey('BS')">BS</button>
-                                <button class="key-btn" onclick="tapKey('0')">0</button>
-                                <button class="key-btn key-enter" onclick="tapKey('ENT')">OK</button>
-                            </div>
-                        </div>
-                        <div class="keyboard-hint">[KEYBOARD / TOUCH INPUT]</div>
-                        <div class="keyboard-hint">[KEYBOARD INPUT ONLY]<br>NUMBERS: Input Score<br>BACKSPACE: Correction<br>ENTER: Next / Attack / Open Chest</div>
+                    </div>
+                </div>
+
+                <div class="battle-footer">
+                    <div class="item-area">
+                        <button class="item-btn" id="btn-potion" onclick="useItem('potion')">💊<br>x0</button>
+                        <button class="item-btn" id="btn-ether" onclick="useItem('ether')">⚗️<br>x0</button>
+                        <button class="item-btn" id="btn-seed" onclick="useItem('seed')">🌱<br>x0</button>
+                    </div>
+                    
+                    <div class="hand-container">
+                        <div class="deck-info">DECK: <span id="battle-deck-count">0</span> | HAND: <span id="hand-count-display">0</span></div>
+                        <div class="hand-area" id="hand-area"></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="global-tooltip" class="global-tooltip">
-        <div id="gt-name" class="tooltip-name"></div>
-        <div id="gt-desc" class="tooltip-desc"></div>
-    </div>
-
+    <div id="global-tooltip" class="global-tooltip"><div id="gt-name" class="tooltip-name"></div><div id="gt-desc" class="tooltip-desc"></div></div>
     <script src="main.js"></script>
 </body>
 </html>

@@ -1065,3 +1065,87 @@ updateTitleScore = function() {
         titleScreen.appendChild(btn);
     }
 };
+
+/* --- main.js (Part 3: Stage Select & UI Logic v2.11) --- */
+
+// ステージ選択画面を開く
+function openStageSelect() {
+    playSE("se-tap");
+    el("title-screen").style.display = "none";
+    el("stage-select-screen").style.display = "flex";
+    renderStageSelectScreen();
+}
+
+// ステージ選択画面を閉じる
+function closeStageSelect() {
+    playSE("se-tap");
+    el("stage-select-screen").style.display = "none";
+    el("title-screen").style.display = "flex";
+}
+
+// ステージリストの描画
+function renderStageSelectScreen() {
+    const container = el("stage-list-container");
+    container.innerHTML = "";
+    
+    // ステージ定義
+    const stages = [
+        { id: 1, name: "旅立ちの森", sub: "Forest of Beginnings", img: "assets/bg_stage1.png" },
+        { id: 2, name: "荒れ狂う荒野", sub: "Raging Wasteland", img: "assets/bg_stage2.png" },
+        { id: 3, name: "誘惑の迷宮", sub: "Labyrinth of Temptation", img: "assets/bg_stage3.png" },
+        { id: 4, name: "幻想の狂宴", sub: "Toon Nightmare", img: "assets/bg_stage4_1.png" },
+        { id: 5, name: "燃えたぎる火口", sub: "Burning Crater", img: "assets/bg_extra.png", isExtra: true },
+        { id: 6, name: "神の試練", sub: "God's Testing Ground", img: "assets/bg_stage5_1.png", isExtra: true }
+    ];
+
+    stages.forEach(st => {
+        // ロック判定
+        let isLocked = false;
+        if (st.id === 4) isLocked = !(savedData.unlockedStage4 || (savedData.bestRanks && savedData.bestRanks[3]) || savedData.clearedExtra);
+        if (st.id === 5) isLocked = !savedData.clearedExtra;
+        if (st.id === 6) isLocked = !(savedData.bestRanks && savedData.bestRanks[4]); // Stage 4 clear
+        // ※Stage 1-3 are always open for now
+
+        // ランク取得
+        const rank = savedData.bestRanks ? savedData.bestRanks[st.id] : null;
+        let rankColor = "#444";
+        if(rank === "SSS") rankColor = "#00ffff";
+        else if(rank === "S") rankColor = "#ffd700";
+        else if(rank === "A") rankColor = "#ff5555";
+        else if(rank) rankColor = "#fff";
+
+        const div = document.createElement("div");
+        div.className = "stage-card-item";
+        if (isLocked) div.classList.add("locked");
+        
+        div.innerHTML = `
+            <img src="${st.img}" class="st-img">
+            <div class="st-info">
+                <div class="st-title">${isLocked ? "LOCKED" : st.name}</div>
+                <div class="st-sub">${st.sub}</div>
+            </div>
+            ${rank ? `<div class="st-rank" style="color:${rankColor}">${rank}</div>` : ""}
+            ${isLocked ? `<div class="st-rank" style="font-size:20px;">🔒</div>` : ""}
+        `;
+        
+        if (!isLocked) {
+            div.onclick = () => {
+                el("stage-select-screen").style.display = "none";
+                initGameSession(st.id); // ゲーム開始
+            };
+        }
+        
+        container.appendChild(div);
+    });
+}
+
+// 戻るボタンの挙動修正
+const originalReturnToTitle = returnToTitle;
+returnToTitle = function() {
+    playBGM("bgm-title");
+    el("game-container").classList.remove("boss-mode", "extra-mode");
+    el("game-screen").style.display = "none";
+    el("title-screen").style.display = "flex"; // 常にタイトルへ
+    el("stage-select-screen").style.display = "none";
+    updateTitleScore();
+};
