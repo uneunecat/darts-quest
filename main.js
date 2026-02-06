@@ -220,11 +220,18 @@ function endEnemyTurn() {
 function winBattle() { addLog(`${enemy.name} を倒した`, "system"); player.mp = Math.min(player.mp + 3, player.maxMp); triggerFloatText("MP+3", el("player-mp-bar")); drawCard(); if (isJustFinish) { player.maxHp += 10; const oldHP = player.hp; player.hp = Math.min(player.hp + 10, player.maxHp); playSE("se-heal"); addLog(`★JUST FINISH! MaxHP+10 & HP+10`, "heal"); animateValue(el("player-hp"), oldHP, player.hp, 500); updateInfo(); setTimeout(() => { showDialog("JUST FINISH BONUS!!", `見事！ピッタリで倒した！<br>最大HPが ${player.maxHp} にアップ！<br>HPも10回復した。`, "clear", [{ text: "OK", action: checkDrop }], 3000); }, 800); } else { setTimeout(checkDrop, 800); } }
 function checkDrop() { if (stage === 5 && floor === 1) { nextStep(); return; } if (stage === 6 && floor === 5) { nextStep(); return; } if (stage === 4 && floor === 6) { nextStep(); return; } const isBoss = (floor === 5 || (stage === 4 && floor === 6)); let dropRate = isBoss ? 1.0 : 0.3; if (dropGuaranteed) dropRate = 1.0; if (Math.random() < dropRate) { waitingForChest = true; el("enemy-img").style.display = "none"; el("chest-img").style.display = "block"; el("chest-img").classList.add("chest-shine"); playSE("se-chest"); addLog("宝箱を見つけた！", "log-item"); setTimeout(() => { if (waitingForChest) openChest(); }, 1500); } else { nextStep(); } }
 function openChest() { if (!waitingForChest) return; waitingForChest = false; playSE("se-item"); let seedRate = 0.15; if (weakHitCount >= 3) seedRate = 1.0; else if (weakHitCount >= 2) seedRate = 0.50; const rand = Math.random(); let itemName = ""; let itemEffect = ""; if (rand < seedRate) { itemName = "★命の種"; itemEffect = "MaxHP +10"; player.items.seed++; } else if (Math.random() < 0.6) { itemName = "薬草"; itemEffect = "HP 50 回復"; player.items.potion++; } else { itemName = "魔法の聖水"; itemEffect = "MP 3 回復"; player.items.ether++; } updateInfo(); addLog(`宝箱: ${itemName} (${itemEffect}) を手に入れた`, "log-item"); showDialog("TREASURE!", `<span style="font-size:24px;color:#00ff00;">${itemName}</span> を手に入れた！<br>${itemEffect}<br>(アイテムボタンで使用可能)`, "item", [{ text: "OK", action: nextStep }], 2000); }
-function nextStep() {
-    floor++; const ppr = totalDarts > 0 ? ((totalScore / totalDarts) * 3).toFixed(1) : 0;
-    const isStage5Clear = (stage === 5 && floor > 1); const isStage6Clear = (stage === 6 && floor > 5); const isStage4Clear = (stage === 4 && floor > 6); const isNormalClear = (stage <= 3 && floor > 5);
-    if (isNormalClear || isStage4Clear || isStage6Clear || isStage5Clear) {
-        const stageTurns = totalGameTurns - stageStartTurn; const [rank, dpBonus] = calculateStageRank(stage, stageTurns);
+function nextStep() { 
+    floor++; const ppr = totalDarts > 0 ? ((totalScore/totalDarts)*3).toFixed(1) : 0; 
+    const isStage5Clear = (stage === 5 && floor > 1); 
+    const isStage6Clear = (stage === 6 && floor > 5); 
+    const isStage4Clear = (stage === 4 && floor > 6); 
+    const isNormalClear = (stage <= 3 && floor > 5); 
+    
+    if(isNormalClear || isStage4Clear || isStage6Clear || isStage5Clear) { 
+        // ★ FIX: とどめを刺したターンを含めるため +1 する
+        const stageTurns = (totalGameTurns - stageStartTurn) + 1; 
+        
+        const [rank, dpBonus] = calculateStageRank(stage, stageTurns);
         const multipliers = { 1: 1.0, 2: 1.5, 3: 2.0, 4: 3.0, 5: 5.0, 6: 5.0 }; const mult = multipliers[stage] || 1.0;
         const scoreDP = Math.floor(totalScore * 0.2 * mult); let pendingBonusDP = dpBonus; clearedStagesLog.forEach(log => { pendingBonusDP += log.dp; }); let potentialTotalDP = scoreDP + pendingBonusDP;
         clearedStagesLog.push({ stage: stage, rank: rank, dp: dpBonus });
@@ -374,8 +381,17 @@ function renderHand() {
 }
 function updateInfo() {
     if (!enemy.data) return;
-    if (stage === 6) { el("stage-display").innerText = "STAGE 5"; el("floor-display").innerText = `${floor}F`; } else if (stage === 5) { el("stage-display").innerText = "EXTRA"; el("floor-display").innerText = "FINAL"; } else if (stage === 4) { el("stage-display").innerText = "STAGE 4"; el("floor-display").innerText = `${floor}F`; } else { el("stage-display").innerText = `STAGE ${stage}`; el("floor-display").innerText = `${floor}F`; } el("turn-display").innerText = `TURN ${currentTurn}`;
-    const elName = el("enemy-name"); elName.innerText = enemy.name; elName.style.fontSize = (enemy.name.length > 12) ? "12px" : ((enemy.name.length > 9) ? "15px" : "18px"); const hpVal = el("enemy-hp-value"); hpVal.innerText = enemy.hp; hpVal.className = "hp-big-text"; if (enemy.hp <= 60) hpVal.classList.add("hp-danger"); else if (enemy.hp <= 180) hpVal.classList.add("hp-warning"); let weakText = ""; if (player.state.weakLock) weakText = "<span style='color:#f0f; animation:blink 0.5s infinite;'>★ WEAK LOCK ACTIVE ★</span>"; else { let baseText = "WEAK: " + enemy.data.weak + "+"; if (weakHitCount > 0) { let color = weakHitCount >= 3 ? "#ff0000" : (weakHitCount >= 2 ? "#ffa500" : "#ffff00"); let msg = weakHitCount >= 3 ? "ULTRA CHANCE!!!" : (weakHitCount >= 2 ? "SUPER CHANCE!!" : "DROP CHANCE UP!"); weakText = `${baseText} <span style='color:${color}; text-shadow:0 0 5px ${color}; margin-left:5px;'>✨ ${msg}</span>`; } else { weakText = baseText; } } el("weak-display").innerHTML = weakText; el("enemy-hp-bar").style.width = Math.max(0, (enemy.hp / enemy.maxHp) * 100) + "%";
+    // ステージ表示
+    if(stage===6) { el("stage-display").innerText="STAGE 5"; el("floor-display").innerText=`${floor}F`; } 
+    else if(stage===5) { el("stage-display").innerText="EXTRA"; el("floor-display").innerText="FINAL"; } 
+    else if(stage===4) { el("stage-display").innerText="STAGE 4"; el("floor-display").innerText=`${floor}F`; } 
+    else { el("stage-display").innerText=`STAGE ${stage}`; el("floor-display").innerText=`${floor}F`; } 
+    // ★ UPDATE: 総ターン数を併記 (完了したターン数 + 現在のターン1)
+    // 敵ターン中などは totalGameTurns が既に加算されている場合があるため、
+    // 簡易的に「常に+1」だとズレる可能性がありますが、
+    // プレイ中の目安としては「(totalGameTurns - stageStartTurn) + 1」が最も直感的です。
+    const currentTotal = (totalGameTurns - stageStartTurn) + 1;
+    el("turn-display").innerHTML = `TURN ${currentTurn} <span style="font-size:16px; color:#888;">(Total ${currentTotal})</span>`;    const elName = el("enemy-name"); elName.innerText = enemy.name; elName.style.fontSize = (enemy.name.length > 12) ? "12px" : ((enemy.name.length > 9) ? "15px" : "18px"); const hpVal = el("enemy-hp-value"); hpVal.innerText = enemy.hp; hpVal.className = "hp-big-text"; if (enemy.hp <= 60) hpVal.classList.add("hp-danger"); else if (enemy.hp <= 180) hpVal.classList.add("hp-warning"); let weakText = ""; if (player.state.weakLock) weakText = "<span style='color:#f0f; animation:blink 0.5s infinite;'>★ WEAK LOCK ACTIVE ★</span>"; else { let baseText = "WEAK: " + enemy.data.weak + "+"; if (weakHitCount > 0) { let color = weakHitCount >= 3 ? "#ff0000" : (weakHitCount >= 2 ? "#ffa500" : "#ffff00"); let msg = weakHitCount >= 3 ? "ULTRA CHANCE!!!" : (weakHitCount >= 2 ? "SUPER CHANCE!!" : "DROP CHANCE UP!"); weakText = `${baseText} <span style='color:${color}; text-shadow:0 0 5px ${color}; margin-left:5px;'>✨ ${msg}</span>`; } else { weakText = baseText; } } el("weak-display").innerHTML = weakText; el("enemy-hp-bar").style.width = Math.max(0, (enemy.hp / enemy.maxHp) * 100) + "%";
     const playerHpPct = (player.hp / player.maxHp) * 100;
     el("player-hp-bar").style.width = Math.max(0, playerHpPct) + "%";
     el("player-hp-bar").className = "hp-bar-fill";
