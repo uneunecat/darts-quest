@@ -239,6 +239,7 @@ function renderHand() {
 /* --- main.js UPDATE: updateInfo (v2.11.16 Clean) --- */
 /* --- main.js UPDATE: updateInfo (v2.11.17 HP Color Logic) --- */
 /* --- main.js UPDATE: updateInfo (v2.11.18 Enemy HP Fix) --- */
+/* --- main.js UPDATE: updateInfo (v2.11.19 Blink Logic) --- */
 function updateInfo() {
     if (!enemy.data) return;
     const setText = (id, text) => { const e = el(id); if(e) e.innerText = text; };
@@ -252,15 +253,16 @@ function updateInfo() {
     setText("floor-display", stage===5?"FINAL":`${floor}F`);
     setHTML("turn-display", `TURN ${currentTurn} <span style="font-size:12px; color:#888;">(Total ${(totalGameTurns - stageStartTurn) + 1})</span>`);
 
-    // Enemy Info
+    // Enemy Info (Text Blink)
     setText("enemy-name-side", enemy.name);
     const eHpEl = el("enemy-hp-value");
     if(eHpEl) {
         eHpEl.innerText = enemy.hp;
-        eHpEl.className = "hp-mega-text"; // Reset base class
-        // ★ FIX: 文字色専用クラスを適用 (背景色は変えない)
-        if (enemy.hp <= enemy.maxHp * 0.2) eHpEl.classList.add("text-danger");
-        else if (enemy.hp <= enemy.maxHp * 0.5) eHpEl.classList.add("text-warning");
+        eHpEl.className = "hp-mega-text"; // Reset base
+        
+        // ★ FIX: Blink Logic
+        if (enemy.hp <= enemy.maxHp * 0.2) eHpEl.classList.add("blink-fast");
+        else if (enemy.hp <= enemy.maxHp * 0.5) eHpEl.classList.add("blink-slow");
     }
     
     let weakText = player.state.weakLock ? "★LOCK" : `WEAK: ${enemy.data.weak}+`;
@@ -275,7 +277,7 @@ function updateInfo() {
     if(enemy.state.barrierLimit > 0) eChips += `<span class="status-chip chip-barrier">💠BARRIER(${enemy.state.barrierLimit})</span>`;
     setHTML("enemy-states-side", eChips);
 
-    // Player HP (In-Bar Text & Color)
+    // Player HP
     const hpBar = el("player-hp-bar");
     if(hpBar) {
         const pct = (player.hp / player.maxHp) * 100;
@@ -297,7 +299,7 @@ function updateInfo() {
     }
     setText("player-hp", "");
 
-    // Player MP
+    // Player MP (Dots Only)
     const mpValEl = document.querySelector("#player-mp")?.parentNode; 
     if(mpValEl && mpValEl.classList.contains("p-val")) mpValEl.style.display = "none";
     

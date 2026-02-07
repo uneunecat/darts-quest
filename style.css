@@ -263,18 +263,13 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 /* UR Text: Enhanced Readability */
 .text-ur {
     color: #fff;
-    background: none;
+    background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000) ;
     background-size: 200%;
-    -webkit-text-fill-color: #fff;
-    animation: glow-pulse 2s infinite alternate;
+    -webkit-background-clip: text ;
+    -webkit-text-fill-color: transparent ;
+    animation: rainbow-text 3s linear infinite;
     font-weight: 900;
-    filter: drop-shadow(0 0 2px rgba(255,255,255,0.8)) drop-shadow(0 0 5px rgba(255,255,255,0.4)) ;
-    -webkit-text-stroke: 0.5px rgba(255,255,255,0.5) ;
-    text-shadow: 
-        0 0 5px rgba(255, 0, 0, 0.8),
-        0 0 10px rgba(255, 255, 0, 0.8),
-        0 0 15px rgba(0, 255, 255, 0.8),
-        0 0 20px rgba(0, 0, 255, 0.8) ;
+    filter: drop-shadow(1px 1px 0 #000) drop-shadow(-1px -1px 0 #000);
 }
 
 .std-type { font-size: 8px; opacity: 0.9; margin-bottom: 3px; font-family: 'Roboto Mono'; }
@@ -463,7 +458,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     50% { box-shadow: 0 0 15px rgba(0, 255, 128, 0.8); }
     100% { box-shadow: 0 0 5px rgba(0, 255, 128, 0.5); }
 }
-.hp-mega-text { font-family: 'Impact', sans-serif; font-size: 160px !important; color: #fff; text-shadow: 6px 6px 0 #000, 0 0 40px rgba(255,0,0,0.6); line-height: 0.9; margin-bottom: -10px; background: none !important; animation: none !important;}
+.hp-mega-text { font-family: 'Impact', sans-serif; font-size: 160px !important; color: #fff; text-shadow: 6px 6px 0 #000, 0 0 40px rgba(255,0,0,0.6); line-height: 0.9; margin-bottom: -10px; background: none ; animation: none;}
 .hand-wrapper { display: flex; align-items: flex-end; gap: 10px; width: 100%; justify-content: flex-start; pointer-events: auto; }
 .trap-slot {
     /* Reset outdated styles if any, keep container size */
@@ -514,7 +509,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     transform-origin: top center !important;
 }
 #chest-img { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; z-index: 10; cursor: pointer; filter: drop-shadow(0 0 15px gold); }
-.enemy-hp-container { position: absolute; bottom: auto !important; top: 40% !important; width: 100%; left: 50% !important; transform: translate(-50%, -50%) !important; text-align: center; z-index: 20; pointer-events: none; }
+.enemy-hp-container { position: absolute; bottom: auto ; top: 65% ; width: 100%; left: 50% ; transform: translate(-50%, -50%); text-align: center; z-index: 20; pointer-events: none; }
 .hand-overlay-container { position: absolute; bottom: 10px; left: 0; width: 100%; height: 140px; display: flex; flex-direction: column; align-items: flex-start !important; padding: 0 20px; box-sizing: border-box; z-index: 50; pointer-events: none; }
 .hand-area { pointer-events: auto; display: flex; gap: 10px; justify-content: flex-start; width: 100%; overflow-x: visible; }
 .hand-card { width: 80px !important; height: 120px !important; background: #1a1a1a; border: 2px solid #888; border-radius: 6px; position: relative; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.5); flex-shrink: 0; }
@@ -527,7 +522,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     .darts-horizontal-box { justify-content: space-around; } .score-val { font-size: 20px; } .score-cell { width: 50px; }
     .battle-main-stage { flex: none; height: auto; margin-top: 10px; overflow: visible; }
     .enemy-visual-area { height: 250px; margin-bottom: 10px; margin-top: 0; } .enemy-hp-container { bottom: 0 !important; position: relative; }
-    .hp-mega-text { font-size: 90px !important; }
+    .hp-mega-text { font-size: 100px !important; }
     .hand-overlay-container { position: relative; bottom: auto; left: auto; height: 130px; margin-top: 20px; width: 100%; pointer-events: auto; }
     .hand-area { justify-content: flex-start; padding: 0 10px; overflow-x: auto; }
     .hand-card { width: 70px !important; height: 105px !important; } .hand-card:hover { transform: none; }
@@ -607,27 +602,56 @@ html, body {
    ★ v2.11.18 REFINED BATTLE & HISTORY
    ========================================= */
 
-/* 文字色クラス (背景色なし) */
-.text-danger { color: #ff0000 !important; text-shadow: 0 0 10px #ff0000 !important; }
-.text-warning { color: #ffd700 !important; text-shadow: 0 0 10px #ffd700 !important; }
-
 /* Discard Modal (カードセレクター) */
 #card-selector-modal .deck-grid {
     grid-template-columns: repeat(auto-fill, 70px) !important; /* Battleサイズに合わせる */
-    gap: 10px !important;
+    gap: 10px ;
+    display: flex ; /* Flexboxに変更 */
+    flex-direction: row ;
+    flex-wrap: nowrap ; /* 折り返し禁止 */
+    overflow-x: auto ; /* 横スクロール */
+    overflow-y: hidden ;
+    justify-content: flex-start ;
+    gap: 15px ;
+    padding: 20px 10px ;
+    width: 100% ;
+    height: auto ;
+    min-height: 180px ; /* 高さを確保 */
+    
+    /* スクロールバーのスタイル (Chrome/Safari) */
+    scrollbar-width: thin;
+    scrollbar-color: #00d2fc #333;
 }
+#card-selector-modal .deck-grid::-webkit-scrollbar { height: 8px; }
+#card-selector-modal .deck-grid::-webkit-scrollbar-thumb { background: #00d2fc; border-radius: 4px; }
+
 #card-selector-modal .std-card {
-    width: 70px !important;
-    height: auto !important;
-    aspect-ratio: 2/3 !important;
+    width: 100px ;
+    height: auto ;
+    aspect-ratio: 2/3 ;
+    flex-shrink: 0 ;
+    transform: none ;
+}
+
+#card-selector-modal .modal-box {
+    width: 95% !important;
+    max-width: 900px !important;
+}
+#card-selector-modal .std-card:hover {
+    transform: translateY(-10px) scale(1.1) !important;
 }
 
 /* 4. History Modal (Cyber Log Style) */
 .history-list {
+    max-height: 50vh;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 8px;
     padding: 5px;
+    padding-right: 5px;
+    scrollbar-width: thin;
+    scrollbar-color: #00d2fc #333;
 }
 .history-row {
     display: flex;
@@ -659,3 +683,31 @@ html, body {
 .res-win-text { color: #ffd700; text-shadow: 0 0 5px gold; }
 .res-extra-text { color: #f0f; text-shadow: 0 0 5px #f0f; }
 .res-lose-text { color: #aaa; }
+
+/* =========================================
+   ★ v2.11.19 FINAL FIX: VISUAL CLARITY
+   ========================================= */
+
+/* 敵HPテキスト (色変化廃止・点滅導入) */
+/* 点滅アニメーション (Warning/Danger) */
+.blink-slow {
+    animation: hp-blink-anim 1.5s infinite alternate !important;
+}
+.blink-fast {
+    color: #ffcccc !important; /* 少し赤みがかる */
+    animation: hp-blink-anim 0.3s infinite alternate !important;
+}
+@keyframes hp-blink-anim {
+    0% { opacity: 1.0; transform: scale(1.0); }
+    100% { opacity: 0.4; transform: scale(0.95); }
+}
+
+/* 4. History Modal (Scroll Fix) */
+.history-list {
+    max-height: 50vh !important; /* 画面半分まで */
+    overflow-y: auto !important; /* スクロール有効 */
+    padding-right: 5px; /* スクロールバーの余白 */
+    
+    scrollbar-width: thin;
+    scrollbar-color: #00d2fc #333;
+}
