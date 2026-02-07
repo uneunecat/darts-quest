@@ -258,6 +258,18 @@ function renderOpeningStage(packId) {
     stage.onclick = () => proceedUnboxing();
 }
 
+// --- Global Logic for Input Lock ---
+let inputLockUntilRelease = false;
+
+// ★ Enterキーのリリース検知を追加
+window.addEventListener("keyup", (e) => {
+    if (e.key === "Enter") {
+        inputLockUntilRelease = false; // キーを離したらロック解除
+    }
+});
+
+/* --- main.js UPDATE: Pack Opening Sounds & Logic --- */
+
 function proceedUnboxing() {
     if (openingPhase === 1) {
         // Phase 2: Awakening
@@ -266,10 +278,12 @@ function proceedUnboxing() {
         const pack = el("pack-visual");
         pack.classList.remove("anim-breath");
         pack.classList.add("anim-charge");
-        playSE("se-warning"); // Charging sound substitute
+        playSE("se-warning");
         
         setTimeout(() => {
-            playSE("se-boom");
+            // ★ Sound Change: Boom -> Holy Heal
+            playSE("se-heal"); 
+            
             el("white-out").style.display = "block";
             el("white-out").classList.add("white-out-anim");
             pack.style.display = "none";
@@ -283,10 +297,9 @@ function proceedUnboxing() {
         }, 1500);
         
     } else if (openingPhase === 3) {
-        // Phase 3: Reveal Flow
         const currentCardEl = document.getElementById("reveal-card-" + currentRevealIndex);
         if (currentCardEl) {
-            playSE("se-single"); // Fly sound
+            // ★ Sound Change: Removed Fly Sound
             currentCardEl.classList.add("fly-up");
             currentRevealIndex++;
             setTimeout(showNextRevealCard, 200);
@@ -294,7 +307,6 @@ function proceedUnboxing() {
     }
 }
 
-/* --- main.js UPDATE: showNextRevealCard (Standard Format Fix) --- */
 function showNextRevealCard() {
     if (currentRevealIndex >= packResults.length) {
         showPackResult();
@@ -305,23 +317,28 @@ function showNextRevealCard() {
     const area = el("reveal-area");
     
     // Rarity FX
-    let sound = "se-item";
+    let sound = ""; // ★ Default No Sound for Reveal
     let effectClass = "";
     if (card.rarity === "UR") { sound = "se-boom"; effectClass = "card-show-ur"; }
     else if (card.rarity === "SR") { sound = "se-buff"; effectClass = "card-show-sr"; }
-    else if (card.rarity === "R") { sound = "se-heal"; }
     
-    playSE(sound);
+    if(sound) playSE(sound);
     
-    // ★ ここを .std-card 構成に変更
+    // Create Element (Uses standard format but with reveal class)
     const div = document.createElement("div");
     div.id = `reveal-card-${currentRevealIndex}`;
-    // .std-card をベースにしつつ、演出用のクラスを追加
     div.className = `std-card rarity-${card.rarity} reveal-card-zoom card-appear ${effectClass}`;
     
     const imgPath = `assets/cards/${card.id}.png`;
     const cost = (card.cost !== undefined) ? card.cost : "?";
     const bgClass = (card.type === "TRAP") ? "bg-trap" : "bg-magic";
+    
+    let textClass = "text-n";
+    if (card.rarity === "UR") textClass = "text-ur";
+    else if (card.rarity === "SR") textClass = "text-sr";
+    else if (card.rarity === "R") textClass = "text-r";
+    
+    const sheenHTML = (card.rarity === "UR" || card.rarity === "SR") ? '<div class="card-sheen"></div>' : '';
 
     div.innerHTML = `
         ${card.isNew ? '<div class="new-badge">NEW!</div>' : ''}
@@ -329,62 +346,50 @@ function showNextRevealCard() {
             <img src="${imgPath}" onerror="this.style.display='none';">
             <div class="std-cost">${cost}</div>
             <div class="std-count">GET</div>
+            ${sheenHTML}
         </div>
         <div class="std-text-area ${bgClass}">
-            <div class="std-name" style="font-size:14px;">${card.name}</div>
+            <div class="std-name ${textClass}" style="font-size:14px;">${card.name}</div>
             <div class="std-type">[${card.type}]</div>
             <div class="std-desc" style="font-size:10px;">${card.desc}</div>
         </div>
     `;
     
-    // Clear previous and append new
     area.innerHTML = "";
     area.appendChild(div);
 }
 
-// リザルト表示 (ボタン制御とクールタイム追加)
-let isResultCooldown = false; // クールタイムフラグ
-
 function showPackResult() {
     openingPhase = 4;
-    isResultCooldown = true; // クールタイム開始
+    
+    // ★ Lock Input until Enter is released
+    inputLockUntilRelease = true;
     
     const area = el("reveal-area");
     area.innerHTML = "";
-    area.className = "result-stage"; // Flex container
+    area.className = "result-stage";
     
     playSE("se-win");
     
     packResults.forEach((card, i) => {
-        // createCardElementを使用 (標準フォーマット)
-        // 第3引数(remainingCount)に最新の所持数を渡す
         const div = createCardElement(card, false, card.ownCount, card.ownCount);
-        
+        div.className += " result-card";
         div.style.animation = `pop-in 0.5s both ${i * 0.1}s`;
-        div.style.width = "100px"; // リザルト用に少し大きく調整しても良い
-        
         if(card.isNew) {
+            // Append badge manually since createCardElement doesn't add "NEW"
             const badge = document.createElement("div");
             badge.className = "new-badge";
             badge.innerText = "NEW!";
             div.appendChild(badge);
         }
-        
-        // リザルトではクリック無効 (ズームのみ)
         div.onclick = null;
-        
+        setupLongPress(div, card);
         area.appendChild(div);
     });
     
-    // ボタン表示
     const btnArea = el("action-buttons");
-    btnArea.style.display = "flex"; // ここで表示
+    btnArea.style.display = "flex";
     setTimeout(() => btnArea.classList.add("visible"), 100);
-
-    // クールタイム解除 (0.8秒後)
-    setTimeout(() => {
-        isResultCooldown = false;
-    }, 800);
 }
 
 // Skip Function
@@ -394,12 +399,12 @@ function skipUnboxing() {
     }
 }
 
-// Input Handling Update
+/* --- main.js UPDATE: Input Handling with Release Lock --- */
 window.addEventListener("keydown", function (e) {
     if (el("pack-result-modal").style.display === "flex") {
         e.preventDefault();
         
-        // Skip (Phase 2-3)
+        // Skip Check (Key Repeat)
         if (e.repeat && e.key === "Enter" && openingPhase >= 2 && openingPhase < 4) {
             skipUnboxing();
             return;
@@ -407,12 +412,12 @@ window.addEventListener("keydown", function (e) {
 
         if (openingPhase === 1 && e.key === "Enter") proceedUnboxing();
         else if (openingPhase === 3 && e.key === "Enter") proceedUnboxing();
-        
-        // Phase 4: Result (Cooldown Check)
         else if (openingPhase === 4) {
-            if (isResultCooldown) return; // ★ クールタイム中は無視
-
-            if (e.key === "Enter") buyPack(currentPackId);
+            // ★ Key-Up Lock Check
+            if (e.key === "Enter") {
+                if (inputLockUntilRelease) return; // ロック中は無視
+                buyPack(currentPackId);
+            }
             if (e.key === "Backspace" || e.key === "Escape") closePackResult();
         }
         return;
@@ -444,54 +449,56 @@ function openCollection() { playSE("se-tap"); renderDeckEditor(); el("collection
 function closeCollection() { playSE("se-tap"); el("collection-modal").style.display = "none"; hideTooltip(); }
 function renderDeckEditor() { if (!savedData.deck) savedData.deck = []; savedData.deck.sort((a, b) => a - b); const deckGrid = el("deck-grid"); deckGrid.innerHTML = ""; for (let i = 0; i < DECK_SIZE; i++) { const cardId = savedData.deck[i]; if (cardId) { const card = CARD_DB.find(c => c.id === cardId); const totalOwned = savedData.cards[card.id] || 0; const el = createCardElement(card, true, 0, totalOwned); el.onmouseenter = () => showCardDetail(card); deckGrid.appendChild(el); } else { const div = document.createElement("div"); div.className = "deck-slot-empty"; div.innerText = "EMPTY"; deckGrid.appendChild(div); } } const deckCount = savedData.deck.length; const countEl = el("deck-count"); countEl.innerText = deckCount; if (deckCount < DECK_SIZE) { countEl.style.color = "#ff5555"; countEl.innerText += " (あと" + (DECK_SIZE - deckCount) + "枚)"; } else { countEl.style.color = "#00ff00"; countEl.innerText += " (OK!)"; } const listGrid = el("card-grid"); listGrid.innerHTML = ""; if (!savedData.cards) savedData.cards = {}; let ownedCount = 0; CARD_DB.forEach(card => { const count = savedData.cards[card.id] || 0; if (count > 0) ownedCount++; const inDeckCount = savedData.deck.filter(id => id === card.id).length; const remaining = count - inDeckCount; const el = createCardElement(card, false, remaining, count); listGrid.appendChild(el); }); el("collection-rate").innerText = `${Math.floor((ownedCount / CARD_DB.length) * 100)}%`; }
 /* --- main.js UPDATE: createCardElement (Standard Format) --- */
+/* --- main.js UPDATE: createCardElement (Premium Format) --- */
 function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0) {
     const div = document.createElement("div");
     const isOwned = (totalCount > 0 || isDeckItem);
     const notOwnedClass = (!isOwned) ? "card-not-owned" : "";
     
-    // Class Setup
     div.className = `std-card rarity-${card.rarity} ${notOwnedClass}`;
     if (isDeckItem) div.classList.add("in-deck-card");
 
     const imgPath = `assets/cards/${card.id}.png`;
     const cost = (card.cost !== undefined) ? card.cost : "?";
     
-    // Background Color based on Type
+    // Background & Text Color Logic
     const bgClass = (card.type === "TRAP") ? "bg-trap" : "bg-magic";
+    let textClass = "text-n";
+    if (card.rarity === "UR") textClass = "text-ur";
+    else if (card.rarity === "SR") textClass = "text-sr";
+    else if (card.rarity === "R") textClass = "text-r";
+
+    // Sheen Effect for SR/UR
+    const sheenHTML = (card.rarity === "UR" || card.rarity === "SR") ? '<div class="card-sheen"></div>' : '';
     
-    // Badge Text
     const countText = isDeckItem ? "1" : `x${remainingCount}`;
 
-    // HTML Structure
     div.innerHTML = `
         <div class="std-art">
             <img src="${imgPath}" onerror="this.style.display='none';">
             <div class="std-cost">${cost}</div>
             <div class="std-count">${countText}</div>
+            ${sheenHTML}
         </div>
         <div class="std-text-area ${bgClass}">
-            <div class="std-name">${card.name}</div>
+            <div class="std-name ${textClass}">${card.name}</div>
             <div class="std-type">[${card.type}]</div>
             <div class="std-desc">${card.desc}</div>
         </div>
     `;
 
-    // Click Event
     div.onclick = function (e) {
         if (div.dataset.longPressed === "true") {
             div.dataset.longPressed = "false";
             return;
         }
         if (!isOwned) return;
-        
-        // Result画面などでの誤操作防止用チェック
         if (typeof isOpeningPack !== 'undefined' && isOpeningPack) return;
 
         if (isDeckItem) removeFromDeck(card.id);
         else addToDeck(card.id);
     };
 
-    // Hover & Long Press
     div.onmouseenter = (e) => {
         if (typeof showCardDetail === 'function') showCardDetail(card);
         if (isDeckItem && typeof showTooltip === 'function') showTooltip(card.name, card.desc, e);

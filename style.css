@@ -104,7 +104,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .card-grid { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)) !important; gap: 10px; align-content: start; overflow-y: auto !important; flex: 1; padding: 10px; scrollbar-width: thin; }
 .deck-slot-empty { width: 50px; height: 75px; border: 1px dashed #555; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #444; font-size: 10px; background: rgba(0,0,0,0.2); }
 /* =========================================
-   ★ v2.11.11 STANDARD CARD FORMAT & LAYOUT
+   ★ v2.11.12 PREMIUM CARD FORMAT & LAYOUT
    ========================================= */
 
 /* --- Base Card Container --- */
@@ -113,7 +113,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     width: 100%;
     aspect-ratio: 2 / 3;
     border-radius: 6px;
-    background: #111;
+    background: #000;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -122,12 +122,12 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     cursor: pointer;
     flex-shrink: 0;
     box-sizing: border-box;
-    border: 2px solid #444; /* Default Border */
+    border: 2px solid #444;
 }
 .std-card:hover {
     transform: scale(1.05);
     z-index: 100;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.8);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.8);
 }
 
 /* --- Upper Half: Art Area (55%) --- */
@@ -137,7 +137,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     position: relative;
     background: #000;
     overflow: hidden;
-    border-bottom: 1px solid rgba(0,0,0,0.5);
+    border-bottom: 1px solid rgba(255,255,255,0.2);
 }
 .std-art img {
     width: 100%;
@@ -147,24 +147,22 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 
 /* Badges */
 .std-cost {
-    position: absolute;
-    top: 0; left: 0;
-    background: #00d2fc;
-    color: #000;
-    font-weight: 900;
-    font-size: 11px;
-    padding: 2px 6px;
+    position: absolute; top: 0; left: 0;
+    background: linear-gradient(135deg, #00d2fc, #005c75);
+    color: #fff;
+    font-weight: 900; font-size: 11px;
+    padding: 2px 7px;
     border-bottom-right-radius: 6px;
     z-index: 5;
     box-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+    text-shadow: 0 0 2px #000;
 }
 .std-count {
-    position: absolute;
-    top: 2px; right: 2px;
-    background: rgba(0,0,0,0.7);
+    position: absolute; top: 2px; right: 2px;
+    background: rgba(0,0,0,0.8);
     color: #fff;
     font-size: 10px;
-    padding: 1px 5px;
+    padding: 1px 6px;
     border-radius: 4px;
     border: 1px solid rgba(255,255,255,0.3);
     z-index: 5;
@@ -174,103 +172,123 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .std-text-area {
     flex: 1;
     padding: 4px 6px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    text-align: left;
+    display: flex; flex-direction: column;
+    align-items: flex-start; text-align: left;
     color: #fff;
     position: relative;
+    /* Subtle Pattern Texture */
+    background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 10px);
 }
 
-/* Background Colors (Yu-Gi-Oh Style) */
+/* Premium Background Colors */
 .bg-magic {
-    background: linear-gradient(to bottom, #008f75, #005f4d); /* Spell Green */
+    background-color: #004d40;
+    background: linear-gradient(160deg, #00695c 0%, #004d40 60%, #00251a 100%);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
 }
 .bg-trap {
-    background: linear-gradient(to bottom, #bc1a6e, #85124d); /* Trap Pink */
+    background-color: #880e4f;
+    background: linear-gradient(160deg, #ad1457 0%, #880e4f 60%, #4a002c 100%);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
 }
 
-/* Typography */
+/* Typography & Rarity Text Styles */
 .std-name {
-    font-size: 10px;
-    font-weight: 900;
+    font-size: 10px; font-weight: 900;
     width: 100%;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     margin-bottom: 2px;
-    text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.8);
 }
+.text-n { color: #fff; }
+.text-r {
+    color: #e0e0e0;
+    text-shadow: 0 0 2px rgba(255,255,255,0.5);
+}
+.text-sr {
+    color: #ffd700;
+    text-shadow: 0 0 3px rgba(218, 165, 32, 0.8), 1px 1px 0 #000;
+}
+.text-ur {
+    background: linear-gradient(90deg, #ff3333, #ffff33, #33ff33, #33ffff, #3333ff, #ff33ff);
+    background-size: 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: rainbow-text 3s linear infinite;
+    font-weight: 900;
+    filter: drop-shadow(1px 1px 0 #000);
+}
+
 .std-type {
-    font-size: 8px;
-    opacity: 0.8;
-    margin-bottom: 3px;
-    font-family: 'Roboto Mono', monospace;
+    font-size: 8px; opacity: 0.9; margin-bottom: 3px;
+    font-family: 'Roboto Mono', monospace; letter-spacing: 0.5px;
 }
 .std-desc {
-    font-size: 8px;
-    line-height: 1.2;
-    opacity: 0.95;
+    font-size: 8px; line-height: 1.25; opacity: 0.95;
     width: 100%;
     word-break: break-all;
-    /* Allow multi-line */
     display: -webkit-box;
-    -webkit-line-clamp: 4; /* Limit lines to prevent overflow */
+    -webkit-line-clamp: 4;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
 
-/* --- Rarity Styles (Border & Effects) --- */
+/* --- Rarity Borders & Effects --- */
 /* N: Default */
 .rarity-N { border-color: #555; }
 
-/* R: Silver */
+/* R: Silver Metal */
 .rarity-R {
     border-color: #c0c0c0;
-    box-shadow: 0 0 5px rgba(192, 192, 192, 0.3);
+    box-shadow: 0 0 8px rgba(192, 192, 192, 0.4);
 }
-.rarity-R .std-name { color: #eef; }
 
-/* SR: Gold */
+/* SR: Gold Metal & Sheen */
 .rarity-SR {
     border-color: #ffd700;
-    box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
 }
-.rarity-SR .std-name { color: #fffacd; text-shadow: 0 0 2px gold; }
 
-/* UR: Rainbow Border (No text clip) */
+/* UR: Rainbow Aura & Sheen */
 .rarity-UR {
     border: 2px solid transparent;
     background-image: linear-gradient(#111, #111), linear-gradient(45deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
     background-origin: border-box;
     background-clip: padding-box, border-box;
-    box-shadow: 0 0 15px rgba(0, 255, 255, 0.6);
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.7);
     animation: border-rotate 4s linear infinite;
 }
-@keyframes border-rotate {
-    0% { filter: hue-rotate(0deg); }
-    100% { filter: hue-rotate(360deg); }
-}
+@keyframes border-rotate { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
 
-/* --- Layout Fixes for Deck Editor --- */
+/* Holographic Sheen (SR/UR) */
+.card-sheen {
+    position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+    background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.4) 45%, rgba(255,255,255,0.0) 50%);
+    pointer-events: none;
+    mix-blend-mode: overlay;
+    animation: sheen-move 4s infinite;
+    z-index: 10;
+}
+@keyframes sheen-move { 0% { transform: translateY(-30%) translateX(-30%); } 100% { transform: translateY(30%) translateX(30%); } }
+
+/* --- Layout Fixes for Deck Editor (Grid 5x4) --- */
 .deck-grid {
     display: grid !important;
-    grid-template-columns: repeat(auto-fill, 60px) !important; /* Slightly wider */
-    gap: 8px !important;
+    grid-template-columns: repeat(5, 1fr) !important; /* ★ FIX: 5列固定で伸縮 */
+    gap: 6px !important;
     padding: 10px;
     align-content: start;
     overflow-y: auto !important;
 }
-/* Deck thumbnails (Simplified view) */
+/* Deck thumbnails (Simplified) */
 .deck-grid .std-card {
+    width: 100% !important;
     height: auto !important;
-    aspect-ratio: 2/3 !important;
+    aspect-ratio: 2/3 !important; /* アスペクト比維持 */
 }
-.deck-grid .std-text-area {
-    padding: 2px;
-}
-.deck-grid .std-name { font-size: 8px; }
-.deck-grid .std-type, .deck-grid .std-desc { display: none; } /* Hide details in deck list */
+.deck-grid .std-text-area { padding: 2px; }
+.deck-grid .std-name { font-size: 8px; margin-bottom: 0; }
+.deck-grid .std-type, .deck-grid .std-desc { display: none; } /* Show only name */
 
 .card-grid {
     display: grid !important;
@@ -289,15 +307,13 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 
 /* Hand Area (Battle) */
 .hand-card {
-    /* Use standard card style but smaller */
     width: 70px !important;
     height: auto !important;
     aspect-ratio: 2/3;
     border-radius: 4px;
     background: #111;
     overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    display: flex; flex-direction: column;
 }
 /* --- New Unboxing Styles --- */
 #opening-stage { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; background: #000; }
@@ -320,8 +336,14 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .card-appear { animation: pop-in-zoom 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
 @keyframes pop-in-zoom { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 /* Result Phase */
+/* Result Phase */
 .result-stage { display: flex; gap: 20px; align-items: center; justify-content: center; flex-wrap: wrap; margin-bottom: 50px; animation: fade-in 1s; }
-.result-card { width: 140px; aspect-ratio: 2 / 3; animation: pop-in 0.5s both; }
+.result-card { 
+    width: 180px !important; /* ★ FIX: 1.5倍サイズ */
+    aspect-ratio: 2 / 3; 
+    animation: pop-in 0.5s both; 
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+}
 @keyframes pop-in { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 .new-badge { position: absolute; top: -10px; right: -10px; background: #ff0055; color: #fff; font-weight: bold; padding: 2px 8px; border-radius: 10px; border: 2px solid #fff; z-index: 20; animation: bounce 1s infinite; font-size: 12px; }
 @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
