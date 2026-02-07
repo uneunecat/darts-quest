@@ -1606,3 +1606,82 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     .hp-mega-text { font-size: 90px !important; }
     .score-val { font-size: 20px; }
 }
+
+/* =========================================
+   ★ v2.11.5 FIX & POLISH (Append to style.css)
+   ========================================= */
+
+/* --- Hand & Trap Layout (Left Fixed Grid) --- */
+.hand-overlay-container {
+    padding: 0 20px;
+    box-sizing: border-box;
+    align-items: flex-start !important; /* Left align */
+}
+
+.hand-wrapper {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px; /* Space between cards */
+    width: 100%;
+    justify-content: flex-start; /* ★ FIX: 左詰め固定 */
+}
+
+/* Trap Slot (Relative Flow) */
+.trap-slot-container {
+    position: static; /* Reset absolute */
+    margin: 0;
+}
+.trap-slot {
+    flex-shrink: 0; /* Do not shrink */
+    margin-right: 5px; /* Separate from hand */
+}
+
+/* --- Enemy Position & Mega HP --- */
+.enemy-visual-area {
+    margin-top: -50px; /* ★ FIX: 敵画像を上にずらす */
+    height: 65%;
+}
+.enemy-hp-container {
+    bottom: 50px !important; /* ★ FIX: HPを上に移動 (カードと被らない位置) */
+    pointer-events: none; /* クリック透過 */
+    z-index: 20; /* 画像より手前 */
+}
+.hp-mega-text {
+    font-size: 160px !important; /* さらに巨大化 */
+    text-shadow: 6px 6px 0 #000, 0 0 40px rgba(255,0,0,0.6);
+}
+
+/* --- Floating Damage Numbers (Giant) --- */
+@keyframes float-up-giant {
+    0% { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
+    20% { transform: translate(-50%, -40px) scale(1.2); opacity: 1; }
+    80% { transform: translate(-50%, -60px) scale(1.0); opacity: 1; }
+    100% { transform: translate(-50%, -80px) scale(0.8); opacity: 0; }
+}
+
+.damage-float {
+    position: absolute;
+    font-family: 'Impact', sans-serif;
+    font-weight: bold;
+    pointer-events: none;
+    z-index: 1000;
+    text-shadow: 2px 2px 0 #000;
+    animation: float-up-giant 1.2s forwards;
+    /* Default (Player Damage) */
+    font-size: 60px;
+    color: #ff4444;
+    left: 20%; /* 画面左側 (プレイヤー付近) */
+    top: 60%;
+}
+
+.damage-float.heal { color: #00ff00; text-shadow: 0 0 10px #00ff00; }
+.damage-float.miss { color: #aaa; font-size: 40px; }
+
+/* Enemy Damage (Center, Huge) */
+.damage-float.enemy-dmg {
+    font-size: 100px;
+    color: #ffd700; /* Gold */
+    left: 50% !important; /* 画面中央 */
+    top: 40% !important;
+    text-shadow: 4px 4px 0 #000, 0 0 20px gold;
+}

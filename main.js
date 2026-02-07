@@ -354,13 +354,12 @@ function enemyTurn() {
     if (stage === 1) { if (floor === 3) { if (Math.random() < 0.2) { showSkillCutin("自己再生", "heal"); setTimeout(() => { enemy.hp = Math.min(enemy.hp + 20, enemy.maxHp); playSE("se-heal"); addLog("HP20回復", "log-heal"); animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP = enemy.hp; updateInfo(); endEnemyTurn(); }, 1200); return; } if (Math.random() < 0.4) { showSkillCutin("鉄壁の守り", "earth"); setTimeout(() => { enemy.state.guard = true; addLog("鉄壁！ダメージ半減", "log-enemy"); updateInfo(); endEnemyTurn(); }, 1200); return; } } if (floor === 5) { if (enemy.state.charge) { enemy.state.charge = false; showSkillCutin("森の破壊衝動", "earth"); setTimeout(() => { doEnemyAttack(3.0); }, 1200); return; } if (Math.random() < 0.3) { enemy.state.charge = true; addLog(`力を溜めている…`, "log-enemy"); updateInfo(); endEnemyTurn(); return; } } }
     doEnemyAttack(1.0);
 }
-/* --- main.js Rewrite: doEnemyAttack --- */
-/* --- main.js: doEnemyAttack (Update) --- */
+/* --- main.js (Line 359-413 Replacement) --- */
 function doEnemyAttack(mult, options = {}) {
     const { ignoreShield = false, isDrain = false, isBossUlt = false, fixedDmg = 0, callback = null } = options;
     
-    // ベースダメージ計算
-    let baseDmg = 0; 
+    // 1. ダメージ計算
+    let baseDmg = 0;
     if (fixedDmg > 0) {
         baseDmg = Math.floor(fixedDmg * mult);
     } else {
@@ -368,24 +367,21 @@ function doEnemyAttack(mult, options = {}) {
         baseDmg = Math.floor((base + Math.floor(Math.random() * 6)) * mult);
     }
 
-    // ★ NEW: 被弾時トラップチェック ('attack')
-    // 罠が発動すればダメージが軽減・無効化される
+    // 2. 罠チェック
     let finalDmg = triggerTrap('attack', baseDmg);
-
-    // ダメージが無効化された場合 (0) はここで中断して更新
+    // ダメージ無効化 (0) ならここで終了
     if (finalDmg === 0) { 
         updateInfo(); 
-        if(options.callback) options.callback(); 
-        else endEnemyTurn(); 
+        if(options.callback) options.callback(); else endEnemyTurn(); 
         return; 
     }
 
-    // プレイヤーの防御スキル (Shield / Guard)
+    // 3. プレイヤー防御 (シールド)
     if (!ignoreShield && player.state.shield) { 
         addLog(`完全防御！`, "log-skill"); 
         player.state.shield = false; 
-        finalDmg = 0; // シールド発動時は0ダメージ
-        triggerEffect(el("player-panel"), 0, true); 
+        finalDmg = 0;
+        triggerEffect(el("game-screen"), 0, true); 
         el("flash-overlay").className = "flash-blue"; 
         setTimeout(() => el("flash-overlay").className = "", 300); 
         updateInfo(); 
@@ -393,13 +389,13 @@ function doEnemyAttack(mult, options = {}) {
         return; 
     }
     
-    // 護封剣の軽減
+    // 4. 護封剣 (半減)
     if (player.state.guardTurn > 0) { 
         finalDmg = Math.floor(finalDmg * 0.5); 
         addLog("護封剣！ダメージ半減", "log-skill"); 
     }
     
-    // 演出とダメージ適用
+    // 5. 演出 & SE
     if (isBossUlt) { 
         playSE("se-boom"); 
         el("flash-overlay").className = "flash-fire"; 
@@ -408,8 +404,29 @@ function doEnemyAttack(mult, options = {}) {
         playSE("se-hit");
     }
 
-    triggerEffect(el("player-panel"), finalDmg, true); 
-    finishAttack(finalDmg, isDrain, callback);
+    // ★ FIX: HP減算・死亡判定・回復処理をここに統合 (finishAttack廃止)
+    player.hp = Math.max(0, player.hp - finalDmg);
+    triggerEffect(el("game-screen"), finalDmg, true); // Player damage effect
+    
+    // 死亡判定
+    if (player.hp <= 0) {
+        updateInfo();
+        setTimeout(loseGame, 1000);
+        return;
+    }
+
+    // ドレイン回復 (敵)
+    if (isDrain && finalDmg > 0) {
+        const heal = Math.floor(finalDmg * 0.5);
+        enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal);
+        addLog(`敵が${heal}回復！`, "log-skill");
+        triggerEffect(el("enemy-panel"), heal, false, true); // Heal effect
+    }
+
+    updateInfo();
+    
+    // ターン終了処理へ
+    if (callback) callback(); else endEnemyTurn();
 }
 
 /* --- main.js ADD: triggerTrap (新規関数) --- */
