@@ -944,7 +944,7 @@ function buyPack(packId) {
 
     // 購入処理
     savedData.dp -= pack.price;
-    saveGameData();
+    saveToDrive();
     updateShopUI(); 
     
     // 開封演出開始
@@ -981,7 +981,7 @@ function openPack(packId) {
         savedData.collection[card.id] = (savedData.collection[card.id] || 0) + 1;
         results.push(card);
     }
-    saveGameData();
+    saveToDrive();
 
     // 2. 演出開始
     el("pack-result-modal").style.display = "flex";

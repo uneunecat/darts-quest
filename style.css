@@ -1841,3 +1841,69 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     color: #ffd700;
     text-shadow: 4px 4px 0 #000, 0 0 20px gold;
 }
+
+/* =========================================
+   ★ v2.11.6 FINAL UI ADJUSTMENTS (Append to end)
+   ========================================= */
+
+/* 1. Enemy HP Position (Lowered) */
+.enemy-visual-area {
+    position: relative;
+    width: 100%;
+    height: 60%; /* Adjust for spacing */
+    margin-top: -20px;
+}
+.enemy-hp-container {
+    bottom: 40px !important; /* カードと被らないギリギリまで下げる */
+    z-index: 20;
+}
+.hp-mega-text {
+    font-size: 140px !important;
+    text-shadow: 4px 4px 0 #000, 0 0 30px rgba(0,0,0,0.8);
+    line-height: 1;
+}
+
+/* 2. Trap Slot (Face-Up Style) */
+.trap-slot.set {
+    border: 3px solid #e91e63 !important; /* Magenta Frame */
+    box-shadow: 0 0 15px #e91e63, inset 0 0 10px #e91e63 !important;
+    background: #222;
+    color: transparent; /* Text hidden */
+}
+/* Remove the card-back pattern */
+.trap-slot.set::after { display: none !important; }
+
+/* 3. Player Damage Float (Red & Big) */
+@keyframes float-damage-player {
+    0% { opacity: 0; transform: translateY(20px) scale(0.5); }
+    10% { opacity: 1; transform: translateY(0) scale(1.5); }
+    100% { opacity: 0; transform: translateY(-50px) scale(1.0); }
+}
+.damage-float {
+    position: absolute;
+    font-family: 'Impact', sans-serif;
+    font-weight: bold;
+    font-size: 80px;      /* Big */
+    color: #ff0000;       /* Red */
+    text-shadow: 2px 2px 0 #000, 0 0 20px #ff0000;
+    pointer-events: none;
+    z-index: 2000;
+    animation: float-damage-player 1.5s forwards;
+    
+    /* Fixed Position near Player HP */
+    left: 20px;
+    bottom: 160px;
+}
+
+.damage-float.heal { color: #00ff00; text-shadow: 0 0 10px #00ff00; }
+.damage-float.miss { color: #aaa; font-size: 50px; }
+
+/* Enemy Damage (Center Gold) */
+.damage-float.enemy-dmg {
+    left: 50% !important;
+    top: 40% !important;
+    bottom: auto !important;
+    transform: translate(-50%, -50%);
+    color: #ffd700;
+    text-shadow: 4px 4px 0 #000, 0 0 20px gold;
+}
