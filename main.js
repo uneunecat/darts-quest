@@ -11,9 +11,6 @@ function loadGameConfig() {
     const saved = localStorage.getItem("darts_quest_config");
     if (saved) { try { gameConfig = { ...gameConfig, ...JSON.parse(saved) }; } catch (e) { } }
 }
-let isOpeningPack = false;
-let packSkipTrigger = false; // スキップトリガー
-
 loadGameConfig(); // 起動時にロード
 function saveGameConfig() { localStorage.setItem("darts_quest_config", JSON.stringify(gameConfig)); }
 
@@ -359,12 +356,11 @@ function enemyTurn() {
 }
 /* --- main.js Rewrite: doEnemyAttack --- */
 /* --- main.js: doEnemyAttack (Update) --- */
-/* --- main.js FIX: doEnemyAttack (HP減算ロジック内包版) --- */
 function doEnemyAttack(mult, options = {}) {
     const { ignoreShield = false, isDrain = false, isBossUlt = false, fixedDmg = 0, callback = null } = options;
     
-    // 1. Base Damage Calculation
-    let baseDmg = 0;
+    // ベースダメージ計算
+    let baseDmg = 0; 
     if (fixedDmg > 0) {
         baseDmg = Math.floor(fixedDmg * mult);
     } else {
@@ -372,20 +368,24 @@ function doEnemyAttack(mult, options = {}) {
         baseDmg = Math.floor((base + Math.floor(Math.random() * 6)) * mult);
     }
 
-    // 2. Trap Check
+    // ★ NEW: 被弾時トラップチェック ('attack')
+    // 罠が発動すればダメージが軽減・無効化される
     let finalDmg = triggerTrap('attack', baseDmg);
+
+    // ダメージが無効化された場合 (0) はここで中断して更新
     if (finalDmg === 0) { 
         updateInfo(); 
-        if(callback) callback(); else endEnemyTurn(); 
+        if(options.callback) options.callback(); 
+        else endEnemyTurn(); 
         return; 
     }
 
-    // 3. Player Shield Check
+    // プレイヤーの防御スキル (Shield / Guard)
     if (!ignoreShield && player.state.shield) { 
         addLog(`完全防御！`, "log-skill"); 
         player.state.shield = false; 
-        finalDmg = 0;
-        triggerEffect(el("game-screen"), 0, true); 
+        finalDmg = 0; // シールド発動時は0ダメージ
+        triggerEffect(el("player-panel"), 0, true); 
         el("flash-overlay").className = "flash-blue"; 
         setTimeout(() => el("flash-overlay").className = "", 300); 
         updateInfo(); 
@@ -393,13 +393,13 @@ function doEnemyAttack(mult, options = {}) {
         return; 
     }
     
-    // 4. Guard Logic
+    // 護封剣の軽減
     if (player.state.guardTurn > 0) { 
         finalDmg = Math.floor(finalDmg * 0.5); 
         addLog("護封剣！ダメージ半減", "log-skill"); 
     }
     
-    // 5. Effect & Sound
+    // 演出とダメージ適用
     if (isBossUlt) { 
         playSE("se-boom"); 
         el("flash-overlay").className = "flash-fire"; 
@@ -408,27 +408,8 @@ function doEnemyAttack(mult, options = {}) {
         playSE("se-hit");
     }
 
-    // ★ FIX: HP Subtraction & Death Check (ここが重要)
-    player.hp = Math.max(0, player.hp - finalDmg);
-    triggerEffect(el("game-screen"), finalDmg, true); // Player damage effect
-    
-    if (player.hp <= 0) {
-        updateInfo();
-        setTimeout(loseGame, 1000);
-        return;
-    }
-
-    if (isDrain && finalDmg > 0) {
-        const heal = Math.floor(finalDmg * 0.5);
-        enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal);
-        addLog(`敵が${heal}回復！`, "log-skill");
-        triggerEffect(el("enemy-panel"), heal, false, true);
-    }
-
-    updateInfo();
-    
-    // Next Step
-    if (callback) callback(); else endEnemyTurn();
+    triggerEffect(el("player-panel"), finalDmg, true); 
+    finishAttack(finalDmg, isDrain, callback);
 }
 
 /* --- main.js ADD: triggerTrap (新規関数) --- */
@@ -850,205 +831,219 @@ function updateInfo() {
     }
 
     renderHand(); 
-/* --- Shop & Pack Logic (Rewrite v2.11.5) --- */
-
-// ショップを開く
-function openCardShop() {
-    el("card-shop-modal").style.display = "flex";
-    updateShopUI(); // UI構築を関数化
-    playSE("se-tap");
 }
+function openCardShop() { playSE("se-tap"); const list = el("pack-list"); list.innerHTML = ""; el("shop-dp-display").innerText = savedData.dp; if (!savedData.cards) savedData.cards = {}; PACK_DATA.forEach(pack => { const isUnlocked = (savedData.bestRanks && savedData.bestRanks[pack.unlockStage]); if (!isUnlocked) return; const canBuy = savedData.dp >= pack.price; const imgHTML = `<img src="${pack.img}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:50px; background:#333; color:#555;">📦</div>`; const div = document.createElement("div"); div.className = "pack-item"; div.innerHTML = `<div class="pack-img-container">${imgHTML}</div><div class="pack-name">${pack.name}</div><div class="pack-desc">${pack.desc}</div><button class="pack-buy-btn" ${canBuy ? "" : "disabled"} onclick="buyPack('${pack.id}')">${canBuy ? `BUY (${pack.price} DP)` : "LACK DP"}</button>`; list.appendChild(div); }); if (list.innerHTML === "") list.innerHTML = "<div style='color:#666; width:100%; text-align:center;'>STAGE 1 CLEAR REQUIRED</div>"; el("card-shop-modal").style.display = "flex"; }
+/* =========================================
+   ★ NEW: Legendary Unboxing Logic (Start)
+   ========================================= */
 
-// ショップUIの更新 (PACK_DATAを使用)
-function updateShopUI() {
-    const list = el("pack-list");
-    list.innerHTML = "";
-    if(el("shop-dp-display")) el("shop-dp-display").innerText = (savedData.dp || 0);
-    
-    let hasPacks = false;
+let isOpeningPack = false;
+let currentPackId = "";
 
-    // グローバルの PACK_DATA を使用
-    PACK_DATA.forEach(pack => {
-        // アンロック判定 (既存ロジック準拠)
-        // unlockStage のランク情報があればアンロックとみなす
-        const isUnlocked = (savedData.bestRanks && savedData.bestRanks[pack.unlockStage]);
-        // ※もしVol.1が最初から買える仕様にしたい場合は `|| pack.unlockStage === 1` などを追加してください
-        // ここでは既存コードの挙動「ランクがあれば表示」を踏襲します
-        
-        if (!isUnlocked) return;
-        hasPacks = true;
+// ユーティリティ: 指定ミリ秒待機
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-        const canBuy = (savedData.dp || 0) >= pack.price;
-        const div = document.createElement("div");
-        div.className = "pack-item";
-        
-        // スタイル (CSSで .pack-item が定義されていない場合のフォールバック)
-        div.style.border = "1px solid #444";
-        div.style.padding = "10px";
-        div.style.margin = "5px";
-        div.style.borderRadius = "8px";
-        div.style.background = "rgba(0,0,0,0.5)";
-        div.style.cursor = canBuy ? "pointer" : "default";
-        div.style.opacity = canBuy ? 1 : 0.7;
+/* --- main.js (Part 1: Pack Content Logic Fix) --- */
 
-        div.innerHTML = `
-            <div style="display:flex; align-items:center; gap:10px;">
-                <img src="${pack.img}" style="width:60px; height:auto; border-radius:4px;">
-                <div style="flex:1;">
-                    <div style="font-weight:bold; color:#fff;">${pack.name}</div>
-                    <div style="font-size:10px; color:#aaa;">${pack.desc}</div>
-                    <div style="color:${canBuy ? '#ffd700' : '#f55'}; font-weight:bold;">DP: ${pack.price}</div>
-                </div>
-                ${!canBuy ? '<div style="font-size:10px; color:#f55;">LACK DP</div>' : ''}
-            </div>
-        `;
-        
-        if (canBuy) {
-            div.onclick = () => buyPack(pack.id);
-        }
-        list.appendChild(div);
-    });
+// カード抽選ロジック (パックID対応版)
+function drawShopCard(packId) {
+    // 1. レアリティ抽選 (重み付け)
+    const rand = Math.random() * 100;
+    let targetRarity = "N";
+    if (rand < 3) targetRarity = "UR";
+    else if (rand < 15) targetRarity = "SR";
+    else if (rand < 45) targetRarity = "R";
 
-    if (!hasPacks) {
-        list.innerHTML = "<div style='color:#666; width:100%; text-align:center; padding:20px;'>STAGE CLEAR REQUIRED</div>";
+    // 2. パックごとの収録カード定義
+    // Vol.1: ID 100~499 / Vol.2: ID 500~899
+    let minId = 0, maxId = 999;
+    if (packId === "vol1") { minId = 100; maxId = 499; }
+    else if (packId === "vol2") { minId = 500; maxId = 899; }
+
+    // 3. 候補リスト作成 (レアリティ かつ ID範囲内)
+    let candidates = CARD_DB.filter(c =>
+        c.rarity === targetRarity && c.id >= minId && c.id <= maxId
+    );
+
+    // 該当なしの場合（例: Vol.1にURがない場合など）のフォールバック
+    if (candidates.length === 0) {
+        // 同パック内のNカードに落とす
+        candidates = CARD_DB.filter(c => c.rarity === "N" && c.id >= minId && c.id <= maxId);
     }
+    // それでもなければ全カードのN（安全装置）
+    if (candidates.length === 0) {
+        candidates = CARD_DB.filter(c => c.rarity === "N");
+    }
+
+    // ランダムに1枚決定
+    return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
-// パック購入処理
-function buyPack(packId) {
+// パック購入プロセス (Async Control)
+// パック購入プロセス (OKボタン非表示処理を追加)
+async function buyPack(packId) {
     if (isOpeningPack) return;
 
     const pack = PACK_DATA.find(p => p.id === packId);
-    if (!pack || (savedData.dp || 0) < pack.price) {
+    if (!pack || savedData.dp < pack.price) {
         playSE("se-warning");
         return;
     }
 
+    // 購入処理
     savedData.dp -= pack.price;
-    saveGameData();
-    updateShopUI(); // DP表示更新
-    
-    openPack(packId); // 開封演出へ
-}
+    el("shop-dp-display").innerText = savedData.dp;
+    saveToDrive();
 
-// ★ パック開封演出 (高速化対応)
-function openPack(packId) {
+    // ステート設定
     isOpeningPack = true;
-    packSkipTrigger = false;
-    
-    // 1. 抽選 (Legendary Unboxing Logic)
-    const results = [];
-    let hasUR = false;
-    
-    for(let i=0; i<5; i++) {
-        let rarity = "N";
-        const r = Math.random();
-        
-        // 確率設定 (Vol.2はレア率アップ)
-        if (packId === "vol2") {
-            if (r < 0.05) rarity = "UR";
-            else if (r < 0.20) rarity = "SR";
-            else if (r < 0.50) rarity = "R";
-        } else {
-            if (r < 0.01) rarity = "UR";
-            else if (r < 0.10) rarity = "SR";
-            else if (r < 0.40) rarity = "R";
-        }
-        if (rarity === "UR") hasUR = true;
-        
-        // 候補選定
-        const candidates = CARD_DB.filter(c => c.rarity === rarity);
-        const card = candidates[Math.floor(Math.random() * candidates.length)] || CARD_DB[0];
-        
-        // 所持数加算
-        if (!savedData.collection) savedData.collection = {};
-        savedData.collection[card.id] = (savedData.collection[card.id] || 0) + 1;
-        results.push(card);
-    }
-    saveGameData();
+    currentPackId = packId;
 
-    // 2. 演出開始
-    el("pack-result-modal").style.display = "flex";
+    // モーダル初期化
+    const modal = el("pack-result-modal");
     const container = el("pack-results");
+    modal.style.display = "flex";
     container.innerHTML = "";
-    
-    // ホワイトアウト演出
-    const white = document.createElement("div");
-    white.className = "white-flash";
-    white.style.position = "absolute"; white.style.top=0; white.style.left=0; white.style.width="100%"; white.style.height="100%";
-    white.style.background = "#fff"; white.style.zIndex = 3500; white.style.transition = "opacity 0.5s";
-    el("pack-result-modal").appendChild(white);
-    
-    // ★ SE再生 (URなら神聖な音)
-    if (hasUR) playSE("se-heal"); // Holy sound
-    else playSE("se-chest");
 
-    // フェードアウト
-    setTimeout(() => white.style.opacity = 0, 100);
-    setTimeout(() => { if(white.parentNode) white.parentNode.removeChild(white); }, 600);
+    // ★ FIX: 静的な「OK」ボタンを探して非表示にする
+    // (modal-boxの直下にある button タグを対象とする)
+    const staticBtn = modal.querySelector(".modal-box > button.modal-btn");
+    if (staticBtn) staticBtn.style.display = "none";
 
-    // 3. カード順次表示ループ (Async)
-    const showCardLoop = async () => {
-        for (let i = 0; i < 5; i++) {
-            // ★ スキップ判定
-            if (packSkipTrigger) {
-                // 残りを一気に出す
-                for (let j = i; j < 5; j++) {
-                    createPackCardElement(results[j], container);
-                }
-                break; 
-            }
-            
-            createPackCardElement(results[i], container);
-            playSE("se-item");
-            
-            // ウェイト (スキップされなければ0.6秒待機)
-            await new Promise(resolve => setTimeout(resolve, 600));
-        }
-        isOpeningPack = false;
-    };
-    
-    showCardLoop();
+    // 古い動的ボタンがあれば削除
+    const oldBtn = document.querySelector(".action-buttons");
+    if (oldBtn) oldBtn.remove();
+
+    // --- Phase 1: The Arrival ---
+    container.innerHTML = `
+        <div id="opening-stage">
+            <div class="god-rays" id="god-rays"></div>
+            <img src="${pack.img}" class="opening-pack anim-drop" id="opening-pack">
+            <div class="prompt-text" id="opening-prompt" style="opacity:0">PRESS ENTER to OPEN</div>
+        </div>
+        <div class="white-out-overlay" id="white-out"></div>
+    `;
+
+    playSE("se-chest");
+    await wait(1000);
+
+    const packImg = el("opening-pack");
+    if (packImg) {
+        packImg.classList.remove("anim-drop");
+        packImg.classList.add("anim-breath");
+        packImg.onclick = () => proceedToOpen();
+    }
+    const prompt = el("opening-prompt");
+    if (prompt) prompt.style.opacity = 1;
 }
 
-// カードDOM生成ヘルパー
-function createPackCardElement(card, container) {
-    const d = document.createElement("div");
-    // アニメーション (CSSで .pop-in が未定義でも動作するようにインライン定義推奨だが、ここでは簡易的に)
-    d.style.animation = "pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
-    
-    // スタイル
-    d.style.width = "80px";
-    d.style.margin = "5px";
-    d.style.background = "#222";
-    d.style.border = "2px solid #555";
-    d.style.borderRadius = "6px";
-    d.style.padding = "5px";
-    d.style.textAlign = "center";
-    d.style.display = "flex";
-    d.style.flexDirection = "column";
-    d.style.alignItems = "center";
-    d.style.boxShadow = "0 0 10px rgba(0,0,0,0.5)";
+/* --- main.js (Part 2: Unboxing Logic Update) --- */
 
-    // レアリティ枠色
-    let borderCol = "#555";
-    if(card.rarity==="UR") borderCol = "#ffd700";
-    else if(card.rarity==="SR") borderCol = "#c0c0c0";
-    else if(card.rarity==="R") borderCol = "#cd7f32";
-    d.style.borderColor = borderCol;
-    
-    if(card.rarity==="UR") {
-        d.style.boxShadow = "0 0 15px gold";
-        d.style.background = "linear-gradient(135deg, #333 0%, #554400 100%)";
+// 開封実行 (SE変更 & レイアウト修正版)
+async function proceedToOpen() {
+    const packImg = el("opening-pack");
+    const prompt = el("opening-prompt");
+    const rays = el("god-rays");
+    const whiteOut = el("white-out");
+
+    if (!packImg || packImg.classList.contains("anim-charge")) return;
+
+    // --- Phase 2: The Charge (蓄積) ---
+    if (prompt) prompt.style.display = "none";
+    packImg.classList.remove("anim-breath");
+    packImg.classList.add("anim-charge");
+    if (rays) rays.classList.add("rays-active");
+
+    // ★ SE変更: 警告音 -> 能力アップ音 (エネルギー充填感)
+    playSE("se-buff");
+
+    await wait(1500);
+
+    // --- Phase 3: The Reveal (解放) ---
+    // ★ SE変更: 爆発音 -> 回復音 (浄化・解放感)
+    playSE("se-heal");
+
+    if (whiteOut) whiteOut.classList.add("white-out-anim");
+
+    // カード抽選 & ソート
+    const results = [];
+    const rarityScore = { "N": 1, "R": 2, "SR": 3, "UR": 4 };
+    for (let i = 0; i < 3; i++) {
+        const card = drawShopCard(currentPackId);
+        const isNew = !savedData.cards[card.id];
+        if (!savedData.cards[card.id]) savedData.cards[card.id] = 0;
+        savedData.cards[card.id]++;
+        results.push({ card, isNew, score: rarityScore[card.rarity] });
+    }
+    results.sort((a, b) => a.score - b.score);
+    saveToDrive();
+
+    await wait(500);
+
+    const stage = el("opening-stage");
+    if (!stage) return;
+    stage.innerHTML = `<div class="reveal-stage" id="reveal-stage"></div>`;
+    const revealContainer = el("reveal-stage");
+
+    // カード生成 (リザルト画面用)
+    results.forEach(res => {
+        const cardEl = createCardElement(res.card, false, 1, savedData.cards[res.card.id]);
+        cardEl.classList.add("card-appear");
+
+        // ★ 修正: リザルト画面ではクリックによるデッキ追加/削除を無効化
+        // (長押し拡大機能は createCardElement 内で付与されているのでそのまま有効)
+        cardEl.onclick = null;
+
+        if (res.isNew) {
+            const badge = document.createElement("div");
+            badge.className = "new-badge-overlay";
+            badge.innerText = "NEW!";
+            cardEl.appendChild(badge);
+        }
+        revealContainer.appendChild(cardEl);
+    });
+
+    // 順次表示
+    const cards = revealContainer.children;
+    for (let i = 0; i < 3; i++) {
+        await wait(300);
+        const c = results[i].card;
+        const elm = cards[i];
+
+        if (c.rarity === "UR") {
+            playSE("se-win");
+            elm.classList.add("card-show-ur");
+            triggerEffect(document.body, 100, false);
+        } else if (c.rarity === "SR") {
+            playSE("se-double");
+            elm.classList.add("card-show-sr");
+        } else {
+            playSE("se-single");
+            elm.classList.add("card-show-normal");
+        }
     }
 
-    d.innerHTML = `
-        <div style="font-size:12px; font-weight:bold; color:${borderCol}; margin-bottom:2px;">${card.rarity}</div>
-        <img src="assets/cards/${card.id}.png" style="width:100%; height:auto; border-radius:4px; min-height:80px; object-fit:cover;">
-        <div style="font-size:10px; color:#ccc; margin-top:4px; line-height:1.2; height:24px; overflow:hidden;">${card.name}</div>
+    // --- Phase 4: The Choice (決断) ---
+    await wait(800);
+
+    const btnArea = document.createElement("div");
+    btnArea.className = "action-buttons"; // CSSで絶対配置・下部固定済み
+    const packData = PACK_DATA.find(p => p.id === currentPackId);
+    const price = packData ? packData.price : 1000;
+    const canBuyAgain = savedData.dp >= price;
+
+    btnArea.innerHTML = `
+        <button class="modal-btn" style="background:#444;" onclick="closePackResult()">↩️ BACK [BS]</button>
+        <button class="modal-btn" style="background:${canBuyAgain ? '#e94560' : '#555'};" 
+                onclick="${canBuyAgain ? 'buyPack(currentPackId)' : ''}" ${canBuyAgain ? '' : 'disabled'}>
+            🎁 BUY AGAIN (${price} DP) [ENTER]
+        </button>
     `;
-    
-    container.appendChild(d);
+
+    el("pack-results").appendChild(btnArea);
+    requestAnimationFrame(() => btnArea.classList.add("visible"));
+
+    isOpeningPack = false;
 }
 // リザルト閉じる処理 (OKボタン復帰処理を追加)
 function closePackResult() {
@@ -1218,35 +1213,7 @@ function finishSession(resultType, ppr, multiplier = 1.0) {
     const historyItem = { date: dateStr, stage: stage, floor: floor, stgName: stgName, result: resultText, dp: gainedDP, ppr: isNaN(ppr) ? 0 : parseFloat(ppr), rt: calculateRating(isNaN(ppr) ? 0 : parseFloat(ppr)) }; if (!savedData.history) savedData.history = []; savedData.history.unshift(historyItem); if (savedData.history.length > 50) savedData.history.pop(); updateTitleScore(); saveToDrive(); return { isNewRecord: isNewRecord, gainedDP: gainedDP };
 }
 function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[array[i], array[j]] = [array[j], array[i]]; } return array; }
-/* --- main.js FIX: triggerEffect (座標ロジック変更) --- */
-function triggerEffect(targetEl, val, isPlayer, isHeal = false) {
-    // シェイク演出
-    if (!isHeal && val > 0) {
-        const shakeClass = val > 50 ? "shake-heavy" : "shake-small";
-        const container = el("game-container");
-        container.classList.remove("shake-heavy", "shake-small");
-        void container.offsetWidth; // Reflow
-        container.classList.add(shakeClass);
-        setTimeout(() => container.classList.remove(shakeClass), 500);
-    }
-
-    // フローティングテキスト生成
-    const floatDiv = document.createElement("div");
-    floatDiv.className = "damage-float";
-    if (isHeal) floatDiv.classList.add("heal");
-    else if (val === 0) floatDiv.classList.add("miss");
-    
-    // 敵へのダメージなら専用クラス (CSSで中央・巨大表示)
-    if (!isPlayer && !isHeal && val > 0) floatDiv.classList.add("enemy-dmg");
-
-    floatDiv.innerText = val === 0 ? "MISS" : val;
-    
-    // ゲーム画面に追加 (絶対配置のため場所はCSSで決定)
-    el("game-screen").appendChild(floatDiv);
-
-    // アニメーション終了後に削除
-    setTimeout(() => { if(floatDiv.parentNode) floatDiv.parentNode.removeChild(floatDiv); }, 1200);
-}
+function triggerEffect(el, dmg, isP) { el.classList.remove("shake-small", "shake-medium", "shake-heavy", "shake-ultimate"); void el.offsetWidth; if (dmg >= 150) { el.classList.add("shake-ultimate"); playSE("se-boom"); } else if (dmg >= 60) { el.classList.add("shake-heavy"); playSE("se-boom"); } else { el.classList.add(dmg >= 30 ? "shake-medium" : "shake-small"); } const pop = document.createElement("div"); pop.innerText = dmg; if (dmg >= 150) pop.className = "damage-popup dmg-ultimate"; else if (dmg >= 60) pop.className = "damage-popup dmg-heavy"; else if (dmg >= 30) pop.className = "damage-popup dmg-medium"; else pop.className = "damage-popup dmg-small"; pop.style.left = "50%"; pop.style.top = "50%"; el.appendChild(pop); setTimeout(() => pop.remove(), 1500); }
 function animateValue(obj, s, e, d) { if (obj) obj.innerHTML = e; }
 function showHistory() { const list = el("history-list"); list.innerHTML = ""; if (!savedData.history || savedData.history.length === 0) { list.innerHTML = "<div style='padding:20px; text-align:center;'>NO HISTORY</div>"; } else { savedData.history.forEach(h => { let resClass = "res-lose"; let resStr = h.result || "LOSE"; if (resStr.includes("WIN") || resStr.includes("CLEAR")) resClass = "res-win"; if (resStr.includes("EXTRA")) resClass = "res-extra"; const pprVal = h.ppr ? h.ppr.toFixed(1) : "0.0"; list.innerHTML += `<div class='h-row'><div>${h.date}</div><div>${h.stgName}</div><div class='${resClass}'>${resStr}</div><div>+${h.dp} DP<br>Avg ${pprVal}</div></div>`; }); } playSE("se-tap"); el("history-modal").style.display = "flex"; }
 function closeHistory() { playSE("se-tap"); el("history-modal").style.display = "none"; }
@@ -1559,64 +1526,5 @@ function updateTitleScore() {
             btn.onclick = openConfigModal;
             titleScreen.appendChild(btn);
         }
-    }
-}
-
-/* --- main.js 末尾に追加 --- */
-// Enterキーでパック演出スキップ
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && isOpeningPack) {
-        packSkipTrigger = true;
-    }
-});
-// 画面クリックでもスキップ可能にする（スマホ対応）
-document.addEventListener('click', (e) => {
-    // モーダル外クリック等の判定が必要だが、簡易的に開封中ならスキップトリガーを引く
-    if (isOpeningPack) {
-        packSkipTrigger = true;
-    }
-});
-
-}
-
-/* --- main.js Add to End: Config UI Logic --- */
-
-function openConfigModal() {
-    playSE("se-tap");
-    const modal = document.getElementById("config-modal");
-    if(modal) {
-        modal.style.display = "flex";
-        // 現在値をUIに反映
-        if(document.getElementById("conf-bgm")) {
-            document.getElementById("conf-bgm").value = gameConfig.bgmVolume;
-            document.getElementById("conf-bgm-val").innerText = Math.round(gameConfig.bgmVolume * 100) + "%";
-        }
-        if(document.getElementById("conf-se")) {
-            document.getElementById("conf-se").value = gameConfig.sysVolume;
-            document.getElementById("conf-se-val").innerText = Math.round(gameConfig.sysVolume * 100) + "%";
-        }
-    }
-}
-
-function closeConfigModal() {
-    playSE("se-tap");
-    const modal = document.getElementById("config-modal");
-    if(modal) modal.style.display = "none";
-    saveGameConfig(); // 設定保存
-}
-
-function changeConfig(type) {
-    if (type === 'bgm') {
-        const val = parseFloat(document.getElementById("conf-bgm").value);
-        gameConfig.bgmVolume = val;
-        document.getElementById("conf-bgm-val").innerText = Math.round(val * 100) + "%";
-        updateCurrentBgmVolume(); // 即時反映
-    }
-    if (type === 'se') {
-        const val = parseFloat(document.getElementById("conf-se").value);
-        gameConfig.sysVolume = val;
-        gameConfig.atkVolume = Math.min(1.0, val + 0.3); // 攻撃音は少し大きめに自動調整
-        document.getElementById("conf-se-val").innerText = Math.round(val * 100) + "%";
-        // 確認用に音を鳴らす（連続再生防止のため少し間引く等の処理はいったん省略）
     }
 }
