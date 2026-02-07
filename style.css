@@ -35,7 +35,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .game-screen { padding: 0 !important; display: flex; flex-direction: column; height: 100%; position: relative; z-index:1; }
 .boss-label { color: #ff0000; font-weight: bold; margin-left: 10px; display: none; text-shadow: 0 0 5px red; animation: blink 1s infinite; }
 .hp-big-text { font-family: 'Impact', 'Arial Black', sans-serif; font-size: 70px; font-weight: bold; color: #fff; text-shadow: 3px 3px 0 #000, -1px -1px 0 #000; margin: -10px 0 5px 0; line-height: 1; z-index: 10; position: relative; transition: color 0.3s; }
-.hp-warning { color: #ffdd00; } .hp-danger { color: #ff0000; animation: blink 0.5s infinite alternate; } @keyframes blink { from { opacity: 1; } to { opacity: 0.3; } }
+.hp-warning { color: #ffd700 !important;; box-shadow: 0 0 10px #ffd700 !important;} .hp-danger { background: #ff0000 !important; color: #ff0000; animation: hp-blink 0.5s infinite alternate; box-shadow: 0 0 15px #ff0000 !important;} @keyframes blink { from { opacity: 1; } to { opacity: 0.6; } }
 .hp-bar-bg {
     width: 90%;
     height: 24px;
@@ -262,14 +262,15 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 
 /* UR Text: Enhanced Readability */
 .text-ur {
-    background: linear-gradient(90deg, #ff5555, #ffff55, #55ff55, #55ffff, #5555ff, #ff55ff);
+    background: linear-gradient(90deg, #ff8888, #ffff88, #88ff88, #88ffff, #8888ff, #ff88ff) !important;
     background-size: 200%;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     animation: rainbow-text 3s linear infinite;
     font-weight: 900;
     /* 文字の輪郭を強化 */
-    filter: drop-shadow(1px 1px 0 #000) drop-shadow(-1px -1px 0 #000) drop-shadow(0 0 2px rgba(0,0,0,0.8));
+    filter: drop-shadow(0 0 2px rgba(255,255,255,0.8)) drop-shadow(0 0 5px rgba(255,255,255,0.4)) !important;
+    -webkit-text-stroke: 0.5px rgba(255,255,255,0.5) !important;
 }
 
 .std-type { font-size: 8px; opacity: 0.9; margin-bottom: 3px; font-family: 'Roboto Mono'; }
@@ -506,7 +507,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     transform-origin: top center !important;
 }
 #chest-img { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; z-index: 10; cursor: pointer; filter: drop-shadow(0 0 15px gold); }
-.enemy-hp-container { position: absolute; bottom: 60px !important; width: 100%; text-align: center; z-index: 20; pointer-events: none; }
+.enemy-hp-container { position: absolute; bottom: auto !important; top: 55% !important; width: 100%; left: 50% !important; transform: translate(-50%, -50%) !important; text-align: center; z-index: 20; pointer-events: none; }
 .hand-overlay-container { position: absolute; bottom: 10px; left: 0; width: 100%; height: 140px; display: flex; flex-direction: column; align-items: flex-start !important; padding: 0 20px; box-sizing: border-box; z-index: 50; pointer-events: none; }
 .hand-area { pointer-events: auto; display: flex; gap: 10px; justify-content: flex-start; width: 100%; overflow-x: visible; }
 .hand-card { width: 80px !important; height: 120px !important; background: #1a1a1a; border: 2px solid #888; border-radius: 6px; position: relative; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.5); flex-shrink: 0; }
@@ -594,3 +595,4 @@ html, body {
     color: #888 !important;
     text-shadow: none !important;
 }
+

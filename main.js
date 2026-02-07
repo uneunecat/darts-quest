@@ -214,6 +214,7 @@ function renderHand() {
 /* --- main.js UPDATE: updateInfo (Fix Crash & UI) --- */
 /* --- main.js UPDATE: updateInfo (v2.11.16 Fix) --- */
 /* --- main.js UPDATE: updateInfo (v2.11.16 Clean) --- */
+/* --- main.js UPDATE: updateInfo (v2.11.17 HP Color Logic) --- */
 function updateInfo() {
     if (!enemy.data) return;
     const setText = (id, text) => { const e = el(id); if(e) e.innerText = text; };
@@ -246,13 +247,20 @@ function updateInfo() {
     if(enemy.state.barrierLimit > 0) eChips += `<span class="status-chip chip-barrier">💠BARRIER(${enemy.state.barrierLimit})</span>`;
     setHTML("enemy-states-side", eChips);
 
-    // --- Player HP (In-Bar Text) ---
+    // --- Player HP (Dynamic Color & Text) ---
     const hpBar = el("player-hp-bar");
     if(hpBar) {
         const pct = (player.hp / player.maxHp) * 100;
         hpBar.style.width = Math.max(0, pct) + "%";
-        hpBar.className = pct <= 20 ? "hp-bar-fill player-fill player-danger" : "hp-bar-fill player-fill";
         
+        // ★ Color Logic Update
+        let hpClass = "hp-bar-fill player-fill"; // Default Blue
+        if (pct <= 20) hpClass += " hp-danger"; // Red Blink
+        else if (pct <= 50) hpClass += " hp-warning"; // Yellow
+        
+        hpBar.className = hpClass;
+        
+        // Text Overlay
         const parent = hpBar.parentNode;
         let overlay = parent.querySelector(".hp-text-overlay");
         if(!overlay) {
@@ -262,11 +270,13 @@ function updateInfo() {
         }
         overlay.innerText = `${player.hp} / ${player.maxHp}`;
     }
-    setText("player-hp", ""); // 数値削除
+    setText("player-hp", "");
 
-    // --- Player MP (Dots Only - No Text Logic) ---
-    // ここで数値テキストを更新する処理は完全に削除されました
-    
+    // Player MP (Dots Only)
+    const mpValEl = document.querySelector("#player-mp")?.parentNode; 
+    if(mpValEl && mpValEl.classList.contains("p-val")) {
+        mpValEl.style.display = "none";
+    }
     let mpDots = "";
     for(let i=0; i<player.maxMp; i++) {
         mpDots += `<span class="mp-dot ${i < player.mp ? 'active' : ''}"></span>`;
@@ -305,17 +315,15 @@ function updateInfo() {
     updateItemBtn("btn-ether", player.items.ether, "⚗️");
     updateItemBtn("btn-seed", player.items.seed, "🌱");
 
-    // --- Trap Slot (Safe DOM Access) ---
+    // Trap Slot (Safe)
     const trapContainer = el("trap-slot-container");
     if(trapContainer) {
         trapContainer.innerHTML = "";
-        
         if(player.setCard) {
             const c = CARD_DB.find(cd => cd.id === player.setCard);
             if(c) {
                 const cardEl = createCardElement(c, "battle", 0, 1);
-                cardEl.onmouseenter = (e) => showTooltip(c.name + " (セット中)", c.desc, e);
-                cardEl.onmouseleave = () => hideTooltip();
+                // ★ Tooltip removed
                 cardEl.onclick = null;
                 trapContainer.appendChild(cardEl);
             }
@@ -689,17 +697,15 @@ function renderDeckEditor() {
 /* --- main.js UPDATE: createCardElement (Premium Format) --- */
 /* --- main.js UPDATE: createCardElement (v2.11.13 Mode Support) --- */
 // mode: 'standard' (default), 'small' (deck), 'battle' (hand)
+/* --- main.js UPDATE: createCardElement (Remove Tooltip) --- */
 function createCardElement(card, mode = "standard", remainingCount = 1, totalCount = 0) {
     const div = document.createElement("div");
     
-    // Ownership Check
-    // Deck内(small)やBattle中は「所有している」前提。List(standard)のみ所持数チェック。
     const isOwned = (mode === "small" || mode === "battle" || totalCount > 0);
     const notOwnedClass = (!isOwned) ? "card-not-owned" : "";
     
-    // Class Setup: .std-card + mode class
     div.className = `std-card ${mode} rarity-${card.rarity} ${notOwnedClass}`;
-    if (mode === "small") div.classList.add("in-deck-card"); // 既存互換用
+    if (mode === "small") div.classList.add("in-deck-card");
 
     const imgPath = `assets/cards/${card.id}.png`;
     const cost = (card.cost !== undefined) ? card.cost : "?";
@@ -711,10 +717,6 @@ function createCardElement(card, mode = "standard", remainingCount = 1, totalCou
     else if (card.rarity === "R") textClass = "text-r";
 
     const sheenHTML = (card.rarity === "UR" || card.rarity === "SR") ? '<div class="card-sheen"></div>' : '';
-    
-    // Badge Text
-    // Small/BattleではCSSで非表示になるが、HTML上はあっても良い。
-    // Listでは所持数を表示。
     const countText = (mode === "small") ? "" : `x${remainingCount}`;
 
     div.innerHTML = `
@@ -731,7 +733,6 @@ function createCardElement(card, mode = "standard", remainingCount = 1, totalCou
         </div>
     `;
 
-    // Click Event
     div.onclick = function (e) {
         if (div.dataset.longPressed === "true") {
             div.dataset.longPressed = "false";
@@ -740,23 +741,15 @@ function createCardElement(card, mode = "standard", remainingCount = 1, totalCou
         if (!isOwned) return;
         if (typeof isOpeningPack !== 'undefined' && isOpeningPack) return;
 
-        // Mode Action
         if (mode === "small") removeFromDeck(card.id);
         else if (mode === "standard") addToDeck(card.id);
-        else if (mode === "battle") {
-            // Battle click handled by renderHand assignment, 
-            // but for safety we can trigger logic if needed.
-            // (Current battle logic uses array index, assigned later)
-        }
     };
 
-    // Tooltip / Zoom
+    // ★ Tooltip & Detail Hover Removed for Battle
     div.onmouseenter = (e) => {
-        if (typeof showCardDetail === 'function') showCardDetail(card);
-        // Small/Deck mode shows tooltip
-        if (mode === "small" && typeof showTooltip === 'function') showTooltip(card.name, card.desc, e);
+        // Show detail only in Deck Editor (standard/small mode)
+        if (mode !== "battle" && typeof showCardDetail === 'function') showCardDetail(card);
     };
-    if (mode === "small") { div.onmouseleave = () => hideTooltip(); }
     
     if (isOwned) {
         setupLongPress(div, card);
