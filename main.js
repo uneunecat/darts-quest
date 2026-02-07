@@ -791,18 +791,33 @@ function showDialog(title, text, type = "normal", buttons = [{ text: "OK", actio
 function calculateStageRank(stg, turns) { if (stg === 5 || stg === 6) { if (turns <= 25) return ["SSS", 1000]; if (turns <= 35) return ["S", 600]; if (turns <= 50) return ["A", 300]; if (turns <= 70) return ["B", 100]; return ["C", 50]; } else if (stg === 4) { if (turns <= 25) return ["SSS", 1000]; if (turns <= 35) return ["S", 600]; if (turns <= 50) return ["A", 300]; if (turns <= 70) return ["B", 100]; return ["C", 50]; } else { if (turns <= 12) return ["SSS", 1000]; if (turns <= 16) return ["S", 600]; if (turns <= 22) return ["A", 300]; if (turns <= 30) return ["B", 100]; return ["C", 50]; } }
 function finishSession(resultType, ppr, multiplier = 1.0) { let earnedDP = 0; clearedStagesLog.forEach(log => { earnedDP += log.dp; }); savedData.dp = (savedData.dp || 0); const curVal = stage * 100 + floor; const bestVal = savedData.highScore.stage * 100 + savedData.highScore.floor; let isNewRecord = false; if (curVal > bestVal) { savedData.highScore.stage = stage; savedData.highScore.floor = floor; isNewRecord = true; } if (ppr > savedData.highScore.avg) { savedData.highScore.avg = ppr; isNewRecord = true; } if (resultType === "EXTRA-WIN") savedData.clearedExtra = true; const now = new Date(); const dateStr = `${now.getMonth() + 1}/${now.getDate()} ${now.getHours()}:${("0" + now.getMinutes()).slice(-2)}`; let stgName = (stage === 6) ? "STAGE 5" : (stage === 5 ? "EXTRA" : "S" + stage + "-" + floor + "F"); let resultText = resultType; let gainedDP = 0; const scoreDP = Math.floor(totalScore * 0.2 * multiplier); let rankDP = 0; clearedStagesLog.forEach(log => rankDP += log.dp); gainedDP = scoreDP + rankDP; savedData.dp += gainedDP; if (clearedStagesLog.length > 0 && resultType === "RETURN") { const last = clearedStagesLog[clearedStagesLog.length - 1]; resultText = `CLEAR(${last.rank})`; } const historyItem = { date: dateStr, stage: stage, floor: floor, stgName: stgName, result: resultText, dp: gainedDP, ppr: isNaN(ppr) ? 0 : parseFloat(ppr), rt: calculateRating(isNaN(ppr) ? 0 : parseFloat(ppr)) }; if (!savedData.history) savedData.history = []; savedData.history.unshift(historyItem); if (savedData.history.length > 50) savedData.history.pop(); updateTitleScore(); saveToDrive(); return { isNewRecord: isNewRecord, gainedDP: gainedDP }; }
 /* --- main.js UPDATE: showHistory (Cyber Log Design) --- */
+/* --- main.js UPDATE: showHistory (v2.11.20 Clean Design) --- */
 function showHistory() {
+    const modal = el("history-modal");
+    
+    // モーダルの中身を再構築 (ヘッダーなし、バツボタン)
+    modal.innerHTML = `
+        <div class="modal-box" style="position:relative; width:90%; max-width:600px; max-height:80vh; padding:20px; background:rgba(0,0,0,0.95); border:1px solid #444;">
+            <div style="font-family:'Cinzel Decorative'; font-size:20px; margin-bottom:15px; text-align:center; color:#fff;">
+                BATTLE LOG
+            </div>
+            
+            <button class="sub-btn" onclick="closeHistory()">×</button>
+            
+            <div id="history-list" class="history-list"></div>
+        </div>
+    `;
+
     const list = el("history-list");
-    list.innerHTML = "";
     
     if (!savedData.history || savedData.history.length === 0) {
-        list.innerHTML = "<div style='padding:40px; text-align:center; color:#666;'>NO BATTLE HISTORY</div>";
+        list.innerHTML = "<div style='padding:40px; text-align:center; color:#666;'>NO DATA</div>";
     } else {
-        savedData.history.forEach(h => {
+        // 新しい順に表示
+        [...savedData.history].reverse().forEach(h => {
             let rowClass = "history-row";
             let resTextClass = "res-lose-text";
             
-            // 勝敗判定
             if (h.result.includes("WIN") || h.result.includes("CLEAR")) {
                 rowClass += " win";
                 resTextClass = "res-win-text";
@@ -815,18 +830,18 @@ function showHistory() {
                 rowClass += " lose";
             }
 
-            const pprVal = h.ppr ? h.ppr.toFixed(1) : "0.0";
+            const pprVal = h.ppr ? h.ppr.toFixed(1) : "-";
+            const dateStr = h.date ? h.date.split(' ')[0] : "-";
             
-            // HTML構築
             const div = document.createElement("div");
             div.className = rowClass;
             div.innerHTML = `
-                <div class="h-date">${h.date.split(' ')[0]}</div>
-                <div class="h-stage">${h.stgName}</div>
+                <div class="h-date" style="font-size:10px;">${dateStr}</div>
+                <div class="h-stage" style="font-size:11px;">${h.stgName}</div>
                 <div class="h-result ${resTextClass}">${h.result}</div>
                 <div class="h-detail">
-                    <div>+${h.dp} DP</div>
-                    <div style="font-size:10px; color:#888;">Avg ${pprVal}</div>
+                    <div style="font-size:11px;">+${h.dp} DP</div>
+                    <div style="font-size:9px; color:#666;">Avg ${pprVal}</div>
                 </div>
             `;
             list.appendChild(div);
@@ -834,7 +849,7 @@ function showHistory() {
     }
     
     playSE("se-tap");
-    el("history-modal").style.display = "flex";
+    modal.style.display = "flex";
 }
 function closeHistory() { playSE("se-tap"); el("history-modal").style.display = "none"; }
 function resetSaveData() { if (confirm("【警告】現在のスロットのデータを完全に消去しますか？")) { allSaveData[currentSlot] = null; selectSlot(currentSlot.replace("slot", "")); saveToDrive(); } }
