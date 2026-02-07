@@ -83,20 +83,21 @@ function spawnEnemy() { try { enemy.state = { charge: false, guard: false, guard
 function checkOpeningSkill() { if (stage === 3 && floor === 1) { setTimeout(() => { showSkillCutin("護封剣の加護", "gold"); setTimeout(() => { enemy.state.guardType = 'cut'; enemy.state.guardTurn = 3; addLog(">> 先制行動: 敵が光の護封剣(3T)を展開！", "log-enemy"); updateInfo(); }, 1200); }, 500); } }
 function handleEnter() { if (isProcessing) return; if (currentInput !== "") { const val = parseInt(currentInput); if (!isNaN(val)) { if (val < 0 || val > 60) { alert("単発の最大値は 60 (T20) です"); currentInput = ""; updateScoreDisplay(); return; } if (val === 50) playSE("se-bull"); else if (val >= 51) playSE("se-triple"); else playSE("se-hit"); processOneThrow(val); currentInput = ""; updateScoreDisplay(); } } }
 /* --- main.js UPDATE: processOneThrow (Stability Fix) --- */
+/* --- main.js UPDATE: processOneThrow (v2.11.16 Stable) --- */
 function processOneThrow(score) {
-    // ★ FIX: 敵が既に倒れている、または処理中の場合は入力を破棄 (連鎖バグ防止)
+    // ★ 敵死亡時・処理中の入力遮断 (バグ防止)
     if (enemy.hp <= 0 || isProcessing) return;
     if (restrictInput && turnInputs.length > 0) return;
 
     let singleDmg = score;
     let weakHit = false;
 
-    // --- 特殊ルール ---
+    // 特殊ルール
     if (stage === 6 && floor === 5 && singleDmg <= 15) { singleDmg = 0; addLog("召雷弾! (15以下無効)", "log-enemy"); }
     if (stage === 4 && floor === 6 && currentTurn % 2 === 0 && singleDmg < 10) { singleDmg = 0; addLog("結界! (10未満無効)", "log-enemy"); }
     if (enemy.state.barrierLimit > 0 && singleDmg < enemy.state.barrierLimit) { singleDmg = 0; addLog(`結界! (${enemy.state.barrierLimit}未満無効)`, "log-enemy"); }
 
-    // --- 補正計算 ---
+    // 補正
     if (player.state.atkBonus > 0) { singleDmg += player.state.atkBonus; player.state.atkBonus = 0; }
     if (player.state.power) { singleDmg = Math.floor(singleDmg * 2.0); player.state.power = false; }
     if (player.state.huge !== 0) {
@@ -105,7 +106,7 @@ function processOneThrow(score) {
         player.state.huge = 0;
     }
     
-    // --- 弱点・防御 ---
+    // 弱点・防御
     if (player.state.weakLock || (score >= 51 && enemy.data.weak && (score % enemy.data.weak === 0))) { weakHit = true; }
     if (stage === 4 && floor === 4 && currentTurn % 3 === 0) singleDmg = Math.max(0, singleDmg - 15);
     if (enemy.state.toonSkin) singleDmg = Math.max(0, singleDmg - 15);
@@ -114,7 +115,7 @@ function processOneThrow(score) {
     if (enemy.state.guardType === 'half') singleDmg = Math.floor(singleDmg * 0.5);
     if (enemy.state.guard) { singleDmg = Math.floor(singleDmg / 2); enemy.state.guard = false; addLog("敵の防御で半減！", "system"); }
 
-    // --- ダメージ適用 ---
+    // ダメージ適用
     if (enemy.hp - singleDmg === 0) isJustFinish = true;
     enemy.hp = Math.max(0, enemy.hp - singleDmg);
     
@@ -138,11 +139,11 @@ function processOneThrow(score) {
     animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 300);
     displayEnemyHP = enemy.hp;
     
-    updateInfo(); // 情報更新
+    updateInfo();
 
-    // --- 勝利判定 ---
+    // 勝利判定
     if (enemy.hp <= 0) {
-        isProcessing = true; // ★ 入力を即座にロック
+        isProcessing = true; // ★ 入力ロック
         totalGameTurns++;
         setTimeout(winBattle, 1000);
         return;
@@ -211,6 +212,8 @@ function renderHand() {
 }
 /* --- main.js UPDATE: updateInfo (v2.11.14 Refined) --- */
 /* --- main.js UPDATE: updateInfo (Fix Crash & UI) --- */
+/* --- main.js UPDATE: updateInfo (v2.11.16 Fix) --- */
+/* --- main.js UPDATE: updateInfo (v2.11.16 Clean) --- */
 function updateInfo() {
     if (!enemy.data) return;
     const setText = (id, text) => { const e = el(id); if(e) e.innerText = text; };
@@ -235,7 +238,7 @@ function updateInfo() {
     if(weakHitCount > 0) weakText += " <span style='color:#f0f;'>CHANCE!</span>";
     setHTML("weak-display", weakText);
 
-    // Chips
+    // Enemy Chips
     let eChips = "";
     if(enemy.state.guard) eChips += `<span class="status-chip chip-guard">🛡️GUARD</span>`;
     if(enemy.state.charge) eChips += `<span class="status-chip chip-charge">⚡CHARGE</span>`;
@@ -250,7 +253,6 @@ function updateInfo() {
         hpBar.style.width = Math.max(0, pct) + "%";
         hpBar.className = pct <= 20 ? "hp-bar-fill player-fill player-danger" : "hp-bar-fill player-fill";
         
-        // テキストをバーの親要素に追加（重複防止付き）
         const parent = hpBar.parentNode;
         let overlay = parent.querySelector(".hp-text-overlay");
         if(!overlay) {
@@ -260,10 +262,11 @@ function updateInfo() {
         }
         overlay.innerText = `${player.hp} / ${player.maxHp}`;
     }
-    setText("player-hp", ""); // 数値の二重表示防止
+    setText("player-hp", ""); // 数値削除
 
-    // --- Player MP (Dots & Glow) ---
-    setText("player-mp", ""); // 数値削除
+    // --- Player MP (Dots Only - No Text Logic) ---
+    // ここで数値テキストを更新する処理は完全に削除されました
+    
     let mpDots = "";
     for(let i=0; i<player.maxMp; i++) {
         mpDots += `<span class="mp-dot ${i < player.mp ? 'active' : ''}"></span>`;
@@ -277,7 +280,7 @@ function updateInfo() {
         else mpContainer.classList.remove("mp-max-glow");
     }
 
-    // Player Chips
+    // Player States
     let pChips = "";
     if(player.state.atkBonus > 0 || player.state.power) pChips += `<span class="status-chip chip-buff">⚔️ATK UP</span>`;
     if(player.state.guardTurn > 0) pChips += `<span class="status-chip chip-guard">🛡️SHIELD(${player.state.guardTurn})</span>`;
@@ -285,7 +288,7 @@ function updateInfo() {
     if(player.state.itemLock) pChips += `<span class="status-chip chip-lock">🔒SEALED</span>`;
     setHTML("player-states-side", pChips);
 
-    // Stats & Items
+    // Stats
     let ppr = totalDarts > 0 ? (totalScore / totalDarts) * 3 : 0;
     setText("avg-display", ppr.toFixed(1));
     setText("rt-display", `(Rt ${calculateRating(ppr)})`);
@@ -302,30 +305,23 @@ function updateInfo() {
     updateItemBtn("btn-ether", player.items.ether, "⚗️");
     updateItemBtn("btn-seed", player.items.seed, "🌱");
 
-    // --- ★ FIX: Trap Slot (Safe DOM Access) ---
-    // 親コンテナID 'trap-slot-container' を使用して参照エラーを回避
+    // --- Trap Slot (Safe DOM Access) ---
     const trapContainer = el("trap-slot-container");
-    
     if(trapContainer) {
-        trapContainer.innerHTML = ""; // 中身をリセット
+        trapContainer.innerHTML = "";
         
         if(player.setCard) {
             const c = CARD_DB.find(cd => cd.id === player.setCard);
             if(c) {
-                // Generate Battle Card Style
                 const cardEl = createCardElement(c, "battle", 0, 1);
-                // Hover event
                 cardEl.onmouseenter = (e) => showTooltip(c.name + " (セット中)", c.desc, e);
                 cardEl.onmouseleave = () => hideTooltip();
-                // Click Disabled
                 cardEl.onclick = null;
-                
                 trapContainer.appendChild(cardEl);
             }
         } else {
-            // Empty Slot
             const emptyDiv = document.createElement("div");
-            emptyDiv.id = "trap-slot"; // IDを維持（互換性のため）
+            emptyDiv.id = "trap-slot";
             emptyDiv.className = "trap-slot empty";
             emptyDiv.innerHTML = "SET<br>TRAP";
             trapContainer.appendChild(emptyDiv);
