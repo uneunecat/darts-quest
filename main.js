@@ -169,7 +169,32 @@ function showSkillCutin(name, type) { playSE("se-warning"); el("cutin-text-val")
 function drawCard(isSilent = false) { if (player.deck.length === 0) return; if (player.hand.length >= HAND_SIZE) return; const cardId = player.deck.pop(); player.hand.push(cardId); if (!isSilent) triggerFloatText("DRAW!", el("hand-area")); updateInfo(); }
 function playHandCard(index) { if(isProcessing || waitingForChest) return; if (turnInputs.length > 0) { addLog(">> 投擲中はカードを使えません！", "log-system"); return; } if (player.state.itemLock) { addLog(">> 封印されていて使えない！", "log-system"); playSE("se-warning"); return; } const cardId = player.hand[index]; const card = CARD_DB.find(c => c.id === cardId); let cost = (card.cost !== undefined) ? card.cost : 99; if (player.mp < cost) { addLog(`MPが足りません！(必要: ${cost})`, "log-system"); playSE("se-warning"); return; } if (card.id === 501 && player.hand.length < 2) { addLog("捨てる手札がありません！", "log-system"); playSE("se-warning"); return; } if (card.type === "TRAP") { if (player.setCard) { addLog("罠は1枚しかセットできません！", "log-system"); playSE("se-warning"); return; } player.mp -= cost; player.hand.splice(index, 1); player.setCard = cardId; playSE("se-buff"); addLog(`「${card.name}」をセットした！`, "log-skill"); updateInfo(); return; } player.mp -= cost; playSE("se-buff"); player.hand.splice(index, 1); player.discard.push(cardId); applyCardEffect(card); updateInfo(); }
 function applyCardEffect(card) { let rawMsg = ""; switch (card.id) { case 101: player.hp = player.maxHp; rawMsg = "HP完全回復！"; playSE("se-heal"); break; case 201: const dmg201 = 100; enemy.hp = Math.max(0, enemy.hp - dmg201); enemy.state.isStunned = true; rawMsg = "100ダメージ＆スタン！"; playSE("se-boom"); triggerEffect(el("enemy-panel"), dmg201, false); break; case 202: drawCard(); drawCard(); rawMsg = "カードを2枚ドロー！"; playSE("se-heal"); break; case 301: player.state.guardTurn = 3; rawMsg = "3ターン防御(被ダメ半減)！"; break; case 302: if (enemy.state.charge) { enemy.state.charge = false; enemy.state.isStunned = true; rawMsg = "チャージ解除＆スタン！"; playSE("se-hit"); } else { rawMsg = "不発(敵はチャージしていない)"; } break; case 303: player.state.barrier = true; rawMsg = "バリア展開(次攻撃無効＆反撃)！"; break; case 401: const dmg401 = 30; enemy.hp = Math.max(0, enemy.hp - dmg401); rawMsg = "30ダメージ！"; playSE("se-attack"); triggerEffect(el("enemy-panel"), dmg401, false); break; case 402: player.hp = Math.min(player.hp + 50, player.maxHp); rawMsg = "HP50回復"; playSE("se-heal"); break; case 403: player.hp = Math.max(1, player.hp - 20); const dmg403 = 80; enemy.hp = Math.max(0, enemy.hp - dmg403); rawMsg = "自傷20＆敵に80ダメージ！"; playSE("se-attack"); triggerEffect(el("player-panel"), 20, true); triggerEffect(el("enemy-panel"), dmg403, false); break; case 404: const dmg404 = 80; enemy.hp = Math.max(0, enemy.hp - dmg404); rawMsg = "80ダメージ！"; playSE("se-attack"); triggerEffect(el("enemy-panel"), dmg404, false); break; case 405: player.state.power = true; rawMsg = "攻撃力2倍(このターン)！"; break; case 501: openDiscardSelector(); rawMsg = "捨てるカードを選んでください..."; break; case 601: const dmg601 = 150; enemy.hp = Math.max(0, enemy.hp - dmg601); while (player.hand.length > 0) player.discard.push(player.hand.pop()); rawMsg = "全手札を犠牲に150ダメージ！"; playSE("se-boom"); triggerEffect(el("enemy-panel"), dmg601, false); break; case 602: player.state.magicCylinder = true; rawMsg = "魔法の筒をセット(反射待機)！"; break; case 701: if (player.hp <= (player.maxHp * 0.5)) player.state.huge = 1; else player.state.huge = 2; rawMsg = (player.state.huge === 1) ? "HP劣勢…逆転の3倍パワー！" : "HP優勢…油断の0.5倍パワー…"; break; case 702: const dmg702 = 40; enemy.hp = Math.max(0, enemy.hp - dmg702); if (enemy.state.guard) { enemy.state.guard = false; rawMsg = "40ダメ＆敵の防御を破壊！"; } else rawMsg = "40ダメージ！"; triggerEffect(el("enemy-panel"), dmg702, false); break; case 703: player.state.hexSealTrap = true; rawMsg = "【罠】六芒星をセット！(次被弾時半減＆スタン)"; break; case 801: if (enemy.state.guard) { enemy.state.guard = false; rawMsg = "敵の防御を解除した！"; } else rawMsg = "敵は防御していなかった"; break; case 802: const dmg802 = 60; enemy.hp = Math.max(0, enemy.hp - dmg802); rawMsg = "60ダメージ！"; triggerEffect(el("enemy-panel"), dmg802, false); break; case 803: player.hp = Math.min(player.hp + 30, player.maxHp); player.state.atkBonus = 20; rawMsg = "HP30回復＆次撃+20！"; playSE("se-heal"); break; case 804: if (player.discard.length === 0) { rawMsg = "墓地にカードがない…"; break; } const magics = player.discard.filter(did => { const c = CARD_DB.find(cd => cd.id === did); return c.type === "MAGIC"; }); if (magics.length === 0) { rawMsg = "墓地に魔法がない…"; break; } const salvId = magics[Math.floor(Math.random() * magics.length)]; const dIndex = player.discard.indexOf(salvId); player.discard.splice(dIndex, 1); player.hand.push(salvId); rawMsg = `墓地から「${CARD_DB.find(c => c.id === salvId).name}」を回収！`; break; case 805: player.hp = Math.max(1, player.hp - 50); const dmg805 = 150; enemy.hp = Math.max(0, enemy.hp - dmg805); rawMsg = "自傷50＆敵に150ダメージ！"; triggerEffect(el("player-panel"), 50, true); triggerEffect(el("enemy-panel"), dmg805, false); break; default: rawMsg = "(発動)"; break; } console.log(`[Skill] ${card.name}: ${rawMsg}`); const announcerHTML = `<div style="font-size: 80%; opacity: 0.9; margin-bottom: 5px;">${card.name}</div><div>${rawMsg}</div>`; announce(announcerHTML, "log-skill"); animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP = enemy.hp; animateValue(el("player-hp"), displayPlayerHP, player.hp, 500); displayPlayerHP = player.hp; if (enemy.hp <= 0) { isProcessing = true; setTimeout(winBattle, 800); } }
-function openDiscardSelector() { pendingCardIndex = -1; const discardCandidates = []; player.hand.forEach((cid, idx) => { const c = CARD_DB.find(cd => cd.id === cid); discardCandidates.push({ id: cid, name: c.name, desc: c.desc, originalIndex: idx }); }); const modal = el("card-selector-modal"); const grid = el("cs-grid"); grid.innerHTML = ""; discardCandidates.forEach(item => { const div = document.createElement("div"); div.className = "collection-card"; div.innerHTML = `<div class="card-art"><img src="assets/cards/${item.id}.png"></div><div class="card-info"><div class="card-name" style="font-size:9px;">${item.name}</div><div class="card-info-direct">${item.desc}</div></div>`; div.onclick = () => executeDiscardAndEffect(item.originalIndex); grid.appendChild(div); }); el("cs-message").innerText = "墓地に送るカードを1枚選んでください"; modal.style.display = "flex"; }
+/* --- main.js UPDATE: openDiscardSelector (Size Fix) --- */
+function openDiscardSelector() {
+    pendingCardIndex = -1;
+    const discardCandidates = [];
+    player.hand.forEach((cid, idx) => {
+        const c = CARD_DB.find(cd => cd.id === cid);
+        discardCandidates.push({ id: cid, name: c.name, desc: c.desc, originalIndex: idx, rarity: c.rarity, type: c.type, cost: c.cost });
+    });
+    
+    const modal = el("card-selector-modal");
+    const grid = el("cs-grid");
+    grid.innerHTML = "";
+    
+    discardCandidates.forEach(item => {
+        // ★ FIX: mode="battle" で生成 (小さく表示)
+        const div = createCardElement(item, "battle", 0, 1);
+        
+        // クリックで捨てる処理を上書き
+        div.onclick = () => executeDiscardAndEffect(item.originalIndex);
+        
+        grid.appendChild(div);
+    });
+    
+    el("cs-message").innerText = "墓地に送るカードを1枚選んでください";
+    modal.style.display = "flex";
+}
 function closeCardSelector() { el("card-selector-modal").style.display = "none"; pendingCardIndex = -1; }
 function executeDiscardAndEffect(discardIndex) { const discardId = player.hand[discardIndex]; player.hand.splice(discardIndex, 1); player.discard.push(discardId); playSE("se-heal"); addLog("手札を捨て、3枚ドロー！", "log-skill"); drawCard(); drawCard(); drawCard(); closeCardSelector(); updateInfo(); }
 function showCardDetail(card) { const detailEl = el("deck-card-detail"); if (!detailEl) return; detailEl.innerHTML = `<span class="detail-name">${card.name}</span>${card.desc}`; }
@@ -213,6 +238,7 @@ function renderHand() {
 /* --- main.js UPDATE: updateInfo (v2.11.16 Fix) --- */
 /* --- main.js UPDATE: updateInfo (v2.11.16 Clean) --- */
 /* --- main.js UPDATE: updateInfo (v2.11.17 HP Color Logic) --- */
+/* --- main.js UPDATE: updateInfo (v2.11.18 Enemy HP Fix) --- */
 function updateInfo() {
     if (!enemy.data) return;
     const setText = (id, text) => { const e = el(id); if(e) e.innerText = text; };
@@ -228,11 +254,15 @@ function updateInfo() {
 
     // Enemy Info
     setText("enemy-name-side", enemy.name);
-    setText("enemy-hp-value", enemy.hp);
-    if(el("enemy-hp-value")) {
-        el("enemy-hp-value").className = "hp-mega-text";
-        if (enemy.hp <= 60) el("enemy-hp-value").classList.add("hp-danger");
+    const eHpEl = el("enemy-hp-value");
+    if(eHpEl) {
+        eHpEl.innerText = enemy.hp;
+        eHpEl.className = "hp-mega-text"; // Reset base class
+        // ★ FIX: 文字色専用クラスを適用 (背景色は変えない)
+        if (enemy.hp <= enemy.maxHp * 0.2) eHpEl.classList.add("text-danger");
+        else if (enemy.hp <= enemy.maxHp * 0.5) eHpEl.classList.add("text-warning");
     }
+    
     let weakText = player.state.weakLock ? "★LOCK" : `WEAK: ${enemy.data.weak}+`;
     if(weakHitCount > 0) weakText += " <span style='color:#f0f;'>CHANCE!</span>";
     setHTML("weak-display", weakText);
@@ -245,20 +275,17 @@ function updateInfo() {
     if(enemy.state.barrierLimit > 0) eChips += `<span class="status-chip chip-barrier">💠BARRIER(${enemy.state.barrierLimit})</span>`;
     setHTML("enemy-states-side", eChips);
 
-    // --- Player HP (Dynamic Color & Text) ---
+    // Player HP (In-Bar Text & Color)
     const hpBar = el("player-hp-bar");
     if(hpBar) {
         const pct = (player.hp / player.maxHp) * 100;
         hpBar.style.width = Math.max(0, pct) + "%";
         
-        // ★ Color Logic Update
-        let hpClass = "hp-bar-fill player-fill"; // Default Blue
-        if (pct <= 20) hpClass += " hp-danger"; // Red Blink
-        else if (pct <= 50) hpClass += " hp-warning"; // Yellow
-        
+        let hpClass = "hp-bar-fill player-fill";
+        if (pct <= 20) hpClass += " hp-danger";
+        else if (pct <= 50) hpClass += " hp-warning";
         hpBar.className = hpClass;
         
-        // Text Overlay
         const parent = hpBar.parentNode;
         let overlay = parent.querySelector(".hp-text-overlay");
         if(!overlay) {
@@ -270,18 +297,16 @@ function updateInfo() {
     }
     setText("player-hp", "");
 
-    // Player MP (Dots Only)
+    // Player MP
     const mpValEl = document.querySelector("#player-mp")?.parentNode; 
-    if(mpValEl && mpValEl.classList.contains("p-val")) {
-        mpValEl.style.display = "none";
-    }
+    if(mpValEl && mpValEl.classList.contains("p-val")) mpValEl.style.display = "none";
+    
     let mpDots = "";
     for(let i=0; i<player.maxMp; i++) {
         mpDots += `<span class="mp-dot ${i < player.mp ? 'active' : ''}"></span>`;
     }
     setHTML("player-mp-dots", mpDots);
     
-    // Max Glow Check
     const mpContainer = el("player-mp-dots");
     if(mpContainer) {
         if (player.mp >= player.maxMp) mpContainer.classList.add("mp-max-glow");
@@ -313,7 +338,7 @@ function updateInfo() {
     updateItemBtn("btn-ether", player.items.ether, "⚗️");
     updateItemBtn("btn-seed", player.items.seed, "🌱");
 
-    // Trap Slot (Safe)
+    // Trap Slot
     const trapContainer = el("trap-slot-container");
     if(trapContainer) {
         trapContainer.innerHTML = "";
@@ -321,7 +346,6 @@ function updateInfo() {
             const c = CARD_DB.find(cd => cd.id === player.setCard);
             if(c) {
                 const cardEl = createCardElement(c, "battle", 0, 1);
-                // ★ Tooltip removed
                 cardEl.onclick = null;
                 trapContainer.appendChild(cardEl);
             }
@@ -764,7 +788,52 @@ function getCardName(id) { const c = CARD_DB.find(card => card.id === id); retur
 function showDialog(title, text, type = "normal", buttons = [{ text: "OK", action: null }], autoClose = 0) { const box = el("modal-box-inner"); el("modal-title").innerText = title; el("modal-text").innerHTML = text; box.className = "modal-box"; el("modal-title").style.color = "#f9a826"; if (type === "clear") { box.classList.add("modal-clear"); el("modal-title").style.color = "#fff"; } else if (type === "warning") { box.classList.add("modal-warning"); el("modal-title").style.color = "#ff0000"; } else if (type === "item") { box.classList.add("modal-item"); el("modal-title").style.color = "#00ff00"; } const btnGroup = el("modal-buttons"); btnGroup.innerHTML = ""; buttons.forEach(b => { const btn = document.createElement("button"); btn.className = "modal-btn"; btn.innerText = b.text; btn.onclick = function () { if (window.dialogTimeout) clearTimeout(window.dialogTimeout); playSE("se-tap"); el("game-modal").style.display = "none"; if (b.action) b.action(); }; btnGroup.appendChild(btn); }); el("game-modal").style.display = "flex"; if (autoClose > 0 && buttons.length > 0) { const primaryAction = buttons[0].action; window.dialogTimeout = setTimeout(() => { el("game-modal").style.display = "none"; if (primaryAction) primaryAction(); }, autoClose); } }
 function calculateStageRank(stg, turns) { if (stg === 5 || stg === 6) { if (turns <= 25) return ["SSS", 1000]; if (turns <= 35) return ["S", 600]; if (turns <= 50) return ["A", 300]; if (turns <= 70) return ["B", 100]; return ["C", 50]; } else if (stg === 4) { if (turns <= 25) return ["SSS", 1000]; if (turns <= 35) return ["S", 600]; if (turns <= 50) return ["A", 300]; if (turns <= 70) return ["B", 100]; return ["C", 50]; } else { if (turns <= 12) return ["SSS", 1000]; if (turns <= 16) return ["S", 600]; if (turns <= 22) return ["A", 300]; if (turns <= 30) return ["B", 100]; return ["C", 50]; } }
 function finishSession(resultType, ppr, multiplier = 1.0) { let earnedDP = 0; clearedStagesLog.forEach(log => { earnedDP += log.dp; }); savedData.dp = (savedData.dp || 0); const curVal = stage * 100 + floor; const bestVal = savedData.highScore.stage * 100 + savedData.highScore.floor; let isNewRecord = false; if (curVal > bestVal) { savedData.highScore.stage = stage; savedData.highScore.floor = floor; isNewRecord = true; } if (ppr > savedData.highScore.avg) { savedData.highScore.avg = ppr; isNewRecord = true; } if (resultType === "EXTRA-WIN") savedData.clearedExtra = true; const now = new Date(); const dateStr = `${now.getMonth() + 1}/${now.getDate()} ${now.getHours()}:${("0" + now.getMinutes()).slice(-2)}`; let stgName = (stage === 6) ? "STAGE 5" : (stage === 5 ? "EXTRA" : "S" + stage + "-" + floor + "F"); let resultText = resultType; let gainedDP = 0; const scoreDP = Math.floor(totalScore * 0.2 * multiplier); let rankDP = 0; clearedStagesLog.forEach(log => rankDP += log.dp); gainedDP = scoreDP + rankDP; savedData.dp += gainedDP; if (clearedStagesLog.length > 0 && resultType === "RETURN") { const last = clearedStagesLog[clearedStagesLog.length - 1]; resultText = `CLEAR(${last.rank})`; } const historyItem = { date: dateStr, stage: stage, floor: floor, stgName: stgName, result: resultText, dp: gainedDP, ppr: isNaN(ppr) ? 0 : parseFloat(ppr), rt: calculateRating(isNaN(ppr) ? 0 : parseFloat(ppr)) }; if (!savedData.history) savedData.history = []; savedData.history.unshift(historyItem); if (savedData.history.length > 50) savedData.history.pop(); updateTitleScore(); saveToDrive(); return { isNewRecord: isNewRecord, gainedDP: gainedDP }; }
-function showHistory() { const list = el("history-list"); list.innerHTML = ""; if (!savedData.history || savedData.history.length === 0) { list.innerHTML = "<div style='padding:20px; text-align:center;'>NO HISTORY</div>"; } else { savedData.history.forEach(h => { let resClass = "res-lose"; let resStr = h.result || "LOSE"; if (resStr.includes("WIN") || resStr.includes("CLEAR")) resClass = "res-win"; if (resStr.includes("EXTRA")) resClass = "res-extra"; const pprVal = h.ppr ? h.ppr.toFixed(1) : "0.0"; list.innerHTML += `<div class='h-row'><div>${h.date}</div><div>${h.stgName}</div><div class='${resClass}'>${resStr}</div><div>+${h.dp} DP<br>Avg ${pprVal}</div></div>`; }); } playSE("se-tap"); el("history-modal").style.display = "flex"; }
+/* --- main.js UPDATE: showHistory (Cyber Log Design) --- */
+function showHistory() {
+    const list = el("history-list");
+    list.innerHTML = "";
+    
+    if (!savedData.history || savedData.history.length === 0) {
+        list.innerHTML = "<div style='padding:40px; text-align:center; color:#666;'>NO BATTLE HISTORY</div>";
+    } else {
+        savedData.history.forEach(h => {
+            let rowClass = "history-row";
+            let resTextClass = "res-lose-text";
+            
+            // 勝敗判定
+            if (h.result.includes("WIN") || h.result.includes("CLEAR")) {
+                rowClass += " win";
+                resTextClass = "res-win-text";
+            }
+            if (h.result.includes("EXTRA") || h.result.includes("GOD")) {
+                rowClass += " extra";
+                resTextClass = "res-extra-text";
+            }
+            if (!h.result.includes("WIN") && !h.result.includes("CLEAR")) {
+                rowClass += " lose";
+            }
+
+            const pprVal = h.ppr ? h.ppr.toFixed(1) : "0.0";
+            
+            // HTML構築
+            const div = document.createElement("div");
+            div.className = rowClass;
+            div.innerHTML = `
+                <div class="h-date">${h.date.split(' ')[0]}</div>
+                <div class="h-stage">${h.stgName}</div>
+                <div class="h-result ${resTextClass}">${h.result}</div>
+                <div class="h-detail">
+                    <div>+${h.dp} DP</div>
+                    <div style="font-size:10px; color:#888;">Avg ${pprVal}</div>
+                </div>
+            `;
+            list.appendChild(div);
+        });
+    }
+    
+    playSE("se-tap");
+    el("history-modal").style.display = "flex";
+}
 function closeHistory() { playSE("se-tap"); el("history-modal").style.display = "none"; }
 function resetSaveData() { if (confirm("【警告】現在のスロットのデータを完全に消去しますか？")) { allSaveData[currentSlot] = null; selectSlot(currentSlot.replace("slot", "")); saveToDrive(); } }
 function exportSave() { navigator.clipboard.writeText(JSON.stringify(savedData)).then(() => alert("現在のスロットのデータをコピーしました")); }
