@@ -1578,3 +1578,45 @@ document.addEventListener('click', (e) => {
 });
 
 }
+
+/* --- main.js Add to End: Config UI Logic --- */
+
+function openConfigModal() {
+    playSE("se-tap");
+    const modal = document.getElementById("config-modal");
+    if(modal) {
+        modal.style.display = "flex";
+        // 現在値をUIに反映
+        if(document.getElementById("conf-bgm")) {
+            document.getElementById("conf-bgm").value = gameConfig.bgmVolume;
+            document.getElementById("conf-bgm-val").innerText = Math.round(gameConfig.bgmVolume * 100) + "%";
+        }
+        if(document.getElementById("conf-se")) {
+            document.getElementById("conf-se").value = gameConfig.sysVolume;
+            document.getElementById("conf-se-val").innerText = Math.round(gameConfig.sysVolume * 100) + "%";
+        }
+    }
+}
+
+function closeConfigModal() {
+    playSE("se-tap");
+    const modal = document.getElementById("config-modal");
+    if(modal) modal.style.display = "none";
+    saveGameConfig(); // 設定保存
+}
+
+function changeConfig(type) {
+    if (type === 'bgm') {
+        const val = parseFloat(document.getElementById("conf-bgm").value);
+        gameConfig.bgmVolume = val;
+        document.getElementById("conf-bgm-val").innerText = Math.round(val * 100) + "%";
+        updateCurrentBgmVolume(); // 即時反映
+    }
+    if (type === 'se') {
+        const val = parseFloat(document.getElementById("conf-se").value);
+        gameConfig.sysVolume = val;
+        gameConfig.atkVolume = Math.min(1.0, val + 0.3); // 攻撃音は少し大きめに自動調整
+        document.getElementById("conf-se-val").innerText = Math.round(val * 100) + "%";
+        // 確認用に音を鳴らす（連続再生防止のため少し間引く等の処理はいったん省略）
+    }
+}

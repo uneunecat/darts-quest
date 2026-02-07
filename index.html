@@ -128,6 +128,30 @@
                 </div>
             </div>
 
+            <div class="modal-overlay" id="config-modal" style="display:none; z-index:5000;">
+                <div class="modal-box" style="width:300px; border:2px solid #aaa;">
+                    <div class="modal-title" style="color:#fff;">CONFIG</div>
+                    
+                    <div style="margin:20px 0; text-align:left; color:#ccc;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                            <span>🎵 BGM</span>
+                            <span id="conf-bgm-val" style="color:#00d2fc;">30%</span>
+                        </div>
+                        <input type="range" id="conf-bgm" min="0" max="1" step="0.1" style="width:100%; cursor:pointer;" oninput="changeConfig('bgm')">
+                    </div>
+
+                    <div style="margin:20px 0; text-align:left; color:#ccc;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                            <span>🔊 SE</span>
+                            <span id="conf-se-val" style="color:#00d2fc;">50%</span>
+                        </div>
+                        <input type="range" id="conf-se" min="0" max="1" step="0.1" style="width:100%; cursor:pointer;" oninput="changeConfig('se')">
+                    </div>
+
+                    <button class="modal-btn" onclick="closeConfigModal()">CLOSE</button>
+                </div>
+            </div>
+
             <div class="title-screen" id="title-screen" style="display:none;">
                 <div class="title-logo">DARTS<br>QUEST</div>
                 <button id="bt-connect-btn" class="connect-btn" onclick="connectToBoard()">📡 CONNECT BOARD</button>
