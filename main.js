@@ -790,20 +790,16 @@ function getCardName(id) { const c = CARD_DB.find(card => card.id === id); retur
 function showDialog(title, text, type = "normal", buttons = [{ text: "OK", action: null }], autoClose = 0) { const box = el("modal-box-inner"); el("modal-title").innerText = title; el("modal-text").innerHTML = text; box.className = "modal-box"; el("modal-title").style.color = "#f9a826"; if (type === "clear") { box.classList.add("modal-clear"); el("modal-title").style.color = "#fff"; } else if (type === "warning") { box.classList.add("modal-warning"); el("modal-title").style.color = "#ff0000"; } else if (type === "item") { box.classList.add("modal-item"); el("modal-title").style.color = "#00ff00"; } const btnGroup = el("modal-buttons"); btnGroup.innerHTML = ""; buttons.forEach(b => { const btn = document.createElement("button"); btn.className = "modal-btn"; btn.innerText = b.text; btn.onclick = function () { if (window.dialogTimeout) clearTimeout(window.dialogTimeout); playSE("se-tap"); el("game-modal").style.display = "none"; if (b.action) b.action(); }; btnGroup.appendChild(btn); }); el("game-modal").style.display = "flex"; if (autoClose > 0 && buttons.length > 0) { const primaryAction = buttons[0].action; window.dialogTimeout = setTimeout(() => { el("game-modal").style.display = "none"; if (primaryAction) primaryAction(); }, autoClose); } }
 function calculateStageRank(stg, turns) { if (stg === 5 || stg === 6) { if (turns <= 25) return ["SSS", 1000]; if (turns <= 35) return ["S", 600]; if (turns <= 50) return ["A", 300]; if (turns <= 70) return ["B", 100]; return ["C", 50]; } else if (stg === 4) { if (turns <= 25) return ["SSS", 1000]; if (turns <= 35) return ["S", 600]; if (turns <= 50) return ["A", 300]; if (turns <= 70) return ["B", 100]; return ["C", 50]; } else { if (turns <= 12) return ["SSS", 1000]; if (turns <= 16) return ["S", 600]; if (turns <= 22) return ["A", 300]; if (turns <= 30) return ["B", 100]; return ["C", 50]; } }
 function finishSession(resultType, ppr, multiplier = 1.0) { let earnedDP = 0; clearedStagesLog.forEach(log => { earnedDP += log.dp; }); savedData.dp = (savedData.dp || 0); const curVal = stage * 100 + floor; const bestVal = savedData.highScore.stage * 100 + savedData.highScore.floor; let isNewRecord = false; if (curVal > bestVal) { savedData.highScore.stage = stage; savedData.highScore.floor = floor; isNewRecord = true; } if (ppr > savedData.highScore.avg) { savedData.highScore.avg = ppr; isNewRecord = true; } if (resultType === "EXTRA-WIN") savedData.clearedExtra = true; const now = new Date(); const dateStr = `${now.getMonth() + 1}/${now.getDate()} ${now.getHours()}:${("0" + now.getMinutes()).slice(-2)}`; let stgName = (stage === 6) ? "STAGE 5" : (stage === 5 ? "EXTRA" : "S" + stage + "-" + floor + "F"); let resultText = resultType; let gainedDP = 0; const scoreDP = Math.floor(totalScore * 0.2 * multiplier); let rankDP = 0; clearedStagesLog.forEach(log => rankDP += log.dp); gainedDP = scoreDP + rankDP; savedData.dp += gainedDP; if (clearedStagesLog.length > 0 && resultType === "RETURN") { const last = clearedStagesLog[clearedStagesLog.length - 1]; resultText = `CLEAR(${last.rank})`; } const historyItem = { date: dateStr, stage: stage, floor: floor, stgName: stgName, result: resultText, dp: gainedDP, ppr: isNaN(ppr) ? 0 : parseFloat(ppr), rt: calculateRating(isNaN(ppr) ? 0 : parseFloat(ppr)) }; if (!savedData.history) savedData.history = []; savedData.history.unshift(historyItem); if (savedData.history.length > 50) savedData.history.pop(); updateTitleScore(); saveToDrive(); return { isNewRecord: isNewRecord, gainedDP: gainedDP }; }
-/* --- main.js UPDATE: showHistory (Cyber Log Design) --- */
-/* --- main.js UPDATE: showHistory (v2.11.20 Clean Design) --- */
+/* --- main.js UPDATE: showHistory (v2.11.21 Date Sort) --- */
 function showHistory() {
     const modal = el("history-modal");
     
-    // モーダルの中身を再構築 (ヘッダーなし、バツボタン)
     modal.innerHTML = `
         <div class="modal-box" style="position:relative; width:90%; max-width:600px; max-height:80vh; padding:20px; background:rgba(0,0,0,0.95); border:1px solid #444;">
             <div style="font-family:'Cinzel Decorative'; font-size:20px; margin-bottom:15px; text-align:center; color:#fff;">
                 BATTLE LOG
             </div>
-            
-            <button class="sub-btn" onclick="closeHistory()">×</button>
-            
+            <button class="sub-btn" onclick="closeHistory()" style="background:transparent; border:none; font-size:24px; color:#fff; position:absolute; top:10px; right:15px; cursor:pointer;">×</button>
             <div id="history-list" class="history-list"></div>
         </div>
     `;
@@ -813,8 +809,14 @@ function showHistory() {
     if (!savedData.history || savedData.history.length === 0) {
         list.innerHTML = "<div style='padding:40px; text-align:center; color:#666;'>NO DATA</div>";
     } else {
-        // 新しい順に表示
-        [...savedData.history].reverse().forEach(h => {
+        // ★ FIX: 日付文字列を解析して新しい順にソート
+        const sorted = [...savedData.history].sort((a, b) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            return dateB - dateA; // 降順 (新しい日付が先)
+        });
+
+        sorted.forEach(h => {
             let rowClass = "history-row";
             let resTextClass = "res-lose-text";
             
@@ -831,7 +833,7 @@ function showHistory() {
             }
 
             const pprVal = h.ppr ? h.ppr.toFixed(1) : "-";
-            const dateStr = h.date ? h.date.split(' ')[0] : "-";
+            const dateStr = h.date ? h.date.split(' ')[0] : "-"; // YYYY/MM/DD
             
             const div = document.createElement("div");
             div.className = rowClass;
