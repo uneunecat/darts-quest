@@ -226,6 +226,10 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .std-card.small .std-count {
     display: none; /* 所持数非表示 */
 }
+.std-card.small.rarity-UR { border: 2px solid transparent; /* URは背景で枠を作るため */ }
+.std-card.small.rarity-SR { border: 2px solid #ffd700; }
+.std-card.small.rarity-R  { border: 2px solid #c0c0c0; }
+.std-card.small.rarity-N  { border: 2px solid #555; }
 
 /* Variant: Battle (Hand) - No Count */
 .std-card.battle .std-count {
