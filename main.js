@@ -50,37 +50,37 @@ function playSE(id) {
     }
 }
 function triggerFloatText(text, targetEl) { if (!targetEl) return; const float = document.createElement("div"); float.className = "float-text-box"; float.innerText = text; const rect = targetEl.getBoundingClientRect(); document.body.appendChild(float); const left = rect.left + (rect.width / 2) - 30; const top = rect.top; float.style.left = `${left}px`; float.style.top = `${top}px`; float.style.position = "fixed"; setTimeout(() => float.remove(), 1500); }
-/* --- main.js FIX: triggerEffect (座標ロジック変更) --- */
-function triggerEffect(targetEl, val, isPlayer, isHeal = false) {
-    // シェイク演出
-    if (!isHeal && val > 0) {
-        const shakeClass = val > 50 ? "shake-heavy" : "shake-small";
-        const container = el("game-container");
-        container.classList.remove("shake-heavy", "shake-small");
+/* --- main.js FIX: triggerEffect (v2.11.6) --- */
+function triggerEffect(el, dmg, isPlayer, isHeal = false) {
+    // 1. Shake Effect
+    if (!isHeal && dmg > 0) {
+        const shakeClass = dmg > 50 ? "shake-heavy" : "shake-small";
+        const container = document.getElementById("game-container");
+        container.classList.remove("shake-small", "shake-heavy");
         void container.offsetWidth; // Reflow
         container.classList.add(shakeClass);
         setTimeout(() => container.classList.remove(shakeClass), 500);
     }
 
-    // フローティングテキスト生成
-    const floatDiv = document.createElement("div");
-    floatDiv.className = "damage-float"; // デフォルトでプレイヤー用(左側・赤)になる
+    // 2. Float Text Generation
+    const pop = document.createElement("div");
+    pop.className = "damage-float"; // Base Style (Red/Left)
+
+    if (isHeal) pop.classList.add("heal");
+    else if (dmg === 0) pop.classList.add("miss");
     
-    if (isHeal) floatDiv.classList.add("heal");
-    else if (val === 0) floatDiv.classList.add("miss");
-    
-    // 敵へのダメージなら専用クラス (中央・金) を付与
-    if (!isPlayer && !isHeal && val > 0) {
-        floatDiv.classList.add("enemy-dmg");
+    // Enemy Damage (Center/Gold)
+    if (!isPlayer && !isHeal && dmg > 0) {
+        pop.classList.add("enemy-dmg");
     }
 
-    floatDiv.innerText = val === 0 ? "MISS" : val;
+    pop.innerText = dmg === 0 ? "MISS" : dmg;
     
-    // ゲーム画面に追加
-    el("game-screen").appendChild(floatDiv);
-
-    // アニメーション終了後に削除
-    setTimeout(() => { if(floatDiv.parentNode) floatDiv.parentNode.removeChild(floatDiv); }, 1200);
+    // Add to Screen
+    document.getElementById("game-screen").appendChild(pop);
+    
+    // Remove after animation
+    setTimeout(() => { if(pop.parentNode) pop.parentNode.removeChild(pop); }, 1500);
 }
 function resizeGame() {
     const scaler = el('game-scaler');
@@ -777,15 +777,14 @@ function updateStateChips() {
 function renderHand() {
     const handArea = el("hand-area"); handArea.innerHTML = ""; el("hand-count-display").innerText = player.hand.length; const isThrowing = turnInputs.length > 0; const isCardLocked = player.state.itemLock || isThrowing; if (player.deckLocked) { el("battle-deck-count").innerText = "-"; handArea.innerHTML = `<div class="hand-locked-msg">⚠️ NO DECK (DARTS ONLY)</div>`; } else { el("battle-deck-count").innerText = player.deck.length; if (player.hand.length === 0) { handArea.innerHTML = `<div class="hand-card-empty">NO CARD</div>`; } else { player.hand.forEach((cardId, index) => { const card = CARD_DB.find(c => c.id === cardId); const cost = (card.cost !== undefined) ? card.cost : 99; const div = document.createElement("div"); div.className = "hand-card"; if (player.mp < cost || isCardLocked) div.classList.add("disabled"); const imgPath = `assets/cards/${card.id}.png`; div.innerHTML = `<div class="hand-cost">${cost}</div><div class="card-art" style="height:100%; border:none;"><img src="${imgPath}" onerror="this.style.display='none'"></div>`; div.onclick = () => playHandCard(index); div.onmouseenter = (e) => showTooltip(card.name, card.desc, e); div.onmouseleave = () => hideTooltip(); handArea.appendChild(div); }); } }
 }
-/* --- main.js: updateInfo (Update) --- */
+/* --- main.js FIX: updateInfo (v2.11.6 Trap Fix) --- */
 function updateInfo() {
     if (!enemy.data) return;
     
-    // Helper
+    // Basic Info
     const setText = (id, text) => { const e = el(id); if(e) e.innerText = text; };
     const setHTML = (id, html) => { const e = el(id); if(e) e.innerHTML = html; };
     
-    // Header Info
     let stgDisp = `STAGE ${stage}`;
     if(stage===5) stgDisp = "EXTRA";
     if(stage===6) stgDisp = "STAGE 5";
@@ -794,50 +793,42 @@ function updateInfo() {
     const currentTotal = (totalGameTurns - stageStartTurn) + 1;
     setHTML("turn-display", `TURN ${currentTurn} <span style="font-size:12px; color:#888;">(Total ${currentTotal})</span>`);
     
-    // Enemy Info
+    // Enemy
     setText("enemy-name-side", enemy.name);
-    // メインHP表示 (Mega Text)
     setText("enemy-hp-value", enemy.hp);
     if(el("enemy-hp-value")) {
-        el("enemy-hp-value").className = "hp-mega-text"; 
+        el("enemy-hp-value").className = "hp-mega-text";
         if (enemy.hp <= 60) el("enemy-hp-value").classList.add("hp-danger");
     }
     
-    // Weak Info (Chance only)
     let weakText = player.state.weakLock ? "★LOCK" : `WEAK: ${enemy.data.weak}+`;
     if(weakHitCount > 0) weakText += " <span style='color:#f0f;'>CHANCE!</span>";
     setHTML("weak-display", weakText);
     
-    if(el("enemy-hp-bar")) el("enemy-hp-bar").style.width = Math.max(0, (enemy.hp / enemy.maxHp) * 100) + "%";
-
-    // Enemy States (Chips)
+    // States
     let eChips = "";
     if(enemy.state.guard) eChips += `<span class="status-chip chip-guard">🛡️GUARD</span>`;
     if(enemy.state.charge) eChips += `<span class="status-chip chip-charge">⚡CHARGE</span>`;
     if(enemy.state.isStunned) eChips += `<span class="status-chip chip-stun">😵STUN</span>`;
     if(enemy.state.barrierLimit > 0) eChips += `<span class="status-chip chip-barrier">💠BARRIER(${enemy.state.barrierLimit})</span>`;
-    if(enemy.state.toonSkin) eChips += `<span class="status-chip chip-guard">🛡️SKIN</span>`;
     setHTML("enemy-states-side", eChips);
 
-    // Player Info
+    // Player
     setText("player-hp", player.hp);
     if(el("player-hp-bar")) {
         const pHpPct = (player.hp / player.maxHp) * 100;
         el("player-hp-bar").style.width = Math.max(0, pHpPct) + "%";
-        el("player-hp-bar").className = "hp-bar-fill player-fill";
-        if(pHpPct <= 20) el("player-hp-bar").classList.add("player-danger");
+        if(pHpPct <= 20) el("player-hp-bar").className = "hp-bar-fill player-fill player-danger";
+        else el("player-hp-bar").className = "hp-bar-fill player-fill";
     }
 
-    // MP Dots Logic
     setText("player-mp", player.mp);
     let mpDots = "";
     for(let i=0; i<player.maxMp; i++) {
         mpDots += `<span class="mp-dot ${i < player.mp ? 'active' : ''}"></span>`;
     }
     setHTML("player-mp-dots", mpDots);
-    if(el("player-mp-bar")) el("player-mp-bar").style.width = Math.max(0, (player.mp / player.maxMp) * 100) + "%";
 
-    // Player States (Chips)
     let pChips = "";
     if(player.state.atkBonus > 0 || player.state.power) pChips += `<span class="status-chip chip-buff">⚔️ATK UP</span>`;
     if(player.state.guardTurn > 0) pChips += `<span class="status-chip chip-guard">🛡️SHIELD(${player.state.guardTurn})</span>`;
@@ -845,7 +836,6 @@ function updateInfo() {
     if(player.state.itemLock) pChips += `<span class="status-chip chip-lock">🔒SEALED</span>`;
     setHTML("player-states-side", pChips);
 
-    // Avg & Items
     let ppr = totalDarts > 0 ? (totalScore / totalDarts) * 3 : 0;
     setText("avg-display", ppr.toFixed(1));
     setText("rt-display", `(Rt ${calculateRating(ppr)})`);
@@ -863,13 +853,14 @@ function updateInfo() {
     updateItemBtn("btn-ether", player.items.ether, "⚗️"); 
     updateItemBtn("btn-seed", player.items.seed, "🌱");
 
-    // ★ NEW: Trap Slot Update
+    // ★ FIX: Trap Slot (Show Face-Up Card)
     const trapSlot = el("trap-slot");
     if(trapSlot) {
         if(player.setCard) {
             trapSlot.className = "trap-slot set";
-            trapSlot.innerHTML = ""; // 裏面デザインのため中身は空
-            // ツールチップ設定 (セット中のカード情報を表示)
+            // 画像を表示
+            trapSlot.innerHTML = `<img src="assets/cards/${player.setCard}.png" style="width:100%; height:100%; object-fit:cover; border-radius:4px;">`;
+            
             const c = CARD_DB.find(cd => cd.id === player.setCard);
             if(c) {
                 trapSlot.onmouseenter = (e) => showTooltip(c.name + " (セット中)", c.desc, e);
@@ -885,16 +876,16 @@ function updateInfo() {
 
     renderHand(); 
 }
-/* --- Shop & Pack Logic (Rewrite v2.11.6) --- */
+/* --- Shop & Pack Logic (v2.11.6 Simple & Fast) --- */
 
 // ショップを開く
 function openCardShop() {
     el("card-shop-modal").style.display = "flex";
-    updateShopUI(); 
+    updateShopUI();
     playSE("se-tap");
 }
 
-// ショップUIの更新
+// ショップUI更新
 function updateShopUI() {
     const list = el("pack-list");
     list.innerHTML = "";
@@ -940,8 +931,9 @@ function updateShopUI() {
     }
 }
 
-// パック購入処理
+// パック購入＆即開封
 function buyPack(packId) {
+    // 開封中なら無視
     if (typeof isOpeningPack !== 'undefined' && isOpeningPack) return;
 
     const pack = PACK_DATA.find(p => p.id === packId);
@@ -950,13 +942,16 @@ function buyPack(packId) {
         return;
     }
 
+    // 購入処理
     savedData.dp -= pack.price;
     saveGameData();
     updateShopUI(); 
+    
+    // 開封演出開始
     openPack(packId); 
 }
 
-// ★ パック開封演出 (高速化対応)
+// パック開封ロジック (高速化対応)
 function openPack(packId) {
     isOpeningPack = true;
     packSkipTrigger = false;
@@ -968,7 +963,6 @@ function openPack(packId) {
     for(let i=0; i<5; i++) {
         let rarity = "N";
         const r = Math.random();
-        // 確率設定
         if (packId === "vol2") {
             if (r < 0.05) rarity = "UR";
             else if (r < 0.20) rarity = "SR";
@@ -980,11 +974,9 @@ function openPack(packId) {
         }
         if (rarity === "UR") hasUR = true;
         
-        // 候補選定
         const candidates = CARD_DB.filter(c => c.rarity === rarity);
         const card = candidates[Math.floor(Math.random() * candidates.length)] || CARD_DB[0];
         
-        // 所持数加算
         if (!savedData.collection) savedData.collection = {};
         savedData.collection[card.id] = (savedData.collection[card.id] || 0) + 1;
         results.push(card);
@@ -998,36 +990,30 @@ function openPack(packId) {
     
     // ホワイトアウト演出
     const white = document.createElement("div");
-    white.className = "white-flash";
     white.style.position = "absolute"; white.style.top=0; white.style.left=0; white.style.width="100%"; white.style.height="100%";
     white.style.background = "#fff"; white.style.zIndex = 3500; white.style.transition = "opacity 0.5s";
     el("pack-result-modal").appendChild(white);
     
-    // ★ SE再生 (URなら神聖な音)
-    if (hasUR) playSE("se-heal"); // Holy sound
+    // SE (UR演出)
+    if (hasUR) playSE("se-heal");
     else playSE("se-chest");
 
     // フェードアウト
     setTimeout(() => white.style.opacity = 0, 100);
     setTimeout(() => { if(white.parentNode) white.parentNode.removeChild(white); }, 600);
 
-    // 3. カード順次表示ループ (Async)
+    // 3. カード順次表示 (Async Loop)
     const showCardLoop = async () => {
         for (let i = 0; i < 5; i++) {
-            // ★ スキップ判定
-            if (packSkipTrigger) {
-                // 残りを一気に出す
-                for (let j = i; j < 5; j++) {
-                    createPackCardElement(results[j], container);
-                }
+            // スキップ判定
+            if (typeof packSkipTrigger !== 'undefined' && packSkipTrigger) {
+                for (let j = i; j < 5; j++) createPackCardElement(results[j], container);
                 break; 
             }
             
             createPackCardElement(results[i], container);
             playSE("se-item");
-            
-            // ウェイト (スキップされなければ0.6秒待機)
-            await new Promise(resolve => setTimeout(resolve, 600));
+            await new Promise(r => setTimeout(r, 600));
         }
         isOpeningPack = false;
     };
@@ -1035,12 +1021,10 @@ function openPack(packId) {
     showCardLoop();
 }
 
-// カードDOM生成ヘルパー
+// カード生成ヘルパー
 function createPackCardElement(card, container) {
     const d = document.createElement("div");
     d.style.animation = "pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
-    
-    // スタイル
     d.style.width = "80px";
     d.style.margin = "5px";
     d.style.background = "#222";
@@ -1053,7 +1037,6 @@ function createPackCardElement(card, container) {
     d.style.alignItems = "center";
     d.style.boxShadow = "0 0 10px rgba(0,0,0,0.5)";
 
-    // レアリティ枠色
     let borderCol = "#555";
     if(card.rarity==="UR") borderCol = "#ffd700";
     else if(card.rarity==="SR") borderCol = "#c0c0c0";
@@ -1070,7 +1053,6 @@ function createPackCardElement(card, container) {
         <img src="assets/cards/${card.id}.png" style="width:100%; height:auto; border-radius:4px; min-height:80px; object-fit:cover;">
         <div style="font-size:10px; color:#ccc; margin-top:4px; line-height:1.2; height:24px; overflow:hidden;">${card.name}</div>
     `;
-    
     container.appendChild(d);
 }
 // リザルト閉じる処理 (OKボタン復帰処理を追加)
