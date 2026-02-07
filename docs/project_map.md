@@ -1,40 +1,38 @@
-# 🗺️ Project Architecture Map (v2.10.0)
+# 🗺️ Project Architecture Map (v2.11.7.1)
 
-## 1. File Structure & Responsibilities
-
-* **index.html**: アプリケーション骨格。静的なコンテナのみ定義。
+## 1. File Structure
+* **index.html**: アプリケーション骨格。モーダル、オーバーレイ、オーディオタグ定義。
 * **style.css**: 
-    * **Config UI:** `.config-box`, `.config-slider` (レンジ入力の装飾), `.config-btn-title` (左上固定)。
-    * **Animations:** 演出用キーフレーム定義。
-* **main.js**: ゲームロジック全般。
+    * **Visual Effects**: `.shake-ultimate`, `.flash-gold`, `.hp-mega-text`.
+    * **Responsive**: モバイル/PCでのレイアウト切り替え（Flex方向の変更）。
+    * **Card Rarity**: `.rarity-UR` 等のアニメーション枠定義。
+* **main.js**: 
+    * **Global Config**: 音量設定管理。
+    * **Game Loop**: `setupStage` -> `processOneThrow` -> `enemyTurn` -> `win/lose`.
+    * **Bluetooth**: DARTSLIVE HOME 通信プロトコル処理。
 
-## 2. `main.js` Code Logic Analysis (v2.10.0)
+## 2. Core Logic Analysis
 
-### Section 1: Global Config & Audio Engine **[NEW]**
-* **`gameConfig`**: 音量設定を保持するグローバルオブジェクト。
-* **`loadGameConfig()` / `saveGameConfig()`**: `darts_quest_config` へのIO処理。
-* **`playSE(id)`**: **[Modified]**
-    * 引数の `id` を解析し、攻撃系ID（`se-hit`, `se-boom`等）なら `atkVolume`、それ以外なら `sysVolume` を適用して再生する分岐ロジック。
-* **`playBGM(id)`**: **[Modified]**
-    * `bgmVolume` を適用して再生。
-* **`updateCurrentBgmVolume()`**: 設定画面のスライダー操作時に、再生中の `<audio>` タグの音量を即時更新する。
+### State Management (`main.js`)
+* **`player.state`**: 
+    * `setCard`: セット中の罠カードIDを保持（nullならなし）。
+    * `hexSeal`: 六芒星の呪縛の効果ターン数（数値管理に変更）。
+* **`triggerTrap(type, dmg)`**: 
+    * ダメージ計算時に割り込み発生。罠の種類と発動条件(`attack`/`summon`)を照合し、ダメージ無効化や反撃処理を行う。
 
-### Section 2: Core State Management
-* **`setupStage()`**: ステージ初期化、DOM Injection。
-* **`processOneThrow(score)`**: ダーツ入力処理。
-    * **Turn Fix:** 敵HP<=0 の瞬間、`totalGameTurns` を加算し、`isProcessing = true` で入力をロックする（二重勝利バグ防止）。
+### UI/UX Implementation
+* **Pack Opening**: 
+    * `startPackOpening`: ガチャ演出。
+    * `packSkipTrigger`: エンターキー/クリックによる演出スキップフラグ。
+* **Zoom System**:
+    * `setupLongPress`: マウスダウン/タッチ開始時間を計測し、一定時間経過で `showZoomCard` を発動。
+* **Config Modal**:
+    * `openConfigModal`: DOM Injectionにより設定画面を動的生成。スライダー操作で即時音量反映。
 
-### Section 3: UI & Injection
-* **`updateTitleScore()`**: 
-    * 既存のスコア更新処理に加え、**Configボタンが存在しない場合に動的に生成・挿入するフック処理**を含む。
-* **`openConfigModal()`**: **[NEW]**
-    * 設定モーダルのHTMLを動的に生成（Injection）し、現在の `gameConfig` の値をスライダーに反映して表示する。
-* **Card Logic:**
-    * `playHandCard`: 消費→発動の順序で処理。
-    * `applyCardEffect`: 各カードの効果適用。
+### Audio Engine
+* **`playSE(id)`**: IDに基づき `atkVolume` (攻撃系) か `sysVolume` (その他) を振り分けて再生。
+* **`playBGM(id)`**: `bgmVolume` を適用してループ再生。
 
-## 3. Development Protocols
-* **Audio Categories:**
-    * 新しいSEを追加する際は、それが「システム音」か「攻撃音（爽快感）」かを判断し、`playSE` 内の `attackSEs` 配列に追加するか検討すること。
-* **Input Blocking:**
-    * 勝利演出やカード効果発動中は `isProcessing` フラグを徹底し、非同期処理による競合（二重勝利など）を防ぐ。
+## 3. Critical Functions
+* **`processOneThrow(score)`**: ダーツ入力のメイン処理。HP0判定時に `totalGameTurns` を加算し、二重勝利を防止。
+* **`loseGame()`**: プレイヤーHP<=0時に呼び出し。ゲームオーバーモーダルを表示（v2.11.7.1で復旧）。
