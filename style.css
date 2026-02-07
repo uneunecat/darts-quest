@@ -104,7 +104,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 .card-grid { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)) !important; gap: 10px; align-content: start; overflow-y: auto !important; flex: 1; padding: 10px; scrollbar-width: thin; }
 .deck-slot-empty { width: 50px; height: 75px; border: 1px dashed #555; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #444; font-size: 10px; background: rgba(0,0,0,0.2); }
 /* =========================================
-   ★ v2.11.12 PREMIUM CARD FORMAT & LAYOUT
+   ★ v2.11.13 CARD DESIGN SYSTEM (VARIANTS)
    ========================================= */
 
 /* --- Base Card Container --- */
@@ -130,19 +130,18 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     box-shadow: 0 10px 25px rgba(0,0,0,0.8);
 }
 
-/* --- Upper Half: Art Area (55%) --- */
+/* --- Upper Half: Art Area --- */
 .std-art {
     width: 100%;
-    height: 55%;
+    height: 55%; /* Default: Standard */
     position: relative;
     background: #000;
     overflow: hidden;
     border-bottom: 1px solid rgba(255,255,255,0.2);
+    transition: height 0.2s;
 }
 .std-art img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    width: 100%; height: 100%; object-fit: cover;
 }
 
 /* Badges */
@@ -168,7 +167,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     z-index: 5;
 }
 
-/* --- Lower Half: Text Area (45%) --- */
+/* --- Lower Half: Text Area --- */
 .std-text-area {
     flex: 1;
     padding: 4px 6px;
@@ -176,23 +175,37 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     align-items: flex-start; text-align: left;
     color: #fff;
     position: relative;
-    /* Subtle Pattern Texture */
     background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 10px);
 }
 
-/* Premium Background Colors */
+/* Variant: Small (Deck List) - Full Art, No Text */
+.std-card.small .std-art {
+    height: 100%; /* 全面画像 */
+    border-bottom: none;
+}
+.std-card.small .std-text-area {
+    display: none; /* テキスト非表示 */
+}
+.std-card.small .std-count {
+    display: none; /* 所持数非表示 */
+}
+
+/* Variant: Battle (Hand) - No Count */
+.std-card.battle .std-count {
+    display: none;
+}
+
+/* Background Colors */
 .bg-magic {
-    background-color: #004d40;
     background: linear-gradient(160deg, #00695c 0%, #004d40 60%, #00251a 100%);
     box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
 }
 .bg-trap {
-    background-color: #880e4f;
     background: linear-gradient(160deg, #ad1457 0%, #880e4f 60%, #4a002c 100%);
     box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
 }
 
-/* Typography & Rarity Text Styles */
+/* Typography & Readability Fix */
 .std-name {
     font-size: 10px; font-weight: 900;
     width: 100%;
@@ -201,28 +214,22 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     text-shadow: 1px 1px 0 rgba(0,0,0,0.8);
 }
 .text-n { color: #fff; }
-.text-r {
-    color: #e0e0e0;
-    text-shadow: 0 0 2px rgba(255,255,255,0.5);
-}
-.text-sr {
-    color: #ffd700;
-    text-shadow: 0 0 3px rgba(218, 165, 32, 0.8), 1px 1px 0 #000;
-}
+.text-r { color: #e0e0e0; text-shadow: 0 0 2px rgba(255,255,255,0.5); }
+.text-sr { color: #ffd700; text-shadow: 0 0 3px rgba(218, 165, 32, 0.8), 1px 1px 0 #000; }
+
+/* UR Text: Enhanced Readability */
 .text-ur {
-    background: linear-gradient(90deg, #ff3333, #ffff33, #33ff33, #33ffff, #3333ff, #ff33ff);
+    background: linear-gradient(90deg, #ff5555, #ffff55, #55ff55, #55ffff, #5555ff, #ff55ff);
     background-size: 200%;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     animation: rainbow-text 3s linear infinite;
     font-weight: 900;
-    filter: drop-shadow(1px 1px 0 #000);
+    /* 文字の輪郭を強化 */
+    filter: drop-shadow(1px 1px 0 #000) drop-shadow(-1px -1px 0 #000) drop-shadow(0 0 2px rgba(0,0,0,0.8));
 }
 
-.std-type {
-    font-size: 8px; opacity: 0.9; margin-bottom: 3px;
-    font-family: 'Roboto Mono', monospace; letter-spacing: 0.5px;
-}
+.std-type { font-size: 8px; opacity: 0.9; margin-bottom: 3px; font-family: 'Roboto Mono'; }
 .std-desc {
     font-size: 8px; line-height: 1.25; opacity: 0.95;
     width: 100%;
@@ -233,76 +240,54 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     overflow: hidden;
 }
 
-/* --- Rarity Borders & Effects --- */
-/* N: Default */
+/* --- Rarity Borders --- */
 .rarity-N { border-color: #555; }
-
-/* R: Silver Metal */
-.rarity-R {
-    border-color: #c0c0c0;
-    box-shadow: 0 0 8px rgba(192, 192, 192, 0.4);
-}
-
-/* SR: Gold Metal & Sheen */
-.rarity-SR {
-    border-color: #ffd700;
-    box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
-}
-
-/* UR: Rainbow Aura & Sheen */
+.rarity-R { border-color: #c0c0c0; box-shadow: 0 0 8px rgba(192, 192, 192, 0.4); }
+.rarity-SR { border-color: #ffd700; box-shadow: 0 0 12px rgba(255, 215, 0, 0.5); }
 .rarity-UR {
     border: 2px solid transparent;
     background-image: linear-gradient(#111, #111), linear-gradient(45deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
-    background-origin: border-box;
-    background-clip: padding-box, border-box;
+    background-origin: border-box; background-clip: padding-box, border-box;
     box-shadow: 0 0 20px rgba(0, 255, 255, 0.7);
     animation: border-rotate 4s linear infinite;
 }
 @keyframes border-rotate { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
 
-/* Holographic Sheen (SR/UR) */
+/* Holographic Sheen */
 .card-sheen {
     position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
     background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.4) 45%, rgba(255,255,255,0.0) 50%);
-    pointer-events: none;
-    mix-blend-mode: overlay;
-    animation: sheen-move 4s infinite;
-    z-index: 10;
+    pointer-events: none; mix-blend-mode: overlay;
+    animation: sheen-move 4s infinite; z-index: 10;
 }
 @keyframes sheen-move { 0% { transform: translateY(-30%) translateX(-30%); } 100% { transform: translateY(30%) translateX(30%); } }
 
-/* --- Layout Fixes for Deck Editor (Grid 5x4) --- */
+/* --- Grid Layout Fixes --- */
+
+/* Left: Deck (Your Deck) - 5x4 Grid */
 .deck-grid {
     display: grid !important;
-    grid-template-columns: repeat(5, 1fr) !important; /* ★ FIX: 5列固定で伸縮 */
+    grid-template-columns: repeat(5, 1fr) !important;
     gap: 6px !important;
     padding: 10px;
     align-content: start;
     overflow-y: auto !important;
 }
-/* Deck thumbnails (Simplified) */
 .deck-grid .std-card {
     width: 100% !important;
     height: auto !important;
-    aspect-ratio: 2/3 !important; /* アスペクト比維持 */
+    aspect-ratio: 2/3 !important;
 }
-.deck-grid .std-text-area { padding: 2px; }
-.deck-grid .std-name { font-size: 8px; margin-bottom: 0; }
-.deck-grid .std-type, .deck-grid .std-desc { display: none; } /* Show only name */
 
+/* Right: Card List - Overlap Fix */
 .card-grid {
     display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)) !important;
-    gap: 12px;
+    /* 最小幅を少し広げて、行の高さを確保 */
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)) !important;
+    gap: 15px !important; /* 上下左右の隙間を拡大 */
     padding: 15px;
     align-content: start;
     overflow-y: auto !important;
-}
-
-/* Unowned State */
-.card-not-owned {
-    filter: grayscale(100%) opacity(0.4);
-    pointer-events: none;
 }
 
 /* Hand Area (Battle) */
@@ -315,6 +300,9 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     overflow: hidden;
     display: flex; flex-direction: column;
 }
+
+/* Unowned */
+.card-not-owned { filter: grayscale(100%) opacity(0.4); pointer-events: none; }
 /* --- New Unboxing Styles --- */
 #opening-stage { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; background: #000; }
 .opening-pack { width: 240px; cursor: pointer; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.8)); z-index: 10; transition: transform 0.1s; }

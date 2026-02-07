@@ -104,6 +104,7 @@ function closeCardSelector() { el("card-selector-modal").style.display = "none";
 function executeDiscardAndEffect(discardIndex) { const discardId = player.hand[discardIndex]; player.hand.splice(discardIndex, 1); player.discard.push(discardId); playSE("se-heal"); addLog("手札を捨て、3枚ドロー！", "log-skill"); drawCard(); drawCard(); drawCard(); closeCardSelector(); updateInfo(); }
 function showCardDetail(card) { const detailEl = el("deck-card-detail"); if (!detailEl) return; detailEl.innerHTML = `<span class="detail-name">${card.name}</span>${card.desc}`; }
 /* --- main.js UPDATE: renderHand (Standard Format) --- */
+/* --- main.js UPDATE: renderHand (Use createCardElement with 'battle') --- */
 function renderHand() {
     const handArea = el("hand-area");
     handArea.innerHTML = "";
@@ -123,27 +124,13 @@ function renderHand() {
             player.hand.forEach((cardId, index) => {
                 const card = CARD_DB.find(c => c.id === cardId);
                 
-                // ★ createCardElement を流用して手札生成
-                // 第2引数 true (in-deck) にするとクリック挙動が変わるため、falseにして手動設定する手もあるが
-                // ここでは手札専用の簡易版を作る方が安全（createCardElementは複雑化しているため）
+                // mode: 'battle'
+                const div = createCardElement(card, "battle", 0, 1);
+                div.className += " hand-card"; // 追加クラス
                 
-                // === 手札専用 簡易標準カード生成 ===
-                const div = document.createElement("div");
-                div.className = `hand-card std-card rarity-${card.rarity}`;
                 if (player.mp < card.cost || isCardLocked) div.classList.add("disabled");
                 
-                const bgClass = (card.type === "TRAP") ? "bg-trap" : "bg-magic";
-                
-                div.innerHTML = `
-                    <div class="std-art" style="height:60%;">
-                        <img src="assets/cards/${card.id}.png">
-                        <div class="std-cost">${card.cost}</div>
-                    </div>
-                    <div class="std-text-area ${bgClass}" style="padding:2px;">
-                        <div class="std-name" style="font-size:8px;">${card.name}</div>
-                        </div>
-                `;
-                
+                // Click Override for Battle
                 div.onclick = () => playHandCard(index);
                 div.onmouseenter = (e) => showTooltip(card.name, card.desc, e);
                 div.onmouseleave = () => hideTooltip();
@@ -268,22 +255,21 @@ window.addEventListener("keyup", (e) => {
     }
 });
 
-/* --- main.js UPDATE: Pack Opening Sounds & Logic --- */
+/* --- main.js UPDATE: Unboxing Sounds --- */
 
 function proceedUnboxing() {
     if (openingPhase === 1) {
-        // Phase 2: Awakening
         openingPhase = 2;
         el("opening-prompt").style.display = "none";
         const pack = el("pack-visual");
         pack.classList.remove("anim-breath");
         pack.classList.add("anim-charge");
-        playSE("se-warning");
+        
+        // ★ Sound: Pack Shake -> se-double (Physical sound)
+        playSE("se-double");
         
         setTimeout(() => {
-            // ★ Sound Change: Boom -> Holy Heal
-            playSE("se-heal"); 
-            
+            playSE("se-heal"); // Holy sound
             el("white-out").style.display = "block";
             el("white-out").classList.add("white-out-anim");
             pack.style.display = "none";
@@ -299,7 +285,6 @@ function proceedUnboxing() {
     } else if (openingPhase === 3) {
         const currentCardEl = document.getElementById("reveal-card-" + currentRevealIndex);
         if (currentCardEl) {
-            // ★ Sound Change: Removed Fly Sound
             currentCardEl.classList.add("fly-up");
             currentRevealIndex++;
             setTimeout(showNextRevealCard, 200);
@@ -316,15 +301,21 @@ function showNextRevealCard() {
     const card = packResults[currentRevealIndex];
     const area = el("reveal-area");
     
+    // ★ Sound: Flip -> se-item (Revived)
+    playSE("se-item");
+    
     // Rarity FX
-    let sound = ""; // ★ Default No Sound for Reveal
     let effectClass = "";
-    if (card.rarity === "UR") { sound = "se-boom"; effectClass = "card-show-ur"; }
-    else if (card.rarity === "SR") { sound = "se-buff"; effectClass = "card-show-sr"; }
+    if (card.rarity === "UR") { 
+        playSE("se-boom"); // Additional Boom for UR
+        effectClass = "card-show-ur"; 
+    }
+    else if (card.rarity === "SR") { 
+        playSE("se-buff"); // Additional Buff for SR
+        effectClass = "card-show-sr"; 
+    }
     
-    if(sound) playSE(sound);
-    
-    // Create Element (Uses standard format but with reveal class)
+    // ここは演出用なので独自生成だが、createCardElementのHTML構造に準拠させる
     const div = document.createElement("div");
     div.id = `reveal-card-${currentRevealIndex}`;
     div.className = `std-card rarity-${card.rarity} reveal-card-zoom card-appear ${effectClass}`;
@@ -359,10 +350,9 @@ function showNextRevealCard() {
     area.appendChild(div);
 }
 
+/* --- main.js UPDATE: showPackResult (Mode Fix) --- */
 function showPackResult() {
     openingPhase = 4;
-    
-    // ★ Lock Input until Enter is released
     inputLockUntilRelease = true;
     
     const area = el("reveal-area");
@@ -372,11 +362,13 @@ function showPackResult() {
     playSE("se-win");
     
     packResults.forEach((card, i) => {
-        const div = createCardElement(card, false, card.ownCount, card.ownCount);
+        // mode: 'standard'
+        const div = createCardElement(card, "standard", card.ownCount, card.ownCount);
+        
         div.className += " result-card";
         div.style.animation = `pop-in 0.5s both ${i * 0.1}s`;
+        
         if(card.isNew) {
-            // Append badge manually since createCardElement doesn't add "NEW"
             const badge = document.createElement("div");
             badge.className = "new-badge";
             badge.innerText = "NEW!";
@@ -447,31 +439,94 @@ function closePackResult() { if (openingPhase < 4 && openingPhase > 0) return; p
 function closeCardShop() { playSE("se-tap"); el("card-shop-modal").style.display = "none"; updateTitleScore(); }
 function openCollection() { playSE("se-tap"); renderDeckEditor(); el("collection-modal").style.display = "flex"; }
 function closeCollection() { playSE("se-tap"); el("collection-modal").style.display = "none"; hideTooltip(); }
-function renderDeckEditor() { if (!savedData.deck) savedData.deck = []; savedData.deck.sort((a, b) => a - b); const deckGrid = el("deck-grid"); deckGrid.innerHTML = ""; for (let i = 0; i < DECK_SIZE; i++) { const cardId = savedData.deck[i]; if (cardId) { const card = CARD_DB.find(c => c.id === cardId); const totalOwned = savedData.cards[card.id] || 0; const el = createCardElement(card, true, 0, totalOwned); el.onmouseenter = () => showCardDetail(card); deckGrid.appendChild(el); } else { const div = document.createElement("div"); div.className = "deck-slot-empty"; div.innerText = "EMPTY"; deckGrid.appendChild(div); } } const deckCount = savedData.deck.length; const countEl = el("deck-count"); countEl.innerText = deckCount; if (deckCount < DECK_SIZE) { countEl.style.color = "#ff5555"; countEl.innerText += " (あと" + (DECK_SIZE - deckCount) + "枚)"; } else { countEl.style.color = "#00ff00"; countEl.innerText += " (OK!)"; } const listGrid = el("card-grid"); listGrid.innerHTML = ""; if (!savedData.cards) savedData.cards = {}; let ownedCount = 0; CARD_DB.forEach(card => { const count = savedData.cards[card.id] || 0; if (count > 0) ownedCount++; const inDeckCount = savedData.deck.filter(id => id === card.id).length; const remaining = count - inDeckCount; const el = createCardElement(card, false, remaining, count); listGrid.appendChild(el); }); el("collection-rate").innerText = `${Math.floor((ownedCount / CARD_DB.length) * 100)}%`; }
+/* --- main.js UPDATE: renderDeckEditor (Mode Update) --- */
+function renderDeckEditor() {
+    if (!savedData.deck) savedData.deck = [];
+    savedData.deck.sort((a, b) => a - b);
+    
+    const deckGrid = el("deck-grid");
+    deckGrid.innerHTML = "";
+    
+    // Render Deck (Small Mode)
+    for (let i = 0; i < DECK_SIZE; i++) {
+        const cardId = savedData.deck[i];
+        if (cardId) {
+            const card = CARD_DB.find(c => c.id === cardId);
+            const totalOwned = savedData.cards[card.id] || 0;
+            // mode: 'small'
+            const div = createCardElement(card, "small", 0, totalOwned);
+            div.onmouseenter = () => showCardDetail(card);
+            deckGrid.appendChild(div);
+        } else {
+            const div = document.createElement("div");
+            div.className = "deck-slot-empty";
+            div.innerText = "EMPTY";
+            deckGrid.appendChild(div);
+        }
+    }
+    
+    // Count Display
+    const deckCount = savedData.deck.length;
+    const countEl = el("deck-count");
+    countEl.innerText = deckCount;
+    if (deckCount < DECK_SIZE) {
+        countEl.style.color = "#ff5555";
+        countEl.innerText += " (あと" + (DECK_SIZE - deckCount) + "枚)";
+    } else {
+        countEl.style.color = "#00ff00";
+        countEl.innerText += " (OK!)";
+    }
+    
+    // Render List (Standard Mode)
+    const listGrid = el("card-grid");
+    listGrid.innerHTML = "";
+    if (!savedData.cards) savedData.cards = {};
+    
+    let ownedCount = 0;
+    CARD_DB.forEach(card => {
+        const count = savedData.cards[card.id] || 0;
+        if (count > 0) ownedCount++;
+        const inDeckCount = savedData.deck.filter(id => id === card.id).length;
+        const remaining = count - inDeckCount;
+        
+        // mode: 'standard'
+        const div = createCardElement(card, "standard", remaining, count);
+        listGrid.appendChild(div);
+    });
+    
+    el("collection-rate").innerText = `${Math.floor((ownedCount / CARD_DB.length) * 100)}%`;
+}
 /* --- main.js UPDATE: createCardElement (Standard Format) --- */
 /* --- main.js UPDATE: createCardElement (Premium Format) --- */
-function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0) {
+/* --- main.js UPDATE: createCardElement (v2.11.13 Mode Support) --- */
+// mode: 'standard' (default), 'small' (deck), 'battle' (hand)
+function createCardElement(card, mode = "standard", remainingCount = 1, totalCount = 0) {
     const div = document.createElement("div");
-    const isOwned = (totalCount > 0 || isDeckItem);
+    
+    // Ownership Check
+    // Deck内(small)やBattle中は「所有している」前提。List(standard)のみ所持数チェック。
+    const isOwned = (mode === "small" || mode === "battle" || totalCount > 0);
     const notOwnedClass = (!isOwned) ? "card-not-owned" : "";
     
-    div.className = `std-card rarity-${card.rarity} ${notOwnedClass}`;
-    if (isDeckItem) div.classList.add("in-deck-card");
+    // Class Setup: .std-card + mode class
+    div.className = `std-card ${mode} rarity-${card.rarity} ${notOwnedClass}`;
+    if (mode === "small") div.classList.add("in-deck-card"); // 既存互換用
 
     const imgPath = `assets/cards/${card.id}.png`;
     const cost = (card.cost !== undefined) ? card.cost : "?";
     
-    // Background & Text Color Logic
     const bgClass = (card.type === "TRAP") ? "bg-trap" : "bg-magic";
     let textClass = "text-n";
     if (card.rarity === "UR") textClass = "text-ur";
     else if (card.rarity === "SR") textClass = "text-sr";
     else if (card.rarity === "R") textClass = "text-r";
 
-    // Sheen Effect for SR/UR
     const sheenHTML = (card.rarity === "UR" || card.rarity === "SR") ? '<div class="card-sheen"></div>' : '';
     
-    const countText = isDeckItem ? "1" : `x${remainingCount}`;
+    // Badge Text
+    // Small/BattleではCSSで非表示になるが、HTML上はあっても良い。
+    // Listでは所持数を表示。
+    const countText = (mode === "small") ? "" : `x${remainingCount}`;
 
     div.innerHTML = `
         <div class="std-art">
@@ -487,6 +542,7 @@ function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0)
         </div>
     `;
 
+    // Click Event
     div.onclick = function (e) {
         if (div.dataset.longPressed === "true") {
             div.dataset.longPressed = "false";
@@ -495,17 +551,25 @@ function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0)
         if (!isOwned) return;
         if (typeof isOpeningPack !== 'undefined' && isOpeningPack) return;
 
-        if (isDeckItem) removeFromDeck(card.id);
-        else addToDeck(card.id);
+        // Mode Action
+        if (mode === "small") removeFromDeck(card.id);
+        else if (mode === "standard") addToDeck(card.id);
+        else if (mode === "battle") {
+            // Battle click handled by renderHand assignment, 
+            // but for safety we can trigger logic if needed.
+            // (Current battle logic uses array index, assigned later)
+        }
     };
 
+    // Tooltip / Zoom
     div.onmouseenter = (e) => {
         if (typeof showCardDetail === 'function') showCardDetail(card);
-        if (isDeckItem && typeof showTooltip === 'function') showTooltip(card.name, card.desc, e);
+        // Small/Deck mode shows tooltip
+        if (mode === "small" && typeof showTooltip === 'function') showTooltip(card.name, card.desc, e);
     };
-    if (isDeckItem) { div.onmouseleave = () => hideTooltip(); }
+    if (mode === "small") { div.onmouseleave = () => hideTooltip(); }
     
-    if (isOwned || isDeckItem) {
+    if (isOwned) {
         setupLongPress(div, card);
     }
 
