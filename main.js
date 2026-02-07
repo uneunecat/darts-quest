@@ -320,7 +320,7 @@ function spawnEnemy() {
         enemy.data = list[(floor - 1) % list.length];
         
         enemy.maxHp = enemy.data.hp || (100 + (stage-1)*50 + (floor-1)*30);
-        if(floor===5 || (stage===4 && floor===6)) { isBoss = true; enemy.maxHp += 50; el("game-container").classList.add("boss-mode"); el("boss-label").style.display="inline"; playBGM("bgm-boss"); }
+        if(floor===5 || (stage===4 && floor===6)) { isBoss = true; if (!enemy.data.hp){enemy.maxHp += 50;} el("game-container").classList.add("boss-mode"); el("boss-label").style.display="inline"; playBGM("bgm-boss"); }
         else playBGM("bgm-battle");
         
         enemy.name = enemy.data.name; el("enemy-img").src = enemy.data.img; enemy.hp = enemy.maxHp; displayEnemyHP = enemy.hp;
