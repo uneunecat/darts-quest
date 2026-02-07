@@ -132,7 +132,13 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     /* ★ FIX: 行の高さをコンテンツ（アスペクト比維持したカード）に合わせる */
     grid-auto-rows: max-content; 
 }
-.deck-slot-empty { width: 50px; height: 75px; border: 1px dashed #555; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #444; font-size: 10px; background: rgba(0,0,0,0.2); }
+.deck-slot-empty { width: 50px; height: 75px; border: 2px dashed #444; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #444; font-size: 10px; background: rgba(0,0,0,0.2); box-sizing: border-box !important;}
+.std-card.small {
+    box-sizing: border-box !important;
+    /* 枠線がない場合も透明な枠を確保してサイズズレを防ぐ */
+    border: 2px solid transparent; 
+}
+
 /* =========================================
    ★ v2.11.13 CARD DESIGN SYSTEM (VARIANTS)
    ========================================= */
@@ -272,19 +278,14 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
 
 /* UR Text: Enhanced Readability */
 .text-ur {
-    color: #fff;
-    background: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c) !important;
-    background-size: 200%;
-    -webkit-background-clip: text ;
-    -webkit-text-fill-color: transparent ;
-    animation: shine-gold 3s infinite linear;
+    background: linear-gradient(to bottom, #fbf5b7 0%, #bf953f 50%, #aa771c 100%) !important;
+    background-size: 100%;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    color: transparent !important;
+    background-color: transparent !important;
     font-weight: 900;
-    filter: drop-shadow(1px 1px 0 #000) drop-shadow(-1px -1px 0 #000);
-    filter: drop-shadow(1px 1px 0 #000) drop-shadow(0 0 2px rgba(255, 215, 0, 0.5)) !important;
-}
-@keyframes shine-gold {
-    0% { background-position: 0% 50%; }
-    100% { background-position: 100% 50%; }
+    filter: drop-shadow(1px 1px 0 rgba(0,0,0,0.8)) !important;
 }
 
 .std-type { font-size: 8px; opacity: 0.9; margin-bottom: 3px; font-family: 'Roboto Mono'; }
@@ -313,7 +314,15 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     0% { filter: hue-rotate(0deg); }
     100% { filter: hue-rotate(360deg); }
 }
-.std-card.battle.rarity-UR { border-color: transparent !important; } /* URは背景グラデで枠を作るため透明 */
+.std-card.battle.rarity-UR {
+    border: 2px solid transparent !important;
+    background-image: linear-gradient(#000, #000), linear-gradient(45deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000) !important;
+    background-origin: border-box !important;
+    background-clip: padding-box, border-box !important;
+    animation: border-rotate 4s linear infinite !important;
+    /* 少し発光させる */
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.4) !important;
+}
 .std-card.battle.rarity-SR { border-color: #ffd700 !important; box-shadow: 0 0 10px rgba(255, 215, 0, 0.6) !important; }
 .std-card.battle.rarity-R  { border-color: #c0c0c0 !important; }
 .std-card.battle.rarity-N  { border-color: #555 !important; }
@@ -336,7 +345,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     gap: 6px !important;
     padding: 10px;
     align-content: start;
-    overflow-y: auto !important;
+    overflow-y: scroll !important;
 }
 .deck-grid .std-card {
     width: 100% !important;
@@ -528,7 +537,7 @@ body { background-color: #000; color: white; font-family: 'Courier New', sans-se
     transform-origin: top center !important;
 }
 #chest-img { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; z-index: 10; cursor: pointer; filter: drop-shadow(0 0 15px gold); }
-.enemy-hp-container { position: absolute; bottom: auto ; top: 80% ; width: 100%; left: 50% ; transform: translate(-50%, -50%); text-align: center; z-index: 20; pointer-events: none; }
+.enemy-hp-container { position: absolute; bottom: auto ; top: 90% ; width: 100%; left: 50% ; transform: translate(-50%, -50%); text-align: center; z-index: 20; pointer-events: none; }
 .hand-overlay-container { position: absolute; bottom: 10px; left: 0; width: 100%; height: 140px; display: flex; flex-direction: column; align-items: flex-start !important; padding: 0 20px; box-sizing: border-box; z-index: 50; pointer-events: none; }
 .hand-area { pointer-events: auto; display: flex; gap: 10px; justify-content: flex-start; width: 100%; overflow-x: visible; }
 .hand-card { width: 80px !important; height: 120px !important; background: #1a1a1a; border: 2px solid #888; border-radius: 6px; position: relative; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.5); flex-shrink: 0; }
@@ -645,13 +654,12 @@ html, body {
 #card-selector-modal .deck-grid::-webkit-scrollbar-thumb { background: #00d2fc; border-radius: 4px; }
 
 #card-selector-modal .std-card {
-    width: 70px ;
+    width: 90px ;
     height: auto ;
     aspect-ratio: 2/3 ;
     flex-shrink: 0 ;
     transform: none ;
-    margin-right: 15px !important;
-    transform: scale(1.3) !important;
+    margin-right: 20px !important;
 }
 
 #card-selector-modal .modal-box {
