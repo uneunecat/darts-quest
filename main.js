@@ -876,93 +876,88 @@ function updateInfo() {
 
     renderHand(); 
 }
-/* --- Shop & Pack Logic (v2.11.6 Simple & Fast) --- */
+/* --- Shop & Pack Logic (Reverted to Original Style) --- */
 
 // ショップを開く
 function openCardShop() {
-    el("card-shop-modal").style.display = "flex";
-    updateShopUI();
     playSE("se-tap");
-}
-
-// ショップUI更新
-function updateShopUI() {
     const list = el("pack-list");
     list.innerHTML = "";
     if(el("shop-dp-display")) el("shop-dp-display").innerText = (savedData.dp || 0);
     
-    let hasPacks = false;
+    // 所持カード情報の初期化
+    if (!savedData.cards) savedData.cards = {};
+    
     PACK_DATA.forEach(pack => {
+        // アンロック判定
         const isUnlocked = (savedData.bestRanks && savedData.bestRanks[pack.unlockStage]);
         if (!isUnlocked) return;
-        hasPacks = true;
-
+        
         const canBuy = (savedData.dp || 0) >= pack.price;
+        
+        // パック画像HTML (画像がなければ📦を表示)
+        const imgHTML = `<img src="${pack.img}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                         <div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:50px; background:#333; color:#555;">📦</div>`;
+        
         const div = document.createElement("div");
         div.className = "pack-item";
-        div.style.border = "1px solid #444";
-        div.style.padding = "10px";
-        div.style.margin = "5px";
-        div.style.borderRadius = "8px";
-        div.style.background = "rgba(0,0,0,0.5)";
-        div.style.cursor = canBuy ? "pointer" : "default";
-        div.style.opacity = canBuy ? 1 : 0.7;
-
         div.innerHTML = `
-            <div style="display:flex; align-items:center; gap:10px;">
-                <img src="${pack.img}" style="width:60px; height:auto; border-radius:4px;">
-                <div style="flex:1;">
-                    <div style="font-weight:bold; color:#fff;">${pack.name}</div>
-                    <div style="font-size:10px; color:#aaa;">${pack.desc}</div>
-                    <div style="color:${canBuy ? '#ffd700' : '#f55'}; font-weight:bold;">DP: ${pack.price}</div>
-                </div>
-                ${!canBuy ? '<div style="font-size:10px; color:#f55;">LACK DP</div>' : ''}
-            </div>
+            <div class="pack-img-container">${imgHTML}</div>
+            <div class="pack-name">${pack.name}</div>
+            <div class="pack-desc">${pack.desc}</div>
+            <button class="pack-buy-btn" ${canBuy ? "" : "disabled"} onclick="buyPack('${pack.id}')">
+                ${canBuy ? `BUY (${pack.price} DP)` : "LACK DP"}
+            </button>
         `;
-        
-        if (canBuy) {
-            div.onclick = () => buyPack(pack.id);
-        }
         list.appendChild(div);
     });
-
-    if (!hasPacks) {
-        list.innerHTML = "<div style='color:#666; width:100%; text-align:center; padding:20px;'>STAGE CLEAR REQUIRED</div>";
+    
+    if (list.innerHTML === "") {
+        list.innerHTML = "<div style='color:#666; width:100%; text-align:center; padding-top:20px;'>STAGE 1 CLEAR REQUIRED</div>";
     }
+    
+    el("card-shop-modal").style.display = "flex";
 }
 
-// パック購入＆即開封
+// パック購入処理
 function buyPack(packId) {
-    // 開封中なら無視
-    if (typeof isOpeningPack !== 'undefined' && isOpeningPack) return;
-
     const pack = PACK_DATA.find(p => p.id === packId);
-    if (!pack || (savedData.dp || 0) < pack.price) {
+    if (!pack) return;
+    
+    if ((savedData.dp || 0) < pack.price) {
         playSE("se-warning");
+        alert("DPが足りません");
         return;
     }
-
-    // 購入処理
+    
+    // DP消費
     savedData.dp -= pack.price;
     saveToDrive();
-    updateShopUI(); 
+    
+    // UI更新
+    if(el("shop-dp-display")) el("shop-dp-display").innerText = savedData.dp;
+    const btns = document.querySelectorAll(".pack-buy-btn");
+    btns.forEach(b => {
+        // 簡易的な再描画トリガーとしてショップを開き直すのが確実だが、ここではボタン状態のみ更新
+        // (厳密には openCardShop を呼び直すのがベスト)
+    });
+    openCardShop(); // 更新反映
     
     // 開封演出開始
-    openPack(packId); 
+    startPackOpening(packId);
 }
 
-// パック開封ロジック (高速化対応)
-function openPack(packId) {
-    isOpeningPack = true;
-    packSkipTrigger = false;
+// パック開封演出 (Original Animation)
+function startPackOpening(packId) {
+    playSE("se-chest"); // 開封音
     
-    // 1. 抽選
+    // 結果を抽選
     const results = [];
-    let hasUR = false;
-    
     for(let i=0; i<5; i++) {
         let rarity = "N";
         const r = Math.random();
+        
+        // 確率設定 (Vol.2はレア率アップ)
         if (packId === "vol2") {
             if (r < 0.05) rarity = "UR";
             else if (r < 0.20) rarity = "SR";
@@ -972,88 +967,71 @@ function openPack(packId) {
             else if (r < 0.10) rarity = "SR";
             else if (r < 0.40) rarity = "R";
         }
-        if (rarity === "UR") hasUR = true;
         
+        // 候補選定
         const candidates = CARD_DB.filter(c => c.rarity === rarity);
         const card = candidates[Math.floor(Math.random() * candidates.length)] || CARD_DB[0];
         
+        // 所持数加算
         if (!savedData.collection) savedData.collection = {};
+        if (!savedData.cards) savedData.cards = {}; // 互換性のため
+        
+        // collectionとcardsの両方に保存（念のため）
         savedData.collection[card.id] = (savedData.collection[card.id] || 0) + 1;
+        savedData.cards[card.id] = (savedData.cards[card.id] || 0) + 1;
+        
         results.push(card);
     }
     saveToDrive();
-
-    // 2. 演出開始
+    
+    // モーダル表示
     el("pack-result-modal").style.display = "flex";
     const container = el("pack-results");
-    container.innerHTML = "";
+    container.innerHTML = ""; // クリア
     
-    // ホワイトアウト演出
-    const white = document.createElement("div");
-    white.style.position = "absolute"; white.style.top=0; white.style.left=0; white.style.width="100%"; white.style.height="100%";
-    white.style.background = "#fff"; white.style.zIndex = 3500; white.style.transition = "opacity 0.5s";
-    el("pack-result-modal").appendChild(white);
-    
-    // SE (UR演出)
-    if (hasUR) playSE("se-heal");
-    else playSE("se-chest");
-
-    // フェードアウト
-    setTimeout(() => white.style.opacity = 0, 100);
-    setTimeout(() => { if(white.parentNode) white.parentNode.removeChild(white); }, 600);
-
-    // 3. カード順次表示 (Async Loop)
-    const showCardLoop = async () => {
-        for (let i = 0; i < 5; i++) {
-            // スキップ判定
-            if (typeof packSkipTrigger !== 'undefined' && packSkipTrigger) {
-                for (let j = i; j < 5; j++) createPackCardElement(results[j], container);
-                break; 
-            }
-            
-            createPackCardElement(results[i], container);
+    // 1枚ずつ表示するアニメーション
+    let delay = 0;
+    results.forEach((card, index) => {
+        setTimeout(() => {
             playSE("se-item");
-            await new Promise(r => setTimeout(r, 600));
-        }
-        isOpeningPack = false;
-    };
-    
-    showCardLoop();
-}
+            const d = document.createElement("div");
+            d.className = "pack-card-reveal"; // CSSアニメーション用クラス
+            
+            // スタイル直接指定 (CSSがない場合への備え)
+            d.style.animation = "pop-in 0.5s ease-out";
+            d.style.width = "80px";
+            d.style.margin = "5px";
+            d.style.background = "#222";
+            d.style.border = "2px solid #555";
+            d.style.borderRadius = "6px";
+            d.style.padding = "5px";
+            d.style.textAlign = "center";
+            d.style.display = "flex";
+            d.style.flexDirection = "column";
+            d.style.alignItems = "center";
+            
+            let borderCol = "#555";
+            if(card.rarity==="UR") borderCol = "#ffd700";
+            else if(card.rarity==="SR") borderCol = "#c0c0c0";
+            else if(card.rarity==="R") borderCol = "#cd7f32";
+            d.style.borderColor = borderCol;
+            
+            if(card.rarity==="UR") {
+                d.style.boxShadow = "0 0 15px gold";
+                playSE("se-buff"); // UR時の追加音
+            }
 
-// カード生成ヘルパー
-function createPackCardElement(card, container) {
-    const d = document.createElement("div");
-    d.style.animation = "pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
-    d.style.width = "80px";
-    d.style.margin = "5px";
-    d.style.background = "#222";
-    d.style.border = "2px solid #555";
-    d.style.borderRadius = "6px";
-    d.style.padding = "5px";
-    d.style.textAlign = "center";
-    d.style.display = "flex";
-    d.style.flexDirection = "column";
-    d.style.alignItems = "center";
-    d.style.boxShadow = "0 0 10px rgba(0,0,0,0.5)";
-
-    let borderCol = "#555";
-    if(card.rarity==="UR") borderCol = "#ffd700";
-    else if(card.rarity==="SR") borderCol = "#c0c0c0";
-    else if(card.rarity==="R") borderCol = "#cd7f32";
-    d.style.borderColor = borderCol;
-    
-    if(card.rarity==="UR") {
-        d.style.boxShadow = "0 0 15px gold";
-        d.style.background = "linear-gradient(135deg, #333 0%, #554400 100%)";
-    }
-
-    d.innerHTML = `
-        <div style="font-size:12px; font-weight:bold; color:${borderCol}; margin-bottom:2px;">${card.rarity}</div>
-        <img src="assets/cards/${card.id}.png" style="width:100%; height:auto; border-radius:4px; min-height:80px; object-fit:cover;">
-        <div style="font-size:10px; color:#ccc; margin-top:4px; line-height:1.2; height:24px; overflow:hidden;">${card.name}</div>
-    `;
-    container.appendChild(d);
+            d.innerHTML = `
+                <div style="font-size:12px; font-weight:bold; color:${borderCol}; margin-bottom:2px;">${card.rarity}</div>
+                <img src="assets/cards/${card.id}.png" style="width:100%; height:auto; border-radius:4px;">
+                <div style="font-size:10px; color:#ccc; margin-top:4px; height:20px; overflow:hidden;">${card.name}</div>
+            `;
+            
+            container.appendChild(d);
+        }, delay);
+        
+        delay += 800; // 0.8秒ごとに次を表示（ゆっくり）
+    });
 }
 // リザルト閉じる処理 (OKボタン復帰処理を追加)
 function closePackResult() {
