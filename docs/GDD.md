@@ -1,54 +1,77 @@
 # 📘 DARTS QUEST - Game Design Document
-**Version:** 2.11.7.1 (Stable)
+**Version:** 2.11.8 (Stable)
 **Last Updated:** 2026-02-07
 
 ## 1. プロジェクト概要
 * **タイトル:** DARTS QUEST
 * **ジャンル:** Darts RPG (Physical Interaction)
 * **コアコンセプト:** "Throw to Attack"
-    * 物理ダーツボード（DARTSLIVE HOME）のBluetooth信号をリアルタイムでRPGのアクションに変換。
-    * プレイヤーのスキル（ダーツの腕前）と戦略（カードデッキ）の融合。
+    * 物理ダーツボード（DARTSLIVE HOME）のBluetooth信号をリアルタイムでRPGのダメージ・アクションに変換する。
+    * プレイヤー自身の「ダーツスキル（命中率）」と「デッキ構築（戦略）」が攻略の鍵となる。
 
-## 2. システム要件 & UX (v2.11.x Update)
+## 2. ゲームループ & システム詳細
 
-### A. Audio Architecture (3-Channel Mixing)
-プレイヤーの「爽快感」と「快適性」を両立させるため、音声を3つのチャンネルで管理・保存する。
-* **Config:** タイトル画面左上の [⚙️ CONFIG] からいつでも調整可能。
-* **Persistence:** `darts_quest_config` に設定を保存。
+### A. Battle System (Turn-Based Action)
+1.  **Player Turn (Throw Phase):**
+    * プレイヤーは1ターンにつき3投（3 Darts）を行う。
+    * **Attack:** ダーツの点数がそのままダメージとなる（BULL=50, Triple=3倍）。
+    * **Input Constraint:** 敵のスキル（拘束など）により、入力回数が制限される場合がある。
+2.  **Card/Item Phase:**
+    * 投擲前であれば、MPを消費して手札の魔法カードやアイテムを使用可能。
+    * **Trap Set:** 罠カードはこのフェーズで「セット」状態に移行する。
+3.  **Enemy Turn:**
+    * 敵は固有の行動パターン（攻撃、バフ、デバフ、回復、必殺技）に基づいて行動する。
+    * 確率判定により「溜め行動」や「連続攻撃」を行う。
 
-| Channel | Role | Default | Targets |
-|:---|:---|:---:|:---|
-| **BGM** | 雰囲気演出 | 30% | 背景音楽 (ループ) |
-| **SYSTEM** | 情報伝達 | 50% | UI Click, Heal, Buff, Warning, Chest |
-| **ATTACK** | **打撃感** | **80%** | **Hit, Weak, Explosion, Magic, Damage** |
+### B. Trap Mechanics (v2.11 New)
+プレイヤーは最大1枚まで罠をセットできる。セットされた罠は特定のトリガーで自動発動し、割り込み処理を行う。
 
-### B. Trap System (Strategic Defense)
-* **Mechanic:** 「TRAP」属性カードは使用時に即発動せず、MPを消費してフィールド左下の「TRAP SLOT」にセット（伏せカード状態）される。
-* **Trigger:**
-    * **Attack Trigger:** 敵の攻撃被弾時に発動（例：聖なるバリア、魔法の筒）。
-    * **Summon Trigger:** 敵出現時に発動（例：落とし穴）。
-* **Constraint:** セットできる罠は1枚のみ。上書き不可。
+| カード名 | レア | コスト | トリガー | 効果詳細 |
+|:---|:---:|:---:|:---|:---|
+| **落とし穴** | R | 3 | **Summon** | 敵出現時、50ダメージを与え、1ターンスタンさせる。 |
+| **聖なるバリア** | R | 4 | **Attack** | 敵の攻撃を完全無効化し、50ダメージの反撃を行う。 |
+| **魔法の筒** | SR | 4 | **Attack** | 敵の攻撃を完全無効化し、そのダメージをそのまま敵に与える。 |
+| **六芒星の呪縛** | R | 3 | **Attack** | 敵の攻撃を半減（x0.5）させ、さらに1ターンスタンさせる。 |
+| **はさみ撃ち** | N | 2 | **Attack** | 被弾時に発動。ダメージは受けるが、敵に80ダメージの反撃を行う。 |
 
-## 3. 画面構成 (HUD)
+### C. Audio Architecture
+「爽快感」と「情報伝達」を分離するため、3つの独立したボリュームチャンネルを持つ。
+* **Config:** `darts_quest_config` (LocalStorage) に保存。
+* **Channels:**
+    * `BGM`: 30% (Default) - 音楽。
+    * `SYSTEM`: 50% (Default) - UI操作、回復、バフ音。
+    * `ATTACK`: 80% (Default) - 攻撃ヒット、爆発、弱点ヒット音。
 
-### A. Battle Screen (Immersive Arcade Style)
-* **Visuals:** * **Mega HP:** 敵HPを画面下部に超巨大フォントで表示し、視認性を最大化。
-    * **Floating Damage:** プレイヤー被弾（左側・赤）、敵被弾（中央・金）でダメージ数値を巨大にポップアップ。
-* **Card UX:**
-    * **Long Press:** デッキ編集画面等でカードを長押しすると、詳細ズームビューを表示。
-    * **Hand Overlay:** 画面下部に手札を展開。タップで発動。
+## 3. ゲームバランス & データ
 
-## 4. ゲームバランス
-* **Rank System:**
-    * Stage 4~6 のSSSランク基準は「25ターン以内」。
-* **Card Logic:**
-    * **天使の施し (UR):** 手札を1枚捨てて3枚ドロー。
-    * **はさみ撃ち (N):** 被弾時に敵へ80ダメージ（カウンター）。
-    * **六芒星の呪縛 (R):** 被弾時、ダメージ半減＆敵スタン。
+### A. Stage Configuration
+| Stage | Name | Boss Logic | Rank SSS (Turns) |
+|:---:|:---|:---|:---:|
+| 1 | 旅立ちの森 | HP型 (進化の繭→グレートモス) | 12 |
+| 2 | 荒れ狂う荒野 | 攻撃型 (恐竜) | 12 |
+| 3 | 誘惑の迷宮 | テクニカル (護封剣/スタン) | 12 |
+| 4 | 幻想の狂宴 | 特殊 (Toon/吸収/無効化) | 25 |
+| 5 | 燃えたぎる火口 | **EXTRA BOSS** (高火力/MP破壊) | 25 |
+| 6 | 神の試練 | **GOD** (蘇生/即死無効/超火力) | 25 |
 
-## 5. データ構造
+### B. Rank System
+クリアにかかった総ターン数（`totalGameTurns`）に基づき評価。
+* **SSS Rank:** 圧倒的な速度（12〜25ターン以内）。報酬DP大。
+* **S/A/B/C Rank:** ターン数に応じて段階的に報酬減少。
+
+## 4. UI/UX Design Specification
+* **Immersive Arcade Layout:**
+    * **Mega HP:** 敵HPを画面下部に超巨大フォントで表示。
+    * **Floating Damage:** ダメージ数値を物理演算的にポップアップ。
+    * **Zoom:** カード長押しで拡大表示し、フレーバーテキストを読めるようにする。
+* **Responsive:**
+    * PC（横長）とモバイル（縦長）でレイアウトを自動切り替え。モバイルではスクロールを前提とした配置になる。
+
+## 5. Technical Specifications
 * **Save Data (`darts_quest_save`):**
-    * 3つのセーブスロットに対応。
-    * `deck`: カードIDの配列。
-    * `cards`: 所持カードの連想配列 `{id: count}`。
-    * `highScore`, `dp`, `clearedExtra` 等の進行度。
+    * JSON形式。Slot1~3のオブジェクトを保持。
+    * `deck`: `[cardId, cardId, ...]` (最大20枚)
+    * `cards`: `{ "cardId": count, ... }`
+* **Bluetooth Protocol:**
+    * Service UUID: `6e400001-b5a3-f393-e0a9-e50e24dcca9e`
+    * Notify UUID: `6e40fff6-b5a3-f393-e0a9-e50e24dcca9e`
