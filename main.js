@@ -103,44 +103,129 @@ function openDiscardSelector() { pendingCardIndex = -1; const discardCandidates 
 function closeCardSelector() { el("card-selector-modal").style.display = "none"; pendingCardIndex = -1; }
 function executeDiscardAndEffect(discardIndex) { const discardId = player.hand[discardIndex]; player.hand.splice(discardIndex, 1); player.discard.push(discardId); playSE("se-heal"); addLog("手札を捨て、3枚ドロー！", "log-skill"); drawCard(); drawCard(); drawCard(); closeCardSelector(); updateInfo(); }
 function showCardDetail(card) { const detailEl = el("deck-card-detail"); if (!detailEl) return; detailEl.innerHTML = `<span class="detail-name">${card.name}</span>${card.desc}`; }
-function renderHand() { const handArea = el("hand-area"); handArea.innerHTML = ""; el("hand-count-display").innerText = player.hand.length; const isThrowing = turnInputs.length > 0; const isCardLocked = player.state.itemLock || isThrowing; if (player.deckLocked) { el("battle-deck-count").innerText = "-"; handArea.innerHTML = `<div class="hand-locked-msg">⚠️ NO DECK (DARTS ONLY)</div>`; } else { el("battle-deck-count").innerText = player.deck.length; if (player.hand.length === 0) { handArea.innerHTML = `<div class="hand-card-empty">NO CARD</div>`; } else { player.hand.forEach((cardId, index) => { const card = CARD_DB.find(c => c.id === cardId); const cost = (card.cost !== undefined) ? card.cost : 99; const div = document.createElement("div"); div.className = "hand-card"; if (player.mp < cost || isCardLocked) div.classList.add("disabled"); const imgPath = `assets/cards/${card.id}.png`; div.innerHTML = `<div class="hand-cost">${cost}</div><div class="card-art" style="height:100%; border:none;"><img src="${imgPath}" onerror="this.style.display='none'"></div>`; div.onclick = () => playHandCard(index); div.onmouseenter = (e) => showTooltip(card.name, card.desc, e); div.onmouseleave = () => hideTooltip(); handArea.appendChild(div); }); } } }
+/* --- main.js UPDATE: renderHand (Standard Format) --- */
+function renderHand() {
+    const handArea = el("hand-area");
+    handArea.innerHTML = "";
+    el("hand-count-display").innerText = player.hand.length;
+    
+    const isThrowing = turnInputs.length > 0;
+    const isCardLocked = player.state.itemLock || isThrowing;
+
+    if (player.deckLocked) {
+        el("battle-deck-count").innerText = "-";
+        handArea.innerHTML = `<div class="hand-locked-msg">⚠️ NO DECK</div>`;
+    } else {
+        el("battle-deck-count").innerText = player.deck.length;
+        if (player.hand.length === 0) {
+            handArea.innerHTML = `<div class="hand-card-empty">NO CARD</div>`;
+        } else {
+            player.hand.forEach((cardId, index) => {
+                const card = CARD_DB.find(c => c.id === cardId);
+                
+                // ★ createCardElement を流用して手札生成
+                // 第2引数 true (in-deck) にするとクリック挙動が変わるため、falseにして手動設定する手もあるが
+                // ここでは手札専用の簡易版を作る方が安全（createCardElementは複雑化しているため）
+                
+                // === 手札専用 簡易標準カード生成 ===
+                const div = document.createElement("div");
+                div.className = `hand-card std-card rarity-${card.rarity}`;
+                if (player.mp < card.cost || isCardLocked) div.classList.add("disabled");
+                
+                const bgClass = (card.type === "TRAP") ? "bg-trap" : "bg-magic";
+                
+                div.innerHTML = `
+                    <div class="std-art" style="height:60%;">
+                        <img src="assets/cards/${card.id}.png">
+                        <div class="std-cost">${card.cost}</div>
+                    </div>
+                    <div class="std-text-area ${bgClass}" style="padding:2px;">
+                        <div class="std-name" style="font-size:8px;">${card.name}</div>
+                        </div>
+                `;
+                
+                div.onclick = () => playHandCard(index);
+                div.onmouseenter = (e) => showTooltip(card.name, card.desc, e);
+                div.onmouseleave = () => hideTooltip();
+                
+                handArea.appendChild(div);
+            });
+        }
+    }
+}
 function updateInfo() { if (!enemy.data) return; const setText = (id, text) => { const e = el(id); if(e) e.innerText = text; }; const setHTML = (id, html) => { const e = el(id); if(e) e.innerHTML = html; }; let stgDisp = `STAGE ${stage}`; if(stage===5) stgDisp = "EXTRA"; if(stage===6) stgDisp = "STAGE 5"; setText("stage-display", stgDisp); setText("floor-display", stage===5?"FINAL":`${floor}F`); const currentTotal = (totalGameTurns - stageStartTurn) + 1; setHTML("turn-display", `TURN ${currentTurn} <span style="font-size:12px; color:#888;">(Total ${currentTotal})</span>`); setText("enemy-name-side", enemy.name); setText("enemy-hp-value", enemy.hp); if(el("enemy-hp-value")) { el("enemy-hp-value").className = "hp-mega-text"; if (enemy.hp <= 60) el("enemy-hp-value").classList.add("hp-danger"); } let weakText = player.state.weakLock ? "★LOCK" : `WEAK: ${enemy.data.weak}+`; if(weakHitCount > 0) weakText += " <span style='color:#f0f;'>CHANCE!</span>"; setHTML("weak-display", weakText); let eChips = ""; if(enemy.state.guard) eChips += `<span class="status-chip chip-guard">🛡️GUARD</span>`; if(enemy.state.charge) eChips += `<span class="status-chip chip-charge">⚡CHARGE</span>`; if(enemy.state.isStunned) eChips += `<span class="status-chip chip-stun">😵STUN</span>`; if(enemy.state.barrierLimit > 0) eChips += `<span class="status-chip chip-barrier">💠BARRIER(${enemy.state.barrierLimit})</span>`; setHTML("enemy-states-side", eChips); setText("player-hp", player.hp); if(el("player-hp-bar")) { const pHpPct = (player.hp / player.maxHp) * 100; el("player-hp-bar").style.width = Math.max(0, pHpPct) + "%"; if(pHpPct <= 20) el("player-hp-bar").className = "hp-bar-fill player-fill player-danger"; else el("player-hp-bar").className = "hp-bar-fill player-fill"; } setText("player-mp", player.mp); let mpDots = ""; for(let i=0; i<player.maxMp; i++) { mpDots += `<span class="mp-dot ${i < player.mp ? 'active' : ''}"></span>`; } setHTML("player-mp-dots", mpDots); let pChips = ""; if(player.state.atkBonus > 0 || player.state.power) pChips += `<span class="status-chip chip-buff">⚔️ATK UP</span>`; if(player.state.guardTurn > 0) pChips += `<span class="status-chip chip-guard">🛡️SHIELD(${player.state.guardTurn})</span>`; if(player.state.barrier) pChips += `<span class="status-chip chip-barrier">✨BARRIER</span>`; if(player.state.itemLock) pChips += `<span class="status-chip chip-lock">🔒SEALED</span>`; setHTML("player-states-side", pChips); let ppr = totalDarts > 0 ? (totalScore / totalDarts) * 3 : 0; setText("avg-display", ppr.toFixed(1)); setText("rt-display", `(Rt ${calculateRating(ppr)})`); const updateItemBtn = (btnId, count, icon) => { const b = el(btnId); if (!b) return; b.innerHTML = `${icon}x${count}`; b.className = "item-btn"; if (player.state.itemLock || turnInputs.length > 0) b.classList.add("disabled"); else if (count > 0) b.classList.add("has-item"); else b.classList.add("disabled"); }; updateItemBtn("btn-potion", player.items.potion, "💊"); updateItemBtn("btn-ether", player.items.ether, "⚗️"); updateItemBtn("btn-seed", player.items.seed, "🌱"); const trapSlot = el("trap-slot"); if(trapSlot) { if(player.setCard) { trapSlot.className = "trap-slot set"; trapSlot.innerHTML = `<img src="assets/cards/${player.setCard}.png" style="width:100%; height:100%; object-fit:cover; border-radius:4px;">`; const c = CARD_DB.find(cd => cd.id === player.setCard); if(c) { trapSlot.onmouseenter = (e) => showTooltip(c.name + " (セット中)", c.desc, e); trapSlot.onmouseleave = () => hideTooltip(); } } else { trapSlot.className = "trap-slot empty"; trapSlot.innerHTML = "SET<br>TRAP"; trapSlot.onmouseenter = null; trapSlot.onmouseleave = null; } } renderHand(); }
 function openCardShop() { playSE("se-tap"); const list = el("pack-list"); list.innerHTML = ""; if(el("shop-dp-display")) el("shop-dp-display").innerText = (savedData.dp || 0); if (!savedData.cards) savedData.cards = {}; PACK_DATA.forEach(pack => { const isUnlocked = (savedData.bestRanks && savedData.bestRanks[pack.unlockStage]); if (!isUnlocked) return; const canBuy = (savedData.dp || 0) >= pack.price; const imgHTML = `<img src="${pack.img}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:50px; background:#333; color:#555;">📦</div>`; const div = document.createElement("div"); div.className = "pack-item"; div.innerHTML = `<div class="pack-img-container">${imgHTML}</div><div class="pack-name">${pack.name}</div><div class="pack-desc">${pack.desc}</div><button class="pack-buy-btn" ${canBuy ? "" : "disabled"} onclick="buyPack('${pack.id}')">${canBuy ? `BUY (${pack.price} DP)` : "LACK DP"}</button>`; list.appendChild(div); }); if (list.innerHTML === "") { list.innerHTML = "<div style='color:#666; width:100%; text-align:center; padding-top:20px;'>STAGE 1 CLEAR REQUIRED</div>"; } el("card-shop-modal").style.display = "flex"; }
 function buyPack(packId) { const pack = PACK_DATA.find(p => p.id === packId); if (!pack) return; if ((savedData.dp || 0) < pack.price) { playSE("se-warning"); alert("DPが足りません"); return; } savedData.dp -= pack.price; saveToDrive(); if(el("shop-dp-display")) el("shop-dp-display").innerText = savedData.dp; openCardShop(); startPackOpening(packId); }
 
 // --- THE LEGENDARY UNBOXING ANIMATION ---
+/* --- main.js UPDATE: Pack Logic (No Duplicates & Result Fix) --- */
+
+// 重複チェック用ヘルパー
+function isCardInResults(results, cardId) {
+    return results.some(c => c.id === cardId);
+}
+
 function startPackOpening(packId) {
     currentPackId = packId;
     isOpeningPack = true;
     openingPhase = 1;
+    
+    // UI Reset
     el("card-shop-modal").style.display = "none";
     el("pack-result-modal").style.display = "flex";
     
-    // 1. 抽選
+    // 1. 抽選 (重複なし)
     const targetCards = CARD_DB.filter(c => c.packs && c.packs.includes(packId));
     packResults = [];
+    
     for(let i=0; i<3; i++) {
         const isGuaranteed = (i === 2);
-        const r = Math.random();
-        let rarity = "N";
-        if (isGuaranteed) {
-            if (r < 0.03) rarity = "UR"; else if (r < 0.20) rarity = "SR"; else rarity = "R";
-        } else {
-            if (r < 0.01) rarity = "UR"; else if (r < 0.10) rarity = "SR"; else if (r < 0.40) rarity = "R"; else rarity = "N";
-        }
-        let pool = targetCards.filter(c => c.rarity === rarity);
-        if (pool.length === 0) pool = targetCards;
-        const card = pool[Math.floor(Math.random() * pool.length)];
+        let card = null;
+        let attempt = 0;
         
-        // NEW判定
-        const isNew = (!savedData.cards || !savedData.cards[card.id]);
+        // 重複しないカードが出るまでループ (最大10回試行して無限ループ防止)
+        while (!card || isCardInResults(packResults, card.id)) {
+            attempt++;
+            if (attempt > 20) break; // 安全策
+
+            const r = Math.random();
+            let rarity = "N";
+            if (isGuaranteed) {
+                if (r < 0.03) rarity = "UR"; else if (r < 0.20) rarity = "SR"; else rarity = "R";
+            } else {
+                if (r < 0.01) rarity = "UR"; else if (r < 0.10) rarity = "SR"; else if (r < 0.40) rarity = "R"; else rarity = "N";
+            }
+            
+            let pool = targetCards.filter(c => c.rarity === rarity);
+            if (pool.length === 0) pool = targetCards;
+            
+            const candidate = pool[Math.floor(Math.random() * pool.length)];
+            
+            // 既に選ばれていなければ採用
+            if (!isCardInResults(packResults, candidate.id)) {
+                card = candidate;
+            }
+        }
+        
+        // 万が一決まらなかったら重複許容で最後のを採用
+        if (!card) card = targetCards[Math.floor(Math.random() * targetCards.length)];
+
+        // データ保存 (即時反映)
         if (!savedData.collection) savedData.collection = {};
         if (!savedData.cards) savedData.cards = {};
+        
+        // NEW判定 (所持数が0ならNEW)
+        const currentCount = savedData.cards[card.id] || 0;
+        const isNew = (currentCount === 0);
+        
+        // 加算
         savedData.collection[card.id] = (savedData.collection[card.id] || 0) + 1;
         savedData.cards[card.id] = (savedData.cards[card.id] || 0) + 1;
         
-        packResults.push({ ...card, isNew: isNew });
+        // 結果配列には「加算後の所持数」を持たせる
+        packResults.push({ ...card, isNew: isNew, ownCount: savedData.cards[card.id] });
     }
+    
     saveToDrive();
     
     // ソート (N -> R -> SR -> UR)
@@ -151,6 +236,7 @@ function startPackOpening(packId) {
     renderOpeningStage(packId);
 }
 
+/* --- main.js UPDATE: renderOpeningStage (Button Hidden Initially) --- */
 function renderOpeningStage(packId) {
     const container = el("pack-opening-container");
     const packImg = PACK_DATA.find(p => p.id === packId).img;
@@ -160,14 +246,14 @@ function renderOpeningStage(packId) {
             <img src="${packImg}" id="pack-visual" class="opening-pack anim-drop anim-breath">
             <div id="opening-prompt" class="prompt-text">TAP TO OPEN</div>
             <div id="reveal-area" class="reveal-stage" style="display:none;"></div>
-            <div id="action-buttons" class="action-buttons">
+            
+            <div id="action-buttons" class="action-buttons" style="display:none;">
                 <button class="modal-btn" onclick="buyPack('${packId}')">ONE MORE</button>
                 <button class="modal-btn" onclick="closePackResult()" style="background:#555;">QUIT</button>
             </div>
         </div>
     `;
     
-    // Tap to Open
     const stage = el("opening-stage");
     stage.onclick = () => proceedUnboxing();
 }
@@ -208,6 +294,7 @@ function proceedUnboxing() {
     }
 }
 
+/* --- main.js UPDATE: showNextRevealCard (Standard Format Fix) --- */
 function showNextRevealCard() {
     if (currentRevealIndex >= packResults.length) {
         showPackResult();
@@ -226,20 +313,27 @@ function showNextRevealCard() {
     
     playSE(sound);
     
+    // ★ ここを .std-card 構成に変更
     const div = document.createElement("div");
     div.id = `reveal-card-${currentRevealIndex}`;
-    div.className = `collection-card rarity-${card.rarity} reveal-card-zoom card-appear ${effectClass}`;
+    // .std-card をベースにしつつ、演出用のクラスを追加
+    div.className = `std-card rarity-${card.rarity} reveal-card-zoom card-appear ${effectClass}`;
     
     const imgPath = `assets/cards/${card.id}.png`;
+    const cost = (card.cost !== undefined) ? card.cost : "?";
+    const bgClass = (card.type === "TRAP") ? "bg-trap" : "bg-magic";
+
     div.innerHTML = `
         ${card.isNew ? '<div class="new-badge">NEW!</div>' : ''}
-        <div class="card-cost-badge">${card.cost}</div>
-        <div class="card-shine"></div>
-        <div class="card-art"><img src="${imgPath}"></div>
-        <div class="card-info">
-            <div class="card-name" style="font-size:14px;">${card.name}</div>
-            <div class="card-type">[${card.type}]</div>
-            <div class="card-info-direct" style="font-size:10px;">${card.desc}</div>
+        <div class="std-art">
+            <img src="${imgPath}" onerror="this.style.display='none';">
+            <div class="std-cost">${cost}</div>
+            <div class="std-count">GET</div>
+        </div>
+        <div class="std-text-area ${bgClass}">
+            <div class="std-name" style="font-size:14px;">${card.name}</div>
+            <div class="std-type">[${card.type}]</div>
+            <div class="std-desc" style="font-size:10px;">${card.desc}</div>
         </div>
     `;
     
@@ -248,27 +342,49 @@ function showNextRevealCard() {
     area.appendChild(div);
 }
 
+// リザルト表示 (ボタン制御とクールタイム追加)
+let isResultCooldown = false; // クールタイムフラグ
+
 function showPackResult() {
     openingPhase = 4;
-    el("reveal-area").innerHTML = ""; // Clear Reveal
-    el("reveal-area").className = "result-stage";
+    isResultCooldown = true; // クールタイム開始
     
-    playSE("se-win"); // Finish sound
+    const area = el("reveal-area");
+    area.innerHTML = "";
+    area.className = "result-stage"; // Flex container
+    
+    playSE("se-win");
     
     packResults.forEach((card, i) => {
-        const div = createCardElement(card, false, 0, savedData.cards[card.id]);
-        div.className += " result-card";
-        div.style.animationDelay = `${i * 0.1}s`;
+        // createCardElementを使用 (標準フォーマット)
+        // 第3引数(remainingCount)に最新の所持数を渡す
+        const div = createCardElement(card, false, card.ownCount, card.ownCount);
+        
+        div.style.animation = `pop-in 0.5s both ${i * 0.1}s`;
+        div.style.width = "100px"; // リザルト用に少し大きく調整しても良い
+        
         if(card.isNew) {
-            div.innerHTML += '<div class="new-badge">NEW!</div>';
+            const badge = document.createElement("div");
+            badge.className = "new-badge";
+            badge.innerText = "NEW!";
+            div.appendChild(badge);
         }
-        // Click disabled in result
+        
+        // リザルトではクリック無効 (ズームのみ)
         div.onclick = null;
-        setupLongPress(div, card); // Enable Zoom
-        el("reveal-area").appendChild(div);
+        
+        area.appendChild(div);
     });
     
-    el("action-buttons").classList.add("visible");
+    // ボタン表示
+    const btnArea = el("action-buttons");
+    btnArea.style.display = "flex"; // ここで表示
+    setTimeout(() => btnArea.classList.add("visible"), 100);
+
+    // クールタイム解除 (0.8秒後)
+    setTimeout(() => {
+        isResultCooldown = false;
+    }, 800);
 }
 
 // Skip Function
@@ -283,7 +399,7 @@ window.addEventListener("keydown", function (e) {
     if (el("pack-result-modal").style.display === "flex") {
         e.preventDefault();
         
-        // Skip check (Long press logic simulated by repeat)
+        // Skip (Phase 2-3)
         if (e.repeat && e.key === "Enter" && openingPhase >= 2 && openingPhase < 4) {
             skipUnboxing();
             return;
@@ -291,13 +407,17 @@ window.addEventListener("keydown", function (e) {
 
         if (openingPhase === 1 && e.key === "Enter") proceedUnboxing();
         else if (openingPhase === 3 && e.key === "Enter") proceedUnboxing();
+        
+        // Phase 4: Result (Cooldown Check)
         else if (openingPhase === 4) {
+            if (isResultCooldown) return; // ★ クールタイム中は無視
+
             if (e.key === "Enter") buyPack(currentPackId);
             if (e.key === "Backspace" || e.key === "Escape") closePackResult();
         }
         return;
     }
-    
+
     if (el("title-screen").style.display !== "none") { if (e.key === "1") cheatBuffer += e.key; else cheatBuffer = ""; if (cheatBuffer.endsWith("1111")) { playSE("se-item"); savedData.dp = (savedData.dp || 0) + 5000; updateTitleScore(); saveToDrive(); cheatBuffer = ""; } return; }
     if (el("game-modal").style.display === "flex" && e.key === "Enter") { const btns = document.getElementById("modal-buttons"); if (btns.children.length === 1) { e.preventDefault(); btns.children[0].click(); } return; }
     if (waitingForChest) { if (e.key === 'Enter') { e.preventDefault(); openChest(); } return; }
@@ -323,7 +443,67 @@ function closeCardShop() { playSE("se-tap"); el("card-shop-modal").style.display
 function openCollection() { playSE("se-tap"); renderDeckEditor(); el("collection-modal").style.display = "flex"; }
 function closeCollection() { playSE("se-tap"); el("collection-modal").style.display = "none"; hideTooltip(); }
 function renderDeckEditor() { if (!savedData.deck) savedData.deck = []; savedData.deck.sort((a, b) => a - b); const deckGrid = el("deck-grid"); deckGrid.innerHTML = ""; for (let i = 0; i < DECK_SIZE; i++) { const cardId = savedData.deck[i]; if (cardId) { const card = CARD_DB.find(c => c.id === cardId); const totalOwned = savedData.cards[card.id] || 0; const el = createCardElement(card, true, 0, totalOwned); el.onmouseenter = () => showCardDetail(card); deckGrid.appendChild(el); } else { const div = document.createElement("div"); div.className = "deck-slot-empty"; div.innerText = "EMPTY"; deckGrid.appendChild(div); } } const deckCount = savedData.deck.length; const countEl = el("deck-count"); countEl.innerText = deckCount; if (deckCount < DECK_SIZE) { countEl.style.color = "#ff5555"; countEl.innerText += " (あと" + (DECK_SIZE - deckCount) + "枚)"; } else { countEl.style.color = "#00ff00"; countEl.innerText += " (OK!)"; } const listGrid = el("card-grid"); listGrid.innerHTML = ""; if (!savedData.cards) savedData.cards = {}; let ownedCount = 0; CARD_DB.forEach(card => { const count = savedData.cards[card.id] || 0; if (count > 0) ownedCount++; const inDeckCount = savedData.deck.filter(id => id === card.id).length; const remaining = count - inDeckCount; const el = createCardElement(card, false, remaining, count); listGrid.appendChild(el); }); el("collection-rate").innerText = `${Math.floor((ownedCount / CARD_DB.length) * 100)}%`; }
-function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0) { const div = document.createElement("div"); const isOwned = (totalCount > 0 || isDeckItem); const notOwnedClass = (!isOwned) ? "card-not-owned" : ""; const typeClass = isDeckItem ? "in-deck-card" : "in-list-card"; div.className = `collection-card rarity-${card.rarity} ${notOwnedClass} ${typeClass}`; const imgPath = `assets/cards/${card.id}.png`; const fallbackIcon = card.type === "MAGIC" ? "🪄" : "⛓️"; const cost = (card.cost !== undefined) ? card.cost : "?"; let shortDesc = card.desc; if (shortDesc.length > 20) shortDesc = shortDesc.substring(0, 19) + ".."; if (card.rarity === "UR" && !isDeckItem) { div.innerHTML = `<div class="inner-mask"><div class="card-cost-badge">${cost}</div><div class="card-count-badge">x${remainingCount}</div><div class="card-shine"></div><div class="card-art"><img src="${imgPath}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><div class="card-placeholder" style="display:none;">${fallbackIcon}</div></div><div class="card-info"><div class="card-name">${card.name}</div><div class="card-type">[${card.type}]</div>${isOwned ? `<div class="card-info-direct">${shortDesc}</div>` : ''}</div></div>`; } else { div.innerHTML = `<div class="card-cost-badge">${cost}</div><div class="card-count-badge">x${isDeckItem ? 1 : remainingCount}</div><div class="card-shine"></div><div class="card-art"><img src="${imgPath}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><div class="card-placeholder" style="display:none;">${fallbackIcon}</div></div><div class="card-info"><div class="card-name">${card.name}</div><div class="card-type">[${card.type}]</div>${(!isDeckItem && isOwned) ? `<div class="card-info-direct">${shortDesc}</div>` : ''}</div>`; } div.onclick = function (e) { if (div.dataset.longPressed === "true") { div.dataset.longPressed = "false"; return; } if (!isOwned) return; if (isDeckItem) removeFromDeck(card.id); else addToDeck(card.id); }; div.onmouseenter = (e) => { showCardDetail(card); if (isDeckItem) showTooltip(card.name, card.desc, e); }; if (isDeckItem) { div.onmouseleave = () => hideTooltip(); } if (isOwned || isDeckItem) { setupLongPress(div, card); } return div; }
+/* --- main.js UPDATE: createCardElement (Standard Format) --- */
+function createCardElement(card, isDeckItem, remainingCount = 1, totalCount = 0) {
+    const div = document.createElement("div");
+    const isOwned = (totalCount > 0 || isDeckItem);
+    const notOwnedClass = (!isOwned) ? "card-not-owned" : "";
+    
+    // Class Setup
+    div.className = `std-card rarity-${card.rarity} ${notOwnedClass}`;
+    if (isDeckItem) div.classList.add("in-deck-card");
+
+    const imgPath = `assets/cards/${card.id}.png`;
+    const cost = (card.cost !== undefined) ? card.cost : "?";
+    
+    // Background Color based on Type
+    const bgClass = (card.type === "TRAP") ? "bg-trap" : "bg-magic";
+    
+    // Badge Text
+    const countText = isDeckItem ? "1" : `x${remainingCount}`;
+
+    // HTML Structure
+    div.innerHTML = `
+        <div class="std-art">
+            <img src="${imgPath}" onerror="this.style.display='none';">
+            <div class="std-cost">${cost}</div>
+            <div class="std-count">${countText}</div>
+        </div>
+        <div class="std-text-area ${bgClass}">
+            <div class="std-name">${card.name}</div>
+            <div class="std-type">[${card.type}]</div>
+            <div class="std-desc">${card.desc}</div>
+        </div>
+    `;
+
+    // Click Event
+    div.onclick = function (e) {
+        if (div.dataset.longPressed === "true") {
+            div.dataset.longPressed = "false";
+            return;
+        }
+        if (!isOwned) return;
+        
+        // Result画面などでの誤操作防止用チェック
+        if (typeof isOpeningPack !== 'undefined' && isOpeningPack) return;
+
+        if (isDeckItem) removeFromDeck(card.id);
+        else addToDeck(card.id);
+    };
+
+    // Hover & Long Press
+    div.onmouseenter = (e) => {
+        if (typeof showCardDetail === 'function') showCardDetail(card);
+        if (isDeckItem && typeof showTooltip === 'function') showTooltip(card.name, card.desc, e);
+    };
+    if (isDeckItem) { div.onmouseleave = () => hideTooltip(); }
+    
+    if (isOwned || isDeckItem) {
+        setupLongPress(div, card);
+    }
+
+    return div;
+}
 function setupLongPress(element, card) { let pressTimer; const LONG_PRESS_DURATION = 500; const start = (e) => { if (e.type === "mousedown" && e.button !== 0) return; element.dataset.longPressed = "false"; pressTimer = setTimeout(() => { element.dataset.longPressed = "true"; showZoomCard(card); if (navigator.vibrate) navigator.vibrate(50); }, LONG_PRESS_DURATION); }; const cancel = () => { if (pressTimer) clearTimeout(pressTimer); }; element.addEventListener("mousedown", start); element.addEventListener("touchstart", start, { passive: true }); element.addEventListener("mouseup", cancel); element.addEventListener("mouseleave", cancel); element.addEventListener("touchend", cancel); element.addEventListener("touchmove", cancel); }
 function showZoomCard(card) { let overlay = document.getElementById("card-zoom-overlay"); if (!overlay) { overlay = document.createElement("div"); overlay.id = "card-zoom-overlay"; overlay.onclick = closeZoomCard; document.body.appendChild(overlay); } const imgPath = `assets/cards/${card.id}.png`; overlay.innerHTML = `<img src="${imgPath}" class="zoom-card-img"><div class="zoom-info-box"><div class="zoom-name">${card.name} <span style="font-size:14px; color:#aaa;">(${card.rarity})</span></div><div class="zoom-desc">${card.desc}</div><div class="zoom-close-hint">TAP TO CLOSE</div></div>`; overlay.style.display = "flex"; requestAnimationFrame(() => overlay.classList.add("visible")); playSE("se-tap"); }
 function closeZoomCard() { const overlay = document.getElementById("card-zoom-overlay"); if (overlay) { overlay.classList.remove("visible"); setTimeout(() => { overlay.style.display = "none"; }, 200); } }
