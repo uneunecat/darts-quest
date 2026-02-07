@@ -140,7 +140,138 @@ function renderHand() {
         }
     }
 }
-function updateInfo() { if (!enemy.data) return; const setText = (id, text) => { const e = el(id); if(e) e.innerText = text; }; const setHTML = (id, html) => { const e = el(id); if(e) e.innerHTML = html; }; let stgDisp = `STAGE ${stage}`; if(stage===5) stgDisp = "EXTRA"; if(stage===6) stgDisp = "STAGE 5"; setText("stage-display", stgDisp); setText("floor-display", stage===5?"FINAL":`${floor}F`); const currentTotal = (totalGameTurns - stageStartTurn) + 1; setHTML("turn-display", `TURN ${currentTurn} <span style="font-size:12px; color:#888;">(Total ${currentTotal})</span>`); setText("enemy-name-side", enemy.name); setText("enemy-hp-value", enemy.hp); if(el("enemy-hp-value")) { el("enemy-hp-value").className = "hp-mega-text"; if (enemy.hp <= 60) el("enemy-hp-value").classList.add("hp-danger"); } let weakText = player.state.weakLock ? "★LOCK" : `WEAK: ${enemy.data.weak}+`; if(weakHitCount > 0) weakText += " <span style='color:#f0f;'>CHANCE!</span>"; setHTML("weak-display", weakText); let eChips = ""; if(enemy.state.guard) eChips += `<span class="status-chip chip-guard">🛡️GUARD</span>`; if(enemy.state.charge) eChips += `<span class="status-chip chip-charge">⚡CHARGE</span>`; if(enemy.state.isStunned) eChips += `<span class="status-chip chip-stun">😵STUN</span>`; if(enemy.state.barrierLimit > 0) eChips += `<span class="status-chip chip-barrier">💠BARRIER(${enemy.state.barrierLimit})</span>`; setHTML("enemy-states-side", eChips); setText("player-hp", player.hp); if(el("player-hp-bar")) { const pHpPct = (player.hp / player.maxHp) * 100; el("player-hp-bar").style.width = Math.max(0, pHpPct) + "%"; if(pHpPct <= 20) el("player-hp-bar").className = "hp-bar-fill player-fill player-danger"; else el("player-hp-bar").className = "hp-bar-fill player-fill"; } setText("player-mp", player.mp); let mpDots = ""; for(let i=0; i<player.maxMp; i++) { mpDots += `<span class="mp-dot ${i < player.mp ? 'active' : ''}"></span>`; } setHTML("player-mp-dots", mpDots); let pChips = ""; if(player.state.atkBonus > 0 || player.state.power) pChips += `<span class="status-chip chip-buff">⚔️ATK UP</span>`; if(player.state.guardTurn > 0) pChips += `<span class="status-chip chip-guard">🛡️SHIELD(${player.state.guardTurn})</span>`; if(player.state.barrier) pChips += `<span class="status-chip chip-barrier">✨BARRIER</span>`; if(player.state.itemLock) pChips += `<span class="status-chip chip-lock">🔒SEALED</span>`; setHTML("player-states-side", pChips); let ppr = totalDarts > 0 ? (totalScore / totalDarts) * 3 : 0; setText("avg-display", ppr.toFixed(1)); setText("rt-display", `(Rt ${calculateRating(ppr)})`); const updateItemBtn = (btnId, count, icon) => { const b = el(btnId); if (!b) return; b.innerHTML = `${icon}x${count}`; b.className = "item-btn"; if (player.state.itemLock || turnInputs.length > 0) b.classList.add("disabled"); else if (count > 0) b.classList.add("has-item"); else b.classList.add("disabled"); }; updateItemBtn("btn-potion", player.items.potion, "💊"); updateItemBtn("btn-ether", player.items.ether, "⚗️"); updateItemBtn("btn-seed", player.items.seed, "🌱"); const trapSlot = el("trap-slot"); if(trapSlot) { if(player.setCard) { trapSlot.className = "trap-slot set"; trapSlot.innerHTML = `<img src="assets/cards/${player.setCard}.png" style="width:100%; height:100%; object-fit:cover; border-radius:4px;">`; const c = CARD_DB.find(cd => cd.id === player.setCard); if(c) { trapSlot.onmouseenter = (e) => showTooltip(c.name + " (セット中)", c.desc, e); trapSlot.onmouseleave = () => hideTooltip(); } } else { trapSlot.className = "trap-slot empty"; trapSlot.innerHTML = "SET<br>TRAP"; trapSlot.onmouseenter = null; trapSlot.onmouseleave = null; } } renderHand(); }
+/* --- main.js UPDATE: updateInfo (v2.11.14 Refined) --- */
+function updateInfo() {
+    if (!enemy.data) return;
+    const setText = (id, text) => { const e = el(id); if(e) e.innerText = text; };
+    const setHTML = (id, html) => { const e = el(id); if(e) e.innerHTML = html; };
+
+    // Stage Info
+    let stgDisp = `STAGE ${stage}`;
+    if(stage===5) stgDisp = "EXTRA";
+    if(stage===6) stgDisp = "STAGE 5";
+    setText("stage-display", stgDisp);
+    setText("floor-display", stage===5?"FINAL":`${floor}F`);
+    const currentTotal = (totalGameTurns - stageStartTurn) + 1;
+    setHTML("turn-display", `TURN ${currentTurn} <span style="font-size:12px; color:#888;">(Total ${currentTotal})</span>`);
+
+    // Enemy Info
+    setText("enemy-name-side", enemy.name);
+    setText("enemy-hp-value", enemy.hp);
+    if(el("enemy-hp-value")) {
+        el("enemy-hp-value").className = "hp-mega-text";
+        if (enemy.hp <= 60) el("enemy-hp-value").classList.add("hp-danger");
+    }
+    let weakText = player.state.weakLock ? "★LOCK" : `WEAK: ${enemy.data.weak}+`;
+    if(weakHitCount > 0) weakText += " <span style='color:#f0f;'>CHANCE!</span>";
+    setHTML("weak-display", weakText);
+
+    // Enemy States
+    let eChips = "";
+    if(enemy.state.guard) eChips += `<span class="status-chip chip-guard">🛡️GUARD</span>`;
+    if(enemy.state.charge) eChips += `<span class="status-chip chip-charge">⚡CHARGE</span>`;
+    if(enemy.state.isStunned) eChips += `<span class="status-chip chip-stun">😵STUN</span>`;
+    if(enemy.state.barrierLimit > 0) eChips += `<span class="status-chip chip-barrier">💠BARRIER(${enemy.state.barrierLimit})</span>`;
+    setHTML("enemy-states-side", eChips);
+
+    // --- Player HP (Text inside bar) ---
+    // #player-hp span is removed, we inject directly into bar container logic
+    const hpBarContainer = el("player-hp-bar").parentNode; // .hp-bar-bg
+    if(hpBarContainer) {
+        // Remove old text overlay if exists
+        const oldOverlay = hpBarContainer.querySelector(".hp-text-overlay");
+        if(oldOverlay) oldOverlay.remove();
+        
+        // Add new text overlay
+        const overlay = document.createElement("div");
+        overlay.className = "hp-text-overlay";
+        overlay.innerText = `${player.hp} / ${player.maxHp}`;
+        hpBarContainer.appendChild(overlay);
+        
+        // Remove external text display to avoid duplicate
+        setText("player-hp", ""); 
+    }
+    
+    // Bar Width
+    if(el("player-hp-bar")) {
+        const pHpPct = (player.hp / player.maxHp) * 100;
+        el("player-hp-bar").style.width = Math.max(0, pHpPct) + "%";
+        if(pHpPct <= 20) el("player-hp-bar").className = "hp-bar-fill player-fill player-danger";
+        else el("player-hp-bar").className = "hp-bar-fill player-fill";
+    }
+
+    // --- Player MP (Dots Only & Glow) ---
+    setText("player-mp", ""); // Remove number display
+    let mpDots = "";
+    for(let i=0; i<player.maxMp; i++) {
+        mpDots += `<span class="mp-dot ${i < player.mp ? 'active' : ''}"></span>`;
+    }
+    setHTML("player-mp-dots", mpDots);
+    
+    // Max MP Glow Effect
+    const mpContainer = el("player-mp-dots");
+    if(mpContainer) {
+        if(player.mp >= player.maxMp) mpContainer.classList.add("mp-max-glow");
+        else mpContainer.classList.remove("mp-max-glow");
+    }
+
+    // Player States
+    let pChips = "";
+    if(player.state.atkBonus > 0 || player.state.power) pChips += `<span class="status-chip chip-buff">⚔️ATK UP</span>`;
+    if(player.state.guardTurn > 0) pChips += `<span class="status-chip chip-guard">🛡️SHIELD(${player.state.guardTurn})</span>`;
+    if(player.state.barrier) pChips += `<span class="status-chip chip-barrier">✨BARRIER</span>`;
+    if(player.state.itemLock) pChips += `<span class="status-chip chip-lock">🔒SEALED</span>`;
+    setHTML("player-states-side", pChips);
+
+    // Stats
+    let ppr = totalDarts > 0 ? (totalScore / totalDarts) * 3 : 0;
+    setText("avg-display", ppr.toFixed(1));
+    setText("rt-display", `(Rt ${calculateRating(ppr)})`);
+
+    // Items
+    const updateItemBtn = (btnId, count, icon) => {
+        const b = el(btnId); if (!b) return;
+        b.innerHTML = `${icon}x${count}`;
+        b.className = "item-btn";
+        if (player.state.itemLock || turnInputs.length > 0) b.classList.add("disabled");
+        else if (count > 0) b.classList.add("has-item");
+        else b.classList.add("disabled");
+    };
+    updateItemBtn("btn-potion", player.items.potion, "💊");
+    updateItemBtn("btn-ether", player.items.ether, "⚗️");
+    updateItemBtn("btn-seed", player.items.seed, "🌱");
+
+    // --- Trap Slot (Battle Card Style) ---
+    const trapSlotContainer = el("trap-slot").parentNode; // .trap-slot-container
+    if(trapSlotContainer) {
+        trapSlotContainer.innerHTML = ""; // Clear old
+        
+        if(player.setCard) {
+            const c = CARD_DB.find(cd => cd.id === player.setCard);
+            if(c) {
+                // Generate 'battle' style card
+                const cardEl = createCardElement(c, "battle", 0, 1);
+                cardEl.classList.add("trap-slot", "active-trap");
+                // Remove click event for trap slot
+                cardEl.onclick = null;
+                // Add hover
+                cardEl.onmouseenter = (e) => showTooltip(c.name + " (セット中)", c.desc, e);
+                cardEl.onmouseleave = () => hideTooltip();
+                
+                trapSlotContainer.appendChild(cardEl);
+            }
+        } else {
+            // Empty State
+            const emptyDiv = document.createElement("div");
+            emptyDiv.id = "trap-slot";
+            emptyDiv.className = "trap-slot empty";
+            emptyDiv.innerHTML = "SET<br>TRAP";
+            trapSlotContainer.appendChild(emptyDiv);
+        }
+    }
+
+    renderHand();
+}
 function openCardShop() { playSE("se-tap"); const list = el("pack-list"); list.innerHTML = ""; if(el("shop-dp-display")) el("shop-dp-display").innerText = (savedData.dp || 0); if (!savedData.cards) savedData.cards = {}; PACK_DATA.forEach(pack => { const isUnlocked = (savedData.bestRanks && savedData.bestRanks[pack.unlockStage]); if (!isUnlocked) return; const canBuy = (savedData.dp || 0) >= pack.price; const imgHTML = `<img src="${pack.img}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:50px; background:#333; color:#555;">📦</div>`; const div = document.createElement("div"); div.className = "pack-item"; div.innerHTML = `<div class="pack-img-container">${imgHTML}</div><div class="pack-name">${pack.name}</div><div class="pack-desc">${pack.desc}</div><button class="pack-buy-btn" ${canBuy ? "" : "disabled"} onclick="buyPack('${pack.id}')">${canBuy ? `BUY (${pack.price} DP)` : "LACK DP"}</button>`; list.appendChild(div); }); if (list.innerHTML === "") { list.innerHTML = "<div style='color:#666; width:100%; text-align:center; padding-top:20px;'>STAGE 1 CLEAR REQUIRED</div>"; } el("card-shop-modal").style.display = "flex"; }
 function buyPack(packId) { const pack = PACK_DATA.find(p => p.id === packId); if (!pack) return; if ((savedData.dp || 0) < pack.price) { playSE("se-warning"); alert("DPが足りません"); return; } savedData.dp -= pack.price; saveToDrive(); if(el("shop-dp-display")) el("shop-dp-display").innerText = savedData.dp; openCardShop(); startPackOpening(packId); }
 
