@@ -815,33 +815,52 @@ html, body {
 .deck-grid .std-card.rarity-N  { border-color: #555 !important; }
 
 
-/* 2. Discard Modal Layout (マージン制御の正常化) */
+/* =========================================
+   ★ v2.11.26 FIX: MODAL FLEX LAYOUT
+   ========================================= */
 
-/* コンテナ側のgapを無効化 */
+/* Discard Modal Layout (Grid解除 & 完全Flex化) */
+
+/* コンテナ設定 */
 #card-selector-modal .deck-grid {
-    gap: 0 !important; /* マージンと競合しないよう0にする */
-    justify-content: flex-start !important; /* 左詰めを強制 */
+    /* ★重要: Gridレイアウトを強制的に解除し、Flexにする */
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important; /* 折り返し禁止 */
+    
+    /* Grid由来の列定義を消去 */
+    grid-template-columns: none !important;
+    grid-auto-rows: auto !important;
+    gap: 0 !important; /* Gapは使わない */
+    
+    /* スクロールと配置 */
+    overflow-x: auto !important;
+    justify-content: flex-start !important;
+    align-items: center !important; /* 垂直方向中央 */
+    padding: 20px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
-/* カード側の設定 */
+/* カード設定 */
 #card-selector-modal .std-card {
+    /* サイズ固定 */
     width: 120px !important;
     height: 180px !important;
     
-    /* ★重要: 縮小を禁止 (マージンを物理的に確保させる) */
-    flex-shrink: 0 !important; 
-    flex-grow: 0 !important;
+    /* ★重要: Flexアイテムとして「縮まない・伸びない」設定 */
+    flex: 0 0 auto !important; 
     
     transform: none !important;
     
-    /* ★マージン設定: ここで距離をコントロール */
-    margin-right: 30px !important; 
-    margin-bottom: 10px !important;
+    /* ★マージン設定: Flexboxになったので、これが確実に効きます */
+    margin-right: 30px !important; /* 自由に変更可能 */
+    margin-bottom: 0 !important;
     
     overflow: hidden !important;
 }
 
-/* テキスト調整 */
+/* テキスト調整 (変更なし) */
 #card-selector-modal .std-name {
     font-size: 10px !important;
     white-space: nowrap !important;
