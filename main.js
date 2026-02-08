@@ -1,4 +1,4 @@
-console.log("★ main.js loaded (v2.14.0 Data-Driven & Complete UI)");
+console.log("★ main.js loaded (v2.14.2 Rank Badge Fixed)");
 
 // =========================================
 // 1. UTILITY & AUDIO
@@ -22,7 +22,7 @@ function shuffleArray(array) {
     return array;
 }
 
-function animateValue(obj, start, end, duration) { if (obj) obj.innerHTML = end; }
+function animateValue(obj, start, end, duration) { if (obj) obj.innerText = end; }
 
 // --- AUDIO SYSTEM ---
 let gameConfig = { bgmVolume: 0.3, sysVolume: 0.5, atkVolume: 0.8 };
@@ -103,7 +103,7 @@ function resizeGame() {
 
 function announce(text, type="normal") {
     const a = el("battle-announcer") || document.createElement("div"); a.id="battle-announcer";
-    if(!a.parentNode) el("enemy-panel").appendChild(a);
+    if(!a.parentNode) el("enemy-panel")?.appendChild(a);
     a.innerHTML = text; a.className = "announcer-visible";
     if (type.includes("danger") || type.includes("enemy")) a.classList.add("ann-danger");
     if (type.includes("skill") || type.includes("weak")) a.classList.add("ann-warn");
@@ -124,18 +124,9 @@ let player = {
     deck: [], hand: [], discard: [], deckLocked: false, setCard: null
 };
 
-// New Standardized Enemy State
 let enemy = {
     hp: 100, maxHp: 100, data: null, name: "",
-    state: {
-        stun: false,
-        guard: 0,       // 0.0 ~ 1.0 (Reduction Rate)
-        guardTurn: 0,
-        barrier: 0,     // Threshold
-        buffAtk: 0,     // Attack Buff (e.g. 0.1 for 10%)
-        chargeSkill: null, // Queued Skill ID
-        flags: {}       // toon, restrict, seal_item, etc.
-    }
+    state: { stun: false, guard: 0, guardTurn: 0, barrier: 0, buffAtk: 0, chargeSkill: null, flags: {} }
 };
 
 let stage = 1, floor = 1;
@@ -144,7 +135,7 @@ let isProcessing = false, dropGuaranteed = false, weakHitCount = 0;
 let turnInputs = [], currentInput = "";
 let isJustFinish = false, waitingForChest = false;
 let clearedStagesLog = [];
-let restrictInput = false; // Used for binding (replaces raw variable with flag check)
+let restrictInput = false;
 
 let allSaveData = { "slot1": null, "slot2": null, "slot3": null, "lastPlayed": 1 };
 let currentSlot = "slot1";
@@ -170,7 +161,7 @@ function initSlotScreen() {
         const elInfo = el("info-"+i);
         if(!d) elInfo.innerHTML = "<div class='slot-empty'>NO DATA<br>- Start New Game -</div>";
         else {
-            let stgName = d.highScore.stage===5?"EXTRA":(d.highScore.stage===6?"STAGE 5":`STAGE ${d.highScore.stage}`);
+            let stgName = d.highScore.stage===5?"EXTRA":(d.highScore.stage===6?"STAGE 6":`STAGE ${d.highScore.stage}`);
             let badge = d.clearedExtra ? "<br><span style='color:#f0f;font-weight:bold;'>★ EXTRA CLEARED</span>" : "";
             elInfo.innerHTML = `<div>${stgName} - ${d.highScore.floor}F</div><div style='color:#fd0'>Avg: ${d.highScore.avg.toFixed(1)} (Rt ${calculateRating(d.highScore.avg)})</div><div style='color:#aaa;font-size:12px;'>DP: ${d.dp||0}${badge}</div>`;
         }
@@ -187,7 +178,7 @@ function selectSlot(n) {
 }
 function backToSlots() { stopAllBGM(); el("title-screen").style.display = "none"; el("slot-screen").style.display = "flex"; initSlotScreen(); }
 function updateTitleScore() {
-    let s = savedData.highScore.stage === 5 ? "EXTRA" : (savedData.highScore.stage === 6 ? "STAGE 5" : `STAGE ${savedData.highScore.stage}`);
+    let s = savedData.highScore.stage === 5 ? "EXTRA" : (savedData.highScore.stage === 6 ? "STAGE 6" : `STAGE ${savedData.highScore.stage}`);
     el("hs-reach").innerText = `${s} - ${savedData.highScore.floor}F`;
     el("hs-avg").innerText = savedData.highScore.avg.toFixed(1);
     el("hs-rt").innerText = "Rt " + calculateRating(savedData.highScore.avg);
@@ -211,8 +202,14 @@ function initGameSession(stg, cont=false) {
 
 function startTransition(sel, cont) {
     let titles = {1:["旅立ちの森","Forest"],2:["荒れ狂う荒野","Wasteland"],3:["誘惑の迷宮","Labyrinth"],4:["幻想の狂宴","Nightmare"],5:["燃えたぎる火口","Volcano"],6:["神の試練","God's Trial"]};
-    let t = titles[sel];
-    el("chapter-title").innerText = `STAGE ${sel} ${t[0]}`; el("chapter-sub").innerText = t[1];
+    let t = titles[sel] || ["Unknown", "Unknown"];
+    
+    // UIテキスト更新
+    const titleEl = el("chapter-title");
+    const subEl = el("chapter-sub");
+    if (titleEl) titleEl.innerText = `STAGE ${sel} ${t[0]}`;
+    if (subEl) subEl.innerText = t[1];
+    
     const ch = el("chapter-screen");
     if(sel>=4) { playSE("se-warning"); ch.classList.add("chapter-extra"); } else { playSE("se-tap"); ch.classList.remove("chapter-extra"); }
     
@@ -267,7 +264,8 @@ function spawnEnemy() {
     enemy.hp = enemy.maxHp;
     
     triggerTrap('summon');
-    updateInfo(); addLog(`=== STAGE ${stage} - ${floor}F START ===`, "system");
+    updateInfo(); // Ensure this is called AFTER DOM is ready and vars are set
+    addLog(`BATTLE START: ${enemy.name}`, "system");
     
     // Stage 3-1 Initial Skill
     if (stage === 3 && floor === 1) {
@@ -366,7 +364,7 @@ function checkAiCondition(p) {
     if (p.cond === "hp_under") {
         if (enemy.hp / enemy.maxHp <= p.val) return (!p.prob || Math.random() < p.prob);
     }
-    if (p.cond === "charge_release") return false; // Handled by state check
+    if (p.cond === "charge_release") return false; 
     return false;
 }
 
@@ -561,12 +559,17 @@ function returnToTitle() { playBGM("bgm-title"); el("game-container").classList.
 // --- UI Updates ---
 function updateInfo() {
     if (!enemy.data) return;
-    el("stage-display").innerText = stage===5?"EXTRA":(stage===6?"STAGE 5":`STAGE ${stage}`);
-    el("floor-display").innerText = stage===5?"FINAL":`${floor}F`;
-    el("turn-display").innerText = `TURN ${currentTurn}`;
-    el("enemy-name-side").innerText = enemy.name;
-    el("enemy-hp-value").innerText = enemy.hp;
-    el("weak-display").innerHTML = player.state.weakLock ? "★LOCK" : `WEAK: ${enemy.data.weak}+${weakHitCount>0?" <span style='color:#f0f;'>CHANCE!</span>":""}`;
+    
+    // Safety check function
+    const setText = (id, txt) => { const e = el(id); if (e) e.innerText = txt; };
+    const setHTML = (id, htm) => { const e = el(id); if (e) e.innerHTML = htm; };
+
+    setText("stage-display", stage===5?"EXTRA":(stage===6?"STAGE 6":`STAGE ${stage}`));
+    setText("floor-display", stage===5?"FINAL":`${floor}F`);
+    setText("turn-display", `TURN ${currentTurn}`);
+    setText("enemy-name-side", enemy.name);
+    setText("enemy-hp-value", enemy.hp);
+    setHTML("weak-display", player.state.weakLock ? "★LOCK" : `WEAK: ${enemy.data.weak}+${weakHitCount>0?" <span style='color:#f0f;'>CHANCE!</span>":""}`);
     
     let chips = "";
     if (enemy.state.guard > 0) chips += `<span class="status-chip chip-guard">🛡️GUARD</span>`;
@@ -576,38 +579,53 @@ function updateInfo() {
     if (enemy.state.buffAtk > 0) chips += `<span class="status-chip chip-buff">⚔️ATK+${Math.round(enemy.state.buffAtk*100)}%</span>`;
     if (enemy.state.flags.toon) chips += `<span class="status-chip chip-guard">🛡️TOON</span>`;
     if (enemy.state.flags.restrict) chips += `<span class="status-chip chip-lock">🔒BIND</span>`;
-    el("enemy-states-side").innerHTML = chips;
+    setHTML("enemy-states-side", chips);
     
     const pct = (player.hp/player.maxHp)*100;
-    el("player-hp-bar").style.width = pct+"%";
-    el("player-hp-bar").className = `hp-bar-fill player-fill ${pct<=20?"hp-danger":pct<=50?"hp-warning":""}`;
-    el("player-hp-bar").parentNode.querySelector(".hp-text-overlay").innerText = `${player.hp}/${player.maxHp}`;
+    const hpBar = el("player-hp-bar");
+    if(hpBar) {
+        hpBar.style.width = pct+"%";
+        hpBar.className = `hp-bar-fill player-fill ${pct<=20?"hp-danger":pct<=50?"hp-warning":""}`;
+        const overlay = hpBar.parentNode?.querySelector(".hp-text-overlay");
+        if(overlay) overlay.innerText = `${player.hp}/${player.maxHp}`;
+    }
     
     let dots=""; for(let i=0;i<player.maxMp;i++) dots+=`<span class="mp-dot ${i<player.mp?'active':''}"></span>`;
-    el("player-mp-dots").innerHTML = dots;
-    if(player.mp>=player.maxMp) el("player-mp-dots").classList.add("mp-max-glow"); else el("player-mp-dots").classList.remove("mp-max-glow");
+    setHTML("player-mp-dots", dots);
+    if(el("player-mp-dots")) {
+        if(player.mp>=player.maxMp) el("player-mp-dots").classList.add("mp-max-glow"); else el("player-mp-dots").classList.remove("mp-max-glow");
+    }
     
     let pchips = "";
     if (player.state.atkBonus > 0 || player.state.power) pchips += `<span class="status-chip chip-buff">⚔️ATK UP</span>`;
     if (player.state.guardTurn > 0) pchips += `<span class="status-chip chip-guard">🛡️SHIELD(${player.state.guardTurn})</span>`;
     if (player.state.barrier) pchips += `<span class="status-chip chip-barrier">✨BARRIER</span>`;
     if (player.state.itemLock) pchips += `<span class="status-chip chip-lock">🔒SEAL</span>`;
-    el("player-states-side").innerHTML = pchips;
+    setHTML("player-states-side", pchips);
     
     let ppr = totalDarts > 0 ? (totalScore / totalDarts) * 3 : 0;
-    el("avg-display").innerText = ppr.toFixed(1);
-    el("rt-display").innerText = `(Rt ${calculateRating(ppr)})`;
+    setText("avg-display", ppr.toFixed(1));
+    setText("rt-display", `(Rt ${calculateRating(ppr)})`);
     
-    const setBtn = (id, n, i) => { const b=el(id); b.innerHTML=`${i}x${n}`; b.className=`item-btn ${n>0&&!player.state.itemLock?"has-item":"disabled"}`; };
+    const setBtn = (id, n, i) => { 
+        const b = el(id); 
+        if (b) {
+            b.innerHTML = `${i}x${n}`; 
+            b.className = `item-btn ${n>0 && !player.state.itemLock ? "has-item" : "disabled"}`;
+        }
+    };
     setBtn("btn-potion", player.items.potion, "💊");
     setBtn("btn-ether", player.items.ether, "⚗️");
     setBtn("btn-seed", player.items.seed, "🌱");
     
-    const tc = el("trap-slot-container"); tc.innerHTML="";
-    if(player.setCard) {
-        const c = CARD_DB.find(x=>x.id===player.setCard);
-        if(c) { const ce = createCardElement(c, "battle", 0, 1); ce.onclick=null; tc.appendChild(ce); }
-    } else tc.innerHTML = `<div id="trap-slot" class="trap-slot empty">SET<br>TRAP</div>`;
+    const tc = el("trap-slot-container");
+    if (tc) {
+        tc.innerHTML="";
+        if(player.setCard) {
+            const c = CARD_DB.find(x=>x.id===player.setCard);
+            if(c) { const ce = createCardElement(c, "battle", 0, 1); ce.onclick=null; tc.appendChild(ce); }
+        } else tc.innerHTML = `<div id="trap-slot" class="trap-slot empty">SET<br>TRAP</div>`;
+    }
     
     renderHand();
 }
@@ -622,9 +640,10 @@ function useItem(t) {
 
 // --- Card Logic ---
 function renderHand() {
-    const h = el("hand-area"); h.innerHTML = "";
-    el("hand-count-display").innerText = player.hand.length;
-    el("battle-deck-count").innerText = player.deck.length;
+    const h = el("hand-area"); if(!h) return;
+    h.innerHTML = "";
+    if (el("hand-count-display")) el("hand-count-display").innerText = player.hand.length;
+    if (el("battle-deck-count")) el("battle-deck-count").innerText = player.deck.length;
     if (player.deckLocked) { h.innerHTML = `<div class="hand-locked-msg">⚠️ NO DECK</div>`; return; }
     
     player.hand.forEach((cid, i) => {
@@ -757,10 +776,13 @@ window.addEventListener("keyup", (e) => { if(e.key==="Enter") inputLockUntilRele
 function updateScoreDisplay() {
     [1,2,3].forEach(i => {
         const s = el(`slot-${i}-side`);
+        if(!s) return;
         if (i-1 < turnInputs.length) { s.innerText = turnInputs[i-1]; s.className = `score-val filled ${turnInputs[i-1]>=50?"high":""}`; }
         else if (i-1 === turnInputs.length) { s.innerText = currentInput; s.className = "score-val active"; }
         else { s.innerText = "--"; s.className = "score-val low"; }
-        el(`d-dot-${i}`).className = `d-dot ${i-1<turnInputs.length?"filled":i-1===turnInputs.length?"active":""}`;
+        
+        const d = el(`d-dot-${i}`);
+        if(d) d.className = `d-dot ${i-1<turnInputs.length?"filled":i-1===turnInputs.length?"active":""}`;
     });
 }
 
@@ -792,7 +814,7 @@ function finishSession(resType, ppr) {
     if(cur > best) { savedData.highScore.stage=stage; savedData.highScore.floor=floor; }
     if(ppr > savedData.highScore.avg) savedData.highScore.avg = parseFloat(ppr);
     
-    const historyItem = { date: new Date().toLocaleString(), stgName: stage===6?"STAGE 5":`S${stage}-${floor}F`, result: resType, dp: savedData.dp, ppr: parseFloat(ppr) };
+    const historyItem = { date: new Date().toLocaleString(), stgName: stage===6?"STAGE 6":`S${stage}-${floor}F`, result: resType, dp: savedData.dp, ppr: parseFloat(ppr) };
     if(!savedData.history) savedData.history=[];
     savedData.history.unshift(historyItem); if(savedData.history.length>50) savedData.history.pop();
     saveToDrive();
@@ -862,7 +884,10 @@ window.proceedUnboxing = function() {
         openingPhase=2; el("opening-prompt").style.display="none";
         const pv = el("pack-visual"); pv.classList.remove("anim-breath"); pv.classList.add("anim-charge"); playSE("se-double");
         setTimeout(()=>{
-            playSE("se-heal"); el("white-out").style.display="block"; el("white-out").classList.add("white-out-anim"); pv.style.display="none";
+            playSE("se-heal");
+            const wo = el("white-out");
+            wo.style.display="block"; wo.classList.add("white-out-anim");
+            pv.style.display="none";
             setTimeout(()=>{ openingPhase=3; el("reveal-area").style.display="flex"; currentRevealIndex=0; showNextRevealCard(); }, 800);
         }, 1500);
     } else if (openingPhase===3) {
@@ -878,7 +903,8 @@ function showNextRevealCard() {
     if(c.rarity==="UR"){ playSE("se-boom"); } else if(c.rarity==="SR"){ playSE("se-buff"); }
     const div = document.createElement("div"); div.id=`reveal-card-${currentRevealIndex}`;
     div.className=`std-card rarity-${c.rarity} reveal-card-zoom card-appear ${c.rarity==="UR"?"card-show-ur":""}`;
-    div.innerHTML = `<div class="std-art"><img src="assets/cards/${c.id}.png"><div class="card-sheen"></div></div><div class="std-text-area"><div class="std-name text-${c.rarity.toLowerCase()}">${c.name}</div></div>`;
+    // Added std-type and std-desc so the text appears during reveal
+    div.innerHTML = `<div class="std-art"><img src="assets/cards/${c.id}.png"><div class="card-sheen"></div></div><div class="std-text-area ${c.type==="TRAP"?"bg-trap":"bg-magic"}"><div class="std-name text-${c.rarity.toLowerCase()}">${c.name}</div><div class="std-type">[${c.type}]</div><div class="std-desc" style="font-size:10px;">${c.desc}</div></div>`;
     area.innerHTML=""; area.appendChild(div);
 }
 
@@ -1016,8 +1042,20 @@ function renderStageSelect() {
         if(s.id===5) locked = !savedData.clearedExtra;
         if(s.id===6) locked = !(savedData.bestRanks && savedData.bestRanks[4]);
         
+        // ★ Rank Badge Logic Restored
+        const rank = savedData.bestRanks ? savedData.bestRanks[s.id] : null;
+        let rankColor = "#fff";
+        if (rank === "SSS") rankColor = "#00ffff";
+        else if (rank === "S") rankColor = "#ffd700";
+        else if (rank === "A") rankColor = "#ff5555";
+
         const div = document.createElement("div"); div.className=`stage-card-item ${locked?"locked":""}`;
-        div.innerHTML = `<img src="${s.img}" class="st-img"><div class="st-info"><div class="st-title">${locked?"LOCKED":s.n}</div></div>`;
+        div.innerHTML = `
+            <img src="${s.img}" class="st-img">
+            <div class="st-info"><div class="st-title">${locked?"LOCKED":s.n}</div></div>
+            ${rank ? `<div class="st-rank" style="color:${rankColor}">${rank}</div>` : ""}
+            ${locked ? `<div class="st-rank" style="font-size:20px;">🔒</div>` : ""}
+        `;
         if(!locked) div.onclick = () => { el("stage-select-screen").style.display="none"; initGameSession(s.id); };
         c.appendChild(div);
     });
