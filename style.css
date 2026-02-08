@@ -828,7 +828,7 @@ html, body {
     transform: none !important;
     
     /* マージン確保 */
-    margin-right: 25px !important;
+    margin-right: 100px !important;
     margin-bottom: 10px !important;
     
     /* テキストはみ出し防止 */
