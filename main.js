@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v2.11.10 Integrity)");
+console.log("★ main.js is loaded! (v2.12)");
 const el = (id) => document.getElementById(id);
 function calculateRating(ppr) { if (ppr < 30) return 1; if (ppr < 40) return 2; if (ppr < 45) return 3; if (ppr < 50) return 4; if (ppr < 55) return 5; if (ppr < 60) return 6; if (ppr < 65) return 7; if (ppr < 70) return 8; if (ppr < 75) return 9; if (ppr < 80) return 10; if (ppr < 85) return 11; if (ppr < 90) return 12; if (ppr < 95) return 13; if (ppr < 100) return 14; if (ppr < 110) return 15; if (ppr < 120) return 16; if (ppr < 130) return 17; return 18; }
 function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[array[i], array[j]] = [array[j], array[i]]; } return array; }
