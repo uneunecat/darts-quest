@@ -702,10 +702,8 @@ function renderDeckEditor() {
     countEl.innerText = deckCount;
     if (deckCount < DECK_SIZE) {
         countEl.style.color = "#ff5555";
-        countEl.innerText += ` (あと${DECK_SIZE - deckCount}枚)`;
     } else {
         countEl.style.color = "#00ff00";
-        countEl.innerText += " (OK!)";
     }
     
     // --- Collection List (Lower Grid) ---
