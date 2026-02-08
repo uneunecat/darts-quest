@@ -287,7 +287,7 @@ function enemyTurn() {
     if (enemy.state.isStunned) {
         addLog(`${enemy.name} is Stunned!`, "log-enemy");
         enemy.state.isStunned = false;
-        setTimeout(startPlayerTurn, 1000);
+        setTimeout(endEnemyTurn, 1000);
         return;
     }
 
@@ -450,7 +450,7 @@ function enemyTurn() {
     if (damage > 0) {
         dealDamage(damage);
     } else {
-        setTimeout(startPlayerTurn, 1000);
+        setTimeout(endEnemyTurn, 1000);
     }
     
     updateInfo();
@@ -477,7 +477,7 @@ function dealDamage(val) {
     if (player.hp <= 0) {
         setTimeout(loseBattle, 1000);
     } else {
-        setTimeout(startPlayerTurn, 1000);
+        setTimeout(endEnemyTurn, 1000);
     }
     updateInfo();
 }
