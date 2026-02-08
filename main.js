@@ -457,18 +457,21 @@ function enemyTurn() {
 }
 
 // 補助関数: ダメージ処理 (既存処理の切り出し)
+/* --- main.js UPDATE: dealDamage (v2.11.33 Bug Fix) --- */
 function dealDamage(val) {
-    // プレイヤー側の防御スキル計算 (簡易)
+    // プレイヤー側の防御スキル計算
     let finalDmg = val;
     if (player.state.guardTurn > 0) { finalDmg = Math.floor(finalDmg / 2); addLog("SHIELD防御！", "system"); }
     if (player.state.barrier) { finalDmg = 0; player.state.barrier = false; addLog("BARRIERで無効化！", "system"); }
     
     player.hp = Math.max(0, player.hp - finalDmg);
-    animateValue(el("player-hp-bar"), null, player.hp, 300); // HPバーアニメーション用(要調整)
+    animateValue(el("player-hp-bar"), null, player.hp, 300);
     
-    // 画面揺れ
-    el("app").classList.add("shake");
-    setTimeout(() => el("app").classList.remove("shake"), 300);
+    // ★ FIX: id="app" が存在しないため document.body を使用
+    // これにより "Cannot read properties of null" エラーが解消されます
+    document.body.classList.add("shake");
+    setTimeout(() => document.body.classList.remove("shake"), 300);
+    
     playSE("se-hit");
     
     if (player.hp <= 0) {
