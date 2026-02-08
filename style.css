@@ -772,51 +772,79 @@ html, body {
     scrollbar-color: #00d2fc #333;
 }
 
+/* ↓↓↓ 前回の v2.11.23 のブロックを削除し、以下に置き換えてください ↓↓↓ */
+
 /* =========================================
-   ★ v2.11.23 STRUCTURAL FIX & CLEANUP
+   ★ v2.11.24 FINAL LAYOUT FIXES
    ========================================= */
 
-/* 1. Empty Slot as a Card (構造統一によるガタつき根絶) */
+/* 1. Deck Grid Stability (ガタつき完全根絶) */
+/* すべてのカード（空枠含む）の物理的な境界線を統一 */
+.deck-grid .std-card {
+    border: 2px solid transparent !important; /* まず透明な実線で統一 */
+    box-sizing: border-box !important;
+    height: auto !important;
+    aspect-ratio: 2/3 !important;
+    transition: none !important; /* レイアウト変更時のチラつき防止 */
+}
+
+/* 空枠の見た目 (BorderではなくOutlineで内側に描画) */
+/* これにより、物理サイズは通常カードと1pxもズレなくなります */
 .std-card.empty-slot {
-    border: 2px dashed #444 !important;
+    outline: 2px dashed #444;
+    outline-offset: -2px; /* 枠の内側に描画 */
     background: rgba(255, 255, 255, 0.02);
     cursor: default;
     box-shadow: none !important;
 }
+
+/* Emptyテキストのはみ出し修正 */
 .std-card.empty-slot .std-art {
-    background: transparent; /* 画像なし */
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+    font-size: 10px !important; /* 文字サイズ縮小 */
+    color: #666;
     display: flex; align-items: center; justify-content: center;
-    color: #333; font-weight: bold; font-size: 20px;
+    background: transparent;
+    border-bottom: 1px solid rgba(255,255,255,0.1); /* カードの仕切り線と合わせる */
 }
 .std-card.empty-slot .std-text-area {
-    background: transparent; /* テキストエリア透明 */
+    background: transparent;
 }
 
-/* 2. Discard Modal (高さ固定・レイアウト保護) */
+/* 通常カードの枠色 (透明枠に色をつけるだけ) */
+.deck-grid .std-card.rarity-UR { border-color: transparent !important; } /* グラデ優先 */
+.deck-grid .std-card.rarity-SR { border-color: #ffd700 !important; }
+.deck-grid .std-card.rarity-R  { border-color: #c0c0c0 !important; }
+.deck-grid .std-card.rarity-N  { border-color: #555 !important; }
+
+
+/* 2. Discard Modal (重なり解消 & サイズ固定) */
 #card-selector-modal .std-card {
-    /* ★サイズを完全固定 (Width 110px -> Height 165px) */
-    width: 110px !important;
-    height: 165px !important; /* aspect-ratio任せにせず固定 */
-    flex-shrink: 0 !important;
-    margin-right: 15px !important;
-    transform: none !important; /* Scale廃止 */
+    /* サイズ固定 */
+    width: 120px !important;
+    height: 180px !important; /* 2:3比率で固定 */
     
-    /* テキスト溢れ対策 */
+    /* レイアウト崩れ防止 */
+    flex-shrink: 0 !important; /* 絶対に縮ませない */
+    transform: none !important;
+    
+    /* マージン確保 */
+    margin-right: 25px !important;
+    margin-bottom: 10px !important;
+    
+    /* テキストはみ出し防止 */
     overflow: hidden !important;
 }
 
-/* モーダル内のテキスト調整 */
+/* モーダル内の文字調整 */
 #card-selector-modal .std-name {
     font-size: 10px !important;
-    white-space: nowrap !important; /* 1行制限 */
+    white-space: nowrap !important;
     text-overflow: ellipsis !important;
 }
 #card-selector-modal .std-desc {
     font-size: 9px !important;
-    /* 長文は末尾を省略 */
     display: -webkit-box;
-    -webkit-line-clamp: 4; /* 4行まで表示 */
+    -webkit-line-clamp: 4;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }

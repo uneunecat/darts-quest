@@ -661,28 +661,33 @@ function closeCardShop() { playSE("se-tap"); el("card-shop-modal").style.display
 function openCollection() { playSE("se-tap"); renderDeckEditor(); el("collection-modal").style.display = "flex"; }
 function closeCollection() { playSE("se-tap"); el("collection-modal").style.display = "none";}
 /* --- main.js UPDATE: renderDeckEditor (v2.11.23 Structural Fix) --- */
+/* --- main.js UPDATE: renderDeckEditor (v2.11.24 Optimized) --- */
 function renderDeckEditor() {
+    // データ初期化
     if (!savedData.deck) savedData.deck = [];
     savedData.deck.sort((a, b) => a - b);
-    
+    if (!savedData.cards) savedData.cards = {};
+
     const deckGrid = el("deck-grid");
     deckGrid.innerHTML = "";
     
-    // Render Deck
+    // --- Deck Rendering (Upper Grid) ---
     for (let i = 0; i < DECK_SIZE; i++) {
         const cardId = savedData.deck[i];
         
         if (cardId) {
-            // 通常カード
+            // [通常カード]
             const card = CARD_DB.find(c => c.id === cardId);
             const totalOwned = savedData.cards[card.id] || 0;
+            // mode='small' で生成 (固有クラス deck-list-item は削除しCSSで統一管理)
             const div = createCardElement(card, "small", 0, totalOwned);
             div.onmouseenter = () => showCardDetail(card);
             deckGrid.appendChild(div);
         } else {
-            // ★ FIX: 空枠も「std-card構造」で生成し、物理サイズを一致させる
+            // [空枠 (EMPTY)] 
+            // 構造をカードと全く同じにするため、divを手動構築
             const div = document.createElement("div");
-            div.className = "std-card small empty-slot"; // mode='small' と同じクラス構成
+            div.className = "std-card small empty-slot"; // CSSで .std-card のスタイルを継承
             div.innerHTML = `
                 <div class="std-art">EMPTY</div>
                 <div class="std-text-area"></div>
@@ -691,22 +696,21 @@ function renderDeckEditor() {
         }
     }
     
-    // Count Display
+    // --- Deck Count Indicator ---
     const deckCount = savedData.deck.length;
     const countEl = el("deck-count");
     countEl.innerText = deckCount;
     if (deckCount < DECK_SIZE) {
         countEl.style.color = "#ff5555";
-        countEl.innerText += " (あと" + (DECK_SIZE - deckCount) + "枚)";
+        countEl.innerText += ` (あと${DECK_SIZE - deckCount}枚)`;
     } else {
         countEl.style.color = "#00ff00";
         countEl.innerText += " (OK!)";
     }
     
-    // Render List
+    // --- Collection List (Lower Grid) ---
     const listGrid = el("card-grid");
     listGrid.innerHTML = "";
-    if (!savedData.cards) savedData.cards = {};
     
     let ownedCount = 0;
     CARD_DB.forEach(card => {
@@ -715,6 +719,7 @@ function renderDeckEditor() {
         const inDeckCount = savedData.deck.filter(id => id === card.id).length;
         const remaining = count - inDeckCount;
         
+        // mode='standard'
         const div = createCardElement(card, "standard", remaining, count);
         listGrid.appendChild(div);
     });
