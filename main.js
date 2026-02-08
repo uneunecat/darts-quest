@@ -20,7 +20,62 @@ function resizeGame() { const scaler = el('game-scaler'); if (!scaler) return; i
 function announce(text, type = "normal") { const ann = el("battle-announcer") || document.createElement("div"); ann.id = "battle-announcer"; if(!ann.parentNode) el("enemy-panel").appendChild(ann); ann.innerHTML = text; ann.className = "announcer-visible"; if (type === "danger" || type === "log-enemy") ann.classList.add("ann-danger"); if (type === "log-skill" || type === "log-weak") ann.classList.add("ann-warn"); setTimeout(() => { ann.className = ""; }, 2000); }
 function addLog(text, type = "") { console.log(`[${type}] ${text}`); if ((type === "log-enemy" || type === "log-skill" || type === "log-weak" || type === "log-heal" || text.includes("WEAK") || text.includes("無効") || text.includes("回復")) && !text.includes("倒した") && !text.includes("宝箱")) { announce(text, type); } }
 
-const GAME_DATA = { enemies: { 1: [{ name: "プチモス", img: "assets/1-1.png", weak: 20 }, { name: "ラーバモス", img: "assets/1-2.png", weak: 19 }, { name: "進化の繭", img: "assets/1-3.png", weak: 18, hp: 260 }, { name: "グレート・モス", img: "assets/1-4.png", weak: 17, hp: 290 }, { name: "究極完全態・グレート・モス", img: "assets/1-5.png", weak: 20, hp: 420 }], 2: [{ name: "トラコドン", img: "assets/2-1.png", weak: 19 }, { name: "ワイルド・ラプター", img: "assets/2-2.png", weak: 18, hp: 280 }, { name: "屍を貪る竜", img: "assets/2-3.png", weak: 17, hp: 310 }, { name: "二頭を持つキング・レックス", img: "assets/2-4.png", weak: 20, hp: 340 }, { name: "剣竜", img: "assets/2-5.png", weak: 19, hp: 540 }], 3: [{ name: "デュナミス・ヴァルキリア", img: "assets/3-1.png", weak: 20, hp: 300 }, { name: "ハーピィ・レディ", img: "assets/3-2.png", weak: 19, hp: 330 }, { name: "ハーピィ・レディ・SB", img: "assets/3-3.png", weak: 18, hp: 360 }, { name: "ハーピィ・レディ三姉妹", img: "assets/3-4.png", weak: 17, hp: 390 }, { name: "ハーピィズペット竜", img: "assets/3-5.png", weak: 20, hp: 550 }], 4: [{ name: "ダーク・ラビット", img: "assets/4-1.png", weak: 20, hp: 380 }, { name: "デビル・ボックス", img: "assets/4-2.png", weak: 19, hp: 420 }, { name: "トゥーン・デーモン", img: "assets/4-3.png", weak: 18, hp: 460 }, { name: "ブルーアイズ・トゥーン・ドラゴン", img: "assets/4-4.png", weak: 17, hp: 500 }, { name: "サクリファイス", img: "assets/4-5.png", weak: 20, hp: 550 }, { name: "サウザンド・アイズ・サクリファイス", img: "assets/4-6.png", weak: 20, hp: 800 }], 5: [{ name: "真紅眼の黒竜", img: "assets/extra.png", weak: 20, hp: 1500 }], 6: [{ name: "ワームドレイク", img: "assets/5-1.png", weak: 19, hp: 400 }, { name: "ヒューマノイド・スライム", img: "assets/5-2.png", weak: 18, hp: 450 }, { name: "リバイバルスライム", img: "assets/5-3.png", weak: 20, hp: 300 }, { name: "ヒューマノイド・ドレイク", img: "assets/5-4.png", weak: 17, hp: 600 }, { name: "オシリスの天空竜", img: "assets/5-5.png", weak: 20, hp: 2000 }] }, bg: { 1: "assets/bg_stage1.png", 2: "assets/bg_stage2.png", 3: "assets/bg_stage3.png", 4_1: "assets/bg_stage4_1.png", 4_2: "assets/bg_stage4_2.png", 5: "assets/bg_extra.png", 6: "assets/bg_stage5_1.png" } };
+/* --- main.js UPDATE: GAME_DATA (v2.11.30 Data Complete) --- */
+const GAME_DATA = {
+    enemies: {
+        1: [
+            { name: "プチモス", img: "assets/1-1.png", weak: 20 },
+            { name: "ラーバモス", img: "assets/1-2.png", weak: 19 },
+            { name: "進化の繭", img: "assets/1-3.png", weak: 18, hp: 260 },
+            { name: "グレート・モス", img: "assets/1-4.png", weak: 17, hp: 290 },
+            { name: "究極完全態・グレート・モス", img: "assets/1-5.png", weak: 20, hp: 420 }
+        ],
+        2: [
+            { name: "トラコドン", img: "assets/2-1.png", weak: 19 },
+            { name: "ワイルド・ラプター", img: "assets/2-2.png", weak: 18, hp: 280 },
+            { name: "屍を貪る竜", img: "assets/2-3.png", weak: 17, hp: 310 },
+            { name: "二頭を持つキング・レックス", img: "assets/2-4.png", weak: 20, hp: 340 },
+            { name: "剣竜", img: "assets/2-5.png", weak: 19, hp: 540 }
+        ],
+        3: [
+            { name: "デュナミス・ヴァルキリア", img: "assets/3-1.png", weak: 20, hp: 300 },
+            { name: "ハーピィ・レディ", img: "assets/3-2.png", weak: 19, hp: 330 },
+            { name: "ハーピィ・レディ・SB", img: "assets/3-3.png", weak: 18, hp: 360 },
+            { name: "ハーピィ・レディ三姉妹", img: "assets/3-4.png", weak: 17, hp: 390 },
+            { name: "ハーピィズペット竜", img: "assets/3-5.png", weak: 20, hp: 550 }
+        ],
+        4: [
+            { name: "ダーク・ラビット", img: "assets/4-1.png", weak: 20, hp: 380 },
+            { name: "デビル・ボックス", img: "assets/4-2.png", weak: 19, hp: 420 },
+            { name: "トゥーン・デーモン", img: "assets/4-3.png", weak: 18, hp: 460 },
+            // ★パッシブバリア(20)
+            { name: "ブルーアイズ・トゥーン・ドラゴン", img: "assets/4-4.png", weak: 17, hp: 500, passiveBarrier: 20, passiveBarrierTurn: 3 },
+            { name: "サクリファイス", img: "assets/4-5.png", weak: 20, hp: 550 },
+            // ★パッシブバリア(10) + 名前変更「結界」
+            { name: "サウザンド・アイズ・サクリファイス", img: "assets/4-6.png", weak: 20, hp: 800, passiveBarrier: 10, barrierLabel: "結界" }
+        ],
+        5: [
+            { name: "真紅眼の黒竜", img: "assets/extra.png", weak: 20, hp: 1500 }
+        ],
+        6: [
+            { name: "ワームドレイク", img: "assets/5-1.png", weak: 19, hp: 400 },
+            { name: "ヒューマノイド・スライム", img: "assets/5-2.png", weak: 18, hp: 450 },
+            { name: "リバイバルスライム", img: "assets/5-3.png", weak: 20, hp: 300 },
+            { name: "ヒューマノイド・ドレイク", img: "assets/5-4.png", weak: 17, hp: 600 },
+            // ★パッシブバリア(15)
+            { name: "オシリスの天空竜", img: "assets/5-5.png", weak: 20, hp: 2000, passiveBarrier: 15 }
+        ]
+    },
+    bg: {
+        1: "assets/bg_stage1.png",
+        2: "assets/bg_stage2.png",
+        3: "assets/bg_stage3.png",
+        4_1: "assets/bg_stage4_1.png",
+        4_2: "assets/bg_stage4_2.png",
+        5: "assets/bg_extra.png",
+        6: "assets/bg_stage5_1.png"
+    }
+};
 const CARD_DB = [
     { id: 101, name: "死者蘇生", rarity: "UR", type: "MAGIC", cost: 8, desc: "HPを最大値まで完全回復", packs: ["vol1"] },
     { id: 201, name: "サンダー・ボルト", rarity: "SR", type: "MAGIC", cost: 6, desc: "敵に100ダメージ＋スタン(1T行動不能)", packs: ["vol1"] },
@@ -82,49 +137,58 @@ function setupStage(sel, continueMode) { stage = sel; floor = 1; isProcessing = 
 function spawnEnemy() { try { enemy.state = { charge: false, guard: false, guardType: null, guardTurn: 0, atkBuff: 0, isStunned: false, toonSkin: false, barrierLimit: 0, sliferThunder: false }; player.state.power = false; player.state.shield = false; player.state.weakLock = false; player.state.barrier = false; player.state.guardTurn = 0; player.state.magicCylinder = false; player.state.hexSealTrap = false; player.state.huge = 0; player.state.atkBonus = 0; player.state.itemLock = false; currentTurn = 1; turnInputs = []; currentInput = ""; restrictInput = false; updateScoreDisplay(); isJustFinish = false; waitingForChest = false; dropGuaranteed = false; weakHitCount = 0; el("flash-overlay").className = ""; el("game-container").classList.remove("shake-heavy", "shake-medium", "shake-small"); el("game-container").className = "container"; el("boss-label").style.display = "none"; el("enemy-img").style.display = "block"; el("chest-img").style.display = "none"; let bgKey = stage; if (stage === 4) bgKey = floor >= 5 ? "4_2" : "4_1"; if (stage === 6) bgKey = 6; if (GAME_DATA.bg[bgKey]) el("game-container").style.backgroundImage = `url('${GAME_DATA.bg[bgKey]}')`; let list = GAME_DATA.enemies[stage] || GAME_DATA.enemies[1]; if(stage===5) list = GAME_DATA.enemies[5]; if(stage===6) list = GAME_DATA.enemies[6]; enemy.data = list[(floor - 1) % list.length]; enemy.maxHp = enemy.data.hp || (100 + (stage-1)*50 + (floor-1)*30); if(floor===5 || (stage===4 && floor===6)) { if (!enemy.data.hp){enemy.maxHp += 50;} el("game-container").classList.add("boss-mode"); el("boss-label").style.display="inline"; playBGM("bgm-boss"); } else playBGM("bgm-battle"); enemy.name = enemy.data.name; el("enemy-img").src = enemy.data.img; enemy.hp = enemy.maxHp; displayEnemyHP = enemy.hp; triggerTrap('summon'); updateInfo(); addLog(`=== STAGE ${stage} - ${floor}F START ===`, "system"); isProcessing = false; } catch (e) { console.error("Spawn Error:", e); isProcessing = false; } }
 function checkOpeningSkill() { if (stage === 3 && floor === 1) { setTimeout(() => { showSkillCutin("護封剣の加護", "gold"); setTimeout(() => { enemy.state.guardType = 'cut'; enemy.state.guardTurn = 3; addLog(">> 先制行動: 敵が光の護封剣(3T)を展開！", "log-enemy"); updateInfo(); }, 1200); }, 500); } }
 function handleEnter() { if (isProcessing) return; if (currentInput !== "") { const val = parseInt(currentInput); if (!isNaN(val)) { if (val < 0 || val > 60) { alert("単発の最大値は 60 (T20) です"); currentInput = ""; updateScoreDisplay(); return; } if (val === 50) playSE("se-bull"); else if (val >= 51) playSE("se-triple"); else playSE("se-hit"); processOneThrow(val); currentInput = ""; updateScoreDisplay(); } } }
-/* --- main.js UPDATE: processOneThrow (Stability Fix) --- */
-/* --- main.js UPDATE: processOneThrow (v2.11.16 Stable) --- */
+/* --- main.js UPDATE: processOneThrow (v2.11.28 Unified Logic) --- */
+/* --- main.js UPDATE: processOneThrow (v2.11.30 Logic) --- */
 function processOneThrow(score) {
-    // ★ 敵死亡時・処理中の入力遮断 (バグ防止)
     if (enemy.hp <= 0 || isProcessing) return;
     if (restrictInput && turnInputs.length > 0) return;
+
+    // ★追加: そのターンの最初の1投なら被ダメカウンターをリセット
+    if (turnInputs.length === 0) {
+        enemy.damageTakenThisTurn = 0;
+    }
 
     let singleDmg = score;
     let weakHit = false;
 
-    // 特殊ルール
-    if (stage === 6 && floor === 5 && singleDmg <= 15) { singleDmg = 0; addLog("召雷弾! (15以下無効)", "log-enemy"); }
-    if (stage === 4 && floor === 6 && currentTurn % 2 === 0 && singleDmg < 10) { singleDmg = 0; addLog("結界! (10未満無効)", "log-enemy"); }
-    if (enemy.state.barrierLimit > 0 && singleDmg < enemy.state.barrierLimit) { singleDmg = 0; addLog(`結界! (${enemy.state.barrierLimit}未満無効)`, "log-enemy"); }
+    // 1. Barrier Check
+    if (enemy.state.barrierLimit > 0) {
+        if (singleDmg < enemy.state.barrierLimit) {
+             singleDmg = 0; 
+             // バリア名を動的に表示
+             addLog(`${enemy.state.barrierLabel}! (${enemy.state.barrierLimit}未満無効)`, "log-enemy");
+        }
+    }
 
-    // 補正
+    // 2. Player Buffs
     if (player.state.atkBonus > 0) { singleDmg += player.state.atkBonus; player.state.atkBonus = 0; }
     if (player.state.power) { singleDmg = Math.floor(singleDmg * 2.0); player.state.power = false; }
-    if (player.state.huge !== 0) {
-        if (player.state.huge === 1) singleDmg = Math.floor(singleDmg * 3.0);
-        else singleDmg = Math.floor(singleDmg * 0.5);
-        player.state.huge = 0;
-    }
-    
-    // 弱点・防御
-    if (player.state.weakLock || (score >= 51 && enemy.data.weak && (score % enemy.data.weak === 0))) { weakHit = true; }
-    if (stage === 4 && floor === 4 && currentTurn % 3 === 0) singleDmg = Math.max(0, singleDmg - 15);
-    if (enemy.state.toonSkin) singleDmg = Math.max(0, singleDmg - 15);
-    
-    if (enemy.state.guardType === 'cut') singleDmg = Math.floor(singleDmg * 0.8);
-    if (enemy.state.guardType === 'half') singleDmg = Math.floor(singleDmg * 0.5);
-    if (enemy.state.guard) { singleDmg = Math.floor(singleDmg / 2); enemy.state.guard = false; addLog("敵の防御で半減！", "system"); }
+    if (player.state.huge === 1) singleDmg = Math.floor(singleDmg * 3.0);
+    else if (player.state.huge === -1) singleDmg = Math.floor(singleDmg * 0.5);
+    player.state.huge = 0;
 
-    // ダメージ適用
+    // 3. Weak/Crit
+    if (player.state.weakLock || (score >= 51 && enemy.data.weak && (score % enemy.data.weak === 0))) { weakHit = true; }
+    
+    // 4. Enemy Guard
+    if (enemy.state.guard) {
+        const rate = (typeof enemy.state.guardRate === 'number') ? enemy.state.guardRate : 0.5;
+        singleDmg = Math.floor(singleDmg * rate);
+        addLog("GUARDED!", "system");
+    }
+
+    // Apply Damage
     if (enemy.hp - singleDmg === 0) isJustFinish = true;
     enemy.hp = Math.max(0, enemy.hp - singleDmg);
     
+    // ★追加: カウンター用にダメージを蓄積
+    enemy.damageTakenThisTurn += singleDmg;
+
     totalScore += score;
     totalDarts++;
     turnInputs.push(score);
     updateScoreDisplay();
 
-    // 演出
     if (weakHit) {
         dropGuaranteed = true; weakHitCount++;
         addLog(`WEAK HIT!!`, "log-weak");
@@ -141,9 +205,8 @@ function processOneThrow(score) {
     
     updateInfo();
 
-    // 勝利判定
     if (enemy.hp <= 0) {
-        isProcessing = true; // ★ 入力ロック
+        isProcessing = true;
         totalGameTurns++;
         setTimeout(winBattle, 1000);
         return;
@@ -153,8 +216,268 @@ function processOneThrow(score) {
         setTimeout(finishPlayerTurn, 1000);
     }
 }
+/* --- main.js UPDATE: startBattle (v2.11.30 Init) --- */
+function startBattle() {
+    const stageEnemies = GAME_DATA.enemies[stage];
+    if (!stageEnemies || floor > stageEnemies.length) {
+        console.error("Enemy Data Not Found!");
+        return; 
+    }
+    const enemyData = stageEnemies[floor - 1];
+    
+    enemy = { 
+        ...enemyData, 
+        maxHp: enemyData.hp || 300, 
+        state: { 
+            guard: false, guardRate: 0.5, guardTurn: 0,
+            charge: false, chargeRate: 3.0,
+            atkBuff: false, atkBuffRate: 1.0,
+            isStunned: false, 
+            barrierLimit: 0,
+            barrierLabel: "BARRIER", // デフォルト名
+            barrierTurn: 0
+        },
+        damageTakenThisTurn: 0 // ★追加: カウンター用
+    };
+    
+    // パッシブ設定適用
+    if (enemyData.passiveBarrier) enemy.state.barrierLimit = enemyData.passiveBarrier;
+    if (enemyData.barrierLabel) enemy.state.barrierLabel = enemyData.barrierLabel; // ★名称上書き
+
+    if (enemyData.passiveBarrierTurn) {
+        enemy.state.barrierTurn = enemyData.passiveBarrierTurn;
+    }
+
+    currentTurn = 1;
+    stageStartTurn = totalGameTurns;
+    
+    // 前のターンの入力制限を解除
+    restrictInput = false;
+
+    updateInfo();
+    addLog(`BATTLE START! vs ${enemy.name}`, "system");
+    playBGM(stage === 5 ? "bgm_extra" : (floor === stageEnemies.length ? "bgm_boss" : "bgm_battle"));
+    
+    isProcessing = false;
+    isJustFinish = false;
+    turnInputs = [];
+    renderHand();
+}
 function finishPlayerTurn() { totalGameTurns++; if (restrictInput) { restrictInput = false; addLog("束縛が解けた", "log-system"); } if (enemy.state.guardType) { enemy.state.guardTurn--; if (enemy.state.guardTurn <= 0) { enemy.state.guardType = null; addLog("敵の護封剣が消滅", "log-system"); } } if (player.state.itemLock) { player.state.itemLock = false; addLog("粘着が取れた", "log-system"); } enemy.state.toonSkin = false; enemy.state.barrierLimit = 0; turnInputs = []; currentInput = ""; updateScoreDisplay(); setTimeout(enemyTurn, 500); }
-function enemyTurn() { if (enemy.state.isStunned) { addLog(`${enemy.name}はスタン中`, "log-system"); enemy.state.isStunned = false; endEnemyTurn(); return; } if (player.state.hexSeal) { addLog("呪縛により攻撃力半減", "log-skill"); } if (stage === 6) { if (floor === 3) { if (Math.random() < 0.3) { enemy.hp = enemy.maxHp; showSkillCutin("再 生", "heal"); setTimeout(() => { addLog("HP全回復！", "log-heal"); animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP = enemy.hp; updateInfo(); endEnemyTurn(); }, 1200); return; } } if (floor === 4) { if (!player.state.itemLock && Math.random() < 0.3) { showSkillCutin("スライムの粘着", "earth"); setTimeout(() => { player.state.itemLock = true; updateInfo(); addLog("粘着！アイテム封印", "log-enemy"); doEnemyAttack(1.0); }, 1200); return; } } if (floor === 5) { extraBossTurnCount++; if (extraBossTurnCount % 5 === 0) { showSkillCutin("サンダー・フォース", "fire"); setTimeout(() => { addLog("神の怒り！", "log-enemy"); doEnemyAttack(1.0, { isBossUlt: true, fixedDmg: 80 }); }, 1200); return; } if (Math.random() < 0.4) { enemy.state.atkBuff += 0.1; addLog(`神の攻撃力UP (x${(1.0 + enemy.state.atkBuff).toFixed(1)})`, "log-enemy"); } doEnemyAttack(1.2 * (1.0 + enemy.state.atkBuff)); return; } } if (stage === 4 && floor === 3 && Math.random() < 0.4) { showSkillCutin("呪いの視線", "earth"); setTimeout(() => { player.mp = Math.max(0, player.mp - 2); addLog("MP2減少", "log-enemy"); doEnemyAttack(1.0); }, 1200); return; } if (stage === 5) { extraBossTurnCount++; if (extraBossTurnCount % 5 === 0) { showSkillCutin("黒 炎 弾", "fire"); setTimeout(() => { player.mp = Math.max(0, player.mp - 5); addLog("MP5消滅 & 大ダメージ", "log-enemy"); doEnemyAttack(1.0, { isBossUlt: true, fixedDmg: 50 }); }, 1200); return; } doEnemyAttack(1.3); return; } if (stage === 3) { if (floor === 2 && Math.random() < 0.3) { showSkillCutin("誘惑の風", "wind"); setTimeout(() => { if (player.mp > 0) { player.mp = Math.max(0, player.mp - 1); enemy.hp = Math.min(enemy.hp + 20, enemy.maxHp); addLog("MP吸収", "log-enemy"); } doEnemyAttack(1.0); }, 1200); return; } if (floor === 5) { enemy.state.atkBuff += 0.1; addLog(`攻撃力UP (x${(1.0 + enemy.state.atkBuff).toFixed(1)})`, "log-enemy"); if (currentTurn % 4 === 0) { showSkillCutin("愛の鞭・ブレス", "fire"); setTimeout(() => { player.mp = 0; addLog("MP消滅＆大ダメージ", "log-enemy"); doEnemyAttack(2.0 * (1.0 + enemy.state.atkBuff)); }, 1200); return; } doEnemyAttack(1.0 * (1.0 + enemy.state.atkBuff)); return; } } if (stage === 1) { if (floor === 4 && player.mp > 0 && Math.random() < 0.3) { showSkillCutin("猛毒の鱗粉", "earth"); setTimeout(() => { player.mp = Math.max(0, player.mp - 1); addLog("猛毒！MP-1", "log-enemy"); doEnemyAttack(1.0); }, 1200); return; } } if (stage === 4 && floor === 1 && Math.random() < 0.3) { showSkillCutin("トゥーン・ラッシュ", "wind"); setTimeout(() => { addLog("2回攻撃！", "log-enemy"); doEnemyAttack(0.7, { callback: () => { setTimeout(() => doEnemyAttack(0.7), 800); } }); }, 1200); return; } if (stage === 4 && floor === 2 && currentTurn === 5) { showSkillCutin("死のびっくり箱", "fire"); setTimeout(() => { addLog("死の箱！999ダメ", "log-enemy"); doEnemyAttack(0, { fixedDmg: 999, ignoreShield: true }); }, 1200); return; } if (stage === 4 && floor === 4 && currentTurn % 3 === 0) { showSkillCutin("トゥーン・スキン", "earth"); setTimeout(() => { enemy.state.toonSkin = true; addLog("硬質化！被ダメ-15", "log-enemy"); updateInfo(); endEnemyTurn(); }, 1200); return; } if (stage === 4 && floor === 5 && currentTurn % 3 === 0) { showSkillCutin("幻想の儀式", "wind"); setTimeout(() => { addLog("儀式！HP吸収", "log-enemy"); doEnemyAttack(1.2, { isDrain: true }); }, 1200); return; } if (stage === 4 && floor === 6 && currentTurn % 2 === 0) { showSkillCutin("千眼の邪教神", "wind"); setTimeout(() => { enemy.state.barrierLimit = 10; addLog("結界！10未満無効", "log-enemy"); doEnemyAttack(1.2); }, 1200); return; } if (stage === 3) { if (floor === 1 && enemy.state.guardTurn > 0) { addLog(`光の護封剣 残${enemy.state.guardTurn}T`, "log-enemy"); doEnemyAttack(1.0); return; } if (floor === 3 && Math.random() < 0.3) { showSkillCutin("サイバー・ボンテージ", "wind"); setTimeout(() => { restrictInput = true; addLog("拘束！次1投制限", "log-enemy"); doEnemyAttack(1.0); }, 1200); return; } if (floor === 4 && Math.random() < 0.3) { showSkillCutin("トライアングル・エクスタシー", "wind"); setTimeout(() => { addLog("3回攻撃！", "log-enemy"); doEnemyAttack(0.6, { callback: () => { setTimeout(() => doEnemyAttack(0.6, { callback: () => { setTimeout(() => doEnemyAttack(0.6), 600); } }), 600); } }); }, 1200); return; } } if (stage === 2) { if (floor === 2 && Math.random() < 0.3) { showSkillCutin("俊足の連撃", "fire"); setTimeout(() => { addLog("2回攻撃！", "log-enemy"); doEnemyAttack(0.7, { callback: () => { setTimeout(() => doEnemyAttack(0.7), 800); } }); }, 1200); return; } if (floor === 3 && Math.random() < 0.3) { showSkillCutin("死肉の渇望", "fire"); setTimeout(() => { addLog("与ダメ吸収", "log-enemy"); doEnemyAttack(1.0, { isDrain: true }); }, 1200); return; } if (floor === 4 && enemy.hp <= enemy.maxHp * 0.5 && Math.random() < 0.5) { showSkillCutin("狂暴化", "fire"); setTimeout(() => { addLog("狂暴化！攻撃1.5倍", "log-enemy"); doEnemyAttack(1.5); }, 1200); return; } if (floor === 5 && Math.random() < 0.3) { showSkillCutin("恐竜剣・兜割り", "earth"); setTimeout(() => { addLog("兜割り！シールド無効", "log-enemy"); doEnemyAttack(1.8, { ignoreShield: true }); }, 1200); return; } } if (stage === 1) { if (floor === 3) { if (Math.random() < 0.2) { showSkillCutin("自己再生", "heal"); setTimeout(() => { enemy.hp = Math.min(enemy.hp + 20, enemy.maxHp); playSE("se-heal"); addLog("HP20回復", "log-heal"); animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP = enemy.hp; updateInfo(); endEnemyTurn(); }, 1200); return; } if (Math.random() < 0.4) { showSkillCutin("鉄壁の守り", "earth"); setTimeout(() => { enemy.state.guard = true; addLog("鉄壁！ダメージ半減", "log-enemy"); updateInfo(); endEnemyTurn(); }, 1200); return; } } if (floor === 5) { if (enemy.state.charge) { enemy.state.charge = false; showSkillCutin("森の破壊衝動", "earth"); setTimeout(() => { doEnemyAttack(3.0); }, 1200); return; } if (Math.random() < 0.3) { enemy.state.charge = true; addLog(`力を溜めている…`, "log-enemy"); updateInfo(); endEnemyTurn(); return; } } } doEnemyAttack(1.0); }
+/* --- main.js UPDATE: enemyTurn (v2.11.30 Full Logic) --- */
+function enemyTurn() {
+    if (enemy.hp <= 0) return;
+
+    // ★ターン開始時に前回の入力制限を解除
+    restrictInput = false;
+
+    // A. Status Updates
+    if (enemy.state.barrierTurn > 0) {
+        enemy.state.barrierTurn--;
+        if (enemy.state.barrierTurn === 0) {
+            enemy.state.barrierLimit = 0; // バリア解除
+            addLog(`${enemy.name}のバリアが剥がれた！`, "system");
+        }
+    }
+    if (enemy.state.guardTurn > 0) {
+        enemy.state.guardTurn--;
+        if (enemy.state.guardTurn > 0) enemy.state.guard = true;
+        else { enemy.state.guard = false; addLog(`${enemy.name}のガードが解けた！`, "system"); }
+    }
+    if (enemy.state.isStunned) {
+        addLog(`${enemy.name} is Stunned!`, "log-enemy");
+        enemy.state.isStunned = false;
+        setTimeout(startPlayerTurn, 1000);
+        return;
+    }
+
+    let damage = 0;
+    let actionName = "";
+    let msg = "";
+    const baseDmg = 30;
+
+    // --- B. Logic by Stage ---
+    
+    // ■ Stage 1
+    if (stage === 1) {
+        if (floor === 3) { // 進化の繭
+            const r = Math.random();
+            if (r < 0.3) { actionName = "自己再生"; enemy.hp = Math.min(enemy.maxHp, enemy.hp + 20); msg = "HP20回復"; }
+            else if (r < 0.6) { actionName = "鉄壁の守り"; enemy.state.guard = true; enemy.state.guardRate = 0.5; msg = "守りを固めた！"; }
+            else { damage = baseDmg; }
+        }
+        else if (floor === 4) { // グレート・モス
+            if (player.mp > 0 && Math.random() < 0.3) { actionName = "猛毒の鱗粉"; player.mp = Math.max(0, player.mp - 2); msg = "MPを2吸い取られた！"; }
+            else { damage = baseDmg; }
+        }
+        else if (floor === 5) { // 究極完全態
+            if (enemy.state.charge) { actionName = "森の破壊衝動"; damage = baseDmg * enemy.state.chargeRate; enemy.state.charge = false; }
+            else if (Math.random() < 0.3) { actionName = "力溜め"; enemy.state.charge = true; enemy.state.chargeRate = 3.0; msg = "力を溜めている...！"; }
+            else { damage = baseDmg; }
+        }
+        else { damage = baseDmg; }
+    }
+    
+    // ■ Stage 2
+    else if (stage === 2) {
+        if (floor === 2) { // ラプター
+            if (Math.random() < 0.3) { actionName = "俊足の連撃"; damage = baseDmg * 1.0; setTimeout(() => dealDamage(damage), 500); } 
+            else { damage = baseDmg; }
+        }
+        else if (floor === 3) { // 屍を貪る竜
+            if (Math.random() < 0.3) { actionName = "死肉の渇望"; damage = baseDmg; enemy.hp = Math.min(enemy.maxHp, enemy.hp + damage); msg = `HPを${damage}吸収した！`; }
+            else { damage = baseDmg; }
+        }
+        else if (floor === 4) { // 二頭を持つ王
+            if (enemy.hp <= enemy.maxHp * 0.5 && !enemy.state.atkBuff && Math.random() < 0.5) { actionName = "狂暴化"; enemy.state.atkBuff = true; enemy.state.atkBuffRate = 1.5; msg = "攻撃力が1.5倍になった！"; }
+            else { damage = baseDmg; }
+        }
+        else if (floor === 5) { // 剣竜
+            if (Math.random() < 0.3) { actionName = "恐竜剣・兜割り"; damage = baseDmg * 2.0; msg = "強烈な一撃！"; }
+            else { damage = baseDmg; }
+        }
+        else { damage = baseDmg; }
+    }
+    
+    // ■ Stage 3
+    else if (stage === 3) {
+        if (floor === 1) { // デュナミス
+            if (currentTurn === 1) { actionName = "護封剣の加護"; enemy.state.guard = true; enemy.state.guardRate = 0.5; enemy.state.guardTurn = 3; msg = "3Tダメージを半減！"; }
+            else { damage = baseDmg; }
+        }
+        else if (floor === 2) { // ハーピィ
+            if (Math.random() < 0.3) { actionName = "誘惑の風"; player.mp = Math.max(0, player.mp - 2); enemy.hp += 20; msg = "MP吸収 & HP回復！"; }
+            else { damage = baseDmg; }
+        }
+        else if (floor === 3) { // ★ハーピィSB (サイバー・ボンテージ)
+            if (Math.random() < 0.4) { 
+                actionName = "サイバー・ボンテージ"; 
+                // ★入力制限フラグをONにする
+                restrictInput = true; 
+                msg = "体を締め付けられた！"; 
+            }
+            else { damage = baseDmg; }
+        }
+        else if (floor === 4) { // 三姉妹
+            if (Math.random() < 0.3) { actionName = "トライアングル・E"; damage = baseDmg * 1.0; setTimeout(() => dealDamage(damage), 400); setTimeout(() => dealDamage(damage), 800); }
+            else { damage = baseDmg; }
+        }
+        else if (floor === 5) { // ペット竜
+            actionName = "攻撃力成長";
+            if (!enemy.state.atkBuff) { enemy.state.atkBuff = true; enemy.state.atkBuffRate = 1.0; }
+            enemy.state.atkBuffRate += 0.1;
+            damage = baseDmg; 
+            if (currentTurn % 4 === 0) { actionName = "愛の鞭・ブレス"; damage = baseDmg * 2.0; player.mp = 0; msg = "MP消滅 & 大ダメージ！"; }
+        }
+    }
+    
+    // ■ Stage 4
+    else if (stage === 4) {
+        if (floor === 2) { // デビルボックス
+            if (currentTurn === 5) { actionName = "死のびっくり箱"; damage = 999; msg = "即死攻撃！！"; }
+            else { damage = baseDmg; }
+        }
+        else if (floor === 3) { // トゥーンデーモン
+            if (Math.random() < 0.4) { actionName = "呪いの視線"; player.mp = Math.max(0, player.mp - 3); msg = "MPが3減った！"; }
+            else { damage = baseDmg; }
+        }
+        else if (floor === 4) { // ブルーアイズT (パッシブバリア)
+            if (currentTurn % 4 === 0) { actionName = "T・B・S"; damage = baseDmg * 2.0; msg = "大ダメージ！"; }
+            else {damage = baseDmg;}
+        }
+        else if (floor === 5) { // ★サクリファイス (幻想の儀式)
+            if (Math.random() < 0.3) {
+                actionName = "幻想の儀式";
+                damage = Math.floor(baseDmg * 1.5);
+                enemy.hp = Math.min(enemy.maxHp, enemy.hp + damage);
+                msg = `HPを${damage}吸収した！`;
+            } else { damage = baseDmg; }
+        }
+        else if (floor === 6) { // ★サウザンド・アイズ (カウンター)
+            if (Math.random() < 0.3) {
+                actionName = "千眼の邪教神";
+                // ★カウンター: 直前に受けたダメージの1/3
+                const returnDmg = Math.floor((enemy.damageTakenThisTurn || 0) / 3);
+                damage = returnDmg;
+                if (damage === 0) msg = "邪眼が光る...";
+                else msg = `受けた痛みを返す！(${damage}ダメージ)`;
+            } else {
+                damage = baseDmg;
+            }
+        }
+        else { damage = baseDmg; }
+    }
+    
+    // ■ Stage 6 (Gods & Others)
+    else if (stage === 6) {
+        if (floor === 1) { // ワームドレイク
+            damage = baseDmg;
+        }
+        else if (floor === 2) { // ヒューマノイド・スライム
+            damage = baseDmg;
+        }
+        else if (floor === 3) { // リバイバルスライム
+             if (Math.random() < 0.3) { actionName = "再生"; enemy.hp = enemy.maxHp; msg = "HPが全回復した！"; }
+             else { damage = baseDmg; }
+        }
+        else if (floor === 4) { // ヒューマノイド・ドレイク
+             if (Math.random() < 0.4) { actionName = "スライムの粘着"; player.state.itemLock = true; msg = "アイテムを封じられた！"; }
+             else { damage = baseDmg; }
+        }
+        else if (floor === 5) { // オシリス (パッシブバリア15)
+            if (Math.random() < 0.4) {
+                actionName = "攻撃力UP";
+                if (!enemy.state.atkBuff) { enemy.state.atkBuff = true; enemy.state.atkBuffRate = 1.0; }
+                enemy.state.atkBuffRate += 0.1;
+                damage = baseDmg;
+            }
+            else if (currentTurn % 5 === 0) { actionName = "サンダー・フォース"; damage = 80; msg = "雷の直撃！"; }
+            else { damage = baseDmg; }
+        }
+        else { damage = baseDmg; }
+    }
+    
+    else { damage = baseDmg; }
+
+    // --- C. Apply ---
+    if (enemy.state.atkBuff && enemy.state.atkBuffRate > 1.0) {
+        damage = Math.floor(damage * enemy.state.atkBuffRate);
+    }
+    
+    if (actionName) addLog(`${enemy.name}の${actionName}！`, "log-enemy");
+    if (msg) addLog(msg, "log-enemy");
+    
+    if (damage > 0) {
+        dealDamage(damage);
+    } else {
+        setTimeout(startPlayerTurn, 1000);
+    }
+    
+    updateInfo();
+}
+
+// 補助関数: ダメージ処理 (既存処理の切り出し)
+function dealDamage(val) {
+    // プレイヤー側の防御スキル計算 (簡易)
+    let finalDmg = val;
+    if (player.state.guardTurn > 0) { finalDmg = Math.floor(finalDmg / 2); addLog("SHIELD防御！", "system"); }
+    if (player.state.barrier) { finalDmg = 0; player.state.barrier = false; addLog("BARRIERで無効化！", "system"); }
+    
+    player.hp = Math.max(0, player.hp - finalDmg);
+    animateValue(el("player-hp-bar"), null, player.hp, 300); // HPバーアニメーション用(要調整)
+    
+    // 画面揺れ
+    el("app").classList.add("shake");
+    setTimeout(() => el("app").classList.remove("shake"), 300);
+    playSE("se-hit");
+    
+    if (player.hp <= 0) {
+        setTimeout(loseBattle, 1000);
+    } else {
+        setTimeout(startPlayerTurn, 1000);
+    }
+    updateInfo();
+}
 function doEnemyAttack(mult, options = {}) { const { ignoreShield = false, isDrain = false, isBossUlt = false, fixedDmg = 0, callback = null } = options; let baseDmg = 0; if (fixedDmg > 0) { baseDmg = Math.floor(fixedDmg * mult); } else { const base = 2 + floor + (stage - 1) * 3; baseDmg = Math.floor((base + Math.floor(Math.random() * 6)) * mult); } let finalDmg = baseDmg; if (typeof triggerTrap === "function") { finalDmg = triggerTrap('attack', baseDmg); } if (finalDmg === 0) { updateInfo(); if(options.callback) options.callback(); else endEnemyTurn(); return; } if (!ignoreShield && player.state.shield) { addLog(`完全防御！`, "log-skill"); player.state.shield = false; finalDmg = 0; triggerEffect(el("game-screen"), 0, true); el("flash-overlay").className = "flash-blue"; setTimeout(() => el("flash-overlay").className = "", 300); updateInfo(); if (callback) callback(); else endEnemyTurn(); return; } if (player.state.guardTurn > 0) { finalDmg = Math.floor(finalDmg * 0.5); addLog("護封剣！ダメージ半減", "log-skill"); } if (isBossUlt) { playSE("se-boom"); el("flash-overlay").className = "flash-fire"; setTimeout(() => el("flash-overlay").className = "", 600); } else { playSE("se-hit"); } player.hp = Math.max(0, player.hp - finalDmg); triggerEffect(el("game-screen"), finalDmg, true); if (player.hp <= 0) { updateInfo(); setTimeout(loseGame, 1000); return; } if (isDrain && finalDmg > 0) { const heal = Math.floor(finalDmg * 0.5); enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal); addLog(`敵が${heal}回復！`, "log-skill"); triggerEffect(el("enemy-panel"), heal, false, true); } updateInfo(); if (callback) callback(); else endEnemyTurn(); }
 function triggerTrap(triggerType, dmg = 0) { if (!player.setCard) return dmg; const trapId = player.setCard; let modifiedDmg = dmg; let triggered = false; if (triggerType === 'attack') { if (trapId === 303) { addLog("【罠】聖なるバリア！完全無効＆反撃！", "log-skill"); playSE("se-boom"); triggerEffect(el("enemy-panel"), 50, false); enemy.hp = Math.max(0, enemy.hp - 50); modifiedDmg = 0; triggered = true; } else if (trapId === 602) { addLog(`【罠】魔法の筒！${dmg}反射！`, "log-skill"); playSE("se-boom"); triggerEffect(el("enemy-panel"), dmg, false); enemy.hp = Math.max(0, enemy.hp - dmg); modifiedDmg = 0; triggered = true; } else if (trapId === 703) { addLog("【罠】六芒星の呪縛！半減＆スタン！", "log-skill"); playSE("se-buff"); enemy.state.isStunned = true; modifiedDmg = Math.floor(dmg * 0.5); triggered = true; } else if (trapId === 403) { addLog("【罠】はさみ撃ち！迎撃80ダメージ！", "log-skill"); playSE("se-attack"); triggerEffect(el("enemy-panel"), 80, false); enemy.hp = Math.max(0, enemy.hp - 80); triggered = true; } } if (triggerType === 'summon') { if (trapId === 302) { addLog("【罠】落とし穴！出鼻を挫く50ダメ＆スタン！", "log-skill"); playSE("se-hit"); triggerEffect(el("enemy-panel"), 50, false); enemy.hp = Math.max(0, enemy.hp - 50); enemy.state.isStunned = true; triggered = true; } } if (triggered) { player.discard.push(player.setCard); player.setCard = null; el("flash-overlay").className="flash-gold"; setTimeout(()=>el("flash-overlay").className="",300); animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500); displayEnemyHP=enemy.hp; updateInfo(); if (enemy.hp <= 0) setTimeout(winBattle, 800); } return modifiedDmg; }
 function endEnemyTurn() { currentTurn++; player.mp = Math.min(player.mp + 3, player.maxMp); triggerFloatText("MP+3", el("player-mp-bar")); if (player.state.guardTurn > 0) { player.state.guardTurn--; if (player.state.guardTurn === 0) { addLog("護封剣 消滅", "log-system"); } } if (player.state.hexSeal > 0) { player.state.hexSeal--; if (player.state.hexSeal === 0) addLog("呪縛が解けた", "log-system"); } else { player.state.hexSeal = 0; } drawCard(); updateInfo(); isProcessing = false; }
@@ -240,6 +563,8 @@ function renderHand() {
 /* --- main.js UPDATE: updateInfo (v2.11.17 HP Color Logic) --- */
 /* --- main.js UPDATE: updateInfo (v2.11.18 Enemy HP Fix) --- */
 /* --- main.js UPDATE: updateInfo (v2.11.19 Blink Logic) --- */
+/* --- main.js UPDATE: updateInfo (v2.11.28 Status Visibility) --- */
+/* --- main.js UPDATE: updateInfo (v2.11.30 Display) --- */
 function updateInfo() {
     if (!enemy.data) return;
     const setText = (id, text) => { const e = el(id); if(e) e.innerText = text; };
@@ -253,14 +578,12 @@ function updateInfo() {
     setText("floor-display", stage===5?"FINAL":`${floor}F`);
     setHTML("turn-display", `TURN ${currentTurn} <span style="font-size:12px; color:#888;">(Total ${(totalGameTurns - stageStartTurn) + 1})</span>`);
 
-    // Enemy Info (Text Blink)
+    // Enemy Info
     setText("enemy-name-side", enemy.name);
     const eHpEl = el("enemy-hp-value");
     if(eHpEl) {
         eHpEl.innerText = enemy.hp;
-        eHpEl.className = "hp-mega-text"; // Reset base
-        
-        // ★ FIX: Blink Logic
+        eHpEl.className = "hp-mega-text";
         if (enemy.hp <= enemy.maxHp * 0.2) eHpEl.classList.add("blink-fast");
         else if (enemy.hp <= enemy.maxHp * 0.5) eHpEl.classList.add("blink-slow");
     }
@@ -271,10 +594,23 @@ function updateInfo() {
 
     // Enemy Chips
     let eChips = "";
-    if(enemy.state.guard) eChips += `<span class="status-chip chip-guard">🛡️GUARD</span>`;
+    if(enemy.state.guard || enemy.state.guardType) {
+        let label = "GUARD";
+        if(enemy.state.guardType === 'cut' || enemy.state.guardType === 'half') label = "GUARD"; 
+        eChips += `<span class="status-chip chip-guard">🛡️${label}</span>`;
+    }
     if(enemy.state.charge) eChips += `<span class="status-chip chip-charge">⚡CHARGE</span>`;
+    if(enemy.state.atkBuff) eChips += `<span class="status-chip chip-charge">⚔️ATTACK</span>`;
+    
+    // ★FIX: バリア表示 (ラベル対応)
+    if(enemy.state.barrierLimit > 0) {
+        const label = enemy.state.barrierLabel || "BARRIER"; // DB指定の名前、なければBARRIER
+        eChips += `<span class="status-chip chip-barrier">💠${label}(${enemy.state.barrierLimit})</span>`;
+    } else if(enemy.state.toonSkin) {
+        eChips += `<span class="status-chip chip-barrier">💠BARRIER(20)</span>`;
+    }
+
     if(enemy.state.isStunned) eChips += `<span class="status-chip chip-stun">😵STUN</span>`;
-    if(enemy.state.barrierLimit > 0) eChips += `<span class="status-chip chip-barrier">💠BARRIER(${enemy.state.barrierLimit})</span>`;
     setHTML("enemy-states-side", eChips);
 
     // Player HP
@@ -282,7 +618,6 @@ function updateInfo() {
     if(hpBar) {
         const pct = (player.hp / player.maxHp) * 100;
         hpBar.style.width = Math.max(0, pct) + "%";
-        
         let hpClass = "hp-bar-fill player-fill";
         if (pct <= 20) hpClass += " hp-danger";
         else if (pct <= 50) hpClass += " hp-warning";
@@ -299,7 +634,7 @@ function updateInfo() {
     }
     setText("player-hp", "");
 
-    // Player MP (Dots Only)
+    // Player MP
     const mpValEl = document.querySelector("#player-mp")?.parentNode; 
     if(mpValEl && mpValEl.classList.contains("p-val")) mpValEl.style.display = "none";
     
@@ -318,6 +653,8 @@ function updateInfo() {
     // Player States
     let pChips = "";
     if(player.state.atkBonus > 0 || player.state.power) pChips += `<span class="status-chip chip-buff">⚔️ATK UP</span>`;
+    if(player.state.huge === 1) pChips += `<span class="status-chip chip-buff">💪HUGE</span>`;
+    if(player.state.huge === -1) pChips += `<span class="status-chip chip-lock">🤏MINI</span>`;
     if(player.state.guardTurn > 0) pChips += `<span class="status-chip chip-guard">🛡️SHIELD(${player.state.guardTurn})</span>`;
     if(player.state.barrier) pChips += `<span class="status-chip chip-barrier">✨BARRIER</span>`;
     if(player.state.itemLock) pChips += `<span class="status-chip chip-lock">🔒SEALED</span>`;
