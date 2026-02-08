@@ -598,6 +598,7 @@ function showHistory() {
     playSE("se-tap");
     modal.style.display = "flex";
 }
+
 function closeHistory() { playSE("se-tap"); el("history-modal").style.display = "none"; }
 function resetSaveData() { if (confirm("【警告】現在のスロットのデータを完全に消去しますか？")) { allSaveData[currentSlot] = null; selectSlot(currentSlot.replace("slot", "")); saveToDrive(); } }
 function exportSave() { navigator.clipboard.writeText(JSON.stringify(savedData)).then(() => alert("現在のスロットのデータをコピーしました")); }
