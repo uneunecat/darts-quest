@@ -816,83 +816,51 @@ html, body {
 
 
 /* =========================================
-   ★ v2.11.33 FINAL LAYOUT STABILITY
+   ★ v2.11.26 FIX: MODAL FLEX LAYOUT
    ========================================= */
 
-/* 1. Deck Grid Stability (Safe Fix) */
-/* containプロパティは副作用があるため削除し、物理的なサイズ固定で対応 */
-.deck-grid .std-card {
-    border: 2px solid transparent !important;
-    box-sizing: border-box !important;
-    
-    /* アスペクト比と高さを厳格に指定 */
-    aspect-ratio: 2/3 !important;
-    height: auto !important;
-    min-height: 0 !important; /* Flexbox内での潰れ防止 */
-    
-    overflow: hidden !important;
-    transition: none !important; /* チラつき防止 */
-}
+/* Discard Modal Layout (Grid解除 & 完全Flex化) */
 
-/* Emptyスロットの見た目 */
-.std-card.empty-slot {
-    outline: 2px dashed #444;
-    outline-offset: -2px;
-    background: rgba(255, 255, 255, 0.02);
-    cursor: default;
-    box-shadow: none !important;
-}
-.std-card.empty-slot .std-art {
-    font-size: 10px !important;
-    color: #666;
-    display: flex; align-items: center; justify-content: center;
-    background: transparent;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-.std-card.empty-slot .std-text-area { background: transparent; }
-
-/* 枠色定義 */
-.deck-grid .std-card.rarity-UR { border-color: transparent !important; }
-.deck-grid .std-card.rarity-SR { border-color: #ffd700 !important; }
-.deck-grid .std-card.rarity-R  { border-color: #c0c0c0 !important; }
-.deck-grid .std-card.rarity-N  { border-color: #555 !important; }
-
-
-/* 2. Discard Modal Layout (Safe Flex) */
+/* コンテナ設定 */
 #card-selector-modal .deck-grid {
+    /* ★重要: Gridレイアウトを強制的に解除し、Flexにする */
     display: flex !important;
     flex-direction: row !important;
-    flex-wrap: nowrap !important;
+    flex-wrap: nowrap !important; /* 折り返し禁止 */
     
-    /* Grid由来のスタイルを完全消去 */
+    /* Grid由来の列定義を消去 */
     grid-template-columns: none !important;
     grid-auto-rows: auto !important;
-    gap: 0 !important;
+    gap: 0 !important; /* Gapは使わない */
     
+    /* スクロールと配置 */
     overflow-x: auto !important;
     justify-content: flex-start !important;
-    align-items: center !important;
+    align-items: center !important; /* 垂直方向中央 */
     padding: 20px !important;
     width: 100% !important;
     box-sizing: border-box !important;
 }
 
+/* カード設定 */
 #card-selector-modal .std-card {
     /* サイズ固定 */
     width: 120px !important;
     height: 180px !important;
     
-    /* Flexアイテム設定 */
+    /* ★重要: Flexアイテムとして「縮まない・伸びない」設定 */
     flex: 0 0 auto !important; 
     
     transform: none !important;
-    margin-right: 30px !important;
+    
+    /* ★マージン設定: Flexboxになったので、これが確実に効きます */
+    margin-right: 30px !important; /* 自由に変更可能 */
     margin-bottom: 0 !important;
     
     overflow: hidden !important;
 }
 
-/* テキスト調整 */
+/* テキスト調整 (変更なし) */
 #card-selector-modal .std-name {
     font-size: 10px !important;
     white-space: nowrap !important;
