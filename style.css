@@ -658,23 +658,26 @@ html, body {
 #card-selector-modal .deck-grid::-webkit-scrollbar-thumb { background: #00d2fc; border-radius: 4px; }
 
 #card-selector-modal .std-card {
-    width: 90px ;
+    width: 130px ;
     height: auto ;
     aspect-ratio: 2/3 ;
     flex-shrink: 0 ;
     transform: none ;
-    margin-right: 20px !important;
+    margin-right: 20px ;
+    transition: transform 0.2s
 }
 
 #card-selector-modal .modal-box {
-    width: 90% !important;
-    max-width: 750px !important;
-    padding: 15px !important;
-    box-sizing: border-box !important;
+    width: 90% ;
+    max-width: 750px ;
+    padding: 15px ;
+    box-sizing: border-box ;
 }
 #card-selector-modal .std-card:hover {
-    transform: translateY(-10px) scale(1.1) !important;
+    transform: translateY(-5px) scale(1.05) ;
+    z-index: 10 ;
 }
+
 
 /* 4. History Modal (Cyber Log Style) */
 .history-list {
@@ -767,3 +770,39 @@ html, body {
     scrollbar-width: thin;
     scrollbar-color: #00d2fc #333;
 }
+
+/* =========================================
+   ★ v2.11.22 FINAL FIX: JITTER & SIZING
+   ========================================= */
+
+/* Deck Editor Jitter Fix (ガタつき根絶) */
+/* カードと空枠のボックスモデルを完全に統一 */
+.deck-grid .std-card, 
+.deck-grid .deck-slot-empty {
+    width: 100% !important;
+    aspect-ratio: 2/3 !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    position: relative !important;
+    
+    /* 枠線分のズレを防ぐため、透明な枠を強制 */
+    border: 2px solid transparent; 
+}
+
+/* 空枠のデザイン */
+.deck-grid .deck-slot-empty {
+    border: 2px dashed #444 !important; /* 点線で上書き */
+    background: rgba(255,255,255,0.02);
+    color: #666;
+    font-size: 10px;
+    font-family: 'Roboto Mono', monospace;
+}
+
+/* カードが入った時の枠線 (レアリティごとの色適用) */
+.deck-grid .std-card.rarity-UR { border: 2px solid transparent !important; } /* 背景グラデ優先 */
+.deck-grid .std-card.rarity-SR { border: 2px solid #ffd700 !important; }
+.deck-grid .std-card.rarity-R  { border: 2px solid #c0c0c0 !important; }
+.deck-grid .std-card.rarity-N  { border: 2px solid #555 !important; }

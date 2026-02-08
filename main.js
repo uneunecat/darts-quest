@@ -660,7 +660,7 @@ function closePackResult() { if (openingPhase < 4 && openingPhase > 0) return; p
 function closeCardShop() { playSE("se-tap"); el("card-shop-modal").style.display = "none"; updateTitleScore(); }
 function openCollection() { playSE("se-tap"); renderDeckEditor(); el("collection-modal").style.display = "flex"; }
 function closeCollection() { playSE("se-tap"); el("collection-modal").style.display = "none";}
-/* --- main.js UPDATE: renderDeckEditor (Mode Update) --- */
+/* --- main.js UPDATE: renderDeckEditor (v2.11.22 Stable Layout) --- */
 function renderDeckEditor() {
     if (!savedData.deck) savedData.deck = [];
     savedData.deck.sort((a, b) => a - b);
@@ -671,14 +671,22 @@ function renderDeckEditor() {
     // Render Deck (Small Mode)
     for (let i = 0; i < DECK_SIZE; i++) {
         const cardId = savedData.deck[i];
+        
+        // スロットコンテナ (ガタつき防止のためのラッパーは不要、Gridセル直下に配置)
         if (cardId) {
             const card = CARD_DB.find(c => c.id === cardId);
             const totalOwned = savedData.cards[card.id] || 0;
+            
             // mode: 'small'
             const div = createCardElement(card, "small", 0, totalOwned);
             div.onmouseenter = () => showCardDetail(card);
+            
+            // デッキリスト内での固有クラスを追加
+            div.classList.add("deck-list-item");
+            
             deckGrid.appendChild(div);
         } else {
+            // Empty Slot
             const div = document.createElement("div");
             div.className = "deck-slot-empty";
             div.innerText = "EMPTY";
@@ -692,8 +700,10 @@ function renderDeckEditor() {
     countEl.innerText = deckCount;
     if (deckCount < DECK_SIZE) {
         countEl.style.color = "#ff5555";
+        countEl.innerText += " (あと" + (DECK_SIZE - deckCount) + "枚)";
     } else {
         countEl.style.color = "#00ff00";
+        countEl.innerText += " (OK!)";
     }
     
     // Render List (Standard Mode)
