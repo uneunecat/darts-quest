@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v2.12.2 Fatal Fix)");
+console.log("★ main.js is loaded! (v2.12.3 Dialog Fix)");
 const el = (id) => document.getElementById(id);
 function calculateRating(ppr) { if (ppr < 30) return 1; if (ppr < 40) return 2; if (ppr < 45) return 3; if (ppr < 50) return 4; if (ppr < 55) return 5; if (ppr < 60) return 6; if (ppr < 65) return 7; if (ppr < 70) return 8; if (ppr < 75) return 9; if (ppr < 80) return 10; if (ppr < 85) return 11; if (ppr < 90) return 12; if (ppr < 95) return 13; if (ppr < 100) return 14; if (ppr < 110) return 15; if (ppr < 120) return 16; if (ppr < 130) return 17; return 18; }
 function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[array[i], array[j]] = [array[j], array[i]]; } return array; }
@@ -169,17 +169,18 @@ function winBattle() {
 function loseGame() {
     isProcessing = true;
     playBGM("bgm-lose");
-    el("game-modal").style.display = "flex";
-    el("modal-title").innerText = "YOU DIED";
-    el("modal-title").style.color = "#ff0000";
-    el("modal-text").innerText = "力尽きました...";
-    const btn = el("modal-btn");
-    btn.innerText = "RETURN TO TITLE";
-    // ★ FIX: タイトルへ戻る処理に変更
-    btn.onclick = () => {
-        el("game-modal").style.display = "none";
-        returnToTitle();
-    };
+    // ★ FIX: showDialog を使用して安全にボタン生成
+    showDialog(
+        "YOU DIED", 
+        "力尽きました...", 
+        "warning", 
+        [{ 
+            text: "RETURN TO TITLE", 
+            action: () => {
+                returnToTitle();
+            } 
+        }]
+    );
 }
 function checkDrop() { if (stage === 5 && floor === 1) { nextStep(); return; } if (stage === 6 && floor === 5) { nextStep(); return; } if (stage === 4 && floor === 6) { nextStep(); return; } const isBoss = (floor === 5 || (stage === 4 && floor === 6)); let dropRate = isBoss ? 1.0 : 0.3; if (dropGuaranteed) dropRate = 1.0; if (Math.random() < dropRate) { waitingForChest = true; el("enemy-img").style.display = "none"; el("chest-img").style.display = "block"; el("chest-img").classList.add("chest-shine"); playSE("se-chest"); addLog("宝箱を見つけた！", "log-item"); setTimeout(() => { if (waitingForChest) openChest(); }, 1500); } else { nextStep(); } }
 function openChest() { if (!waitingForChest) return; waitingForChest = false; playSE("se-item"); let seedRate = 0.15; if (weakHitCount >= 3) seedRate = 1.0; else if (weakHitCount >= 2) seedRate = 0.50; const rand = Math.random(); let itemName = ""; let itemEffect = ""; if (rand < seedRate) { itemName = "★命の種"; itemEffect = "MaxHP +10"; player.items.seed++; } else if (Math.random() < 0.6) { itemName = "薬草"; itemEffect = "HP 50 回復"; player.items.potion++; } else { itemName = "魔法の聖水"; itemEffect = "MP 3 回復"; player.items.ether++; } updateInfo(); addLog(`宝箱: ${itemName} (${itemEffect}) を手に入れた`, "log-item"); showDialog("TREASURE!", `<span style="font-size:24px;color:#00ff00;">${itemName}</span> を手に入れた！<br>${itemEffect}<br>(アイテムボタンで使用可能)`, "item", [{ text: "OK", action: nextStep }], 2000); }
