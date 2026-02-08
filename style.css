@@ -775,67 +775,62 @@ html, body {
 /* ↓↓↓ 前回の v2.11.23 のブロックを削除し、以下に置き換えてください ↓↓↓ */
 
 /* =========================================
-   ★ v2.11.24 FINAL LAYOUT FIXES
+   ★ v2.11.25 FIX: CONTAIN & LAYOUT
    ========================================= */
 
-/* 1. Deck Grid Stability (ガタつき完全根絶) */
-/* すべてのカード（空枠含む）の物理的な境界線を統一 */
+/* 1. Deck Grid Stability (切り札: contain) */
 .deck-grid .std-card {
-    border: 2px solid transparent !important; /* まず透明な実線で統一 */
+    border: 2px solid transparent !important;
     box-sizing: border-box !important;
     height: auto !important;
     aspect-ratio: 2/3 !important;
-    transition: none !important; /* レイアウト変更時のチラつき防止 */
+    
+    /* ★最強の固定設定 */
+    /* 中身の描画結果によるサイズ変動を物理的に遮断します */
+    contain: size layout !important; 
+    overflow: hidden !important;
 }
 
-/* 空枠の見た目 (BorderではなくOutlineで内側に描画) */
-/* これにより、物理サイズは通常カードと1pxもズレなくなります */
+/* Emptyスロットの見た目 */
 .std-card.empty-slot {
     outline: 2px dashed #444;
-    outline-offset: -2px; /* 枠の内側に描画 */
+    outline-offset: -2px;
     background: rgba(255, 255, 255, 0.02);
     cursor: default;
     box-shadow: none !important;
 }
-
-/* Emptyテキストのはみ出し修正 */
+/* 中身の配置 */
 .std-card.empty-slot .std-art {
-    font-size: 10px !important; /* 文字サイズ縮小 */
+    font-size: 10px !important;
     color: #666;
     display: flex; align-items: center; justify-content: center;
     background: transparent;
-    border-bottom: 1px solid rgba(255,255,255,0.1); /* カードの仕切り線と合わせる */
+    border-bottom: 1px solid rgba(255,255,255,0.1);
 }
-.std-card.empty-slot .std-text-area {
-    background: transparent;
-}
+.std-card.empty-slot .std-text-area { background: transparent; }
 
-/* 通常カードの枠色 (透明枠に色をつけるだけ) */
-.deck-grid .std-card.rarity-UR { border-color: transparent !important; } /* グラデ優先 */
+/* 枠色定義 (変更なし) */
+.deck-grid .std-card.rarity-UR { border-color: transparent !important; }
 .deck-grid .std-card.rarity-SR { border-color: #ffd700 !important; }
 .deck-grid .std-card.rarity-R  { border-color: #c0c0c0 !important; }
 .deck-grid .std-card.rarity-N  { border-color: #555 !important; }
 
 
-/* 2. Discard Modal (重なり解消 & サイズ固定) */
+/* 2. Discard Modal Layout */
 #card-selector-modal .std-card {
-    /* サイズ固定 */
     width: 120px !important;
-    height: 180px !important; /* 2:3比率で固定 */
-    
-    /* レイアウト崩れ防止 */
-    flex-shrink: 0 !important; /* 絶対に縮ませない */
+    height: 180px !important;
+    flex-shrink: 0 !important;
     transform: none !important;
     
-    /* マージン確保 */
-    margin-right: 100px !important;
+    /* ★マージン設定 (ここを調整！) */
+    margin-right: 30px !important; 
     margin-bottom: 10px !important;
     
-    /* テキストはみ出し防止 */
     overflow: hidden !important;
 }
 
-/* モーダル内の文字調整 */
+/* テキスト調整 (変更なし) */
 #card-selector-modal .std-name {
     font-size: 10px !important;
     white-space: nowrap !important;
