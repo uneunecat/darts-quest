@@ -660,7 +660,7 @@ function closePackResult() { if (openingPhase < 4 && openingPhase > 0) return; p
 function closeCardShop() { playSE("se-tap"); el("card-shop-modal").style.display = "none"; updateTitleScore(); }
 function openCollection() { playSE("se-tap"); renderDeckEditor(); el("collection-modal").style.display = "flex"; }
 function closeCollection() { playSE("se-tap"); el("collection-modal").style.display = "none";}
-/* --- main.js UPDATE: renderDeckEditor (v2.11.22 Stable Layout) --- */
+/* --- main.js UPDATE: renderDeckEditor (v2.11.23 Structural Fix) --- */
 function renderDeckEditor() {
     if (!savedData.deck) savedData.deck = [];
     savedData.deck.sort((a, b) => a - b);
@@ -668,28 +668,25 @@ function renderDeckEditor() {
     const deckGrid = el("deck-grid");
     deckGrid.innerHTML = "";
     
-    // Render Deck (Small Mode)
+    // Render Deck
     for (let i = 0; i < DECK_SIZE; i++) {
         const cardId = savedData.deck[i];
         
-        // スロットコンテナ (ガタつき防止のためのラッパーは不要、Gridセル直下に配置)
         if (cardId) {
+            // 通常カード
             const card = CARD_DB.find(c => c.id === cardId);
             const totalOwned = savedData.cards[card.id] || 0;
-            
-            // mode: 'small'
             const div = createCardElement(card, "small", 0, totalOwned);
             div.onmouseenter = () => showCardDetail(card);
-            
-            // デッキリスト内での固有クラスを追加
-            div.classList.add("deck-list-item");
-            
             deckGrid.appendChild(div);
         } else {
-            // Empty Slot
+            // ★ FIX: 空枠も「std-card構造」で生成し、物理サイズを一致させる
             const div = document.createElement("div");
-            div.className = "deck-slot-empty";
-            div.innerText = "EMPTY";
+            div.className = "std-card small empty-slot"; // mode='small' と同じクラス構成
+            div.innerHTML = `
+                <div class="std-art">EMPTY</div>
+                <div class="std-text-area"></div>
+            `;
             deckGrid.appendChild(div);
         }
     }
@@ -706,7 +703,7 @@ function renderDeckEditor() {
         countEl.innerText += " (OK!)";
     }
     
-    // Render List (Standard Mode)
+    // Render List
     const listGrid = el("card-grid");
     listGrid.innerHTML = "";
     if (!savedData.cards) savedData.cards = {};
@@ -718,18 +715,12 @@ function renderDeckEditor() {
         const inDeckCount = savedData.deck.filter(id => id === card.id).length;
         const remaining = count - inDeckCount;
         
-        // mode: 'standard'
         const div = createCardElement(card, "standard", remaining, count);
         listGrid.appendChild(div);
     });
     
     el("collection-rate").innerText = `${Math.floor((ownedCount / CARD_DB.length) * 100)}%`;
 }
-/* --- main.js UPDATE: createCardElement (Standard Format) --- */
-/* --- main.js UPDATE: createCardElement (Premium Format) --- */
-/* --- main.js UPDATE: createCardElement (v2.11.13 Mode Support) --- */
-// mode: 'standard' (default), 'small' (deck), 'battle' (hand)
-/* --- main.js UPDATE: createCardElement (Remove Tooltip) --- */
 function createCardElement(card, mode = "standard", remainingCount = 1, totalCount = 0) {
     const div = document.createElement("div");
     

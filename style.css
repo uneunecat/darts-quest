@@ -658,13 +658,14 @@ html, body {
 #card-selector-modal .deck-grid::-webkit-scrollbar-thumb { background: #00d2fc; border-radius: 4px; }
 
 #card-selector-modal .std-card {
-    width: 130px ;
-    height: auto ;
+    width: 110px ;
+    height: 165px ;
     aspect-ratio: 2/3 ;
     flex-shrink: 0 ;
     transform: none ;
-    margin-right: 20px ;
-    transition: transform 0.2s
+    margin-right: 15px ;
+    transition: transform 0.2s;
+    overflow: hidden;
 }
 
 #card-selector-modal .modal-box {
@@ -772,37 +773,50 @@ html, body {
 }
 
 /* =========================================
-   ★ v2.11.22 FINAL FIX: JITTER & SIZING
+   ★ v2.11.23 STRUCTURAL FIX & CLEANUP
    ========================================= */
 
-/* Deck Editor Jitter Fix (ガタつき根絶) */
-/* カードと空枠のボックスモデルを完全に統一 */
-.deck-grid .std-card, 
-.deck-grid .deck-slot-empty {
-    width: 100% !important;
-    aspect-ratio: 2/3 !important;
-    box-sizing: border-box !important;
+/* 1. Empty Slot as a Card (構造統一によるガタつき根絶) */
+.std-card.empty-slot {
+    border: 2px dashed #444 !important;
+    background: rgba(255, 255, 255, 0.02);
+    cursor: default;
+    box-shadow: none !important;
+}
+.std-card.empty-slot .std-art {
+    background: transparent; /* 画像なし */
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center;
+    color: #333; font-weight: bold; font-size: 20px;
+}
+.std-card.empty-slot .std-text-area {
+    background: transparent; /* テキストエリア透明 */
+}
+
+/* 2. Discard Modal (高さ固定・レイアウト保護) */
+#card-selector-modal .std-card {
+    /* ★サイズを完全固定 (Width 110px -> Height 165px) */
+    width: 110px !important;
+    height: 165px !important; /* aspect-ratio任せにせず固定 */
     flex-shrink: 0 !important;
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    position: relative !important;
+    margin-right: 15px !important;
+    transform: none !important; /* Scale廃止 */
     
-    /* 枠線分のズレを防ぐため、透明な枠を強制 */
-    border: 2px solid transparent; 
+    /* テキスト溢れ対策 */
+    overflow: hidden !important;
 }
 
-/* 空枠のデザイン */
-.deck-grid .deck-slot-empty {
-    border: 2px dashed #444 !important; /* 点線で上書き */
-    background: rgba(255,255,255,0.02);
-    color: #666;
-    font-size: 10px;
-    font-family: 'Roboto Mono', monospace;
+/* モーダル内のテキスト調整 */
+#card-selector-modal .std-name {
+    font-size: 10px !important;
+    white-space: nowrap !important; /* 1行制限 */
+    text-overflow: ellipsis !important;
 }
-
-/* カードが入った時の枠線 (レアリティごとの色適用) */
-.deck-grid .std-card.rarity-UR { border: 2px solid transparent !important; } /* 背景グラデ優先 */
-.deck-grid .std-card.rarity-SR { border: 2px solid #ffd700 !important; }
-.deck-grid .std-card.rarity-R  { border: 2px solid #c0c0c0 !important; }
-.deck-grid .std-card.rarity-N  { border: 2px solid #555 !important; }
+#card-selector-modal .std-desc {
+    font-size: 9px !important;
+    /* 長文は末尾を省略 */
+    display: -webkit-box;
+    -webkit-line-clamp: 4; /* 4行まで表示 */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
