@@ -775,31 +775,30 @@ html, body {
 /* ↓↓↓ 前回の v2.11.23 のブロックを削除し、以下に置き換えてください ↓↓↓ */
 
 /* =========================================
-   ★ v2.11.25 FIX: CONTAIN & LAYOUT
+   ★ v2.11.25 FINAL FIX: MARGIN & STABILITY
    ========================================= */
 
-/* 1. Deck Grid Stability (切り札: contain) */
+/* 1. Deck Grid Stability (ガタつき完全根絶) */
+/* contain: size layout を使用して中身によるサイズ変動を遮断 */
 .deck-grid .std-card {
     border: 2px solid transparent !important;
     box-sizing: border-box !important;
     height: auto !important;
     aspect-ratio: 2/3 !important;
     
-    /* ★最強の固定設定 */
-    /* 中身の描画結果によるサイズ変動を物理的に遮断します */
+    /* ★最強の固定設定: 中身の描画結果をサイズ計算から除外 */
     contain: size layout !important; 
     overflow: hidden !important;
 }
 
 /* Emptyスロットの見た目 */
 .std-card.empty-slot {
-    outline: 2px dashed #444;
+    outline: 2px dashed #444; /* 点線はoutlineで描画 */
     outline-offset: -2px;
     background: rgba(255, 255, 255, 0.02);
     cursor: default;
     box-shadow: none !important;
 }
-/* 中身の配置 */
 .std-card.empty-slot .std-art {
     font-size: 10px !important;
     color: #666;
@@ -816,21 +815,33 @@ html, body {
 .deck-grid .std-card.rarity-N  { border-color: #555 !important; }
 
 
-/* 2. Discard Modal Layout */
+/* 2. Discard Modal Layout (マージン制御の正常化) */
+
+/* コンテナ側のgapを無効化 */
+#card-selector-modal .deck-grid {
+    gap: 0 !important; /* マージンと競合しないよう0にする */
+    justify-content: flex-start !important; /* 左詰めを強制 */
+}
+
+/* カード側の設定 */
 #card-selector-modal .std-card {
     width: 120px !important;
     height: 180px !important;
-    flex-shrink: 0 !important;
+    
+    /* ★重要: 縮小を禁止 (マージンを物理的に確保させる) */
+    flex-shrink: 0 !important; 
+    flex-grow: 0 !important;
+    
     transform: none !important;
     
-    /* ★マージン設定 (ここを調整！) */
+    /* ★マージン設定: ここで距離をコントロール */
     margin-right: 30px !important; 
     margin-bottom: 10px !important;
     
     overflow: hidden !important;
 }
 
-/* テキスト調整 (変更なし) */
+/* テキスト調整 */
 #card-selector-modal .std-name {
     font-size: 10px !important;
     white-space: nowrap !important;
