@@ -219,9 +219,9 @@ let player = {
     hp: 100, maxHp: 100, mp: 3, maxMp: 10,
     items: { potion: 0, ether: 0, seed: 0 },
     state: {
-        power: false, shield: false, weakLock: false, barrier: false,
-        guardTurn: 0, magicCylinder: false, hexSeal: false, huge: 0,
-        atkBonus: 0, itemLock: false
+        guardTurn: 0, // 光の護封剣用
+        itemLock: false, // アイテムロック用
+        restrictInput: false // 1投制限用
     },
     deck: [], hand: [], discard: [], deckLocked: false, setCard: null
 };
@@ -231,7 +231,7 @@ let enemy = {
     hp: 100, maxHp: 100, data: null, name: "",
     state: {
         charge: false, guard: false, guardType: null, guardTurn: 0,
-        atkBuff: 0, isStunned: false, toonSkin: false, barrierLimit: 0
+        atkBuff: 0, isStunned: false, barrierLimit: 0
     }
 };
 
@@ -243,11 +243,9 @@ let totalDarts = 0;
 let displayPlayerHP = 100;
 let displayEnemyHP = 100;
 let isProcessing = false;
-let extraBossTurnCount = 0;
 let currentTurn = 1;
 let dropGuaranteed = false;
 let weakHitCount = 0;
-let restrictInput = false;
 let turnInputs = [];
 let currentInput = "";
 let isJustFinish = false;
@@ -494,9 +492,12 @@ function initGameSession(startStage, continueMode = false) {
         player = {
             ...JSON.parse(JSON.stringify(PLAYER_INITIAL_STATS)), // ディープコピー
             state: {
-                power: false, shield: false, weakLock: false, barrier: false,
-                guardTurn: 0, magicCylinder: false, hexSealTrap: false, huge: 0,
-                atkBonus: 0, itemLock: false
+                atkBuff: 1.0,    // 攻撃倍率 (1.0 = 標準) // Updated: 必要なプロパティのみを初期化
+                atkFlat: 0,
+                atkDuration: 0,
+                guardTurn: 0,
+                itemLock: false,
+                restrictInput: false
             },
             setCard: null,
             deck: [], hand: [], discard: [], deckLocked: false
@@ -565,14 +566,6 @@ function setupStage(sel, continueMode) {
         enemyPanel.appendChild(announcer);
     }
     
-    // プレイヤー状態リセット（バフ等）
-    player.state = {
-        power: false, shield: false, weakLock: false, barrier: false,
-        guardTurn: 0, magicCylinder: false, hexSealTrap: false, huge: 0,
-        atkBonus: 0, itemLock: false
-    };
-    player.setCard = null;
-    
     if (!continueMode) {
         player.mp = 3;
         player.deckLocked = false;
@@ -621,22 +614,13 @@ function spawnEnemy() {
     // ★ FIX: 死亡状態での出現防止
     if (player.hp <= 0) return;
     
-    try {
-        player.state = {
-            atkBuff: 1.0,    // 攻撃倍率 (1.0 = 標準)
-            atkFlat: 0,      // 攻撃加算値
-            atkDuration: 0,  // 効果が持続する「投擲数」
-            guardTurn: 0,    // 防御持続ターン
-            itemLock: false, // アイテム封印
-            restrictInput: false // 1投制限
-        };
-        
+    try {        
         enemy.state = {
             charge: false, isStunned: false,
             atkBuff: 0, atkBuffTurn: 0,
             guardTurn: 0, guardType: null, guardValue: 0,
             barrierTurn: 0, barrierLimit: 0,
-            patternQueue: [], actionCount: 0
+            actionCount: 0
         };
         
         currentTurn = 1;
