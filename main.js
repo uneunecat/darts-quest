@@ -1905,11 +1905,14 @@ function proceedUnboxing() {
         
         setTimeout(() => {
             playSE("se-heal");
+            const container = el("pack-result-modal");
+            container.classList.add("shake-heavy");
             el("white-out").style.display = "block";
             el("white-out").classList.add("white-out-anim");
             pack.style.display = "none";
             
             setTimeout(() => {
+                container.classList.remove("shake-heavy");
                 openingPhase = 3;
                 el("reveal-area").style.display = "flex";
                 currentRevealIndex = 0;
