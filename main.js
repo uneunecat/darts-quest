@@ -728,23 +728,19 @@ function handleEnter() {
 }
 
 // ★ メイン攻撃処理ループ
-// Updated: main.js (processOneThrow - 防御ロジック統合版)
 function processOneThrow(score) {
     if (enemy.hp <= 0 || player.hp <= 0 || isProcessing) return;
-    if (restrictInput && turnInputs.length > 0) return;
+    
+    // 1投制限（拘束状態）のチェック
+    if (player.state.restrictInput && turnInputs.length > 0) return;
 
     let singleDmg = score;
-    let weakHit = false;
 
-    // --- 1. バリア判定 (閾値無効化) ---
-    // Updated: ステージ固有のコードを削除し、barrierTurnを参照するように統一
+    // --- 1. 敵の防御判定 (バリア・ガード) ---
     if (enemy.state.barrierTurn > 0 && singleDmg < enemy.state.barrierLimit) {
-        singleDmg = 0;
-        addLog(`結界! (${enemy.state.barrierLimit}未満無効)`, "log-enemy");
+        singleDmg = 0; 
+        addLog(`結界！(${enemy.state.barrierLimit}未満無効)`, "log-enemy");
     }
-
-    // --- 2. ガード判定 (割合 or 固定値軽減) ---
-    // Updated: guardTurnを参照するように統一
     if (singleDmg > 0 && enemy.state.guardTurn > 0) {
         if (enemy.state.guardType === 'ratio') {
             singleDmg = Math.floor(singleDmg * enemy.state.guardValue);
@@ -755,16 +751,10 @@ function processOneThrow(score) {
         }
     }
 
-    // --- 3. プレイヤーの攻撃バフ・状態異常計算 ---
+    // --- 2. プレイヤーの攻撃バフ適用 ---
     if (player.state.atkDuration > 0) {
-        // (スコア + 加算値) * 倍率
-        const prevDmg = singleDmg;
         singleDmg = Math.floor((singleDmg + player.state.atkFlat) * player.state.atkBuff);
-        
-        // 1投消費
         player.state.atkDuration--;
-        
-        // 効果終了チェック
         if (player.state.atkDuration <= 0) {
             player.state.atkBuff = 1.0;
             player.state.atkFlat = 0;
@@ -772,19 +762,19 @@ function processOneThrow(score) {
         }
     }
 
-    // ★重要: 1投制限の解除
+    // --- 3. 状態異常解除・ダメージ適用 ---
+    // 拘束フラグを保持（この投擲で解除されるが、このターンの終了判定に使うため）
+    const wasRestricted = player.state.restrictInput;
     if (player.state.restrictInput) {
         player.state.restrictInput = false;
         addLog("拘束が解けた！", "log-system");
     }
-    
+
     // 弱点判定
-    if (player.state.weakLock || (score >= 51 && enemy.data.weak && (score % enemy.data.weak === 0))) {
-        weakHit = true;
-    }
-    
-    // --- 4. ダメージ適用 ---
-    if (enemy.hp - singleDmg === 0) isJustFinish = true;
+    let weakHit = false;
+    if (score >= 51 && enemy.data.weak && (score % enemy.data.weak === 0)) weakHit = true;
+
+    // 数値更新
     enemy.hp = Math.max(0, enemy.hp - singleDmg);
     totalScore += score;
     totalDarts++;
@@ -796,20 +786,15 @@ function processOneThrow(score) {
         dropGuaranteed = true;
         weakHitCount++;
         addLog(`WEAK HIT!!`, "log-weak");
-        if (!player.state.weakLock) {
-            playSE("se-weak");
-            el("flash-overlay").className = "flash-purple";
-            setTimeout(() => el("flash-overlay").className = "", 600);
-        }
+        playSE("se-weak");
     }
-    if (player.state.weakLock) player.state.weakLock = false;
 
     triggerEffect(el("enemy-panel"), singleDmg, false);
     animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 300);
     displayEnemyHP = enemy.hp;
-    
     updateInfo();
 
+    // 勝利判定
     if (enemy.hp <= 0) {
         isProcessing = true;
         totalGameTurns++;
@@ -817,9 +802,10 @@ function processOneThrow(score) {
         return;
     }
 
-    // 3投終了または1投制限での終了判定
-    if (turnInputs.length >= 3 || (player.state.restrictInput === false && turnInputs.length >= 1 && score === turnInputs[0] && /* 以前のrestrict判定 */ false)) {
-         // (※ロジックを整理) 投げ終わった後の判定
+    // --- 4. ターン終了判定 (Updated: ここを修正) ---
+    // 通常は3投、拘束されていた場合は1投で終了
+    if (turnInputs.length >= 3 || (wasRestricted && turnInputs.length >= 1)) {
+        setTimeout(finishPlayerTurn, 1000); // 1秒後に敵ターンへ移行
     }
 }
 
