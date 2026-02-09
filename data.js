@@ -94,7 +94,7 @@ const GAME_DATA = {
                 { id: "attack", weight: 7 }
             ]},
             { name: "ハーピィズペット竜", img: "assets/3-5.png", weak: 20, hp: 550, ai: [
-                { name: "愛の鞭・ブレス", type: "MP_DAMAGE", value: 99, mult: 2.0, color: "fire", weight: 3, cond: { src: "turn_mod", val: 4 } },
+                { name: "愛の鞭・ブレス", type: "MP_DAMAGE", value: 99, mult: 2.0, color: "fire", guaranteed: true, cond: { src: "turn_mod", val: 4 } },
                 { id: "attack", weight: 7 }
             ]}
         ],

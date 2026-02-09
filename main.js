@@ -864,8 +864,8 @@ function checkAICondition(c) {
         case "p_mp": targetVal = player.mp; break;
         case "hand": targetVal = player.hand.length; break;
         case "turn": targetVal = enemy.state.actionCount; break;
-        case "turn_mod": return (enemy.state.actionCount % c.val === 0);
-        case "p_state": return player.state[c.tag] === c.val;
+        case "turn_mod": return enemy.state.actionCount > 0 && (enemy.state.actionCount % c.val === 0);
+        case "p_state": if (c.tag === "restrictInput") return restrictInput === c.val; return player.state[c.tag] === c.val;
         case "trap": return !!player.setCard === c.val;
     }
 
