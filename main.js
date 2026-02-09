@@ -1618,52 +1618,116 @@ function playHandCard(index) {
     updateInfo();
 }
 
+// Updated: main.js (applyCardEffect - リファクタリング版)
 function applyCardEffect(card) {
-    let rawMsg = "";
-    
-    switch (card.id) {
-        case 101: player.hp = player.maxHp; rawMsg = "HP完全回復！"; playSE("se-heal"); break;
-        case 201: 
-            const dmg201 = 100; enemy.hp = Math.max(0, enemy.hp - dmg201);
-            enemy.state.isStunned = true; rawMsg = "100ダメージ＆スタン！";
-            playSE("se-boom"); triggerEffect(el("enemy-panel"), dmg201, false); break;
-        case 202: drawCard(); drawCard(); rawMsg = "カードを2枚ドロー！"; playSE("se-heal"); break;
-        case 301: player.state.guardTurn = 3; rawMsg = "3ターン防御(被ダメ半減)！"; break;
-        case 302: if (enemy.state.charge) { enemy.state.charge = false; enemy.state.isStunned = true; rawMsg = "チャージ解除＆スタン！"; playSE("se-hit"); } else { rawMsg = "不発(敵はチャージしていない)"; } break;
-        case 303: player.state.barrier = true; rawMsg = "バリア展開(次攻撃無効＆反撃)！"; break;
-        case 401: const dmg401 = 30; enemy.hp = Math.max(0, enemy.hp - dmg401); rawMsg = "30ダメージ！"; playSE("se-attack"); triggerEffect(el("enemy-panel"), dmg401, false); break;
-        case 402: player.hp = Math.min(player.hp + 50, player.maxHp); rawMsg = "HP50回復"; playSE("se-heal"); break;
-        case 403: player.hp = Math.max(1, player.hp - 20); const dmg403 = 80; enemy.hp = Math.max(0, enemy.hp - dmg403); rawMsg = "自傷20＆敵に80ダメージ！"; playSE("se-attack"); triggerEffect(el("player-panel"), 20, true); triggerEffect(el("enemy-panel"), dmg403, false); break;
-        case 404: const dmg404 = 80; enemy.hp = Math.max(0, enemy.hp - dmg404); rawMsg = "80ダメージ！"; playSE("se-attack"); triggerEffect(el("enemy-panel"), dmg404, false); break;
-        case 405: player.state.power = true; rawMsg = "攻撃力2倍(このターン)！"; break;
-        case 501: openDiscardSelector(); rawMsg = "捨てるカードを選んでください..."; break;
-        case 601: const dmg601 = 150; enemy.hp = Math.max(0, enemy.hp - dmg601); while (player.hand.length > 0) player.discard.push(player.hand.pop()); rawMsg = "全手札を犠牲に150ダメージ！"; playSE("se-boom"); triggerEffect(el("enemy-panel"), dmg601, false); break;
-        case 602: player.state.magicCylinder = true; rawMsg = "魔法の筒をセット(反射待機)！"; break;
-        case 701: if (player.hp <= (player.maxHp * 0.5)) player.state.huge = 1; else player.state.huge = 2; rawMsg = (player.state.huge === 1) ? "HP劣勢…逆転の3倍パワー！" : "HP優勢…油断の0.5倍パワー…"; break;
-        case 702: const dmg702 = 40; enemy.hp = Math.max(0, enemy.hp - dmg702); if (enemy.state.guard) { enemy.state.guard = false; rawMsg = "40ダメ＆敵の防御を破壊！"; } else rawMsg = "40ダメージ！"; triggerEffect(el("enemy-panel"), dmg702, false); break;
-        case 703: player.state.hexSealTrap = true; rawMsg = "【罠】六芒星をセット！(次被弾時半減＆スタン)"; break;
-        case 801: if (enemy.state.guard) { enemy.state.guard = false; rawMsg = "敵の防御を解除した！"; } else rawMsg = "敵は防御していなかった"; break;
-        case 802: const dmg802 = 60; enemy.hp = Math.max(0, enemy.hp - dmg802); rawMsg = "60ダメージ！"; triggerEffect(el("enemy-panel"), dmg802, false); break;
-        case 803: player.hp = Math.min(player.hp + 30, player.maxHp); player.state.atkBonus = 20; rawMsg = "HP30回復＆次撃+20！"; playSE("se-heal"); break;
-        case 804: if (player.discard.length === 0) { rawMsg = "墓地にカードがない…"; break; } const magics = player.discard.filter(did => { const c = CARD_DB.find(cd => cd.id === did); return c.type === "MAGIC"; }); if (magics.length === 0) { rawMsg = "墓地に魔法がない…"; break; } const salvId = magics[Math.floor(Math.random() * magics.length)]; const dIndex = player.discard.indexOf(salvId); player.discard.splice(dIndex, 1); player.hand.push(salvId); rawMsg = `墓地から「${CARD_DB.find(c => c.id === salvId).name}」を回収！`; break;
-        case 805: player.hp = Math.max(1, player.hp - 50); const dmg805 = 150; enemy.hp = Math.max(0, enemy.hp - dmg805); rawMsg = "自傷50＆敵に150ダメージ！"; triggerEffect(el("player-panel"), 50, true); triggerEffect(el("enemy-panel"), dmg805, false); break;
-        default: rawMsg = "(発動)"; break;
+    const e = card.effect;
+    if (!e) return;
+
+    let rawMsg = "(発動)";
+    const oldEnemyHp = enemy.hp;
+    const oldPlayerHp = player.hp;
+
+    // 1. 効果音
+    if (e.se) playSE(e.se);
+
+    // 2. 汎用効果の処理
+    switch (e.type) {
+        case "DAMAGE":
+            enemy.hp = Math.max(0, enemy.hp - e.value);
+            triggerEffect(el("enemy-panel"), e.value, false);
+            if (e.stun) enemy.state.isStunned = true;
+            if (e.breakGuard) enemy.state.guard = false;
+            if (e.discardAll) while (player.hand.length > 0) player.discard.push(player.hand.pop());
+            if (e.selfDamage) {
+                player.hp = Math.max(1, player.hp - e.selfDamage);
+                triggerEffect(el("player-panel"), e.selfDamage, true);
+            }
+            rawMsg = `${e.value}ダメージ！` + (e.stun ? "＆スタン！" : "");
+            break;
+
+        case "HEAL":
+            const healAmt = (e.value === "FULL") ? (player.maxHp - player.hp) : e.value;
+            player.hp = Math.min(player.hp + healAmt, player.maxHp);
+            triggerEffect(el("player-panel"), healAmt, true, true);
+            if (e.atkBonus) player.state.atkBonus = e.atkBonus;
+            rawMsg = (e.value === "FULL") ? "HP完全回復！" : `HP ${healAmt} 回復！`;
+            break;
+
+        case "DRAW":
+            for (let i = 0; i < e.value; i++) drawCard();
+            rawMsg = `カードを${e.value}枚ドロー！`;
+            break;
+
+        case "STATE_PLAYER":
+            Object.assign(player.state, e.state);
+            rawMsg = e.msg || "効果発動！";
+            break;
+
+        case "STATE_ENEMY":
+            Object.assign(enemy.state, e.state);
+            rawMsg = e.msg || "敵の状態が変化！";
+            break;
+
+        case "SPECIAL":
+            if (e.func === "openDiscardSelector") {
+                openDiscardSelector();
+                rawMsg = "捨てるカードを選んでください...";
+            } else if (e.func === "applyHuge") {
+                rawMsg = executeHugeEffect();
+            } else if (e.func === "salvageMagic") {
+                rawMsg = executeSalvageMagic();
+            }
+            break;
     }
-    
-    console.log(`[Skill] ${card.name}: ${rawMsg}`);
+
+    // 3. UI更新
     const announcerHTML = `<div style="font-size: 80%; opacity: 0.9; margin-bottom: 5px;">${card.name}</div><div>${rawMsg}</div>`;
     announce(announcerHTML, "log-skill");
-    
-    animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500);
-    displayEnemyHP = enemy.hp;
-    animateValue(el("player-hp"), displayPlayerHP, player.hp, 500);
-    displayPlayerHP = player.hp;
-    
+
+    if (enemy.hp !== oldEnemyHp) {
+        animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500);
+        displayEnemyHP = enemy.hp;
+    }
+    if (player.hp !== oldPlayerHp) {
+        animateValue(el("player-hp"), displayPlayerHP, player.hp, 500);
+        displayPlayerHP = player.hp;
+    }
+
     if (enemy.hp <= 0) {
         isProcessing = true;
         setTimeout(winBattle, 800);
     }
 }
+// =========================================
+// CARD SPECIAL LOGICS (特殊カード用処理)
+// =========================================
+
+// Updated: main.js (CARD SPECIAL LOGICS)
+function executeHugeEffect() {
+    if (player.hp <= (player.maxHp * 0.5)) {
+        player.state.huge = 1; // 3倍
+        return "HP劣勢…逆転の3倍パワー！";
+    } else {
+        player.state.huge = 2; // 0.5倍
+        return "HP優勢…油断の0.5倍パワー…";
+    }
+}
+
+function executeSalvageMagic() {
+    const magics = player.discard.filter(did => {
+        const c = CARD_DB.find(cd => cd.id === did);
+        return c && c.type === "MAGIC";
+    });
+    if (magics.length > 0) {
+        const salvId = magics[Math.floor(Math.random() * magics.length)];
+        const dIndex = player.discard.indexOf(salvId);
+        player.discard.splice(dIndex, 1);
+        player.hand.push(salvId);
+        return `墓地から「${CARD_DB.find(c => c.id === salvId).name}」を回収！`;
+    }
+    return "墓地に魔法がない…";
+}
+
 
 
 // =========================================
