@@ -39,7 +39,7 @@ const GAME_DATA = {
             { name: "ラーバモス", img: "assets/1-2.png", weak: 19, ai: [{ id: "attack", weight: 1 }] },
             { name: "進化の繭", img: "assets/1-3.png", weak: 18, hp: 260, ai: [
                 { name: "自己再生", type: "HEAL", value: 20, se: "se-heal", color: "heal", weight: 3, cond: { src: "e_hp", op: "lt", val: 80 } },
-                { name: "鉄壁の守り", type: "BUFF_E", state: { guard: true }, se: "se-buff", color: "earth", weight: 4 },
+                { name: "鉄壁の守り", type: "BUFF_E", state: { guardTurn: 3, guardType: 'ratio', guardValue: 0.5 }, se: "se-buff", color: "earth", weight: 4 },
                 { id: "attack", weight: 4 }
             ]},
             { name: "グレート・モス", img: "assets/1-4.png", weak: 17, hp: 290, ai: [
@@ -78,7 +78,7 @@ const GAME_DATA = {
         ],
         3: [
             { name: "デュナミス・ヴァルキリア", img: "assets/3-1.png", weak: 20, hp: 300, ai: [
-                { name: "護封剣の加護", type: "BUFF_E", state: { guardType: 'cut', guardTurn: 3 }, color: "gold", weight: 10, cond: { src: "turn", op: "eq", val: 1 } },
+                { name: "護封剣の加護", type: "BUFF_E", state: { guardTurn: 3, guardType: 'ratio', guardValue: 0.5 }, color: "gold", preemptive: true },
                 { id: "attack", weight: 10 }
             ]},
             { name: "ハーピィ・レディ", img: "assets/3-2.png", weak: 19, hp: 330, ai: [
@@ -112,15 +112,16 @@ const GAME_DATA = {
                 { id: "attack", weight: 6 }
             ]},
             { name: "ブルーアイズ・トゥーン・ドラゴン", img: "assets/4-4.png", weak: 17, hp: 500, ai: [
-                { name: "トゥーン・スキン", type: "BUFF_E", state: { toonSkin: true }, weight: 10, cond: { src: "turn_mod", val: 3 } },
-                { id: "attack", weight: 10 }
+                { name: "トゥーン・スキン", type: "BUFF_E", state: { guardTurn: 5, guardType: 'fixed', guardValue: 10 }, preemptive: true },
+                { id: "attack", weight: 5 }
             ]},
             { name: "サクリファイス", img: "assets/4-5.png", weak: 20, hp: 550, ai: [
                 { name: "幻想の儀式", type: "DRAIN", mult: 1.2, weight: 3, cond: { src: "turn_mod", val: 3 } },
                 { id: "attack", weight: 7 }
             ]},
             { name: "サウザンド・アイズ・サクリファイス", img: "assets/4-6.png", weak: 20, hp: 800, ai: [
-                { name: "千眼の邪教神", type: "BUFF_E", state: { barrierLimit: 10 }, weight: 5, cond: { src: "turn_mod", val: 2 } },
+                { name: "結界", type: "BUFF_E",state: { barrierTurn: 999, barrierLimit: 10 },color: "purple",preemptive: true },
+                { name: "千眼の邪教神", type: "DRAIN", mult: 2.0, isBossUlt: true, color: "purple", guaranteed: true, cond: { src: "turn_mod", val: 4 }  },
                 { id: "attack", weight: 5 }
             ]}
         ],
@@ -134,7 +135,7 @@ const GAME_DATA = {
             { name: "ワームドレイク", img: "assets/5-1.png", weak: 19, hp: 400, ai: [{ id: "attack", weight: 1 }] },
             { name: "ヒューマノイド・スライム", img: "assets/5-2.png", weak: 18, hp: 450, ai: [{ id: "attack", weight: 1 }] },
             { name: "リバイバルスライム", img: "assets/5-3.png", weak: 20, hp: 300, ai: [
-                { name: "再 生", type: "HEAL", value: 999, se: "se-heal", weight: 3, cond: { src: "e_hp", op: "lt", val: 30 } },
+                { name: "再 生", type: "HEAL", value: 999, se: "se-heal", weight: 3},
                 { id: "attack", weight: 7 }
             ]},
             { name: "ヒューマノイド・ドレイク", img: "assets/5-4.png", weak: 17, hp: 600, ai: [
@@ -142,6 +143,7 @@ const GAME_DATA = {
                 { id: "attack", weight: 7 }
             ]},
             { name: "オシリスの天空竜", img: "assets/5-5.png", weak: 20, hp: 2000, ai: [
+                { name: "召雷弾", type: "BUFF_E",state: { barrierTurn: 999, barrierLimit: 15 },color: "gold",preemptive: true },
                 { name: "サンダー・フォース", type: "ATTACK", fixedDmg: 80, isBossUlt: true, color: "fire", guaranteed: true, cond: { src: "turn_mod", val: 5 } },
                 { id: "attack", weight: 8 }
             ]}

@@ -538,7 +538,6 @@ function startTransition(sel, continueMode) {
             setTimeout(() => {
                 ch.style.display = "none";
                 el("black-curtain").classList.remove("fade-in");
-                checkOpeningSkill();
             }, 1000);
         }, info.warning ? 4000 : 2500);
     }, 1000);
@@ -597,18 +596,45 @@ function setupStage(sel, continueMode) {
     spawnEnemy();
     resizeGame();
 }
+function handlePreemptiveAI() {
+    const aiList = enemy.data.ai || [];
+    // preemptive: true かつ 条件を満たすアクションを探す
+    const preemptiveAction = aiList.find(a => a.preemptive && checkAICondition(a.cond));
 
+    if (preemptiveAction) {
+        if (preemptiveAction.name) {
+            // 少し遅延させて演出を見せる
+            setTimeout(() => {
+                showSkillCutin(preemptiveAction.name, preemptiveAction.color || "gold");
+                setTimeout(() => {
+                    // executeEnemySkillを「先制モード」で呼び出す
+                    executeEnemySkill(preemptiveAction, true); 
+                }, 1200);
+            }, 500);
+        } else {
+            executeEnemySkill(preemptiveAction, true);
+        }
+    }
+}
 function spawnEnemy() {
     // ★ FIX: 死亡状態での出現防止
     if (player.hp <= 0) return;
     
     try {
         enemy.state = {
-            charge: false, guard: false, guardType: null, guardTurn: 0,
-            atkBuff: 0, atkBuffTurn: 0, isStunned: false, toonSkin: false, barrierLimit: 0,
+            charge: false,
+            isStunned: false,
+            atkBuff: 0, atkBuffTurn: 0,
+            // guard系: guardTurn > 0 の間発動
+            guardTurn: 0,
+            guardType: null,  // 'ratio'(割合) or 'fixed'(固定値)
+            guardValue: 0,    // 0.5(50%減) や 15(15減)
+            // barrier系: barrierTurn > 0 の間発動
+            barrierTurn: 0,
+            barrierLimit: 0,  // この数値未満を0にする
             patternQueue: [],
             actionCount: 0
-        };
+            };
         
         // 一時バフリセット
         player.state.power = false;
@@ -666,27 +692,13 @@ function spawnEnemy() {
         triggerTrap('summon'); // 召喚時トラップ発動判定
         updateInfo();
         addLog(`=== STAGE ${stage} - ${floor}F START ===`, "system");
-        
+        handlePreemptiveAI(); 
+
         isProcessing = false;
         
     } catch (e) {
         console.error("Spawn Error:", e);
         isProcessing = false;
-    }
-}
-
-// 先制スキル判定 (ステージ3)
-function checkOpeningSkill() {
-    if (stage === 3 && floor === 1) {
-        setTimeout(() => {
-            showSkillCutin("護封剣の加護", "gold");
-            setTimeout(() => {
-                enemy.state.guardType = 'cut';
-                enemy.state.guardTurn = 3;
-                addLog(">> 先制行動: 敵が光の護封剣(3T)を展開！", "log-enemy");
-                updateInfo();
-            }, 1200);
-        }, 500);
     }
 }
 
@@ -720,29 +732,34 @@ function handleEnter() {
 }
 
 // ★ メイン攻撃処理ループ
+// Updated: main.js (processOneThrow - 防御ロジック統合版)
 function processOneThrow(score) {
-    // ★ FIX: プレイヤーHP0以下でも入力遮断
     if (enemy.hp <= 0 || player.hp <= 0 || isProcessing) return;
     if (restrictInput && turnInputs.length > 0) return;
 
     let singleDmg = score;
     let weakHit = false;
 
-    // --- 敵の防御特性によるダメージ補正 ---
-    // オシリス (15以下無効)
-    if (stage === 6 && floor === 5 && singleDmg <= 15) {
-        singleDmg = 0; addLog("召雷弾! (15以下無効)", "log-enemy");
-    }
-    // サウザンドアイズ (10未満無効)
-    if (stage === 4 && floor === 6 && currentTurn % 2 === 0 && singleDmg < 10) {
-        singleDmg = 0; addLog("結界! (10未満無効)", "log-enemy");
-    }
-    // バリア汎用
-    if (enemy.state.barrierLimit > 0 && singleDmg < enemy.state.barrierLimit) {
-        singleDmg = 0; addLog(`結界! (${enemy.state.barrierLimit}未満無効)`, "log-enemy");
+    // --- 1. バリア判定 (閾値無効化) ---
+    // Updated: ステージ固有のコードを削除し、barrierTurnを参照するように統一
+    if (enemy.state.barrierTurn > 0 && singleDmg < enemy.state.barrierLimit) {
+        singleDmg = 0;
+        addLog(`結界! (${enemy.state.barrierLimit}未満無効)`, "log-enemy");
     }
 
-    // --- プレイヤーの攻撃バフ ---
+    // --- 2. ガード判定 (割合 or 固定値軽減) ---
+    // Updated: guardTurnを参照するように統一
+    if (singleDmg > 0 && enemy.state.guardTurn > 0) {
+        if (enemy.state.guardType === 'ratio') {
+            singleDmg = Math.floor(singleDmg * enemy.state.guardValue);
+            addLog(`ガード！(軽減率:${Math.round((1 - enemy.state.guardValue) * 100)}%)`, "system");
+        } else if (enemy.state.guardType === 'fixed') {
+            singleDmg = Math.max(0, singleDmg - enemy.state.guardValue);
+            addLog(`アーマー！(ダメージ-${enemy.state.guardValue})`, "system");
+        }
+    }
+
+    // --- 3. プレイヤーの攻撃バフ・状態異常計算 ---
     if (player.state.atkBonus > 0) {
         singleDmg += player.state.atkBonus;
         player.state.atkBonus = 0;
@@ -751,33 +768,18 @@ function processOneThrow(score) {
         singleDmg = Math.floor(singleDmg * 2.0);
         player.state.power = false;
     }
-    // 巨大化
     if (player.state.huge !== 0) {
         if (player.state.huge === 1) singleDmg = Math.floor(singleDmg * 3.0);
         else singleDmg = Math.floor(singleDmg * 0.5);
         player.state.huge = 0;
     }
     
-    // --- 弱点・防御計算 ---
-    // 弱点ヒット判定
+    // 弱点判定
     if (player.state.weakLock || (score >= 51 && enemy.data.weak && (score % enemy.data.weak === 0))) {
         weakHit = true;
     }
     
-    // トゥーン (ダメージ軽減)
-    if (stage === 4 && floor === 4 && currentTurn % 3 === 0) singleDmg = Math.max(0, singleDmg - 15);
-    if (enemy.state.toonSkin) singleDmg = Math.max(0, singleDmg - 15);
-    
-    // ガード状態
-    if (enemy.state.guardType === 'cut') singleDmg = Math.floor(singleDmg * 0.8);
-    if (enemy.state.guardType === 'half') singleDmg = Math.floor(singleDmg * 0.5);
-    if (enemy.state.guard) {
-        singleDmg = Math.floor(singleDmg / 2);
-        enemy.state.guard = false;
-        addLog("敵の防御で半減！", "system");
-    }
-
-    // --- ダメージ適用 ---
+    // --- 4. ダメージ適用 ---
     if (enemy.hp - singleDmg === 0) isJustFinish = true;
     enemy.hp = Math.max(0, enemy.hp - singleDmg);
     
@@ -786,7 +788,7 @@ function processOneThrow(score) {
     turnInputs.push(score);
     updateScoreDisplay();
 
-    // --- 演出 ---
+    // 演出
     if (weakHit) {
         dropGuaranteed = true;
         weakHitCount++;
@@ -805,15 +807,13 @@ function processOneThrow(score) {
     
     updateInfo();
 
-    // --- 勝利判定 ---
     if (enemy.hp <= 0) {
-        isProcessing = true; // ★ 入力ロック
+        isProcessing = true;
         totalGameTurns++;
         setTimeout(winBattle, 1000);
         return;
     }
 
-    // --- ターン終了判定 ---
     if (turnInputs.length >= 3 || (restrictInput && turnInputs.length >= 1)) {
         setTimeout(finishPlayerTurn, 1000);
     }
@@ -876,8 +876,6 @@ function checkAICondition(c) {
     
     return true;
 }
-// Updated: main.js (enemyTurn - シーケンス対応AIエンジン)
-// Updated: main.js (enemyTurn - 優先確定発動対応版)
 function enemyTurn() {
     if (enemy.state.isStunned) {
         addLog(`${enemy.name}はスタン中`, "log-system");
@@ -895,8 +893,17 @@ function enemyTurn() {
     } else {
         // 2. 現在の条件を満たしているアクションを抽出
         const aiList = enemy.data.ai || [{ id: "attack", weight: 1 }];
-        const validActions = aiList.filter(a => {if (!checkAICondition(a.cond)) return false;if (a.type === "BUFF_E" && a.state && a.state.atkBuff) {if (enemy.state.atkBuffTurn > 0) return false;}return true;});
+        const validActions = aiList.filter(a => {
+            if (!checkAICondition(a.cond)) return false;
 
+            // すでにバフが有効なら、そのバフ系スキルは除外する
+            if (a.type === "BUFF_E" && a.state) {
+                if (a.state.atkBuff && enemy.state.atkBuffTurn > 0) return false;
+                if (a.state.guardTurn && enemy.state.guardTurn > 0) return false;
+                if (a.state.barrierTurn && enemy.state.barrierTurn > 0) return false;
+            }
+            return true;
+        });
         // 3. 【新設】確定発動(guaranteed)設定があり、かつ条件を満たしているものを探す
         const guaranteedAction = validActions.find(a => a.guaranteed);
 
@@ -937,8 +944,7 @@ function enemyTurn() {
     }
 }
 // New: main.js (executeEnemySkill - 敵専用エフェクト解決)
-function executeEnemySkill(skill) {
-
+function executeEnemySkill(skill, isPreemptive = false) {
     enemy.state.charge = false;
 
     switch (skill.type) {
@@ -948,20 +954,20 @@ function executeEnemySkill(skill) {
             addLog(`${enemy.name}は ${healVal} 回復した`, "log-heal");
             animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500);
             displayEnemyHP = enemy.hp;
-            endEnemyTurn();
+            if (!isPreemptive) endEnemyTurn();
             break;
 
         case "BUFF_E":
             Object.assign(enemy.state, skill.state);
             if (skill.msg) addLog(skill.msg, "log-enemy");
-            endEnemyTurn();
+            if (!isPreemptive) endEnemyTurn();
             break;
 
         case "STATE_P":
             if (skill.state.restrictInput) restrictInput = true;
             Object.assign(player.state, skill.state);
             if (skill.msg) addLog(skill.msg, "log-enemy");
-            doEnemyAttack(1.0);
+            if (!isPreemptive) doEnemyAttack(1.0);
             break;
 
         case "MP_DAMAGE":
@@ -1116,6 +1122,21 @@ function endEnemyTurn() {
         }
     }
 
+    // Updated: 防御持続の減少
+    if (enemy.state.guardTurn > 0) {
+        enemy.state.guardTurn--;
+        if (enemy.state.guardTurn === 0) {
+            enemy.state.guardType = null;
+            enemy.state.guardValue = 0;
+        }
+    }
+    if (enemy.state.barrierTurn > 0) {
+        enemy.state.barrierTurn--;
+        if (enemy.state.barrierTurn === 0) {
+            enemy.state.barrierLimit = 0;
+        }
+    }
+
     currentTurn++;
     player.mp = Math.min(player.mp + 3, player.maxMp);
     triggerFloatText("MP+3", el("player-mp-bar"));
@@ -1133,6 +1154,8 @@ function endEnemyTurn() {
     } else {
         player.state.hexSeal = 0;
     }
+
+    
     
     drawCard();
     updateInfo();
@@ -1725,11 +1748,11 @@ function updateInfo() {
     setHTML("weak-display", weakText);
 
     let eChips = "";
-    if (enemy.state.guard) eChips += `<span class="status-chip chip-guard">🛡️GUARD</span>`;
     if (enemy.state.charge) eChips += `<span class="status-chip chip-charge">⚡CHARGE</span>`;
     if (enemy.state.isStunned) eChips += `<span class="status-chip chip-stun">😵STUN</span>`;
-    if (enemy.state.barrierLimit > 0) eChips += `<span class="status-chip chip-barrier">💠BARRIER(${enemy.state.barrierLimit})</span>`;
     if (enemy.state.atkBuffTurn > 0) eChips += `<span class="status-chip chip-buff">⚔️ATK UP(${enemy.state.atkBuffTurn})</span>`;
+    if (enemy.state.guardTurn > 0) {const label = enemy.state.guardType === 'ratio' ? 'GUARD' : 'ARMOR';eChips += `<span class="status-chip chip-guard">🛡️${label}(${enemy.state.guardTurn})</span>`;}
+    if (enemy.state.barrierTurn > 0) {eChips += `<span class="status-chip chip-barrier">💠BARRIER(${enemy.state.barrierTurn})</span>`;}
     setHTML("enemy-states-side", eChips);
 
     // Player HP
