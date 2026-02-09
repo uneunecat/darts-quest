@@ -1,8 +1,10 @@
 // =========================================
-// DARTS QUEST - main.js (v3.1.0 Clean & Just Finish Fix)
+// DARTS QUEST - main.js (v3.2.0 Restored & Clean)
 // =========================================
 
-// --- [SECTION 1] GLOBAL STATE (状態定義) ---
+// --- [SECTION 1] GLOBAL STATE & UTILS ---
+const el = (id) => document.getElementById(id); // Restored: 必須ユーティリティ
+
 let gameConfig = { bgmVolume: 0.3, sysVolume: 0.5, atkVolume: 0.8 };
 let currentBgmId = "";
 let bluetoothDevice = null;
@@ -14,7 +16,7 @@ let player = {
     state: {
         atkBuff: 1.0, atkFlat: 0, atkDuration: 0,
         guardTurn: 0, itemLock: false, restrictInput: false
-    }, // Updated: hexSeal を削除
+    },
     deck: [], hand: [], discard: [], deckLocked: false, setCard: null
 };
 
@@ -49,7 +51,6 @@ let isOpeningPack = false, openingPhase = 0, packResults = [], currentPackId = "
 
 // --- [SECTION 2] CORE ENGINE (汎用計算エンジン) ---
 
-// 汎用条件判定
 function checkCondition(c) {
     if (!c) return true;
     let val = 0;
@@ -71,7 +72,6 @@ function checkCondition(c) {
     return true;
 }
 
-// エフェクト解決エンジン
 function resolveEffects(effects, context = {}) {
     if (!effects || effects.length === 0) return context;
     if (context.modifiedDmg === undefined) context.modifiedDmg = context.incomingDmg || 0;
@@ -85,7 +85,6 @@ function resolveEffects(effects, context = {}) {
             case "DAMAGE":
                 const target = e.target === "PLAYER" ? player : enemy;
                 const targetEl = e.target === "PLAYER" ? el("player-panel") : el("enemy-panel");
-                // Updated: ダメージ適用前にジャストフィニッシュ判定
                 if (e.target !== "PLAYER" && enemy.hp > 0 && enemy.hp === e.value) isJustFinish = true;
                 target.hp = Math.max(0, target.hp - e.value);
                 triggerEffect(targetEl, e.value, e.target === "PLAYER");
@@ -129,7 +128,7 @@ function resolveEffects(effects, context = {}) {
                 break;
             case "REFLECT":
                 const reflectDmg = context.incomingDmg || 0;
-                if (enemy.hp > 0 && enemy.hp === reflectDmg) isJustFinish = true; // 反射でも判定
+                if (enemy.hp > 0 && enemy.hp === reflectDmg) isJustFinish = true;
                 enemy.hp = Math.max(0, enemy.hp - reflectDmg);
                 triggerEffect(el("enemy-panel"), reflectDmg, false);
                 rawMsg = `${reflectDmg}ダメージ反射！`;
@@ -167,7 +166,6 @@ function processOneThrow(score) {
 
     let singleDmg = score;
 
-    // 1. 敵防御判定
     if (enemy.state.barrierTurn > 0 && singleDmg < enemy.state.barrierLimit) {
         singleDmg = 0; addLog(`結界！(${enemy.state.barrierLimit}未満無効)`, "log-enemy");
     }
@@ -176,7 +174,6 @@ function processOneThrow(score) {
         else if (enemy.state.guardType === 'fixed') singleDmg = Math.max(0, singleDmg - enemy.state.guardValue);
     }
 
-    // 2. プレイヤー攻撃バフ
     if (player.state.atkDuration > 0) {
         singleDmg = Math.floor((singleDmg + player.state.atkFlat) * player.state.atkBuff);
         player.state.atkDuration--;
@@ -186,11 +183,9 @@ function processOneThrow(score) {
         }
     }
 
-    // 3. 状態異常解除・ダメージ適用
     const wasRestricted = player.state.restrictInput;
     if (player.state.restrictInput) { player.state.restrictInput = false; addLog("拘束が解けた！", "log-system"); }
 
-    // Updated: ジャストフィニッシュ判定
     if (singleDmg > 0 && enemy.hp === singleDmg) isJustFinish = true;
 
     let weakHit = (score >= 51 && enemy.data.weak && (score % enemy.data.weak === 0));
@@ -207,7 +202,6 @@ function processOneThrow(score) {
 
     if (enemy.hp <= 0) { isProcessing = true; totalGameTurns++; setTimeout(winBattle, 1000); return; }
 
-    // 4. ターン終了判定
     if (turnInputs.length >= 3 || (wasRestricted && turnInputs.length >= 1)) {
         setTimeout(finishPlayerTurn, 1000);
     }
@@ -371,7 +365,6 @@ function endEnemyTurn() {
     
     if (player.state.guardTurn > 0) { player.state.guardTurn--; if (player.state.guardTurn === 0) addLog("護封剣 消滅", "log-system"); }
     if (player.state.itemLock) { player.state.itemLock = false; addLog("アイテム封印解除", "log-system"); }
-    // Updated: hexSeal 関連の古いロジックを削除
 
     currentTurn++;
     player.mp = Math.min(player.mp + 3, player.maxMp);
@@ -397,7 +390,7 @@ function loseGame() {
     showDialog("YOU DIED", "力尽きました...", "warning", [{ text: "RETURN TO TITLE", action: returnToTitle }]);
 }
 
-// --- [SECTION 4] STAGE & SYSTEM (進行管理) ---
+// --- [SECTION 4] STAGE & SYSTEM ---
 
 function initGameSession(startStage, continueMode = false) {
     if (!continueMode) {
@@ -487,14 +480,33 @@ function saveToDrive() { allSaveData[currentSlot] = savedData; localStorage.setI
 
 function selectSlot(n) {
     currentSlot = "slot" + n;
-    if (!allSaveData[currentSlot]) allSaveData[currentSlot] = JSON.parse(JSON.stringify(savedData));
+    if (!allSaveData[currentSlot]) {
+        allSaveData[currentSlot] = { highScore: { stage: 1, floor: 1, avg: 0.0 }, history: [], clearedExtra: false, dp: 0, bestRanks: {}, unlockedStage4: false, deck: [], cards: {} };
+    }
     savedData = allSaveData[currentSlot];
     updateTitleScore(); playSE("se-tap"); playBGM("bgm-title");
     el("slot-screen").style.display = "none"; el("title-screen").style.display = "flex";
 }
+
 function backToSlots() { stopAllBGM(); el("title-screen").style.display = "none"; el("slot-screen").style.display = "flex"; initSlotScreen(); }
 
-// --- [SECTION 5] UI & VISUALS (画面表示・演出) ---
+// Restored: タイトル画面更新
+function updateTitleScore() {
+    let stg = `STAGE ${savedData.highScore.stage}`;
+    if (savedData.highScore.stage === 5) stg = "EXTRA";
+    if (savedData.highScore.stage === 6) stg = "STAGE 5";
+    if (el("hs-reach")) el("hs-reach").innerText = `${stg} - ${savedData.highScore.floor}F`;
+    if (el("hs-avg")) el("hs-avg").innerText = savedData.highScore.avg.toFixed(1);
+    if (el("hs-rt")) el("hs-rt").innerText = "Rt " + calculateRating(savedData.highScore.avg);
+    if (el("dp-display")) el("dp-display").innerText = "DP: " + (savedData.dp || 0);
+}
+
+// Restored: セーブデータ操作
+function resetSaveData() { if (confirm("データを消去しますか？")) { allSaveData[currentSlot] = null; selectSlot(currentSlot.replace("slot", "")); saveToDrive(); } }
+function exportSave() { navigator.clipboard.writeText(JSON.stringify(savedData)).then(() => alert("コピーしました")); }
+function importSave() { const json = prompt("JSONを貼り付けてください"); if (json) { try { const d = JSON.parse(json); if (d.highScore) { savedData = d; updateTitleScore(); saveToDrive(); alert("完了"); } } catch (e) { alert("エラー"); } } }
+
+// --- [SECTION 5] UI & VISUALS ---
 
 function updateInfo() {
     if (!enemy.data) return;
@@ -589,6 +601,7 @@ function triggerEffect(target, dmg, isPlayer, isHeal = false) {
 }
 
 function triggerFloatText(text, target) {
+    if (!target) return;
     const f = document.createElement("div"); f.className = "float-text-box"; f.innerText = text;
     const r = target.getBoundingClientRect(); f.style.left = `${r.left + r.width/2}px`; f.style.top = `${r.top}px`;
     document.body.appendChild(f); setTimeout(() => f.remove(), 1500);
@@ -605,6 +618,17 @@ function showSkillCutin(name, type) {
     const c = el("skill-cutin"); c.className = "cutin-" + type; c.style.display = "flex";
     setTimeout(() => c.style.display = "none", 1500);
 }
+
+// Restored: ショップ・コレクション操作
+function buyPack(packId) {
+    const pack = PACK_DATA.find(p => p.id === packId);
+    if (!pack || savedData.dp < pack.price) { playSE("se-warning"); return; }
+    savedData.dp -= pack.price; saveToDrive(); startPackOpening(packId);
+}
+function closeCardShop() { el("card-shop-modal").style.display = "none"; updateTitleScore(); }
+function closeCollection() { el("collection-modal").style.display = "none"; }
+function closePackResult() { el("pack-result-modal").style.display = "none"; openCardShop(); }
+function closeHistory() { el("history-modal").style.display = "none"; }
 
 function openCardShop() {
     const list = el("pack-list"); list.innerHTML = "";
@@ -656,7 +680,30 @@ function showHistory() {
     el("history-modal").style.display = "flex";
 }
 
-// --- [SECTION 6] INPUT & UTILITY (入力・便利関数) ---
+// Restored: ステージ選択
+function openStageSelect() { el("stage-select-screen").style.display = "flex"; renderStageSelectScreen(); }
+function closeStageSelect() { el("stage-select-screen").style.display = "none"; }
+
+function renderStageSelectScreen() {
+    const container = el("stage-list-container"); container.innerHTML = "";
+    const stages = [
+        { id: 1, name: "旅立ちの森", sub: "Forest of Beginnings", img: "assets/bg_stage1.png" },
+        { id: 2, name: "荒れ狂う荒野", sub: "Raging Wasteland", img: "assets/bg_stage2.png" },
+        { id: 3, name: "誘惑の迷宮", sub: "Labyrinth of Temptation", img: "assets/bg_stage3.png" },
+        { id: 4, name: "幻想の狂宴", sub: "Toon Nightmare", img: "assets/bg_stage4_1.png" },
+        { id: 5, name: "燃えたぎる火口", sub: "Burning Crater", img: "assets/bg_extra.png" },
+        { id: 6, name: "神の試練", sub: "God's Testing Ground", img: "assets/bg_stage5_1.png" }
+    ];
+    stages.forEach(st => {
+        const isLocked = st.id > 1 && !savedData.bestRanks[st.id - 1] && !savedData.clearedExtra;
+        const div = document.createElement("div"); div.className = "stage-card-item" + (isLocked ? " locked" : "");
+        div.innerHTML = `<img src="${st.img}" class="st-img"><div class="st-info"><div class="st-title">${isLocked ? "LOCKED" : st.name}</div><div class="st-sub">${st.sub}</div></div>`;
+        if (!isLocked) div.onclick = () => { closeStageSelect(); initGameSession(st.id); };
+        container.appendChild(div);
+    });
+}
+
+// --- [SECTION 6] INPUT & UTILITY ---
 
 function handleBluetoothNotify(event) {
     if (el("game-screen").style.display === "none" || isProcessing) return;
@@ -685,6 +732,7 @@ async function connectToBoard() {
 
 function resizeGame() {
     const s = el('game-scaler');
+    if (!s) return;
     const scale = Math.min(window.innerWidth / 900, window.innerHeight / 620) * 0.95;
     if (window.innerWidth >= 900) { s.style.transform = `scale(${scale})`; s.style.width = "900px"; s.style.height = "620px"; }
     else { s.style.transform = "none"; s.style.width = "100%"; s.style.height = "auto"; }
@@ -703,3 +751,18 @@ window.addEventListener('keydown', e => {
     if (e.key === 'Enter') handleEnter();
 });
 function handleEnter() { if (currentInput !== "") { processOneThrow(parseInt(currentInput)); currentInput = ""; updateScoreDisplay(); } }
+
+// Restored: パック開封ロジック (省略されていた部分を復元)
+function startPackOpening(packId) {
+    currentPackId = packId; isOpeningPack = true; openingPhase = 1;
+    el("card-shop-modal").style.display = "none"; el("pack-result-modal").style.display = "flex";
+    const targetCards = CARD_DB.filter(c => c.packs && c.packs.includes(packId));
+    packResults = [];
+    for (let i = 0; i < 3; i++) {
+        const card = targetCards[Math.floor(Math.random() * targetCards.length)];
+        savedData.cards[card.id] = (savedData.cards[card.id] || 0) + 1;
+        packResults.push(card);
+    }
+    saveToDrive();
+    el("pack-opening-container").innerHTML = `<div id="opening-stage"><div id="opening-prompt" class="prompt-text" onclick="closePackResult()">PACK OPENED! (TAP TO CLOSE)</div><div class="result-stage">${packResults.map(c => `<div class="std-card rarity-${c.rarity}"><div class="std-name">${c.name}</div></div>`).join('')}</div></div>`;
+}
