@@ -606,7 +606,8 @@ function spawnEnemy() {
         enemy.state = {
             charge: false, guard: false, guardType: null, guardTurn: 0,
             atkBuff: 0, isStunned: false, toonSkin: false, barrierLimit: 0, sliferThunder: false,
-            patternQueue: [] 
+            patternQueue: [],
+            actionCount: 0
         };
         
         // 一時バフリセット
@@ -852,7 +853,7 @@ function finishPlayerTurn() {
 // =========================================
 // 10. ENEMY AI & BATTLE SYSTEM (敵ターン・決着)
 // =========================================
-// New: main.js (AI条件判定エンジン)
+// Updated: main.js (checkAICondition)
 function checkAICondition(c) {
     if (!c) return true;
     
@@ -862,19 +863,21 @@ function checkAICondition(c) {
         case "p_hp": targetVal = (player.hp / player.maxHp) * 100; break;
         case "p_mp": targetVal = player.mp; break;
         case "hand": targetVal = player.hand.length; break;
-        case "turn": targetVal = currentTurn; break;
-        case "turn_mod": return (currentTurn % c.val === 0);
+        case "turn": targetVal = enemy.state.actionCount; break;
+        case "turn_mod": return (enemy.state.actionCount % c.val === 0);
         case "p_state": return player.state[c.tag] === c.val;
         case "trap": return !!player.setCard === c.val;
     }
 
+    // 数値比較 (lt: 未満, gt: 超過, eq: 等しい)
     if (c.op === "lt") return targetVal < c.val;
     if (c.op === "gt") return targetVal > c.val;
-    if (c.op === "eq") return targetVal === c.val;
+    if (c.op === "eq") return Math.floor(targetVal) === c.val; // Updated: ターン数などの比較を確実に
     
     return true;
 }
 // Updated: main.js (enemyTurn - シーケンス対応AIエンジン)
+// Updated: main.js (enemyTurn - 優先確定発動対応版)
 function enemyTurn() {
     if (enemy.state.isStunned) {
         addLog(`${enemy.name}はスタン中`, "log-system");
@@ -883,34 +886,49 @@ function enemyTurn() {
         return;
     }
 
+    enemy.state.actionCount++;
     let selectedAction = null;
 
-    // 1. 進行中のシーケンスがあるか確認
+    // 1. 進行中のシーケンス（連続行動）があれば、それを最優先
     if (enemy.state.patternQueue && enemy.state.patternQueue.length > 0) {
         selectedAction = enemy.state.patternQueue.shift();
     } else {
-        // 2. なければ抽選
+        // 2. 現在の条件を満たしているアクションを抽出
         const aiList = enemy.data.ai || [{ id: "attack", weight: 1 }];
         const validActions = aiList.filter(a => checkAICondition(a.cond));
-        const totalWeight = validActions.reduce((sum, a) => sum + (a.weight || 1), 0);
-        
-        let r = Math.random() * totalWeight;
-        for (const a of validActions) {
-            const w = a.weight || 1;
-            if (r < w) {
-                if (a.sequence) {
-                    enemy.state.patternQueue = [...a.sequence];
-                    selectedAction = enemy.state.patternQueue.shift();
-                } else {
-                    selectedAction = a;
-                }
-                break;
+
+        // 3. 【新設】確定発動(guaranteed)設定があり、かつ条件を満たしているものを探す
+        const guaranteedAction = validActions.find(a => a.guaranteed);
+
+        if (guaranteedAction) {
+            // 確定アクションがあれば、抽選せずこれに決定
+            if (guaranteedAction.sequence) {
+                enemy.state.patternQueue = [...guaranteedAction.sequence];
+                selectedAction = enemy.state.patternQueue.shift();
+            } else {
+                selectedAction = guaranteedAction;
             }
-            r -= w;
+        } else {
+            // 4. 確定アクションがなければ、通常通り重み(weight)で抽選
+            const totalWeight = validActions.reduce((sum, a) => sum + (a.weight || 1), 0);
+            let r = Math.random() * totalWeight;
+            for (const a of validActions) {
+                const w = a.weight || 1;
+                if (r < w) {
+                    if (a.sequence) {
+                        enemy.state.patternQueue = [...a.sequence];
+                        selectedAction = enemy.state.patternQueue.shift();
+                    } else {
+                        selectedAction = a;
+                    }
+                    break;
+                }
+                r -= w;
+            }
         }
     }
 
-    // 3. 実行
+    // 5. 実行
     if (!selectedAction || selectedAction.id === "attack") {
         doEnemyAttack(1.0);
     } else {
@@ -920,6 +938,9 @@ function enemyTurn() {
 }
 // New: main.js (executeEnemySkill - 敵専用エフェクト解決)
 function executeEnemySkill(skill) {
+
+    enemy.state.charge = false;
+
     switch (skill.type) {
         case "HEAL":
             const healVal = skill.value > 100 ? (enemy.maxHp - enemy.hp) : skill.value;
@@ -958,7 +979,7 @@ function executeEnemySkill(skill) {
             break;
 
         case "ATTACK":
-            doEnemyAttack(skill.mult || 1.0, { fixedDmg: skill.fixedDmg, ignoreShield: skill.ignoreShield, isBossUlt: skill.isBossUlt });
+            doEnemyAttack(skill.mult || 1.0, { fixedDmg: skill.fixedDmg, isBossUlt: skill.isBossUlt });
             break;
 
         case "MULTI_ATTACK":
@@ -987,57 +1008,40 @@ function executeEnemySkill(skill) {
 }
 
 // 敵の攻撃実行関数
-// Updated: main.js (doEnemyAttack - 最終リファクタリング版)
+// Updated: main.js (doEnemyAttack)
 function doEnemyAttack(mult, options = {}) {
     const { 
-        ignoreShield = false, 
         isDrain = false, 
         isBossUlt = false, 
         fixedDmg = 0, 
         callback = null 
-    } = options;
+    } = options; // Updated: ignoreShield を削除
     
-    // 1. 基本ダメージの決定
+    // Updated: 攻撃が発動した時点で敵のチャージ状態を解除する
+    enemy.state.charge = false;
+
     let baseDmg = 0;
     if (fixedDmg > 0) {
-        // スキル等で指定された固定ダメージ
         baseDmg = Math.floor(fixedDmg * mult);
     } else {
-        // 通常の計算式（階層とステージに依存）
         const base = 2 + floor + (stage - 1) * 3;
         baseDmg = Math.floor((base + Math.floor(Math.random() * 6)) * mult);
     }
     
-    // 2. 罠（トラップ）の判定
-    // triggerTrap 内でダメージの書き換え（無効化・反射など）が行われる
     let finalDmg = triggerTrap('attack', baseDmg);
     
-    // 3. 罠やエフェクトでダメージが0（無効化）になった場合の処理
     if (finalDmg === 0) {
         updateInfo();
         if (callback) callback(); else endEnemyTurn();
         return;
     }
     
-    // 4. プレイヤー側の防御スキル判定 (シールド・護封剣)
-    if (!ignoreShield && player.state.shield) {
-        addLog(`完全防御！`, "log-skill");
-        player.state.shield = false;
-        finalDmg = 0;
-        triggerEffect(el("game-screen"), 0, true);
-        el("flash-overlay").className = "flash-blue";
-        setTimeout(() => el("flash-overlay").className = "", 300);
-        updateInfo();
-        if (callback) callback(); else endEnemyTurn();
-        return;
-    }
-
+    // 護封剣の判定（プレイヤーの「シールド」は廃止されたため、ここだけ残す）
     if (player.state.guardTurn > 0) {
         finalDmg = Math.floor(finalDmg * 0.5);
         addLog("護封剣！ダメージ半減", "log-skill");
     }
     
-    // 5. ダメージ適用と演出
     if (isBossUlt) {
         playSE("se-boom");
         el("flash-overlay").className = "flash-fire";
@@ -1052,7 +1056,6 @@ function doEnemyAttack(mult, options = {}) {
     animateValue(el("player-hp"), oldHp, player.hp, 500);
     displayPlayerHP = player.hp;
     
-    // 6. 敗北判定
     if (player.hp <= 0) {
         isProcessing = true;
         updateInfo();
@@ -1060,7 +1063,6 @@ function doEnemyAttack(mult, options = {}) {
         return;
     }
     
-    // 7. 特殊効果（ドレイン）
     if (isDrain && finalDmg > 0) {
         const heal = Math.floor(finalDmg * 0.5);
         enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal);

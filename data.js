@@ -72,7 +72,7 @@ const GAME_DATA = {
                 { id: "attack", weight: 5 }
             ]},
             { name: "剣竜", img: "assets/2-5.png", weak: 19, hp: 540, ai: [
-                { name: "恐竜剣・兜割り", type: "ATTACK", mult: 1.8, ignoreShield: true, color: "earth", weight: 3 },
+                { name: "恐竜剣・兜割り", type: "ATTACK", mult: 2.0, color: "earth", weight: 3 },
                 { id: "attack", weight: 7 }
             ]}
         ],
@@ -86,7 +86,7 @@ const GAME_DATA = {
                 { id: "attack", weight: 7 }
             ]},
             { name: "ハーピィ・レディ・SB", img: "assets/3-3.png", weak: 18, hp: 360, ai: [
-                { name: "サイバー・ボンテージ", type: "STATE_P", state: { restrictInput: true }, color: "wind", weight: 3, cond: { src: "p_state", tag: "restrictInput", val: false } },
+                { name: "サイバー・ボンテージ", type: "STATE_P", state: { restrictInput: true }, color: "wind", weight: 8, cond: { src: "p_state", tag: "restrictInput", val: false } },
                 { id: "attack", weight: 7 }
             ]},
             { name: "ハーピィ・レディ三姉妹", img: "assets/3-4.png", weak: 17, hp: 390, ai: [
@@ -104,7 +104,7 @@ const GAME_DATA = {
                 { id: "attack", weight: 7 }
             ]},
             { name: "デビル・ボックス", img: "assets/4-2.png", weak: 19, hp: 420, ai: [
-                { name: "死のびっくり箱", type: "ATTACK", fixedDmg: 999, ignoreShield: true, color: "fire", weight: 10, cond: { src: "turn", op: "eq", val: 5 } },
+                {name: "死のびっくり箱",type: "ATTACK", fixedDmg: 999, color: "fire", guaranteed: true, cond: { src: "turn", op: "eq", val: 5 }},
                 { id: "attack", weight: 10 }
             ]},
             { name: "トゥーン・デーモン", img: "assets/4-3.png", weak: 18, hp: 460, ai: [
@@ -126,7 +126,7 @@ const GAME_DATA = {
         ],
         5: [
             { name: "真紅眼の黒竜", img: "assets/extra.png", weak: 20, hp: 1500, ai: [
-                { name: "黒 炎 弾", type: "MP_DAMAGE", value: 5, fixedDmg: 50, se: "se-boom", color: "fire", weight: 2, cond: { src: "turn_mod", val: 5 } },
+                { name: "黒 炎 弾", type: "MP_DAMAGE", value: 5, fixedDmg: 50, se: "se-boom", color: "fire",guaranteed: true, cond: { src: "turn_mod", val: 5 } },
                 { id: "attack", weight: 8 }
             ]}
         ],
@@ -142,7 +142,7 @@ const GAME_DATA = {
                 { id: "attack", weight: 7 }
             ]},
             { name: "オシリスの天空竜", img: "assets/5-5.png", weak: 20, hp: 2000, ai: [
-                { name: "サンダー・フォース", type: "ATTACK", fixedDmg: 80, isBossUlt: true, color: "fire", weight: 2, cond: { src: "turn_mod", val: 5 } },
+                { name: "サンダー・フォース", type: "ATTACK", fixedDmg: 80, isBossUlt: true, color: "fire", guaranteed: true, cond: { src: "turn_mod", val: 5 } },
                 { id: "attack", weight: 8 }
             ]}
         ]
