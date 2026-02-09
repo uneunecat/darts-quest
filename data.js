@@ -153,3 +153,33 @@ const AUDIO_ASSETS = {
     SE_ATTACK: ["se-hit", "se-weak", "se-attack", "se-boom", "se-single", "se-double", "se-triple", "se-bull", "se-dbull"],
     SE_SYSTEM: ["se-tap", "se-heal", "se-buff", "se-warning", "se-chest", "se-item"]
 };
+
+// Updated: data.js (追加分)
+
+// レーティング算出用テーブル
+const RATING_TABLE = [
+    { ppr: 130, rt: 17 }, { ppr: 120, rt: 16 }, { ppr: 110, rt: 15 },
+    { ppr: 100, rt: 14 }, { ppr: 95,  rt: 13 }, { ppr: 90,  rt: 12 },
+    { ppr: 85,  rt: 11 }, { ppr: 80,  rt: 10 }, { ppr: 75,  rt: 9 },
+    { ppr: 70,  rt: 8 },  { ppr: 65,  rt: 7 },  { ppr: 60,  rt: 6 },
+    { ppr: 55,  rt: 5 },  { ppr: 50,  rt: 4 },  { ppr: 45,  rt: 3 },
+    { ppr: 40,  rt: 2 },  { ppr: 30,  rt: 1 }
+];
+
+// アイテム効果の定義
+const ITEM_EFFECTS = {
+    potion: { name: "薬草",       type: "hp",    value: 50, msg: "HP 50 回復", icon: "💊" },
+    ether:  { name: "魔法の聖水", type: "mp",    value: 3,  msg: "MP 3 回復",  icon: "⚗️" },
+    seed:   { name: "命の種",     type: "maxHp", value: 10, msg: "MaxHP +10",  icon: "🌱" }
+};
+
+// 宝箱のドロップ率設定
+const CHEST_DROP_CONFIG = {
+    default_rate: 0.3,
+    boss_rate: 1.0,
+    seed_rates: {
+        base: 0.15,
+        weak2: 0.50,
+        weak3: 1.0
+    }
+};

@@ -6,25 +6,11 @@ console.log("★ main.js is loaded! (v2.13.0 Refactored for Readability)");
 const el = (id) => document.getElementById(id);
 
 // ダーツのPPR(Point Per Round)からレーティングを算出
+// Updated: main.js (calculateRating)
 function calculateRating(ppr) {
-    if (ppr < 30) return 1;
-    if (ppr < 40) return 2;
-    if (ppr < 45) return 3;
-    if (ppr < 50) return 4;
-    if (ppr < 55) return 5;
-    if (ppr < 60) return 6;
-    if (ppr < 65) return 7;
-    if (ppr < 70) return 8;
-    if (ppr < 75) return 9;
-    if (ppr < 80) return 10;
-    if (ppr < 85) return 11;
-    if (ppr < 90) return 12;
-    if (ppr < 95) return 13;
-    if (ppr < 100) return 14;
-    if (ppr < 110) return 15;
-    if (ppr < 120) return 16;
-    if (ppr < 130) return 17;
-    return 18;
+    // Updated: RATING_TABLE を参照するように変更
+    const entry = RATING_TABLE.find(row => ppr >= row.ppr);
+    return entry ? entry.rt : 1;
 }
 
 // 配列のシャッフル (フィッシャー–イェーツ)
@@ -1380,36 +1366,31 @@ function checkDrop() {
     }
 }
 
+// Updated: main.js (openChest)
 function openChest() {
     if (!waitingForChest) return;
     waitingForChest = false;
     playSE("se-item");
     
-    let seedRate = 0.15;
-    if (weakHitCount >= 3) seedRate = 1.0;
-    else if (weakHitCount >= 2) seedRate = 0.50;
+    // Updated: CHEST_DROP_CONFIG を参照
+    const conf = CHEST_DROP_CONFIG;
+    let seedRate = conf.seed_rates.base;
+    if (weakHitCount >= 3) seedRate = conf.seed_rates.weak3;
+    else if (weakHitCount >= 2) seedRate = conf.seed_rates.weak2;
     
     const rand = Math.random();
-    let itemName = "";
-    let itemEffect = "";
+    let itemKey = "";
     
-    if (rand < seedRate) {
-        itemName = "★命の種";
-        itemEffect = "MaxHP +10";
-        player.items.seed++;
-    } else if (Math.random() < 0.6) {
-        itemName = "薬草";
-        itemEffect = "HP 50 回復";
-        player.items.potion++;
-    } else {
-        itemName = "魔法の聖水";
-        itemEffect = "MP 3 回復";
-        player.items.ether++;
-    }
+    if (rand < seedRate) itemKey = "seed";
+    else if (Math.random() < 0.6) itemKey = "potion";
+    else itemKey = "ether";
+    
+    const item = ITEM_EFFECTS[itemKey];
+    player.items[itemKey]++;
     
     updateInfo();
-    addLog(`宝箱: ${itemName} (${itemEffect}) を手に入れた`, "log-item");
-    showDialog("TREASURE!", `<span style="font-size:24px;color:#00ff00;">${itemName}</span> を手に入れた！<br>${itemEffect}<br>(アイテムボタンで使用可能)`, "item", [{ text: "OK", action: nextStep }], 2000);
+    addLog(`宝箱: ${item.name} (${item.msg}) を手に入れた`, "log-item");
+    showDialog("TREASURE!", `<span style="font-size:24px;color:#00ff00;">${item.name}</span> を手に入れた！<br>${item.msg}<br>(アイテムボタンで使用可能)`, "item", [{ text: "OK", action: nextStep }], 2000);
 }
 
 function nextStep() {
@@ -1517,6 +1498,7 @@ function returnToTitle() {
     updateTitleScore();
 }
 
+// Updated: main.js (useItem)
 function useItem(type) {
     if (isProcessing || waitingForChest) return;
     if (turnInputs.length > 0) {
@@ -1529,31 +1511,25 @@ function useItem(type) {
         return;
     }
     
-    if (type === 'potion' && player.items.potion > 0) {
-        player.items.potion--;
-        playSE("se-heal");
-        const old = player.hp;
-        player.hp = Math.min(player.hp + 50, player.maxHp);
-        addLog(`アイテム: 薬草使用`, "log-item");
-        animateValue(el("player-hp"), old, player.hp, 500);
-        updateInfo();
-    } else if (type === 'ether' && player.items.ether > 0) {
-        player.items.ether--;
-        playSE("se-heal");
-        player.mp = Math.min(player.mp + 3, player.maxMp);
-        addLog(`アイテム: 聖水使用 (MP+3)`, "log-item");
-        updateInfo();
-    } else if (type === 'seed' && player.items.seed > 0) {
-        player.items.seed--;
-        playSE("se-buff");
-        player.maxHp += 10;
-        const old = player.hp;
-        player.hp = Math.min(player.hp + 10, player.maxHp);
-        addLog(`アイテム: 命の種使用`, "log-item");
-        animateValue(el("player-hp"), old, player.hp, 500);
+    const item = ITEM_EFFECTS[type]; // Updated: ITEM_EFFECTS を参照
+    if (item && player.items[type] > 0) {
+        player.items[type]--;
+        playSE(item.type === "hp" || item.type === "mp" ? "se-heal" : "se-buff");
+        
+        const oldHp = player.hp;
+        if (item.type === "hp") player.hp = Math.min(player.hp + item.value, player.maxHp);
+        if (item.type === "mp") player.mp = Math.min(player.mp + item.value, player.maxMp);
+        if (item.type === "maxHp") {
+            player.maxHp += item.value;
+            player.hp = Math.min(player.hp + item.value, player.maxHp);
+        }
+        
+        addLog(`アイテム: ${item.name}使用`, "log-item");
+        if (item.type !== "mp") animateValue(el("player-hp"), oldHp, player.hp, 500);
         updateInfo();
     }
 }
+
 
 function showSkillCutin(name, type) {
     playSE("se-warning");
