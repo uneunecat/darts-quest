@@ -277,8 +277,6 @@ const AUDIO_ASSETS = {
     SE_SYSTEM: ["se-tap", "se-heal", "se-buff", "se-warning", "se-chest", "se-item"]
 };
 
-// Updated: data.js (追加分)
-
 // レーティング算出用テーブル
 const RATING_TABLE = [
     { ppr: 130, rt: 17 }, { ppr: 120, rt: 16 }, { ppr: 110, rt: 15 },
