@@ -31,46 +31,120 @@ const INITIAL_HAND = 3;
 const SAVE_KEY = "darts_quest_save";
 
 // Enemy & Stage Data
+// Updated: data.js (GAME_DATA 全体の差し替え)
 const GAME_DATA = {
     enemies: {
         1: [
-            { name: "プチモス", img: "assets/1-1.png", weak: 20 },
-            { name: "ラーバモス", img: "assets/1-2.png", weak: 19 },
-            { name: "進化の繭", img: "assets/1-3.png", weak: 18, hp: 260 },
-            { name: "グレート・モス", img: "assets/1-4.png", weak: 17, hp: 290 },
-            { name: "究極完全態・グレート・モス", img: "assets/1-5.png", weak: 20, hp: 420 }
+            { name: "プチモス", img: "assets/1-1.png", weak: 20, ai: [{ id: "attack", weight: 1 }] },
+            { name: "ラーバモス", img: "assets/1-2.png", weak: 19, ai: [{ id: "attack", weight: 1 }] },
+            { name: "進化の繭", img: "assets/1-3.png", weak: 18, hp: 260, ai: [
+                { name: "自己再生", type: "HEAL", value: 20, se: "se-heal", color: "heal", weight: 3, cond: { src: "e_hp", op: "lt", val: 80 } },
+                { name: "鉄壁の守り", type: "BUFF_E", state: { guard: true }, se: "se-buff", color: "earth", weight: 4 },
+                { id: "attack", weight: 4 }
+            ]},
+            { name: "グレート・モス", img: "assets/1-4.png", weak: 17, hp: 290, ai: [
+                { name: "猛毒の鱗粉", type: "MP_DAMAGE", value: 1, se: "se-attack", color: "earth", weight: 3, cond: { src: "p_mp", op: "gt", val: 0 } },
+                { id: "attack", weight: 7 }
+            ]},
+            { name: "究極完全態・グレート・モス", img: "assets/1-5.png", weak: 20, hp: 420, ai: [
+                { 
+                    weight: 5,
+                    sequence: [
+                        { name: "力を溜めている…", type: "CHARGE", se: "se-warning", color: "earth" },
+                        { name: "森の破壊衝動", type: "ATTACK", mult: 3.0, se: "se-boom", color: "earth" }
+                    ]
+                },
+                { id: "attack", weight: 5 }
+            ]}
         ],
         2: [
-            { name: "トラコドン", img: "assets/2-1.png", weak: 19 },
-            { name: "ワイルド・ラプター", img: "assets/2-2.png", weak: 18, hp: 280 },
-            { name: "屍を貪る竜", img: "assets/2-3.png", weak: 17, hp: 310 },
-            { name: "二頭を持つキング・レックス", img: "assets/2-4.png", weak: 20, hp: 340 },
-            { name: "剣竜", img: "assets/2-5.png", weak: 19, hp: 540 }
+            { name: "トラコドン", img: "assets/2-1.png", weak: 19, ai: [{ id: "attack", weight: 1 }] },
+            { name: "ワイルド・ラプター", img: "assets/2-2.png", weak: 18, hp: 280, ai: [
+                { name: "俊足の連撃", type: "MULTI_ATTACK", count: 2, mult: 0.7, color: "fire", weight: 3 },
+                { id: "attack", weight: 7 }
+            ]},
+            { name: "屍を貪る竜", img: "assets/2-3.png", weak: 17, hp: 310, ai: [
+                { name: "死肉の渇望", type: "DRAIN", mult: 1.0, color: "fire", weight: 3 },
+                { id: "attack", weight: 7 }
+            ]},
+            { name: "二頭を持つキング・レックス", img: "assets/2-4.png", weak: 20, hp: 340, ai: [
+                { name: "狂暴化", type: "BUFF_E", state: { atkBuff: 0.5 }, se: "se-buff", color: "fire", weight: 5, cond: { src: "e_hp", op: "lt", val: 50 } },
+                { id: "attack", weight: 5 }
+            ]},
+            { name: "剣竜", img: "assets/2-5.png", weak: 19, hp: 540, ai: [
+                { name: "恐竜剣・兜割り", type: "ATTACK", mult: 1.8, ignoreShield: true, color: "earth", weight: 3 },
+                { id: "attack", weight: 7 }
+            ]}
         ],
         3: [
-            { name: "デュナミス・ヴァルキリア", img: "assets/3-1.png", weak: 20, hp: 300 },
-            { name: "ハーピィ・レディ", img: "assets/3-2.png", weak: 19, hp: 330 },
-            { name: "ハーピィ・レディ・SB", img: "assets/3-3.png", weak: 18, hp: 360 },
-            { name: "ハーピィ・レディ三姉妹", img: "assets/3-4.png", weak: 17, hp: 390 },
-            { name: "ハーピィズペット竜", img: "assets/3-5.png", weak: 20, hp: 550 }
+            { name: "デュナミス・ヴァルキリア", img: "assets/3-1.png", weak: 20, hp: 300, ai: [
+                { name: "護封剣の加護", type: "BUFF_E", state: { guardType: 'cut', guardTurn: 3 }, color: "gold", weight: 10, cond: { src: "turn", op: "eq", val: 1 } },
+                { id: "attack", weight: 10 }
+            ]},
+            { name: "ハーピィ・レディ", img: "assets/3-2.png", weak: 19, hp: 330, ai: [
+                { name: "誘惑の風", type: "MP_DRAIN", value: 1, heal: 20, color: "wind", weight: 3, cond: { src: "p_mp", op: "gt", val: 0 } },
+                { id: "attack", weight: 7 }
+            ]},
+            { name: "ハーピィ・レディ・SB", img: "assets/3-3.png", weak: 18, hp: 360, ai: [
+                { name: "サイバー・ボンテージ", type: "STATE_P", state: { restrictInput: true }, color: "wind", weight: 3, cond: { src: "p_state", tag: "restrictInput", val: false } },
+                { id: "attack", weight: 7 }
+            ]},
+            { name: "ハーピィ・レディ三姉妹", img: "assets/3-4.png", weak: 17, hp: 390, ai: [
+                { name: "トライアングル・エクスタシー", type: "MULTI_ATTACK", count: 3, mult: 0.6, color: "wind", weight: 3 },
+                { id: "attack", weight: 7 }
+            ]},
+            { name: "ハーピィズペット竜", img: "assets/3-5.png", weak: 20, hp: 550, ai: [
+                { name: "愛の鞭・ブレス", type: "MP_DAMAGE", value: 99, mult: 2.0, color: "fire", weight: 3, cond: { src: "turn_mod", val: 4 } },
+                { id: "attack", weight: 7 }
+            ]}
         ],
         4: [
-            { name: "ダーク・ラビット", img: "assets/4-1.png", weak: 20, hp: 380 },
-            { name: "デビル・ボックス", img: "assets/4-2.png", weak: 19, hp: 420 },
-            { name: "トゥーン・デーモン", img: "assets/4-3.png", weak: 18, hp: 460 },
-            { name: "ブルーアイズ・トゥーン・ドラゴン", img: "assets/4-4.png", weak: 17, hp: 500 },
-            { name: "サクリファイス", img: "assets/4-5.png", weak: 20, hp: 550 },
-            { name: "サウザンド・アイズ・サクリファイス", img: "assets/4-6.png", weak: 20, hp: 800 }
+            { name: "ダーク・ラビット", img: "assets/4-1.png", weak: 20, hp: 380, ai: [
+                { name: "トゥーン・ラッシュ", type: "MULTI_ATTACK", count: 2, mult: 0.7, color: "wind", weight: 3 },
+                { id: "attack", weight: 7 }
+            ]},
+            { name: "デビル・ボックス", img: "assets/4-2.png", weak: 19, hp: 420, ai: [
+                { name: "死のびっくり箱", type: "ATTACK", fixedDmg: 999, ignoreShield: true, color: "fire", weight: 10, cond: { src: "turn", op: "eq", val: 5 } },
+                { id: "attack", weight: 10 }
+            ]},
+            { name: "トゥーン・デーモン", img: "assets/4-3.png", weak: 18, hp: 460, ai: [
+                { name: "呪いの視線", type: "MP_DAMAGE", value: 2, color: "earth", weight: 4 },
+                { id: "attack", weight: 6 }
+            ]},
+            { name: "ブルーアイズ・トゥーン・ドラゴン", img: "assets/4-4.png", weak: 17, hp: 500, ai: [
+                { name: "トゥーン・スキン", type: "BUFF_E", state: { toonSkin: true }, weight: 10, cond: { src: "turn_mod", val: 3 } },
+                { id: "attack", weight: 10 }
+            ]},
+            { name: "サクリファイス", img: "assets/4-5.png", weak: 20, hp: 550, ai: [
+                { name: "幻想の儀式", type: "DRAIN", mult: 1.2, weight: 3, cond: { src: "turn_mod", val: 3 } },
+                { id: "attack", weight: 7 }
+            ]},
+            { name: "サウザンド・アイズ・サクリファイス", img: "assets/4-6.png", weak: 20, hp: 800, ai: [
+                { name: "千眼の邪教神", type: "BUFF_E", state: { barrierLimit: 10 }, weight: 5, cond: { src: "turn_mod", val: 2 } },
+                { id: "attack", weight: 5 }
+            ]}
         ],
         5: [
-            { name: "真紅眼の黒竜", img: "assets/extra.png", weak: 20, hp: 1500 }
+            { name: "真紅眼の黒竜", img: "assets/extra.png", weak: 20, hp: 1500, ai: [
+                { name: "黒 炎 弾", type: "MP_DAMAGE", value: 5, fixedDmg: 50, se: "se-boom", color: "fire", weight: 2, cond: { src: "turn_mod", val: 5 } },
+                { id: "attack", weight: 8 }
+            ]}
         ],
         6: [
-            { name: "ワームドレイク", img: "assets/5-1.png", weak: 19, hp: 400 },
-            { name: "ヒューマノイド・スライム", img: "assets/5-2.png", weak: 18, hp: 450 },
-            { name: "リバイバルスライム", img: "assets/5-3.png", weak: 20, hp: 300 },
-            { name: "ヒューマノイド・ドレイク", img: "assets/5-4.png", weak: 17, hp: 600 },
-            { name: "オシリスの天空竜", img: "assets/5-5.png", weak: 20, hp: 2000 }
+            { name: "ワームドレイク", img: "assets/5-1.png", weak: 19, hp: 400, ai: [{ id: "attack", weight: 1 }] },
+            { name: "ヒューマノイド・スライム", img: "assets/5-2.png", weak: 18, hp: 450, ai: [{ id: "attack", weight: 1 }] },
+            { name: "リバイバルスライム", img: "assets/5-3.png", weak: 20, hp: 300, ai: [
+                { name: "再 生", type: "HEAL", value: 999, se: "se-heal", weight: 3, cond: { src: "e_hp", op: "lt", val: 30 } },
+                { id: "attack", weight: 7 }
+            ]},
+            { name: "ヒューマノイド・ドレイク", img: "assets/5-4.png", weak: 17, hp: 600, ai: [
+                { name: "スライムの粘着", type: "STATE_P", state: { itemLock: true }, weight: 3, cond: { src: "p_state", tag: "itemLock", val: false } },
+                { id: "attack", weight: 7 }
+            ]},
+            { name: "オシリスの天空竜", img: "assets/5-5.png", weak: 20, hp: 2000, ai: [
+                { name: "サンダー・フォース", type: "ATTACK", fixedDmg: 80, isBossUlt: true, color: "fire", weight: 2, cond: { src: "turn_mod", val: 5 } },
+                { id: "attack", weight: 8 }
+            ]}
         ]
     },
     bg: {

@@ -605,7 +605,8 @@ function spawnEnemy() {
     try {
         enemy.state = {
             charge: false, guard: false, guardType: null, guardTurn: 0,
-            atkBuff: 0, isStunned: false, toonSkin: false, barrierLimit: 0, sliferThunder: false
+            atkBuff: 0, isStunned: false, toonSkin: false, barrierLimit: 0, sliferThunder: false,
+            patternQueue: [] 
         };
         
         // 一時バフリセット
@@ -851,314 +852,174 @@ function finishPlayerTurn() {
 // =========================================
 // 10. ENEMY AI & BATTLE SYSTEM (敵ターン・決着)
 // =========================================
+// New: main.js (AI条件判定エンジン)
+function checkAICondition(c) {
+    if (!c) return true;
+    
+    let targetVal = 0;
+    switch (c.src) {
+        case "e_hp": targetVal = (enemy.hp / enemy.maxHp) * 100; break;
+        case "p_hp": targetVal = (player.hp / player.maxHp) * 100; break;
+        case "p_mp": targetVal = player.mp; break;
+        case "hand": targetVal = player.hand.length; break;
+        case "turn": targetVal = currentTurn; break;
+        case "turn_mod": return (currentTurn % c.val === 0);
+        case "p_state": return player.state[c.tag] === c.val;
+        case "trap": return !!player.setCard === c.val;
+    }
+
+    if (c.op === "lt") return targetVal < c.val;
+    if (c.op === "gt") return targetVal > c.val;
+    if (c.op === "eq") return targetVal === c.val;
+    
+    return true;
+}
+// Updated: main.js (enemyTurn - シーケンス対応AIエンジン)
 function enemyTurn() {
-    // スタン判定
     if (enemy.state.isStunned) {
         addLog(`${enemy.name}はスタン中`, "log-system");
         enemy.state.isStunned = false;
         endEnemyTurn();
         return;
     }
-    
-    // 呪縛効果
-    if (player.state.hexSeal) {
-        addLog("呪縛により攻撃力半減", "log-skill");
-    }
 
-    // --- AI分岐 (ステージごと) ---
-    
-    // STAGE 6: 神の試練
-    if (stage === 6) {
-        if (floor === 3) { // 再生スライム
-            if (Math.random() < 0.3) {
-                enemy.hp = enemy.maxHp;
-                showSkillCutin("再 生", "heal");
-                setTimeout(() => {
-                    addLog("HP全回復！", "log-heal");
-                    animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500);
-                    displayEnemyHP = enemy.hp;
-                    updateInfo();
-                    endEnemyTurn();
-                }, 1200);
-                return;
-            }
-        }
-        if (floor === 4) { // 粘着スライム
-            if (!player.state.itemLock && Math.random() < 0.3) {
-                showSkillCutin("スライムの粘着", "earth");
-                setTimeout(() => {
-                    player.state.itemLock = true;
-                    updateInfo();
-                    addLog("粘着！アイテム封印", "log-enemy");
-                    doEnemyAttack(1.0);
-                }, 1200);
-                return;
-            }
-        }
-        if (floor === 5) { // オシリス
-            extraBossTurnCount++;
-            if (extraBossTurnCount % 5 === 0) {
-                showSkillCutin("サンダー・フォース", "fire");
-                setTimeout(() => {
-                    addLog("神の怒り！", "log-enemy");
-                    doEnemyAttack(1.0, { isBossUlt: true, fixedDmg: 80 });
-                }, 1200);
-                return;
-            }
-            if (Math.random() < 0.4) {
-                enemy.state.atkBuff += 0.1;
-                addLog(`神の攻撃力UP (x${(1.0 + enemy.state.atkBuff).toFixed(1)})`, "log-enemy");
-            }
-            doEnemyAttack(1.2 * (1.0 + enemy.state.atkBuff));
-            return;
-        }
-    }
+    let selectedAction = null;
 
-    // STAGE 4: Toon World
-    if (stage === 4) {
-        if (floor === 3 && Math.random() < 0.4) {
-            showSkillCutin("呪いの視線", "earth");
-            setTimeout(() => {
-                player.mp = Math.max(0, player.mp - 2);
-                addLog("MP2減少", "log-enemy");
-                doEnemyAttack(1.0);
-            }, 1200);
-            return;
-        }
-        if (floor === 1 && Math.random() < 0.3) {
-            showSkillCutin("トゥーン・ラッシュ", "wind");
-            setTimeout(() => {
-                addLog("2回攻撃！", "log-enemy");
-                doEnemyAttack(0.7, { callback: () => { setTimeout(() => doEnemyAttack(0.7), 800); } });
-            }, 1200);
-            return;
-        }
-        if (floor === 2 && currentTurn === 5) {
-            showSkillCutin("死のびっくり箱", "fire");
-            setTimeout(() => {
-                addLog("死の箱！999ダメ", "log-enemy");
-                doEnemyAttack(0, { fixedDmg: 999, ignoreShield: true });
-            }, 1200);
-            return;
-        }
-        if (floor === 4 && currentTurn % 3 === 0) {
-            showSkillCutin("トゥーン・スキン", "earth");
-            setTimeout(() => {
-                enemy.state.toonSkin = true;
-                addLog("硬質化！被ダメ-15", "log-enemy");
-                updateInfo();
-                endEnemyTurn();
-            }, 1200);
-            return;
-        }
-        if (floor === 5 && currentTurn % 3 === 0) {
-            showSkillCutin("幻想の儀式", "wind");
-            setTimeout(() => {
-                addLog("儀式！HP吸収", "log-enemy");
-                doEnemyAttack(1.2, { isDrain: true });
-            }, 1200);
-            return;
-        }
-        if (floor === 6 && currentTurn % 2 === 0) {
-            showSkillCutin("千眼の邪教神", "wind");
-            setTimeout(() => {
-                enemy.state.barrierLimit = 10;
-                addLog("結界！10未満無効", "log-enemy");
-                doEnemyAttack(1.2);
-            }, 1200);
-            return;
-        }
-    }
-
-    // STAGE 5: EXTRA
-    if (stage === 5) {
-        extraBossTurnCount++;
-        if (extraBossTurnCount % 5 === 0) {
-            showSkillCutin("黒 炎 弾", "fire");
-            setTimeout(() => {
-                player.mp = Math.max(0, player.mp - 5);
-                addLog("MP5消滅 & 大ダメージ", "log-enemy");
-                doEnemyAttack(1.0, { isBossUlt: true, fixedDmg: 50 });
-            }, 1200);
-            return;
-        }
-        doEnemyAttack(1.3);
-        return;
-    }
-
-    // STAGE 3: Labyrinth
-    if (stage === 3) {
-        if (floor === 1 && enemy.state.guardTurn > 0) {
-            addLog(`光の護封剣 残${enemy.state.guardTurn}T`, "log-enemy");
-            doEnemyAttack(1.0);
-            return;
-        }
-        if (floor === 2 && Math.random() < 0.3) {
-            showSkillCutin("誘惑の風", "wind");
-            setTimeout(() => {
-                if (player.mp > 0) {
-                    player.mp = Math.max(0, player.mp - 1);
-                    enemy.hp = Math.min(enemy.hp + 20, enemy.maxHp);
-                    addLog("MP吸収", "log-enemy");
+    // 1. 進行中のシーケンスがあるか確認
+    if (enemy.state.patternQueue && enemy.state.patternQueue.length > 0) {
+        selectedAction = enemy.state.patternQueue.shift();
+    } else {
+        // 2. なければ抽選
+        const aiList = enemy.data.ai || [{ id: "attack", weight: 1 }];
+        const validActions = aiList.filter(a => checkAICondition(a.cond));
+        const totalWeight = validActions.reduce((sum, a) => sum + (a.weight || 1), 0);
+        
+        let r = Math.random() * totalWeight;
+        for (const a of validActions) {
+            const w = a.weight || 1;
+            if (r < w) {
+                if (a.sequence) {
+                    enemy.state.patternQueue = [...a.sequence];
+                    selectedAction = enemy.state.patternQueue.shift();
+                } else {
+                    selectedAction = a;
                 }
-                doEnemyAttack(1.0);
-            }, 1200);
-            return;
-        }
-        if (floor === 3 && Math.random() < 0.3) {
-            showSkillCutin("サイバー・ボンテージ", "wind");
-            setTimeout(() => {
-                restrictInput = true;
-                addLog("拘束！次1投制限", "log-enemy");
-                doEnemyAttack(1.0);
-            }, 1200);
-            return;
-        }
-        if (floor === 4 && Math.random() < 0.3) {
-            showSkillCutin("トライアングル・エクスタシー", "wind");
-            setTimeout(() => {
-                addLog("3回攻撃！", "log-enemy");
-                doEnemyAttack(0.6, { callback: () => { setTimeout(() => doEnemyAttack(0.6, { callback: () => { setTimeout(() => doEnemyAttack(0.6), 600); } }), 600); } });
-            }, 1200);
-            return;
-        }
-        if (floor === 5) {
-            enemy.state.atkBuff += 0.1;
-            addLog(`攻撃力UP (x${(1.0 + enemy.state.atkBuff).toFixed(1)})`, "log-enemy");
-            if (currentTurn % 4 === 0) {
-                showSkillCutin("愛の鞭・ブレス", "fire");
-                setTimeout(() => {
-                    player.mp = 0;
-                    addLog("MP消滅＆大ダメージ", "log-enemy");
-                    doEnemyAttack(2.0 * (1.0 + enemy.state.atkBuff));
-                }, 1200);
-                return;
+                break;
             }
-            doEnemyAttack(1.0 * (1.0 + enemy.state.atkBuff));
-            return;
+            r -= w;
         }
     }
 
-    // STAGE 2: Wasteland
-    if (stage === 2) {
-        if (floor === 2 && Math.random() < 0.3) {
-            showSkillCutin("俊足の連撃", "fire");
-            setTimeout(() => {
-                addLog("2回攻撃！", "log-enemy");
-                doEnemyAttack(0.7, { callback: () => { setTimeout(() => doEnemyAttack(0.7), 800); } });
-            }, 1200);
-            return;
-        }
-        if (floor === 3 && Math.random() < 0.3) {
-            showSkillCutin("死肉の渇望", "fire");
-            setTimeout(() => {
-                addLog("与ダメ吸収", "log-enemy");
-                doEnemyAttack(1.0, { isDrain: true });
-            }, 1200);
-            return;
-        }
-        if (floor === 4 && enemy.hp <= enemy.maxHp * 0.5 && Math.random() < 0.5) {
-            showSkillCutin("狂暴化", "fire");
-            setTimeout(() => {
-                addLog("狂暴化！攻撃1.5倍", "log-enemy");
-                doEnemyAttack(1.5);
-            }, 1200);
-            return;
-        }
-        if (floor === 5 && Math.random() < 0.3) {
-            showSkillCutin("恐竜剣・兜割り", "earth");
-            setTimeout(() => {
-                addLog("兜割り！シールド無効", "log-enemy");
-                doEnemyAttack(1.8, { ignoreShield: true });
-            }, 1200);
-            return;
-        }
+    // 3. 実行
+    if (!selectedAction || selectedAction.id === "attack") {
+        doEnemyAttack(1.0);
+    } else {
+        if (selectedAction.name) showSkillCutin(selectedAction.name, selectedAction.color || "fire");
+        setTimeout(() => executeEnemySkill(selectedAction), 1200);
     }
+}
+// New: main.js (executeEnemySkill - 敵専用エフェクト解決)
+function executeEnemySkill(skill) {
+    switch (skill.type) {
+        case "HEAL":
+            const healVal = skill.value > 100 ? (enemy.maxHp - enemy.hp) : skill.value;
+            enemy.hp = Math.min(enemy.maxHp, enemy.hp + healVal);
+            addLog(`${enemy.name}は ${healVal} 回復した`, "log-heal");
+            animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500);
+            displayEnemyHP = enemy.hp;
+            endEnemyTurn();
+            break;
 
-    // STAGE 1: Forest
-    if (stage === 1) {
-        if (floor === 3) {
-            if (Math.random() < 0.2) {
-                showSkillCutin("自己再生", "heal");
-                setTimeout(() => {
-                    enemy.hp = Math.min(enemy.hp + 20, enemy.maxHp);
-                    playSE("se-heal");
-                    addLog("HP20回復", "log-heal");
-                    animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500);
-                    displayEnemyHP = enemy.hp;
-                    updateInfo();
-                    endEnemyTurn();
-                }, 1200);
-                return;
-            }
-            if (Math.random() < 0.4) {
-                showSkillCutin("鉄壁の守り", "earth");
-                setTimeout(() => {
-                    enemy.state.guard = true;
-                    addLog("鉄壁！ダメージ半減", "log-enemy");
-                    updateInfo();
-                    endEnemyTurn();
-                }, 1200);
-                return;
-            }
-        }
-        if (floor === 4 && player.mp > 0 && Math.random() < 0.3) {
-            showSkillCutin("猛毒の鱗粉", "earth");
-            setTimeout(() => {
-                player.mp = Math.max(0, player.mp - 1);
-                addLog("猛毒！MP-1", "log-enemy");
-                doEnemyAttack(1.0);
-            }, 1200);
-            return;
-        }
-        if (floor === 5) {
-            if (enemy.state.charge) {
-                enemy.state.charge = false;
-                showSkillCutin("森の破壊衝動", "earth");
-                setTimeout(() => { doEnemyAttack(3.0); }, 1200);
-                return;
-            }
-            if (Math.random() < 0.3) {
-                enemy.state.charge = true;
-                addLog(`力を溜めている…`, "log-enemy");
-                updateInfo();
-                endEnemyTurn();
-                return;
-            }
-        }
+        case "BUFF_E":
+            Object.assign(enemy.state, skill.state);
+            if (skill.msg) addLog(skill.msg, "log-enemy");
+            endEnemyTurn();
+            break;
+
+        case "STATE_P":
+            if (skill.state.restrictInput) restrictInput = true;
+            Object.assign(player.state, skill.state);
+            if (skill.msg) addLog(skill.msg, "log-enemy");
+            doEnemyAttack(1.0);
+            break;
+
+        case "MP_DAMAGE":
+            player.mp = Math.max(0, player.mp - skill.value);
+            addLog(`${skill.name}！プレイヤーのMPを ${skill.value} 減らした`, "log-enemy");
+            doEnemyAttack(skill.mult || 1.0, { fixedDmg: skill.fixedDmg, isBossUlt: skill.isBossUlt });
+            break;
+
+        case "MP_DRAIN":
+            const dVal = Math.min(player.mp, skill.value);
+            player.mp -= dVal;
+            enemy.hp = Math.min(enemy.maxHp, enemy.hp + skill.heal);
+            addLog(`MPを ${dVal} 吸収！敵が ${skill.heal} 回復`, "log-enemy");
+            doEnemyAttack(1.0);
+            break;
+
+        case "ATTACK":
+            doEnemyAttack(skill.mult || 1.0, { fixedDmg: skill.fixedDmg, ignoreShield: skill.ignoreShield, isBossUlt: skill.isBossUlt });
+            break;
+
+        case "MULTI_ATTACK":
+            let count = 0;
+            const loop = () => {
+                count++;
+                doEnemyAttack(skill.mult, { callback: () => {
+                    if (count < skill.count) setTimeout(loop, 600);
+                    else endEnemyTurn();
+                }});
+            };
+            loop();
+            break;
+
+        case "DRAIN":
+            doEnemyAttack(skill.mult, { isDrain: true });
+            break;
+
+        case "CHARGE":
+            enemy.state.charge = true;
+            addLog(`${enemy.name}は力を溜めている…`, "log-enemy");
+            endEnemyTurn();
+            break;
     }
-
-    // 通常攻撃
-    doEnemyAttack(1.0);
+    updateInfo();
 }
 
 // 敵の攻撃実行関数
+// Updated: main.js (doEnemyAttack - 最終リファクタリング版)
 function doEnemyAttack(mult, options = {}) {
-    const { ignoreShield = false, isDrain = false, isBossUlt = false, fixedDmg = 0, callback = null } = options;
+    const { 
+        ignoreShield = false, 
+        isDrain = false, 
+        isBossUlt = false, 
+        fixedDmg = 0, 
+        callback = null 
+    } = options;
     
-    // ダメージ基本値計算
+    // 1. 基本ダメージの決定
     let baseDmg = 0;
     if (fixedDmg > 0) {
+        // スキル等で指定された固定ダメージ
         baseDmg = Math.floor(fixedDmg * mult);
     } else {
+        // 通常の計算式（階層とステージに依存）
         const base = 2 + floor + (stage - 1) * 3;
         baseDmg = Math.floor((base + Math.floor(Math.random() * 6)) * mult);
     }
     
-    // トラップ割り込み
-    let finalDmg = baseDmg;
-    if (typeof triggerTrap === "function") {
-        finalDmg = triggerTrap('attack', baseDmg);
-    }
+    // 2. 罠（トラップ）の判定
+    // triggerTrap 内でダメージの書き換え（無効化・反射など）が行われる
+    let finalDmg = triggerTrap('attack', baseDmg);
     
-    // トラップで0になった場合
+    // 3. 罠やエフェクトでダメージが0（無効化）になった場合の処理
     if (finalDmg === 0) {
         updateInfo();
         if (callback) callback(); else endEnemyTurn();
         return;
     }
     
-    // 防御魔法チェック
+    // 4. プレイヤー側の防御スキル判定 (シールド・護封剣)
     if (!ignoreShield && player.state.shield) {
         addLog(`完全防御！`, "log-skill");
         player.state.shield = false;
@@ -1170,12 +1031,13 @@ function doEnemyAttack(mult, options = {}) {
         if (callback) callback(); else endEnemyTurn();
         return;
     }
+
     if (player.state.guardTurn > 0) {
         finalDmg = Math.floor(finalDmg * 0.5);
         addLog("護封剣！ダメージ半減", "log-skill");
     }
     
-    // ダメージ適用
+    // 5. ダメージ適用と演出
     if (isBossUlt) {
         playSE("se-boom");
         el("flash-overlay").className = "flash-fire";
@@ -1184,10 +1046,13 @@ function doEnemyAttack(mult, options = {}) {
         playSE("se-hit");
     }
     
+    const oldHp = player.hp;
     player.hp = Math.max(0, player.hp - finalDmg);
     triggerEffect(el("game-screen"), finalDmg, true);
+    animateValue(el("player-hp"), oldHp, player.hp, 500);
+    displayPlayerHP = player.hp;
     
-    // 敗北判定
+    // 6. 敗北判定
     if (player.hp <= 0) {
         isProcessing = true;
         updateInfo();
@@ -1195,12 +1060,14 @@ function doEnemyAttack(mult, options = {}) {
         return;
     }
     
-    // 吸収効果
+    // 7. 特殊効果（ドレイン）
     if (isDrain && finalDmg > 0) {
         const heal = Math.floor(finalDmg * 0.5);
         enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal);
-        addLog(`敵が${heal}回復！`, "log-skill");
+        addLog(`敵が ${heal} 回復！`, "log-skill");
         triggerEffect(el("enemy-panel"), heal, false, true);
+        animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500);
+        displayEnemyHP = enemy.hp;
     }
     
     updateInfo();
