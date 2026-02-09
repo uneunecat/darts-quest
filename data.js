@@ -241,8 +241,6 @@ const PACK_DATA = [
     { id: "vol2", name: "Vol.2 - Awakening", price: 1500, desc: "テクニカルな戦略カードが登場。", unlockStage: 3, img: "assets/packs/vol2.png" }
 ];
 
-// Updated: data.js (追加分)
-
 // Player Default Stats
 const PLAYER_INITIAL_STATS = {
     hp: 100,
