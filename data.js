@@ -127,7 +127,7 @@ const GAME_DATA = {
         ],
         5: [
             { name: "真紅眼の黒竜", img: "assets/extra.png", weak: 20, hp: 1500, ai: [
-                { name: "黒 炎 弾", type: "MP_DAMAGE", value: 5, fixedDmg: 50, se: "se-boom", color: "fire",guaranteed: true, cond: { src: "turn_mod", val: 5 } },
+                { name: "黒 炎 弾", type: "MP_DAMAGE", value: 5, fixedDmg: 50, isBossUlt: true, color: "fire",guaranteed: true, cond: { src: "turn_mod", val: 5 } },
                 { id: "attack", weight: 8 }
             ]}
         ],
