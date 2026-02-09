@@ -276,6 +276,8 @@ let currentRevealIndex = 0;
 let pendingCardIndex = -1;
 let inputLockUntilRelease = false;
 
+// Updated: main.js (冒頭の変数定義エリア)
+let pendingEffectsQueue = []; // 中断されたエフェクトを保持するキュー
 
 // =========================================
 // 6. INITIALIZATION (初期化処理)
@@ -1205,72 +1207,27 @@ function doEnemyAttack(mult, options = {}) {
     if (callback) callback(); else endEnemyTurn();
 }
 
-// 罠（トラップ）の発動処理
-function triggerTrap(triggerType, dmg = 0) {
-    if (!player.setCard) return dmg;
+// Updated: main.js (triggerTrap - 原子システム対応版)
+function triggerTrap(triggerType, incomingDmg = 0) {
+    if (!player.setCard) return incomingDmg;
+
+    const card = CARD_DB.find(c => c.id === player.setCard);
+    if (!card || !card.trap || card.trap.trigger !== triggerType) return incomingDmg;
+
+    if (card.se) playSE(card.se);
+    addLog(`【罠】${card.name} 発動！`, "log-skill");
+
+    // コンテキストを渡して解決
+    const result = resolveEffects(card.trap.effects, { incomingDmg: incomingDmg });
+
+    // トラップを消費
+    player.discard.push(player.setCard);
+    player.setCard = null;
     
-    const trapId = player.setCard;
-    let modifiedDmg = dmg;
-    let triggered = false;
-    
-    if (triggerType === 'attack') {
-        if (trapId === 303) { // 聖なるバリア
-            addLog("【罠】聖なるバリア！完全無効＆反撃！", "log-skill");
-            playSE("se-boom");
-            triggerEffect(el("enemy-panel"), 50, false);
-            enemy.hp = Math.max(0, enemy.hp - 50);
-            modifiedDmg = 0;
-            triggered = true;
-        } else if (trapId === 602) { // 魔法の筒
-            addLog(`【罠】魔法の筒！${dmg}反射！`, "log-skill");
-            playSE("se-boom");
-            triggerEffect(el("enemy-panel"), dmg, false);
-            enemy.hp = Math.max(0, enemy.hp - dmg);
-            modifiedDmg = 0;
-            triggered = true;
-        } else if (trapId === 703) { // 六芒星
-            addLog("【罠】六芒星の呪縛！半減＆スタン！", "log-skill");
-            playSE("se-buff");
-            enemy.state.isStunned = true;
-            modifiedDmg = Math.floor(dmg * 0.5);
-            triggered = true;
-        } else if (trapId === 403) { // はさみ撃ち
-            addLog("【罠】はさみ撃ち！迎撃80ダメージ！", "log-skill");
-            playSE("se-attack");
-            triggerEffect(el("enemy-panel"), 80, false);
-            enemy.hp = Math.max(0, enemy.hp - 80);
-            triggered = true;
-        }
-    }
-    
-    if (triggerType === 'summon') {
-        if (trapId === 302) { // 落とし穴
-            addLog("【罠】落とし穴！出鼻を挫く50ダメ＆スタン！", "log-skill");
-            playSE("se-hit");
-            triggerEffect(el("enemy-panel"), 50, false);
-            enemy.hp = Math.max(0, enemy.hp - 50);
-            enemy.state.isStunned = true;
-            triggered = true;
-        }
-    }
-    
-    if (triggered) {
-        // カード消費処理
-        player.discard.push(player.setCard);
-        player.setCard = null;
-        
-        el("flash-overlay").className = "flash-gold";
-        setTimeout(() => el("flash-overlay").className = "", 300);
-        
-        animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500);
-        displayEnemyHP = enemy.hp;
-        updateInfo();
-        
-        // 罠でトドメを刺した場合
-        if (enemy.hp <= 0) setTimeout(winBattle, 800);
-    }
-    
-    return modifiedDmg;
+    el("flash-overlay").className = "flash-gold";
+    setTimeout(() => el("flash-overlay").className = "", 300);
+
+    return result.modifiedDmg; // 修正されたダメージを返す
 }
 
 function endEnemyTurn() {
@@ -1618,86 +1575,110 @@ function playHandCard(index) {
     updateInfo();
 }
 
-// Updated: main.js (applyCardEffect - リファクタリング版)
-function applyCardEffect(card) {
-    const e = card.effect;
-    if (!e) return;
+// New: main.js (共通エフェクト実行エンジン)
+function resolveEffects(effects, context = {}) {
+    if (!effects || effects.length === 0) return context;
 
-    let rawMsg = "(発動)";
-    const oldEnemyHp = enemy.hp;
-    const oldPlayerHp = player.hp;
+    // 現在のコンテキスト（罠のダメージ計算用など）
+    if (context.modifiedDmg === undefined) context.modifiedDmg = context.incomingDmg || 0;
 
-    // 1. 効果音
-    if (e.se) playSE(e.se);
+    for (let i = 0; i < effects.length; i++) {
+        const e = effects[i];
+        let rawMsg = "";
 
-    // 2. 汎用効果の処理
-    switch (e.type) {
-        case "DAMAGE":
-            enemy.hp = Math.max(0, enemy.hp - e.value);
-            triggerEffect(el("enemy-panel"), e.value, false);
-            if (e.stun) enemy.state.isStunned = true;
-            if (e.breakGuard) enemy.state.guard = false;
-            if (e.discardAll) while (player.hand.length > 0) player.discard.push(player.hand.pop());
-            if (e.selfDamage) {
-                player.hp = Math.max(1, player.hp - e.selfDamage);
-                triggerEffect(el("player-panel"), e.selfDamage, true);
-            }
-            rawMsg = `${e.value}ダメージ！` + (e.stun ? "＆スタン！" : "");
-            break;
+        switch (e.type) {
+            case "DAMAGE":
+                const target = e.target === "PLAYER" ? player : enemy;
+                const targetEl = e.target === "PLAYER" ? el("player-panel") : el("enemy-panel");
+                target.hp = Math.max(0, target.hp - e.value);
+                triggerEffect(targetEl, e.value, e.target === "PLAYER");
+                rawMsg = `${e.value}ダメージ！`;
+                break;
 
-        case "HEAL":
-            const healAmt = (e.value === "FULL") ? (player.maxHp - player.hp) : e.value;
-            player.hp = Math.min(player.hp + healAmt, player.maxHp);
-            triggerEffect(el("player-panel"), healAmt, true, true);
-            if (e.atkBonus) player.state.atkBonus = e.atkBonus;
-            rawMsg = (e.value === "FULL") ? "HP完全回復！" : `HP ${healAmt} 回復！`;
-            break;
+            case "DAMAGE_MULT":
+                context.modifiedDmg = Math.floor(context.modifiedDmg * e.value);
+                break;
 
-        case "DRAW":
-            for (let i = 0; i < e.value; i++) drawCard();
-            rawMsg = `カードを${e.value}枚ドロー！`;
-            break;
+            case "HEAL":
+                const healAmt = (e.value === "FULL") ? (player.maxHp - player.hp) : e.value;
+                const oldHp = player.hp;
+                player.hp = Math.min(player.hp + healAmt, player.maxHp);
+                triggerEffect(el("player-panel"), healAmt, true, true);
+                animateValue(el("player-hp"), oldHp, player.hp, 500);
+                rawMsg = (e.value === "FULL") ? "HP完全回復！" : `HP ${healAmt} 回復！`;
+                break;
 
-        case "STATE_PLAYER":
-            Object.assign(player.state, e.state);
-            rawMsg = e.msg || "効果発動！";
-            break;
+            case "DRAW":
+                for (let j = 0; j < e.value; j++) drawCard();
+                rawMsg = `${e.value}枚ドロー！`;
+                break;
 
-        case "STATE_ENEMY":
-            Object.assign(enemy.state, e.state);
-            rawMsg = e.msg || "敵の状態が変化！";
-            break;
+            case "STATE_P":
+                Object.assign(player.state, e.state);
+                if (e.msg) rawMsg = e.msg;
+                break;
 
-        case "SPECIAL":
-            if (e.func === "openDiscardSelector") {
-                openDiscardSelector();
-                rawMsg = "捨てるカードを選んでください...";
-            } else if (e.func === "applyHuge") {
+            case "STATE_E":
+                Object.assign(enemy.state, e.state);
+                if (e.stun) enemy.state.isStunned = true;
+                if (e.msg) rawMsg = e.msg;
+                break;
+
+            case "DISCARD_ALL":
+                while (player.hand.length > 0) player.discard.push(player.hand.pop());
+                rawMsg = "全手札を捨てた！";
+                break;
+
+            case "DISCARD_SELECT":
+                // 重要: ここでループを中断し、ユーザーの入力を待つ
+                pendingEffectsQueue = effects.slice(i + 1); // 残りのエフェクトを保存
+                openDiscardSelector(e.count);
+                return context; 
+
+            case "NEGATE":
+                context.modifiedDmg = 0;
+                rawMsg = "攻撃を無効化！";
+                break;
+
+            case "REFLECT":
+                const reflectDmg = context.incomingDmg || 0;
+                enemy.hp = Math.max(0, enemy.hp - reflectDmg);
+                triggerEffect(el("enemy-panel"), reflectDmg, false);
+                rawMsg = `${reflectDmg}ダメージ反射！`;
+                break;
+
+            case "SPECIAL_HUGE":
                 rawMsg = executeHugeEffect();
-            } else if (e.func === "salvageMagic") {
+                break;
+
+            case "SPECIAL_SALVAGE":
                 rawMsg = executeSalvageMagic();
-            }
-            break;
+                break;
+        }
+
+        if (rawMsg) addLog(rawMsg, "log-skill");
     }
 
-    // 3. UI更新
-    const announcerHTML = `<div style="font-size: 80%; opacity: 0.9; margin-bottom: 5px;">${card.name}</div><div>${rawMsg}</div>`;
-    announce(announcerHTML, "log-skill");
-
-    if (enemy.hp !== oldEnemyHp) {
-        animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500);
-        displayEnemyHP = enemy.hp;
-    }
-    if (player.hp !== oldPlayerHp) {
-        animateValue(el("player-hp"), displayPlayerHP, player.hp, 500);
-        displayPlayerHP = player.hp;
-    }
-
+    // 敵の死亡判定（エフェクト解決後）
     if (enemy.hp <= 0) {
         isProcessing = true;
         setTimeout(winBattle, 800);
     }
+    
+    updateInfo();
+    return context;
 }
+
+// Updated: main.js (applyCardEffect - 原子システム対応版)
+function applyCardEffect(card) {
+    if (!card.effects) return;
+    
+    if (card.se) playSE(card.se);
+    announce(card.name, "log-skill");
+    
+    resolveEffects(card.effects);
+}
+
 // =========================================
 // CARD SPECIAL LOGICS (特殊カード用処理)
 // =========================================
@@ -1733,26 +1714,48 @@ function executeSalvageMagic() {
 // =========================================
 // 13. UI & MODAL HANDLING (UI操作)
 // =========================================
-function openDiscardSelector() {
-    pendingCardIndex = -1;
-    const discardCandidates = [];
-    player.hand.forEach((cid, idx) => {
-        const c = CARD_DB.find(cd => cd.id === cid);
-        discardCandidates.push({ id: cid, name: c.name, desc: c.desc, originalIndex: idx, rarity: c.rarity, type: c.type, cost: c.cost });
-    });
-    
+// Updated: main.js (openDiscardSelector - 汎用版)
+function openDiscardSelector(count = 1) {
     const modal = el("card-selector-modal");
     const grid = el("cs-grid");
     grid.innerHTML = "";
     
-    discardCandidates.forEach(item => {
-        const div = createCardElement(item, "battle", 0, 1);
-        div.onclick = () => executeDiscardAndEffect(item.originalIndex);
+    el("cs-message").innerText = `${count}枚選んで捨ててください`;
+
+    player.hand.forEach((cardId, idx) => {
+        const card = CARD_DB.find(c => c.id === cardId);
+        const div = createCardElement(card, "battle", 0, 1);
+        div.onclick = () => executeDiscardStep(idx, count);
         grid.appendChild(div);
     });
     
-    el("cs-message").innerText = "墓地に送るカードを1枚選んでください";
     modal.style.display = "flex";
+}
+
+// Updated: main.js (executeDiscardStep - 段階的破棄と再開)
+function executeDiscardStep(handIndex, remainingCount) {
+    const cardId = player.hand[handIndex];
+    player.hand.splice(handIndex, 1);
+    player.discard.push(cardId);
+    playSE("se-tap");
+    
+    remainingCount--;
+
+    if (remainingCount > 0 && player.hand.length > 0) {
+        // まだ捨てる必要がある場合は再描画
+        openDiscardSelector(remainingCount);
+    } else {
+        // すべて捨て終わった
+        closeCardSelector();
+        updateInfo();
+        
+        // 保存されていた「残りのエフェクト」があれば再開する
+        if (pendingEffectsQueue.length > 0) {
+            const nextEffects = [...pendingEffectsQueue];
+            pendingEffectsQueue = []; // クリアしてから実行
+            setTimeout(() => resolveEffects(nextEffects), 300);
+        }
+    }
 }
 
 function closeCardSelector() {
