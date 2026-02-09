@@ -22,12 +22,6 @@ function shuffleArray(array) {
     return array;
 }
 
-// 数値のアニメーション表示 (カウントアップ/ダウン)
-function animateValue(obj, start, end, duration) {
-    if (obj) obj.innerHTML = end;
-    // ※ 現在は即時反映のみ実装。必要に応じてrequestAnimationFrame等で滑らかにできます。
-}
-
 
 // =========================================
 // 2. AUDIO SYSTEM (サウンド管理)
@@ -220,7 +214,7 @@ let player = {
     items: { potion: 0, ether: 0, seed: 0 },
     state: {
         guardTurn: 0, // 光の護封剣用
-        itemLock: false, // アイテムロック用
+        itemLockTurn: 0, // アイテムロック用
         restrictInput: false // 1投制限用
     },
     deck: [], hand: [], discard: [], deckLocked: false, setCard: null
@@ -496,7 +490,7 @@ function initGameSession(startStage, continueMode = false) {
                 atkFlat: 0,
                 atkDuration: 0,
                 guardTurn: 0,
-                itemLock: false,
+                itemLockTurn: 0,
                 restrictInput: false
             },
             setCard: null,
@@ -775,7 +769,7 @@ function processOneThrow(score) {
     }
 
     triggerEffect(el("enemy-panel"), singleDmg, false);
-    animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 300);
+    el("enemy-hp-value").innerText = enemy.hp;
     displayEnemyHP = enemy.hp;
     updateInfo();
 
@@ -913,7 +907,7 @@ function executeEnemySkill(skill, isPreemptive = false) {
             const healVal = skill.value > 100 ? (enemy.maxHp - enemy.hp) : skill.value;
             enemy.hp = Math.min(enemy.maxHp, enemy.hp + healVal);
             addLog(`${enemy.name}は ${healVal} 回復した`, "log-heal");
-            animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500);
+            el("enemy-hp-value").innerText = enemy.hp;
             displayEnemyHP = enemy.hp;
             if (!isPreemptive) endEnemyTurn();
             break;
@@ -1027,7 +1021,6 @@ function doEnemyAttack(mult, options = {}) {
     const oldHp = player.hp;
     player.hp = Math.max(0, player.hp - finalDmg);
     triggerEffect(el("game-screen"), finalDmg, true);
-    animateValue(el("player-hp"), oldHp, player.hp, 500);
     displayPlayerHP = player.hp;
     
     if (player.hp <= 0) {
@@ -1042,7 +1035,7 @@ function doEnemyAttack(mult, options = {}) {
         enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal);
         addLog(`敵が ${heal} 回復！`, "log-skill");
         triggerEffect(el("enemy-panel"), heal, false, true);
-        animateValue(el("enemy-hp-value"), displayEnemyHP, enemy.hp, 500);
+        el("enemy-hp-value").innerText = enemy.hp;
         displayEnemyHP = enemy.hp;
     }
     
@@ -1103,15 +1096,11 @@ function endEnemyTurn() {
             addLog("護封剣 消滅", "log-system");
         }
     }
-        if (player.state.itemLock) {
-        player.state.itemLock = false; // アイティム封印は1ターン（敵の攻撃後）で解除
-        addLog("アイテム封印が解けた", "log-system");
-    }
-    if (player.state.hexSeal > 0) {
-        player.state.hexSeal--;
-        if (player.state.hexSeal === 0) addLog("呪縛が解けた", "log-system");
-    } else {
-        player.state.hexSeal = 0;
+    if (player.state.itemLockTurn > 0) {
+        player.state.itemLockTurn--;
+        if (player.state.itemLockTurn === 0) {
+            addLog("アイテム封印が解けた", "log-system");
+        }
     }
 
     currentTurn++;
@@ -1137,7 +1126,6 @@ function winBattle() {
         player.hp = Math.min(player.hp + 10, player.maxHp);
         playSE("se-heal");
         addLog(`★JUST FINISH! MaxHP+10 & HP+10`, "heal");
-        animateValue(el("player-hp"), oldHP, player.hp, 500);
         updateInfo();
         setTimeout(() => {
             showDialog("JUST FINISH BONUS!!", `見事！ピッタリで倒した！<br>最大HPが ${player.maxHp} にアップ！<br>HPも10回復した。`, "clear", [{ text: "OK", action: checkDrop }], 3000);
@@ -1330,9 +1318,9 @@ function useItem(type) {
         addLog(">> 投擲中はアイテムを使えません！", "log-system");
         return;
     }
-    if (player.state.itemLock) {
+    if (player.state.itemLockTurn > 0) { // Updated: itemLockTurn > 0 をチェック
         playSE("se-warning");
-        addLog(">> 粘着されていてアイテムが使えない！", "log-system");
+        addLog(`>> 粘着されていてアイテムが使えない！(残り${player.state.itemLockTurn}T)`, "log-system");
         return;
     }
     
@@ -1350,7 +1338,6 @@ function useItem(type) {
         }
         
         addLog(`アイテム: ${item.name}使用`, "log-item");
-        if (item.type !== "mp") animateValue(el("player-hp"), oldHp, player.hp, 500);
         updateInfo();
     }
 }
@@ -1397,9 +1384,9 @@ function playHandCard(index) {
         addLog(">> 投擲中はカードを使えません！", "log-system");
         return;
     }
-    if (player.state.itemLock) {
-        addLog(">> 封印されていて使えない！", "log-system");
+    if (player.state.itemLockTurn > 0) { // Updated: itemLockTurn > 0 をチェック
         playSE("se-warning");
+        addLog(`>> 粘着されていてアイテムが使えない！(残り${player.state.itemLockTurn}T)`, "log-system");
         return;
     }
     
@@ -1473,7 +1460,6 @@ function resolveEffects(effects, context = {}) {
                 const oldHp = player.hp;
                 player.hp = Math.min(player.hp + healAmt, player.maxHp);
                 triggerEffect(el("player-panel"), healAmt, true, true);
-                animateValue(el("player-hp"), oldHp, player.hp, 500);
                 rawMsg = (e.value === "FULL") ? "HP完全回復！" : `HP ${healAmt} 回復！`;
                 break;
 
@@ -1643,7 +1629,7 @@ function renderHand() {
     el("hand-count-display").innerText = player.hand.length;
     
     const isThrowing = turnInputs.length > 0;
-    const isCardLocked = player.state.itemLock || isThrowing;
+    const isCardLocked = player.state.itemLockTurn > 0 || isThrowing;
 
     if (player.deckLocked) {
         el("battle-deck-count").innerText = "-";
@@ -1748,7 +1734,7 @@ function updateInfo() {
         pChips += `<span class="status-chip ${isBuff ? 'chip-buff' : 'chip-lock'}">⚔️${label}(${valText}/${player.state.atkDuration}D)</span>`;
     }
     if (player.state.guardTurn > 0) pChips += `<span class="status-chip chip-guard">🛡️SHIELD(${player.state.guardTurn})</span>`;
-    if (player.state.itemLock) pChips += `<span class="status-chip chip-lock">🔒ITEM LOCK</span>`;
+    if (player.state.itemLockTurn > 0) pChips += `<span class="status-chip chip-lock">🔒ITEM LOCK(${player.state.itemLockTurn})</span>`;
     if (player.state.restrictInput) pChips += `<span class="status-chip chip-stun">⛓️BIND</span>`;
     
     setHTML("player-states-side", pChips);
@@ -1763,7 +1749,7 @@ function updateInfo() {
         const b = el(btnId); if (!b) return;
         b.innerHTML = `${icon}x${count}`;
         b.className = "item-btn";
-        if (player.state.itemLock || turnInputs.length > 0) b.classList.add("disabled");
+        if (player.state.itemLockTurn > 0 || turnInputs.length > 0) b.classList.add("disabled");
         else if (count > 0) b.classList.add("has-item");
         else b.classList.add("disabled");
     };

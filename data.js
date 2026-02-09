@@ -139,7 +139,7 @@ const GAME_DATA = {
                 { id: "attack", weight: 7 }
             ]},
             { name: "ヒューマノイド・ドレイク", img: "assets/5-4.png", weak: 17, hp: 600, ai: [
-                { name: "スライムの粘着", type: "STATE_P", state: { itemLock: true }, weight: 3, cond: { src: "p_state", tag: "itemLock", val: false } },
+                { name: "スライムの粘着", type: "STATE_P", state: { itemLockTurn: 2 }, msg: "アイテムを封じられた！(1T)", weight: 3, cond: { src: "p_state", tag: "itemLockTurn", val: 0 } }, 
                 { id: "attack", weight: 7 }
             ]},
             { name: "オシリスの天空竜", img: "assets/5-5.png", weak: 20, hp: 2000, ai: [
