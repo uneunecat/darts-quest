@@ -115,3 +115,41 @@ const PACK_DATA = [
     { id: "vol1", name: "Vol.1 - Legend", price: 1000, desc: "伝説の始まり。基本魔法カード収録。", unlockStage: 1, img: "assets/packs/vol1.png" },
     { id: "vol2", name: "Vol.2 - Awakening", price: 1500, desc: "テクニカルな戦略カードが登場。", unlockStage: 3, img: "assets/packs/vol2.png" }
 ];
+
+// Updated: data.js (追加分)
+
+// Player Default Stats
+const PLAYER_INITIAL_STATS = {
+    hp: 100,
+    maxHp: 100,
+    mp: 3,
+    maxMp: 10,
+    items: { potion: 0, ether: 0, seed: 0 }
+};
+
+// Stage & Rank Master
+const STAGE_MASTER = {
+    1: { title: "旅立ちの森", sub: "Forest of Beginnings", multiplier: 1.0, warning: false, 
+         thresholds: { SSS: 12, S: 16, A: 22, B: 30 } },
+    2: { title: "荒れ狂う荒野", sub: "Raging Wasteland", multiplier: 1.5, warning: false, 
+         thresholds: { SSS: 12, S: 16, A: 22, B: 30 } },
+    3: { title: "誘惑の迷宮", sub: "Labyrinth of Temptation", multiplier: 2.0, warning: false, 
+         thresholds: { SSS: 12, S: 16, A: 22, B: 30 } },
+    4: { title: "幻想の狂宴", sub: "Toon Nightmare", multiplier: 3.0, warning: true, 
+         thresholds: { SSS: 25, S: 35, A: 50, B: 70 } },
+    5: { title: "燃えたぎる火口", sub: "Burning Crater", multiplier: 5.0, warning: true, 
+         thresholds: { SSS: 25, S: 35, A: 50, B: 70 } }, // EXTRA
+    6: { title: "神の試練", sub: "God's Testing Ground", multiplier: 5.0, warning: true, 
+         thresholds: { SSS: 25, S: 35, A: 50, B: 70 } }  // GOD
+};
+
+const RANK_BONUS = {
+    SSS: 1000, S: 600, A: 300, B: 100, C: 50
+};
+
+// Audio Asset IDs
+const AUDIO_ASSETS = {
+    BGM: ["bgm-title", "bgm-battle", "bgm-boss", "bgm-extra", "bgm-win", "bgm-lose"],
+    SE_ATTACK: ["se-hit", "se-weak", "se-attack", "se-boom", "se-single", "se-double", "se-triple", "se-bull", "se-dbull"],
+    SE_SYSTEM: ["se-tap", "se-heal", "se-buff", "se-warning", "se-chest", "se-item"]
+};

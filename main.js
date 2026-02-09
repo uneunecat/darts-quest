@@ -65,8 +65,9 @@ function saveGameConfig() {
     localStorage.setItem("darts_quest_config", JSON.stringify(gameConfig));
 }
 
+// Updated: main.js (stopAllBGM)
 function stopAllBGM() {
-    ["bgm-title", "bgm-battle", "bgm-boss", "bgm-extra", "bgm-win", "bgm-lose"].forEach(id => {
+    AUDIO_ASSETS.BGM.forEach(id => { // Updated: AUDIO_ASSETS を使用
         const audioEl = document.getElementById(id);
         if (audioEl) {
             audioEl.pause();
@@ -94,21 +95,20 @@ function updateCurrentBgmVolume() {
     }
 }
 
+// Updated: main.js (playSE)
 function playSE(id) {
     const audioEl = document.getElementById(id);
     if (audioEl) {
         audioEl.currentTime = 0;
-        // 攻撃系とシステム系で音量を分ける
-        const attackSEs = ["se-hit", "se-weak", "se-attack", "se-boom", "se-single", "se-double", "se-triple", "se-bull", "se-dbull"];
-        
-        if (attackSEs.includes(id)) {
+        // Updated: AUDIO_ASSETS からカテゴリ判定
+        if (AUDIO_ASSETS.SE_ATTACK.includes(id)) {
             audioEl.volume = gameConfig.atkVolume;
         } else {
             audioEl.volume = gameConfig.sysVolume;
         }
         
         if (audioEl.volume > 0.01) {
-            audioEl.play().catch(e => { /* ブラウザ制限対策 */ });
+            audioEl.play().catch(e => { });
         }
     }
 }
@@ -502,10 +502,9 @@ function handleBluetoothNotify(event) {
 // =========================================
 function initGameSession(startStage, continueMode = false) {
     if (!continueMode) {
-        // ステータス初期化
+        // Updated: PLAYER_INITIAL_STATS から初期値を読み込み
         player = {
-            hp: 100, maxHp: 100, mp: 3, maxMp: 10,
-            items: { potion: 0, ether: 0, seed: 0 },
+            ...JSON.parse(JSON.stringify(PLAYER_INITIAL_STATS)), // ディープコピー
             state: {
                 power: false, shield: false, weakLock: false, barrier: false,
                 guardTurn: 0, magicCylinder: false, hexSealTrap: false, huge: 0,
@@ -522,24 +521,15 @@ function initGameSession(startStage, continueMode = false) {
     startTransition(startStage, continueMode);
 }
 
+// Updated: main.js (startTransition)
 function startTransition(sel, continueMode) {
-    let t = "STAGE " + sel;
-    let s = "";
-    let warning = false;
+    const info = STAGE_MASTER[sel] || { title: "UNKNOWN", sub: "Unknown Stage", warning: false };
     
-    // ステージ名設定
-    if (sel === 1) { t = "旅立ちの森"; s = "Forest of Beginnings"; }
-    if (sel === 2) { t = "荒れ狂う荒野"; s = "Raging Wasteland"; }
-    if (sel === 3) { t = "誘惑の迷宮"; s = "Labyrinth of Temptation"; }
-    if (sel === 4) { t = "幻想の狂宴"; s = "Toon Nightmare"; warning = true; }
-    if (sel === 5) { t = "燃えたぎる火口"; s = "Burning Crater"; warning = true; }
-    if (sel === 6) { t = "神の試練"; s = "God's Testing Ground"; warning = true; }
-    
-    el("chapter-title").innerText = t;
-    el("chapter-sub").innerText = s;
+    el("chapter-title").innerText = info.title;
+    el("chapter-sub").innerText = info.sub;
     
     const ch = el("chapter-screen");
-    if (warning) {
+    if (info.warning) {
         playSE("se-warning");
         ch.classList.add("chapter-extra");
     } else {
@@ -547,7 +537,6 @@ function startTransition(sel, continueMode) {
         ch.classList.remove("chapter-extra");
     }
     
-    // 暗転遷移
     el("black-curtain").classList.add("fade-in");
     setTimeout(() => {
         el("title-screen").style.display = "none";
@@ -563,7 +552,7 @@ function startTransition(sel, continueMode) {
                 el("black-curtain").classList.remove("fade-in");
                 checkOpeningSkill();
             }, 1000);
-        }, warning ? 4000 : 2500);
+        }, info.warning ? 4000 : 2500);
     }, 1000);
 }
 
@@ -1435,8 +1424,7 @@ function nextStep() {
         // ステージクリア処理
         const stageTurns = totalGameTurns - stageStartTurn;
         const [rank, dpBonus] = calculateStageRank(stage, stageTurns);
-        const multipliers = { 1: 1.0, 2: 1.5, 3: 2.0, 4: 3.0, 5: 5.0, 6: 5.0 };
-        const mult = multipliers[stage] || 1.0;
+        const mult = STAGE_MASTER[stage]?.multiplier || 1.0;
         
         // 報酬計算
         const scoreDP = Math.floor(totalScore * 0.2 * mult);
@@ -2409,26 +2397,18 @@ function showDialog(title, text, type = "normal", buttons = [{ text: "OK", actio
     }
 }
 
+// Updated: main.js (calculateStageRank)
 function calculateStageRank(stg, turns) {
-    if (stg === 5 || stg === 6) {
-        if (turns <= 25) return ["SSS", 1000];
-        if (turns <= 35) return ["S", 600];
-        if (turns <= 50) return ["A", 300];
-        if (turns <= 70) return ["B", 100];
-        return ["C", 50];
-    } else if (stg === 4) {
-        if (turns <= 25) return ["SSS", 1000];
-        if (turns <= 35) return ["S", 600];
-        if (turns <= 50) return ["A", 300];
-        if (turns <= 70) return ["B", 100];
-        return ["C", 50];
-    } else {
-        if (turns <= 12) return ["SSS", 1000];
-        if (turns <= 16) return ["S", 600];
-        if (turns <= 22) return ["A", 300];
-        if (turns <= 30) return ["B", 100];
-        return ["C", 50];
-    }
+    const info = STAGE_MASTER[stg];
+    const th = info.thresholds;
+    let rank = "C";
+
+    if (turns <= th.SSS) rank = "SSS";
+    else if (turns <= th.S) rank = "S";
+    else if (turns <= th.A) rank = "A";
+    else if (turns <= th.B) rank = "B";
+
+    return [rank, RANK_BONUS[rank] || 50];
 }
 
 function finishSession(resultType, ppr, multiplier = 1.0) {
