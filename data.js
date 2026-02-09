@@ -120,8 +120,8 @@ const GAME_DATA = {
                 { id: "attack", weight: 7 }
             ]},
             { name: "サウザンド・アイズ・サクリファイス", img: "assets/4-6.png", weak: 20, hp: 800, ai: [
-                { name: "結界", type: "BUFF_E",state: { barrierTurn: 999, barrierLimit: 10 },color: "purple",preemptive: true },
-                { name: "千眼の邪教神", type: "DRAIN", mult: 2.0, isBossUlt: true, color: "purple", guaranteed: true, cond: { src: "turn_mod", val: 4 }  },
+                { name: "結界", type: "BUFF_E",state: { barrierTurn: 999, barrierLimit: 10 },color: "fire", preemptive: true },
+                { name: "千眼の邪教神", type: "DRAIN", mult: 2.0, isBossUlt: true , guaranteed: true, cond: { src: "turn_mod", val: 4 }  },
                 { id: "attack", weight: 5 }
             ]}
         ],
