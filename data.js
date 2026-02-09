@@ -68,7 +68,7 @@ const GAME_DATA = {
                 { id: "attack", weight: 7 }
             ]},
             { name: "二頭を持つキング・レックス", img: "assets/2-4.png", weak: 20, hp: 340, ai: [
-                { name: "狂暴化", type: "BUFF_E", state: { atkBuff: 0.5 }, se: "se-buff", color: "fire", weight: 5, cond: { src: "e_hp", op: "lt", val: 50 } },
+                { name: "狂暴化", type: "BUFF_E", state: { atkBuff: 0.5, atkBuffTurn: 10 }, se: "se-buff", color: "fire", guaranteed: true, cond: { src: "e_hp", op: "lt", val: 50 } },
                 { id: "attack", weight: 5 }
             ]},
             { name: "剣竜", img: "assets/2-5.png", weak: 19, hp: 540, ai: [

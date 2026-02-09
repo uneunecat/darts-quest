@@ -231,7 +231,7 @@ let enemy = {
     hp: 100, maxHp: 100, data: null, name: "",
     state: {
         charge: false, guard: false, guardType: null, guardTurn: 0,
-        atkBuff: 0, isStunned: false, toonSkin: false, barrierLimit: 0, sliferThunder: false
+        atkBuff: 0, isStunned: false, toonSkin: false, barrierLimit: 0
     }
 };
 
@@ -605,7 +605,7 @@ function spawnEnemy() {
     try {
         enemy.state = {
             charge: false, guard: false, guardType: null, guardTurn: 0,
-            atkBuff: 0, isStunned: false, toonSkin: false, barrierLimit: 0, sliferThunder: false,
+            atkBuff: 0, atkBuffTurn: 0, isStunned: false, toonSkin: false, barrierLimit: 0,
             patternQueue: [],
             actionCount: 0
         };
@@ -895,7 +895,7 @@ function enemyTurn() {
     } else {
         // 2. 現在の条件を満たしているアクションを抽出
         const aiList = enemy.data.ai || [{ id: "attack", weight: 1 }];
-        const validActions = aiList.filter(a => checkAICondition(a.cond));
+        const validActions = aiList.filter(a => {if (!checkAICondition(a.cond)) return false;if (a.type === "BUFF_E" && a.state && a.state.atkBuff) {if (enemy.state.atkBuffTurn > 0) return false;}return true;});
 
         // 3. 【新設】確定発動(guaranteed)設定があり、かつ条件を満たしているものを探す
         const guaranteedAction = validActions.find(a => a.guaranteed);
@@ -1021,11 +1021,18 @@ function doEnemyAttack(mult, options = {}) {
     enemy.state.charge = false;
 
     let baseDmg = 0;
+
+    // 敵のバフ倍率を計算
+    let currentMult = mult;
+    if (enemy.state.atkBuffTurn > 0) {
+        currentMult += enemy.state.atkBuff;
+    }
+
     if (fixedDmg > 0) {
-        baseDmg = Math.floor(fixedDmg * mult);
+        baseDmg = Math.floor(fixedDmg * currentMult);
     } else {
         const base = 2 + floor + (stage - 1) * 3;
-        baseDmg = Math.floor((base + Math.floor(Math.random() * 6)) * mult);
+        baseDmg = Math.floor((base + Math.floor(Math.random() * 6)) * currentMult);
     }
     
     let finalDmg = triggerTrap('attack', baseDmg);
@@ -1100,6 +1107,15 @@ function triggerTrap(triggerType, incomingDmg = 0) {
 }
 
 function endEnemyTurn() {
+
+    if (enemy.state.atkBuffTurn > 0) {
+        enemy.state.atkBuffTurn--;
+        if (enemy.state.atkBuffTurn === 0) {
+            enemy.state.atkBuff = 0; // 効果終了
+            addLog(`${enemy.name}の攻撃力増加が解けた`, "log-system");
+        }
+    }
+
     currentTurn++;
     player.mp = Math.min(player.mp + 3, player.maxMp);
     triggerFloatText("MP+3", el("player-mp-bar"));
@@ -1713,6 +1729,7 @@ function updateInfo() {
     if (enemy.state.charge) eChips += `<span class="status-chip chip-charge">⚡CHARGE</span>`;
     if (enemy.state.isStunned) eChips += `<span class="status-chip chip-stun">😵STUN</span>`;
     if (enemy.state.barrierLimit > 0) eChips += `<span class="status-chip chip-barrier">💠BARRIER(${enemy.state.barrierLimit})</span>`;
+    if (enemy.state.atkBuffTurn > 0) eChips += `<span class="status-chip chip-buff">⚔️ATK UP(${enemy.state.atkBuffTurn})</span>`;
     setHTML("enemy-states-side", eChips);
 
     // Player HP
