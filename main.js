@@ -1,9 +1,9 @@
 // =========================================
-// DARTS QUEST - main.js (v3.2.0 Restored & Clean)
+// DARTS QUEST - main.js (v3.3.0 Full Restoration & Unified Engine)
 // =========================================
 
 // --- [SECTION 1] GLOBAL STATE & UTILS ---
-const el = (id) => document.getElementById(id); // Restored: 必須ユーティリティ
+const el = (id) => document.getElementById(id);
 
 let gameConfig = { bgmVolume: 0.3, sysVolume: 0.5, atkVolume: 0.8 };
 let currentBgmId = "";
@@ -40,8 +40,9 @@ let isProcessing = false, waitingForChest = false, isJustFinish = false;
 let turnInputs = [], currentInput = "", dropGuaranteed = false, weakHitCount = 0;
 let pendingEffectsQueue = []; 
 let clearedStagesLog = [];
+let cheatBuffer = "";
 
-// セーブデータ関連
+// セーブデータ
 let allSaveData = { "slot1": null, "slot2": null, "slot3": null, "lastPlayed": 1 };
 let currentSlot = "slot1";
 let savedData = { highScore: { stage: 1, floor: 1, avg: 0.0 }, history: [], clearedExtra: false, dp: 0, bestRanks: {}, unlockedStage4: false, deck: [], cards: {} };
@@ -166,6 +167,7 @@ function processOneThrow(score) {
 
     let singleDmg = score;
 
+    // 敵防御判定
     if (enemy.state.barrierTurn > 0 && singleDmg < enemy.state.barrierLimit) {
         singleDmg = 0; addLog(`結界！(${enemy.state.barrierLimit}未満無効)`, "log-enemy");
     }
@@ -174,6 +176,7 @@ function processOneThrow(score) {
         else if (enemy.state.guardType === 'fixed') singleDmg = Math.max(0, singleDmg - enemy.state.guardValue);
     }
 
+    // プレイヤー攻撃バフ
     if (player.state.atkDuration > 0) {
         singleDmg = Math.floor((singleDmg + player.state.atkFlat) * player.state.atkBuff);
         player.state.atkDuration--;
@@ -362,7 +365,6 @@ function endEnemyTurn() {
     if (enemy.state.atkBuffTurn > 0) { enemy.state.atkBuffTurn--; if (enemy.state.atkBuffTurn === 0) enemy.state.atkBuff = 0; }
     if (enemy.state.guardTurn > 0) { enemy.state.guardTurn--; if (enemy.state.guardTurn === 0) { enemy.state.guardType = null; enemy.state.guardValue = 0; } }
     if (enemy.state.barrierTurn > 0) { enemy.state.barrierTurn--; if (enemy.state.barrierTurn === 0) enemy.state.barrierLimit = 0; }
-    
     if (player.state.guardTurn > 0) { player.state.guardTurn--; if (player.state.guardTurn === 0) addLog("護封剣 消滅", "log-system"); }
     if (player.state.itemLock) { player.state.itemLock = false; addLog("アイテム封印解除", "log-system"); }
 
@@ -390,7 +392,61 @@ function loseGame() {
     showDialog("YOU DIED", "力尽きました...", "warning", [{ text: "RETURN TO TITLE", action: returnToTitle }]);
 }
 
-// --- [SECTION 4] STAGE & SYSTEM ---
+function checkDrop() {
+    if ((stage === 5 && floor === 1) || (stage === 6 && floor === 5) || (stage === 4 && floor === 6)) { nextStep(); return; }
+    const isBoss = (floor === 5 || (stage === 4 && floor === 6));
+    let dropRate = isBoss ? 1.0 : CHEST_DROP_CONFIG.default_rate;
+    if (dropGuaranteed) dropRate = 1.0;
+    if (Math.random() < dropRate) {
+        waitingForChest = true; el("enemy-img").style.display = "none"; el("chest-img").style.display = "block";
+        el("chest-img").classList.add("chest-shine"); playSE("se-chest"); addLog("宝箱を見つけた！", "log-item");
+        setTimeout(() => { if (waitingForChest) openChest(); }, 1500);
+    } else nextStep();
+}
+
+function openChest() {
+    if (!waitingForChest) return;
+    waitingForChest = false; playSE("se-item");
+    const conf = CHEST_DROP_CONFIG;
+    let seedRate = conf.seed_rates.base;
+    if (weakHitCount >= 3) seedRate = conf.seed_rates.weak3;
+    else if (weakHitCount >= 2) seedRate = conf.seed_rates.weak2;
+    const rand = Math.random();
+    let itemKey = rand < seedRate ? "seed" : (Math.random() < 0.6 ? "potion" : "ether");
+    const item = ITEM_EFFECTS[itemKey];
+    player.items[itemKey]++;
+    updateInfo();
+    showDialog("TREASURE!", `<span style="color:#00ff00;">${item.name}</span> を入手！<br>${item.msg}`, "item", [{ text: "OK", action: nextStep }], 2000);
+}
+
+function nextStep() {
+    floor++;
+    const ppr = totalDarts > 0 ? ((totalScore / totalDarts) * 3).toFixed(1) : 0;
+    const isClear = (stage <= 3 && floor > 5) || (stage === 4 && floor > 6) || (stage === 5 && floor > 1) || (stage === 6 && floor > 5);
+    
+    if (isClear) {
+        const stageTurns = totalGameTurns - stageStartTurn;
+        const [rank, dpBonus] = calculateStageRank(stage, stageTurns);
+        const mult = STAGE_MASTER[stage]?.multiplier || 1.0;
+        playBGM("bgm-win");
+        
+        const btnNext = { text: "⛺ 次へ進む", action: () => { player.hp = Math.min(player.hp + 30, player.maxHp); initGameSession(stage === 4 ? 6 : stage + 1, true); } };
+        const btnReturn = { text: "🏠 帰還する", action: () => { const res = finishSession("RETURN", parseFloat(ppr), mult); returnToTitle(); } };
+        
+        if (stage === 3 && (ppr >= 70 || savedData.clearedExtra)) {
+            showDialog("STAGE CLEAR", "EXTRA STAGEへ挑戦しますか？", "clear", [{ text: "⚠️ EXTRA", action: () => initGameSession(5, true) }, btnReturn]);
+        } else {
+            showDialog("STAGE CLEAR", `RANK: ${rank}`, "clear", [btnNext, btnReturn]);
+        }
+    } else spawnEnemy();
+}
+
+function returnToTitle() {
+    playBGM("bgm-title"); el("game-screen").style.display = "none"; el("title-screen").style.display = "flex";
+    el("stage-select-screen").style.display = "none"; updateTitleScore();
+}
+
+// --- [SECTION 4] STAGE & SYSTEM (進行管理) ---
 
 function initGameSession(startStage, continueMode = false) {
     if (!continueMode) {
@@ -406,14 +462,13 @@ function startTransition(sel, continueMode) {
     const ch = el("chapter-screen");
     if (info.warning) { playSE("se-warning"); ch.classList.add("chapter-extra"); }
     else { playSE("se-tap"); ch.classList.remove("chapter-extra"); }
-    
     el("black-curtain").classList.add("fade-in");
     setTimeout(() => {
         el("title-screen").style.display = "none"; ch.style.display = "flex"; ch.style.opacity = 1;
         setupStage(sel, continueMode);
         setTimeout(() => {
             ch.style.opacity = 0;
-            setTimeout(() => { ch.style.display = "none"; el("black-curtain").classList.remove("fade-in"); handlePreemptiveAI(); }, 1000);
+            setTimeout(() => { el("black-curtain").classList.remove("fade-in"); ch.style.display = "none"; handlePreemptiveAI(); }, 1000);
         }, info.warning ? 4000 : 2500);
     }, 1000);
 }
@@ -421,44 +476,31 @@ function startTransition(sel, continueMode) {
 function setupStage(sel, continueMode) {
     stage = sel; floor = 1; isProcessing = false; currentTurn = 1; stageStartTurn = totalGameTurns;
     if (!continueMode) totalDarts = 0;
-    el("battle-log").innerHTML = ""; el("game-screen").style.display = "block";
-    
+    el("game-screen").style.display = "block";
     if (!continueMode) {
         player.mp = 3;
-        if (!savedData.deck || savedData.deck.length < DECK_SIZE) {
-            player.deckLocked = true; player.deck = []; player.hand = [];
-        } else {
-            player.deck = shuffleArray([...savedData.deck]);
-            for (let i = 0; i < INITIAL_HAND; i++) drawCard(true);
-        }
+        if (!savedData.deck || savedData.deck.length < DECK_SIZE) { player.deckLocked = true; }
+        else { player.deck = shuffleArray([...savedData.deck]); for (let i = 0; i < INITIAL_HAND; i++) drawCard(true); }
     }
     spawnEnemy(); resizeGame();
 }
 
 function spawnEnemy() {
     if (player.hp <= 0) return;
-    try {
-        enemy.state = { charge: false, isStunned: false, atkBuff: 0, atkBuffTurn: 0, guardTurn: 0, guardType: null, guardValue: 0, barrierTurn: 0, barrierLimit: 0, patternQueue: [], actionCount: 0 };
-        currentTurn = 1; turnInputs = []; currentInput = ""; isJustFinish = false; waitingForChest = false; dropGuaranteed = false; weakHitCount = 0;
-        updateScoreDisplay();
-        el("boss-label").style.display = "none"; el("enemy-img").style.display = "block"; el("chest-img").style.display = "none";
-        
-        let bgKey = stage;
-        if (stage === 4) bgKey = floor >= 5 ? "4_2" : "4_1";
-        if (GAME_DATA.bg[bgKey]) el("game-container").style.backgroundImage = `url('${GAME_DATA.bg[bgKey]}')`;
-        
-        let list = GAME_DATA.enemies[stage] || GAME_DATA.enemies[1];
-        enemy.data = list[(floor - 1) % list.length];
-        enemy.maxHp = enemy.data.hp || (100 + (stage - 1) * 50 + (floor - 1) * 30);
-        
-        if (floor === 5 || (stage === 4 && floor === 6)) {
-            el("game-container").classList.add("boss-mode"); el("boss-label").style.display = "inline"; playBGM("bgm-boss");
-        } else playBGM("bgm-battle");
-        
-        enemy.name = enemy.data.name; el("enemy-img").src = enemy.data.img;
-        enemy.hp = enemy.maxHp; displayEnemyHP = enemy.hp;
-        triggerTrap('summon'); updateInfo();
-    } catch (e) { console.error(e); }
+    enemy.state = { charge: false, isStunned: false, atkBuff: 0, atkBuffTurn: 0, guardTurn: 0, guardType: null, guardValue: 0, barrierTurn: 0, barrierLimit: 0, patternQueue: [], actionCount: 0 };
+    currentTurn = 1; turnInputs = []; currentInput = ""; isJustFinish = false; waitingForChest = false; dropGuaranteed = false; weakHitCount = 0;
+    updateScoreDisplay();
+    el("boss-label").style.display = "none"; el("enemy-img").style.display = "block"; el("chest-img").style.display = "none";
+    let bgKey = stage; if (stage === 4) bgKey = floor >= 5 ? "4_2" : "4_1";
+    if (GAME_DATA.bg[bgKey]) el("game-container").style.backgroundImage = `url('${GAME_DATA.bg[bgKey]}')`;
+    let list = GAME_DATA.enemies[stage] || GAME_DATA.enemies[1];
+    enemy.data = list[(floor - 1) % list.length];
+    enemy.maxHp = enemy.data.hp || (100 + (stage - 1) * 50 + (floor - 1) * 30);
+    if (floor === 5 || (stage === 4 && floor === 6)) { el("game-container").classList.add("boss-mode"); el("boss-label").style.display = "inline"; playBGM("bgm-boss"); }
+    else playBGM("bgm-battle");
+    enemy.name = enemy.data.name; el("enemy-img").src = enemy.data.img;
+    enemy.hp = enemy.maxHp; displayEnemyHP = enemy.hp;
+    triggerTrap('summon'); updateInfo();
 }
 
 function handlePreemptiveAI() {
@@ -472,41 +514,46 @@ function handlePreemptiveAI() {
     }
 }
 
+// --- [SECTION 5] SAVE & SLOT SYSTEM ---
+
 function loadGameData() {
     const saved = localStorage.getItem(SAVE_KEY);
     if (saved) { try { allSaveData = JSON.parse(saved); } catch (e) { console.error(e); } }
 }
 function saveToDrive() { allSaveData[currentSlot] = savedData; localStorage.setItem(SAVE_KEY, JSON.stringify(allSaveData)); }
 
+function initSlotScreen() {
+    for (let i = 1; i <= 3; i++) {
+        const data = allSaveData["slot" + i];
+        const infoEl = el("info-" + i);
+        if (!data) infoEl.innerHTML = "<div class='slot-empty'>NO DATA</div>";
+        else infoEl.innerHTML = `STAGE ${data.highScore.stage}-${data.highScore.floor}F<br>Avg: ${data.highScore.avg.toFixed(1)}`;
+    }
+}
+
 function selectSlot(n) {
     currentSlot = "slot" + n;
-    if (!allSaveData[currentSlot]) {
-        allSaveData[currentSlot] = { highScore: { stage: 1, floor: 1, avg: 0.0 }, history: [], clearedExtra: false, dp: 0, bestRanks: {}, unlockedStage4: false, deck: [], cards: {} };
-    }
+    if (!allSaveData[currentSlot]) allSaveData[currentSlot] = { highScore: { stage: 1, floor: 1, avg: 0.0 }, history: [], clearedExtra: false, dp: 0, bestRanks: {}, unlockedStage4: false, deck: [], cards: {} };
     savedData = allSaveData[currentSlot];
     updateTitleScore(); playSE("se-tap"); playBGM("bgm-title");
     el("slot-screen").style.display = "none"; el("title-screen").style.display = "flex";
 }
 
-function backToSlots() { stopAllBGM(); el("title-screen").style.display = "none"; el("slot-screen").style.display = "flex"; initSlotScreen(); }
-
-// Restored: タイトル画面更新
 function updateTitleScore() {
     let stg = `STAGE ${savedData.highScore.stage}`;
     if (savedData.highScore.stage === 5) stg = "EXTRA";
-    if (savedData.highScore.stage === 6) stg = "STAGE 5";
-    if (el("hs-reach")) el("hs-reach").innerText = `${stg} - ${savedData.highScore.floor}F`;
-    if (el("hs-avg")) el("hs-avg").innerText = savedData.highScore.avg.toFixed(1);
-    if (el("hs-rt")) el("hs-rt").innerText = "Rt " + calculateRating(savedData.highScore.avg);
-    if (el("dp-display")) el("dp-display").innerText = "DP: " + (savedData.dp || 0);
+    el("hs-reach").innerText = `${stg} - ${savedData.highScore.floor}F`;
+    el("hs-avg").innerText = savedData.highScore.avg.toFixed(1);
+    el("hs-rt").innerText = "Rt " + calculateRating(savedData.highScore.avg);
+    el("dp-display").innerText = "DP: " + (savedData.dp || 0);
 }
 
-// Restored: セーブデータ操作
+function backToSlots() { stopAllBGM(); el("title-screen").style.display = "none"; el("slot-screen").style.display = "flex"; initSlotScreen(); }
 function resetSaveData() { if (confirm("データを消去しますか？")) { allSaveData[currentSlot] = null; selectSlot(currentSlot.replace("slot", "")); saveToDrive(); } }
 function exportSave() { navigator.clipboard.writeText(JSON.stringify(savedData)).then(() => alert("コピーしました")); }
 function importSave() { const json = prompt("JSONを貼り付けてください"); if (json) { try { const d = JSON.parse(json); if (d.highScore) { savedData = d; updateTitleScore(); saveToDrive(); alert("完了"); } } catch (e) { alert("エラー"); } } }
 
-// --- [SECTION 5] UI & VISUALS ---
+// --- [SECTION 6] UI & VISUALS ---
 
 function updateInfo() {
     if (!enemy.data) return;
@@ -525,28 +572,20 @@ function updateInfo() {
     if (enemy.state.barrierTurn > 0) eChips += `<span class="status-chip chip-barrier">💠BARRIER(${enemy.state.barrierTurn})</span>`;
     el("enemy-states-side").innerHTML = eChips;
 
-    const hpPct = (player.hp / player.maxHp) * 100;
-    el("player-hp-bar").style.width = hpPct + "%";
+    el("player-hp-bar").style.width = (player.hp / player.maxHp) * 100 + "%";
     el("player-hp").innerText = `${player.hp}/${player.maxHp}`;
-    
-    let mpDots = "";
-    for (let i = 0; i < player.maxMp; i++) mpDots += `<span class="mp-dot ${i < player.mp ? 'active' : ''}"></span>`;
+    let mpDots = ""; for (let i = 0; i < player.maxMp; i++) mpDots += `<span class="mp-dot ${i < player.mp ? 'active' : ''}"></span>`;
     el("player-mp-dots").innerHTML = mpDots;
 
     let pChips = "";
-    if (player.state.atkDuration > 0) {
-        const isBuff = player.state.atkBuff > 1.0 || player.state.atkFlat > 0;
-        pChips += `<span class="status-chip ${isBuff?'chip-buff':'chip-lock'}">⚔️ATK(${player.state.atkBuff}x/${player.state.atkDuration}D)</span>`;
-    }
+    if (player.state.atkDuration > 0) pChips += `<span class="status-chip chip-buff">⚔️ATK(${player.state.atkBuff}x/${player.state.atkDuration}D)</span>`;
     if (player.state.guardTurn > 0) pChips += `<span class="status-chip chip-guard">🛡️SHIELD(${player.state.guardTurn})</span>`;
     if (player.state.itemLock) pChips += `<span class="status-chip chip-lock">🔒ITEM LOCK</span>`;
     if (player.state.restrictInput) pChips += `<span class="status-chip chip-stun">⛓️BIND</span>`;
     el("player-states-side").innerHTML = pChips;
 
     el("avg-display").innerText = totalDarts > 0 ? ((totalScore / totalDarts) * 3).toFixed(1) : "0.0";
-    el("btn-potion").innerHTML = `💊x${player.items.potion}`;
-    el("btn-ether").innerHTML = `⚗️x${player.items.ether}`;
-    el("btn-seed").innerHTML = `🌱x${player.items.seed}`;
+    el("btn-potion").innerHTML = `💊x${player.items.potion}`; el("btn-ether").innerHTML = `⚗️x${player.items.ether}`; el("btn-seed").innerHTML = `🌱x${player.items.seed}`;
     renderHand();
 }
 
@@ -562,10 +601,8 @@ function renderHand() {
         area.appendChild(div);
     });
     const trapArea = el("trap-slot-container"); trapArea.innerHTML = "";
-    if (player.setCard) {
-        const c = CARD_DB.find(cd => cd.id === player.setCard);
-        trapArea.appendChild(createCardElement(c, "battle"));
-    } else trapArea.innerHTML = '<div id="trap-slot" class="trap-slot empty">SET<br>TRAP</div>';
+    if (player.setCard) trapArea.appendChild(createCardElement(CARD_DB.find(cd => cd.id === player.setCard), "battle"));
+    else trapArea.innerHTML = '<div id="trap-slot" class="trap-slot empty">SET<br>TRAP</div>';
 }
 
 function updateScoreDisplay() {
@@ -619,22 +656,13 @@ function showSkillCutin(name, type) {
     setTimeout(() => c.style.display = "none", 1500);
 }
 
-// Restored: ショップ・コレクション操作
-function buyPack(packId) {
-    const pack = PACK_DATA.find(p => p.id === packId);
-    if (!pack || savedData.dp < pack.price) { playSE("se-warning"); return; }
-    savedData.dp -= pack.price; saveToDrive(); startPackOpening(packId);
-}
-function closeCardShop() { el("card-shop-modal").style.display = "none"; updateTitleScore(); }
-function closeCollection() { el("collection-modal").style.display = "none"; }
-function closePackResult() { el("pack-result-modal").style.display = "none"; openCardShop(); }
-function closeHistory() { el("history-modal").style.display = "none"; }
+// --- [SECTION 7] SHOP & COLLECTION ---
 
 function openCardShop() {
     const list = el("pack-list"); list.innerHTML = "";
     el("shop-dp-display").innerText = savedData.dp;
     PACK_DATA.forEach(p => {
-        if (savedData.bestRanks[p.unlockStage]) {
+        if (p.unlockStage === 1 || savedData.bestRanks[p.unlockStage]) {
             const div = document.createElement("div"); div.className = "pack-item";
             div.innerHTML = `<div class="pack-img-container"><img src="${p.img}"></div><div class="pack-name">${p.name}</div><button class="pack-buy-btn" ${savedData.dp>=p.price?'':'disabled'} onclick="buyPack('${p.id}')">${p.price} DP</button>`;
             list.appendChild(div);
@@ -643,7 +671,32 @@ function openCardShop() {
     el("card-shop-modal").style.display = "flex";
 }
 
+function buyPack(packId) {
+    const pack = PACK_DATA.find(p => p.id === packId);
+    if (!pack || savedData.dp < pack.price) { playSE("se-warning"); return; }
+    savedData.dp -= pack.price; saveToDrive(); startPackOpening(packId);
+}
+
+function startPackOpening(packId) {
+    currentPackId = packId; isOpeningPack = true; openingPhase = 1;
+    el("card-shop-modal").style.display = "none"; el("pack-result-modal").style.display = "flex";
+    const targetCards = CARD_DB.filter(c => c.packs && c.packs.includes(packId));
+    packResults = [];
+    for (let i = 0; i < 3; i++) {
+        const card = targetCards[Math.floor(Math.random() * targetCards.length)];
+        savedData.cards[card.id] = (savedData.cards[card.id] || 0) + 1;
+        packResults.push(card);
+    }
+    saveToDrive();
+    el("pack-opening-container").innerHTML = `<div id="opening-stage"><div id="opening-prompt" class="prompt-text" onclick="closePackResult()">PACK OPENED! (TAP TO CLOSE)</div><div class="result-stage">${packResults.map(c => `<div class="std-card rarity-${c.rarity}"><div class="std-art"><img src="assets/cards/${c.id}.png"></div><div class="std-name">${c.name}</div></div>`).join('')}</div></div>`;
+}
+
+function closePackResult() { el("pack-result-modal").style.display = "none"; openCardShop(); }
+function closeCardShop() { el("card-shop-modal").style.display = "none"; updateTitleScore(); }
+
 function openCollection() { renderDeckEditor(); el("collection-modal").style.display = "flex"; }
+function closeCollection() { el("collection-modal").style.display = "none"; }
+
 function renderDeckEditor() {
     const dGrid = el("deck-grid"); dGrid.innerHTML = "";
     for (let i = 0; i < DECK_SIZE; i++) {
@@ -663,12 +716,13 @@ function renderDeckEditor() {
         div.onclick = () => { if (count > inDeck && savedData.deck.length < DECK_SIZE) { savedData.deck.push(c.id); saveToDrive(); renderDeckEditor(); } };
         cGrid.appendChild(div);
     });
+    el("deck-count").innerText = savedData.deck.length;
 }
 
 function createCardElement(card, mode, count) {
     const div = document.createElement("div");
     div.className = `std-card ${mode} rarity-${card.rarity}`;
-    div.innerHTML = `<div class="std-art"><img src="assets/cards/${card.id}.png"><div class="std-cost">${card.cost}</div>${count!==undefined?`<div class="std-count">x${count}</div>`:''}</div><div class="std-text-area ${card.type==='TRAP'?'bg-trap':'bg-magic'}"><div class="std-name">${card.name}</div><div class="std-desc">${card.desc}</div></div>`;
+    div.innerHTML = `<div class="std-art"><img src="assets/cards/${card.id}.png" onerror="this.style.display='none'"><div class="std-cost">${card.cost}</div>${count!==undefined?`<div class="std-count">x${count}</div>`:''}</div><div class="std-text-area ${card.type==='TRAP'?'bg-trap':'bg-magic'}"><div class="std-name">${card.name}</div><div class="std-desc">${card.desc}</div></div>`;
     return div;
 }
 
@@ -679,11 +733,12 @@ function showHistory() {
     });
     el("history-modal").style.display = "flex";
 }
+function closeHistory() { el("history-modal").style.display = "none"; }
 
-// Restored: ステージ選択
+// --- [SECTION 8] INPUT & UTILITY ---
+
 function openStageSelect() { el("stage-select-screen").style.display = "flex"; renderStageSelectScreen(); }
 function closeStageSelect() { el("stage-select-screen").style.display = "none"; }
-
 function renderStageSelectScreen() {
     const container = el("stage-list-container"); container.innerHTML = "";
     const stages = [
@@ -703,21 +758,6 @@ function renderStageSelectScreen() {
     });
 }
 
-// --- [SECTION 6] INPUT & UTILITY ---
-
-function handleBluetoothNotify(event) {
-    if (el("game-screen").style.display === "none" || isProcessing) return;
-    const val = event.target.value;
-    if (val.byteLength > 2) {
-        const scoreData = DL_SCORE_MAP[val.getUint8(2)];
-        if (scoreData && scoreData !== "CHANGE") {
-            const [s, type] = scoreData;
-            playSE(type === 4 ? "se-dbull" : (type === 3 ? "se-bull" : (type === 2 ? "se-triple" : (type === 1 ? "se-double" : "se-single"))));
-            processOneThrow(s);
-        }
-    }
-}
-
 async function connectToBoard() {
     try {
         const device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'DARTSLIVE' }], optionalServices: [DL_SERVICE_UUID] });
@@ -725,14 +765,23 @@ async function connectToBoard() {
         const service = await server.getPrimaryService(DL_SERVICE_UUID);
         const char = await service.getCharacteristic(DL_NOTIFY_UUID);
         await char.startNotifications();
-        char.addEventListener('characteristicvaluechanged', handleBluetoothNotify);
+        char.addEventListener('characteristicvaluechanged', (e) => {
+            const val = e.target.value;
+            if (val.byteLength > 2) {
+                const scoreData = DL_SCORE_MAP[val.getUint8(2)];
+                if (scoreData && scoreData !== "CHANGE") {
+                    const [s, type] = scoreData;
+                    playSE(type === 4 ? "se-dbull" : (type === 3 ? "se-bull" : (type === 2 ? "se-triple" : (type === 1 ? "se-double" : "se-single"))));
+                    processOneThrow(s);
+                }
+            }
+        });
         el("bt-connect-btn").innerText = "📡 CONNECTED"; el("bt-connect-btn").classList.add("connected");
-    } catch (e) { alert(e); }
+    } catch (e) { alert("BT Error: " + e); }
 }
 
 function resizeGame() {
-    const s = el('game-scaler');
-    if (!s) return;
+    const s = el('game-scaler'); if (!s) return;
     const scale = Math.min(window.innerWidth / 900, window.innerHeight / 620) * 0.95;
     if (window.innerWidth >= 900) { s.style.transform = `scale(${scale})`; s.style.width = "900px"; s.style.height = "620px"; }
     else { s.style.transform = "none"; s.style.width = "100%"; s.style.height = "auto"; }
@@ -742,27 +791,77 @@ function shuffleArray(a) { for (let i = a.length - 1; i > 0; i--) { const j = Ma
 function calculateRating(ppr) { const e = RATING_TABLE.find(r => ppr >= r.ppr); return e ? e.rt : 1; }
 function animateValue(obj, start, end, duration) { if (obj) obj.innerHTML = end; }
 
+function playBGM(id) {
+    if (currentBgmId === id) return;
+    stopAllBGM();
+    const audio = el(id);
+    if (audio) { currentBgmId = id; audio.volume = gameConfig.bgmVolume; audio.play().catch(() => {}); }
+}
+function stopAllBGM() {
+    AUDIO_ASSETS.BGM.forEach(id => { const a = el(id); if (a) { a.pause(); a.currentTime = 0; } });
+    currentBgmId = "";
+}
+function playSE(id) {
+    const a = el(id);
+    if (a) {
+        a.currentTime = 0;
+        a.volume = AUDIO_ASSETS.SE_ATTACK.includes(id) ? gameConfig.atkVolume : gameConfig.sysVolume;
+        a.play().catch(() => {});
+    }
+}
+
+function openConfigModal() {
+    let modal = el("config-modal");
+    if (!modal) { modal = document.createElement("div"); modal.id = "config-modal"; document.body.appendChild(modal); }
+    modal.innerHTML = `<div class="config-box"><div class="config-title">AUDIO CONFIG</div><div class="config-buttons"><button class="btn-conf btn-save" onclick="el('config-modal').style.display='none'">CLOSE</button></div></div>`;
+    modal.style.display = "flex";
+}
+
+function useItem(type) {
+    if (isProcessing || player.state.itemLock || turnInputs.length > 0) return;
+    const item = ITEM_EFFECTS[type];
+    if (item && player.items[type] > 0) {
+        player.items[type]--; playSE("se-heal");
+        if (item.type === "hp") player.hp = Math.min(player.hp + item.value, player.maxHp);
+        else if (item.type === "mp") player.mp = Math.min(player.mp + item.value, player.maxMp);
+        else if (item.type === "maxHp") { player.maxHp += item.value; player.hp = Math.min(player.hp + item.value, player.maxHp); }
+        updateInfo();
+    }
+}
+
+function drawCard(isSilent = false) {
+    if (player.deck.length === 0 || player.hand.length >= HAND_SIZE) return;
+    player.hand.push(player.deck.pop());
+    if (!isSilent) triggerFloatText("DRAW!", el("hand-area"));
+    updateInfo();
+}
+
+function playHandCard(idx) {
+    if (isProcessing || turnInputs.length > 0 || player.state.itemLock) return;
+    const card = CARD_DB.find(c => c.id === player.hand[idx]);
+    if (player.mp < card.cost) return;
+    player.mp -= card.cost;
+    const cid = player.hand.splice(idx, 1)[0];
+    if (card.type === "TRAP") { player.setCard = cid; playSE("se-buff"); }
+    else { player.discard.push(cid); applyCardEffect(card); }
+    updateInfo();
+}
+
+function finishSession(type, ppr, mult) {
+    const gainedDP = Math.floor(totalScore * 0.2 * mult);
+    savedData.dp += gainedDP;
+    const now = new Date();
+    savedData.history.unshift({ date: `${now.getMonth()+1}/${now.getDate()}`, stgName: `S${stage}`, result: type, dp: gainedDP });
+    if (ppr > savedData.highScore.avg) { savedData.highScore.avg = ppr; savedData.highScore.stage = stage; savedData.highScore.floor = floor; }
+    saveToDrive();
+    return { gainedDP };
+}
+
 window.addEventListener('resize', resizeGame);
 window.addEventListener('load', () => { loadGameData(); initSlotScreen(); resizeGame(); });
 window.addEventListener('keydown', e => {
     if (isProcessing) return;
     if (e.key >= '0' && e.key <= '9') { currentInput += e.key; updateScoreDisplay(); }
     if (e.key === 'Backspace') { currentInput = currentInput.slice(0, -1); updateScoreDisplay(); }
-    if (e.key === 'Enter') handleEnter();
+    if (e.key === 'Enter') { if (currentInput !== "") { processOneThrow(parseInt(currentInput)); currentInput = ""; updateScoreDisplay(); } }
 });
-function handleEnter() { if (currentInput !== "") { processOneThrow(parseInt(currentInput)); currentInput = ""; updateScoreDisplay(); } }
-
-// Restored: パック開封ロジック (省略されていた部分を復元)
-function startPackOpening(packId) {
-    currentPackId = packId; isOpeningPack = true; openingPhase = 1;
-    el("card-shop-modal").style.display = "none"; el("pack-result-modal").style.display = "flex";
-    const targetCards = CARD_DB.filter(c => c.packs && c.packs.includes(packId));
-    packResults = [];
-    for (let i = 0; i < 3; i++) {
-        const card = targetCards[Math.floor(Math.random() * targetCards.length)];
-        savedData.cards[card.id] = (savedData.cards[card.id] || 0) + 1;
-        packResults.push(card);
-    }
-    saveToDrive();
-    el("pack-opening-container").innerHTML = `<div id="opening-stage"><div id="opening-prompt" class="prompt-text" onclick="closePackResult()">PACK OPENED! (TAP TO CLOSE)</div><div class="result-stage">${packResults.map(c => `<div class="std-card rarity-${c.rarity}"><div class="std-name">${c.name}</div></div>`).join('')}</div></div>`;
-}
