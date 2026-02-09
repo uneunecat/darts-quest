@@ -538,6 +538,7 @@ function startTransition(sel, continueMode) {
             setTimeout(() => {
                 ch.style.display = "none";
                 el("black-curtain").classList.remove("fade-in");
+                handlePreemptiveAI();
             }, 1000);
         }, info.warning ? 4000 : 2500);
     }, 1000);
@@ -621,30 +622,26 @@ function spawnEnemy() {
     if (player.hp <= 0) return;
     
     try {
-        enemy.state = {
-            charge: false,
-            isStunned: false,
-            atkBuff: 0, atkBuffTurn: 0,
-            // guard系: guardTurn > 0 の間発動
-            guardTurn: 0,
-            guardType: null,  // 'ratio'(割合) or 'fixed'(固定値)
-            guardValue: 0,    // 0.5(50%減) や 15(15減)
-            // barrier系: barrierTurn > 0 の間発動
-            barrierTurn: 0,
-            barrierLimit: 0,  // この数値未満を0にする
-            patternQueue: [],
-            actionCount: 0
-            };
+        player.state = {
+            atkBuff: 1.0,    // 攻撃倍率 (1.0 = 標準)
+            atkFlat: 0,      // 攻撃加算値
+            atkDuration: 0,  // 効果が持続する「投擲数」
+            guardTurn: 0,    // 防御持続ターン
+            itemLock: false, // アイテム封印
+            restrictInput: false // 1投制限
+        };
         
-        // 一時バフリセット
-        player.state.power = false;
-        player.state.weakLock = false;
-        player.state.atkBonus = 0;
+        enemy.state = {
+            charge: false, isStunned: false,
+            atkBuff: 0, atkBuffTurn: 0,
+            guardTurn: 0, guardType: null, guardValue: 0,
+            barrierTurn: 0, barrierLimit: 0,
+            patternQueue: [], actionCount: 0
+        };
         
         currentTurn = 1;
         turnInputs = [];
         currentInput = "";
-        restrictInput = false;
         isJustFinish = false;
         waitingForChest = false;
         dropGuaranteed = false;
@@ -691,8 +688,7 @@ function spawnEnemy() {
         
         triggerTrap('summon'); // 召喚時トラップ発動判定
         updateInfo();
-        addLog(`=== STAGE ${stage} - ${floor}F START ===`, "system");
-        handlePreemptiveAI(); 
+        addLog(`=== STAGE ${stage} - ${floor}F START ===`, "system"); 
 
         isProcessing = false;
         
@@ -760,18 +756,26 @@ function processOneThrow(score) {
     }
 
     // --- 3. プレイヤーの攻撃バフ・状態異常計算 ---
-    if (player.state.atkBonus > 0) {
-        singleDmg += player.state.atkBonus;
-        player.state.atkBonus = 0;
+    if (player.state.atkDuration > 0) {
+        // (スコア + 加算値) * 倍率
+        const prevDmg = singleDmg;
+        singleDmg = Math.floor((singleDmg + player.state.atkFlat) * player.state.atkBuff);
+        
+        // 1投消費
+        player.state.atkDuration--;
+        
+        // 効果終了チェック
+        if (player.state.atkDuration <= 0) {
+            player.state.atkBuff = 1.0;
+            player.state.atkFlat = 0;
+            addLog("攻撃バフの効果が切れた", "log-system");
+        }
     }
-    if (player.state.power) {
-        singleDmg = Math.floor(singleDmg * 2.0);
-        player.state.power = false;
-    }
-    if (player.state.huge !== 0) {
-        if (player.state.huge === 1) singleDmg = Math.floor(singleDmg * 3.0);
-        else singleDmg = Math.floor(singleDmg * 0.5);
-        player.state.huge = 0;
+
+    // ★重要: 1投制限の解除
+    if (player.state.restrictInput) {
+        player.state.restrictInput = false;
+        addLog("拘束が解けた！", "log-system");
     }
     
     // 弱点判定
@@ -782,7 +786,6 @@ function processOneThrow(score) {
     // --- 4. ダメージ適用 ---
     if (enemy.hp - singleDmg === 0) isJustFinish = true;
     enemy.hp = Math.max(0, enemy.hp - singleDmg);
-    
     totalScore += score;
     totalDarts++;
     turnInputs.push(score);
@@ -814,34 +817,15 @@ function processOneThrow(score) {
         return;
     }
 
-    if (turnInputs.length >= 3 || (restrictInput && turnInputs.length >= 1)) {
-        setTimeout(finishPlayerTurn, 1000);
+    // 3投終了または1投制限での終了判定
+    if (turnInputs.length >= 3 || (player.state.restrictInput === false && turnInputs.length >= 1 && score === turnInputs[0] && /* 以前のrestrict判定 */ false)) {
+         // (※ロジックを整理) 投げ終わった後の判定
     }
 }
 
 // プレイヤーターン終了処理
 function finishPlayerTurn() {
     totalGameTurns++;
-    
-    // バフ・デバフの自然解除
-    if (restrictInput) {
-        restrictInput = false;
-        addLog("束縛が解けた", "log-system");
-    }
-    if (enemy.state.guardType) {
-        enemy.state.guardTurn--;
-        if (enemy.state.guardTurn <= 0) {
-            enemy.state.guardType = null;
-            addLog("敵の護封剣が消滅", "log-system");
-        }
-    }
-    if (player.state.itemLock) {
-        player.state.itemLock = false;
-        addLog("粘着が取れた", "log-system");
-    }
-    enemy.state.toonSkin = false;
-    enemy.state.barrierLimit = 0;
-    
     turnInputs = [];
     currentInput = "";
     updateScoreDisplay();
@@ -853,8 +837,8 @@ function finishPlayerTurn() {
 // =========================================
 // 10. ENEMY AI & BATTLE SYSTEM (敵ターン・決着)
 // =========================================
-// Updated: main.js (checkAICondition)
-function checkAICondition(c) {
+// Updated: main.js (checkCondition - 汎用条件判定エンジン)
+function checkCondition(c) {
     if (!c) return true;
     
     let targetVal = 0;
@@ -865,17 +849,23 @@ function checkAICondition(c) {
         case "hand": targetVal = player.hand.length; break;
         case "turn": targetVal = enemy.state.actionCount; break;
         case "turn_mod": return enemy.state.actionCount > 0 && (enemy.state.actionCount % c.val === 0);
-        case "p_state": if (c.tag === "restrictInput") return restrictInput === c.val; return player.state[c.tag] === c.val;
+        case "p_state": 
+            if (c.tag === "restrictInput") return restrictInput === c.val;
+            return player.state[c.tag] === c.val;
         case "trap": return !!player.setCard === c.val;
     }
 
-    // 数値比較 (lt: 未満, gt: 超過, eq: 等しい)
     if (c.op === "lt") return targetVal < c.val;
+    if (c.op === "lte") return targetVal <= c.val; // New: 以下
     if (c.op === "gt") return targetVal > c.val;
-    if (c.op === "eq") return Math.floor(targetVal) === c.val; // Updated: ターン数などの比較を確実に
+    if (c.op === "gte") return targetVal >= c.val; // New: 以上
+    if (c.op === "eq") return Math.round(targetVal) === c.val;
     
     return true;
 }
+// 互換性維持のためエイリアスを設定
+const checkAICondition = checkCondition;
+
 function enemyTurn() {
     if (enemy.state.isStunned) {
         addLog(`${enemy.name}はスタン中`, "log-system");
@@ -1121,8 +1111,6 @@ function endEnemyTurn() {
             addLog(`${enemy.name}の攻撃力増加が解けた`, "log-system");
         }
     }
-
-    // Updated: 防御持続の減少
     if (enemy.state.guardTurn > 0) {
         enemy.state.guardTurn--;
         if (enemy.state.guardTurn === 0) {
@@ -1136,10 +1124,6 @@ function endEnemyTurn() {
             enemy.state.barrierLimit = 0;
         }
     }
-
-    currentTurn++;
-    player.mp = Math.min(player.mp + 3, player.maxMp);
-    triggerFloatText("MP+3", el("player-mp-bar"));
     
     // バフ経過
     if (player.state.guardTurn > 0) {
@@ -1148,6 +1132,10 @@ function endEnemyTurn() {
             addLog("護封剣 消滅", "log-system");
         }
     }
+        if (player.state.itemLock) {
+        player.state.itemLock = false; // アイティム封印は1ターン（敵の攻撃後）で解除
+        addLog("アイテム封印が解けた", "log-system");
+    }
     if (player.state.hexSeal > 0) {
         player.state.hexSeal--;
         if (player.state.hexSeal === 0) addLog("呪縛が解けた", "log-system");
@@ -1155,8 +1143,9 @@ function endEnemyTurn() {
         player.state.hexSeal = 0;
     }
 
-    
-    
+    currentTurn++;
+    player.mp = Math.min(player.mp + 3, player.maxMp);
+    triggerFloatText("MP+3", el("player-mp-bar"));
     drawCard();
     updateInfo();
     isProcessing = false;
@@ -1492,6 +1481,7 @@ function resolveEffects(effects, context = {}) {
 
     for (let i = 0; i < effects.length; i++) {
         const e = effects[i];
+        if (e.cond && !checkCondition(e.cond)) continue;
         let rawMsg = "";
 
         switch (e.type) {
@@ -1555,10 +1545,6 @@ function resolveEffects(effects, context = {}) {
                 rawMsg = `${reflectDmg}ダメージ反射！`;
                 break;
 
-            case "SPECIAL_HUGE":
-                rawMsg = executeHugeEffect();
-                break;
-
             case "SPECIAL_SALVAGE":
                 rawMsg = executeSalvageMagic();
                 break;
@@ -1592,16 +1578,6 @@ function applyCardEffect(card) {
 // =========================================
 
 // Updated: main.js (CARD SPECIAL LOGICS)
-function executeHugeEffect() {
-    if (player.hp <= (player.maxHp * 0.5)) {
-        player.state.huge = 1; // 3倍
-        return "HP劣勢…逆転の3倍パワー！";
-    } else {
-        player.state.huge = 2; // 0.5倍
-        return "HP優勢…油断の0.5倍パワー…";
-    }
-}
-
 function executeSalvageMagic() {
     const magics = player.discard.filter(did => {
         const c = CARD_DB.find(cd => cd.id === did);
@@ -1794,10 +1770,16 @@ function updateInfo() {
 
     // Player States
     let pChips = "";
-    if (player.state.atkBonus > 0 || player.state.power) pChips += `<span class="status-chip chip-buff">⚔️ATK UP</span>`;
+    if (player.state.atkDuration > 0) {
+        const isBuff = player.state.atkBuff > 1.0 || player.state.atkFlat > 0;
+        const label = isBuff ? "ATK UP" : "WEAK";
+        const valText = player.state.atkBuff !== 1.0 ? `x${player.state.atkBuff}` : `+${player.state.atkFlat}`;
+        pChips += `<span class="status-chip ${isBuff ? 'chip-buff' : 'chip-lock'}">⚔️${label}(${valText}/${player.state.atkDuration}D)</span>`;
+    }
     if (player.state.guardTurn > 0) pChips += `<span class="status-chip chip-guard">🛡️SHIELD(${player.state.guardTurn})</span>`;
-    if (player.state.barrier) pChips += `<span class="status-chip chip-barrier">✨BARRIER</span>`;
-    if (player.state.itemLock) pChips += `<span class="status-chip chip-lock">🔒SEALED</span>`;
+    if (player.state.itemLock) pChips += `<span class="status-chip chip-lock">🔒ITEM LOCK</span>`;
+    if (player.state.restrictInput) pChips += `<span class="status-chip chip-stun">⛓️BIND</span>`;
+    
     setHTML("player-states-side", pChips);
 
     // Stats
