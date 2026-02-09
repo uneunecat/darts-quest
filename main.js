@@ -533,7 +533,6 @@ function startTransition(sel, continueMode) {
             setTimeout(() => {
                 ch.style.display = "none";
                 el("black-curtain").classList.remove("fade-in");
-                handlePreemptiveAI();
             }, 1000);
         }, info.warning ? 4000 : 2500);
     }, 1000);
@@ -674,6 +673,8 @@ function spawnEnemy() {
         console.error("Spawn Error:", e);
         isProcessing = false;
     }
+
+    handlePreemptiveAI();
 }
 
 
