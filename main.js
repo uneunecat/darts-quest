@@ -674,7 +674,13 @@ function spawnEnemy() {
         isProcessing = false;
     }
 
-    handlePreemptiveAI();
+    if (floor === 1) {
+        // Chapter Screen が完全に消えるタイミングを待つ (約 3.5秒後)
+        setTimeout(handlePreemptiveAI, 3000); 
+    } else {
+        // フロア2以降（戦闘中）は即時実行
+        handlePreemptiveAI();
+    }
 }
 
 
