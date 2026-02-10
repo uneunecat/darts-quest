@@ -655,9 +655,12 @@ html, body {
 
 /* 1. EMPTY: ホバー無効、破線枠 */
 .std-card.empty {
-    cursor: default;
-    box-shadow: none;
     background: rgba(255, 255, 255, 0.05) !important;
+    box-shadow: none;
+    cursor: default;
+    /* flexによる配置をやめ、相対位置の基準とする */
+    display: block; 
+    position: relative;
 }
 .std-card.empty:hover {
     transform: none; /* 動きを止める */
@@ -782,10 +785,19 @@ html, body {
 /* EMPTYのテキスト */
 .std-card.empty::after {
     content: "EMPTY";
+    /* 絶対配置でど真ん中に固定 */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    
     font-family: 'Cinzel Decorative', serif;
     font-size: 12cqw;
     color: rgba(255, 255, 255, 0.2);
     letter-spacing: 0.5cqw;
+    width: 100%;
+    text-align: center;
+    pointer-events: none;
 }
 
 /* --- Grid --- */
