@@ -2669,4 +2669,9 @@ function renderStageSelectScreen() {
         if (!isLocked) {
             div.onclick = () => {
                 el("stage-select-screen").style.display = "none";
-                
+                initGameSession(st.id);
+            };
+        }
+        container.appendChild(div);
+    });
+}
