@@ -2671,4 +2671,6 @@ function renderStageSelectScreen() {
                 initGameSession(st.id);
             };
         }
-      
+        container.appendChild(div);
+    });
+}
