@@ -396,9 +396,8 @@ function updateTitleScore() {
         }
     }
 }
-// main.js - 新規追加
+// main.js - migrateSaveData 関数 (再修正)
 function migrateSaveData(oldData) {
-    // 旧IDから新IDへのマッピング（旧IDの数値順）
     const ID_MIGRATION_MAP = {
         101: 101, 201: 102, 202: 103, 301: 104, 302: 105, 303: 106, 401: 107, 402: 108, 403: 109, 404: 110, 405: 111, 501: 112, 601: 113, 602: 114, 701: 115, 702: 116, 703: 117, 801: 118, 802: 119, 803: 120, 804: 121, 805: 122
     };
@@ -417,7 +416,7 @@ function migrateSaveData(oldData) {
             const oldId = parseInt(oldIdStr);
             const newId = ID_MIGRATION_MAP[oldId];
             if (newId) {
-                newCards[newId] = newData.cards[oldIdStr];
+                newCards[newId] = newData.cards[oldIdStr]; // ★★★ キーを新しいIDに変換 ★★★
             } else {
                 newCards[oldIdStr] = newData.cards[oldIdStr]; // マップにないID（例: 101など）はそのまま維持
             }
@@ -428,6 +427,7 @@ function migrateSaveData(oldData) {
     // 3. 履歴 (history) の変換
     if (newData.history) {
         newData.history.forEach(h => {
+            // historyがカードIDリストを持つ可能性を考慮し、cardsと同様の変換を試みる
             if (h.cards) { 
                 h.cards = h.cards.map(oldId => ID_MIGRATION_MAP[oldId] || oldId);
             }
@@ -2184,9 +2184,9 @@ function renderDeckEditor() {
     listGrid.innerHTML = "";
     let ownedCount = 0;
     CARD_DB.forEach(card => {
-        if (!card) { // ★★★ 新規追加: undefined チェック ★★★
-            console.error("Error: CARD_DB contains an undefined element! Please re-check data.js.");
-            return; // この要素をスキップ
+        if (!card) { // ★★★ デバッグチェックを追加 ★★★
+            console.error("Error: CARD_DB contains an undefined element in the list loop! Check data.js definition.");
+            return; // undefined要素はスキップ
         }
         const count = savedData.cards[card.id] || 0;
         if (count > 0) ownedCount++;
