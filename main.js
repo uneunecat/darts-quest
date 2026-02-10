@@ -2208,6 +2208,7 @@ function setupLongPress(element, card) {
     element.addEventListener("touchmove", cancel);
 }
 
+// main.js: showZoomCard を画像表示から「標準カード」表示にアップグレード
 function showZoomCard(card) {
     let overlay = document.getElementById("card-zoom-overlay");
     if (!overlay) {
@@ -2216,8 +2217,21 @@ function showZoomCard(card) {
         overlay.onclick = closeZoomCard;
         document.body.appendChild(overlay);
     }
-    const imgPath = `assets/cards/${card.id}.png`;
-    overlay.innerHTML = `<img src="${imgPath}" class="zoom-card-img"><div class="zoom-info-box"><div class="zoom-name">${card.name} <span style="font-size:14px; color:#aaa;">(${card.rarity})</span></div><div class="zoom-desc">${card.desc}</div><div class="zoom-close-hint">TAP TO CLOSE</div></div>`;
+    
+    // 画像だけを貼るのではなく、標準カードを生成して表示する
+    const cardEl = createCardElement(card, "standard", 0, 1);
+    cardEl.classList.add("zoom-card-img"); // CSSのアニメーションを適用
+    cardEl.onclick = null; // ズーム内でのクリックイベントを無効化
+    
+    overlay.innerHTML = ""; // 一旦クリア
+    overlay.appendChild(cardEl);
+    
+    // 下にヒントを表示
+    const hint = document.createElement("div");
+    hint.className = "zoom-close-hint";
+    hint.innerText = "TAP TO CLOSE";
+    overlay.appendChild(hint);
+
     overlay.style.display = "flex";
     requestAnimationFrame(() => overlay.classList.add("visible"));
     playSE("se-tap");
