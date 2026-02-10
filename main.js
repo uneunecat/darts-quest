@@ -2385,16 +2385,17 @@ function showHistory() {
                 <div class="modal-title" style="color:#00d2fc; font-family:'Cinzel Decorative'; margin:0;">BATTLE LOG</div>
                 <button class="header-close-btn" onclick="closeHistory()">×</button>
             </div>
-            <div class="h-header">
-                <div class="h-col-date">DATE</div>
-                <div class="h-col-stage">STAGE INFO</div>
-                <div class="h-col-res">RESULT</div>
-                <div class="h-col-rank">RANK</div>
-                <div class="h-col-turn">TURN</div>
-                <div class="h-col-ppr">AVG(RT)</div>
-                <div class="h-col-dp">DP</div>
+            <div class="history-list" id="history-list">
+                <div class="h-header">
+                    <div class="h-col-date">DATE</div>
+                    <div class="h-col-stage">STAGE INFO</div>
+                    <div class="h-col-res">RESULT</div>
+                    <div class="h-col-rank">RANK</div>
+                    <div class="h-col-turn">TURN</div>
+                    <div class="h-col-ppr">AVG(RT)</div>
+                    <div class="h-col-dp">DP</div>
+                </div>
             </div>
-            <div class="history-list" id="history-list"></div>
         </div>
     `;
     
