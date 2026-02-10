@@ -611,8 +611,8 @@ html, body {
     content: "";
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    /* 親(.std-card)の幅を基準に 1.2% の太さで枠を描画 */
-    border: 1.2cqw solid transparent;
+    /* 親(.std-card)の幅を基準に 1.8% の太さで枠を描画 */
+    border: 1.8cqw solid transparent;
     border-radius: inherit;
     z-index: 20; /* 最前面に配置 */
     pointer-events: none; /* クリックを透過 */
