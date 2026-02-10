@@ -630,8 +630,10 @@ html, body {
 /* URの特殊枠 (::before にすべての装飾を集約) */
 .rarity-frame-UR::before {
     border-color: transparent;
-    background-image: linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
-    background-size: 300% 100%; /* 幅を広げて流れを緩やかに */
+    background-image: linear-gradient(115deg,#ff0000, #ff0080, #ff00ff, #8000ff, #0000ff, #0080ff, 
+        #00ffff, #00ff80, #00ff00, #80ff00, #ffff00, #ff8000, #ff0000
+    );
+    background-size: 300% 300%; /* 幅を広げて流れを緩やかに */
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
@@ -813,8 +815,8 @@ html, body {
 }
 @keyframes rainbow-text { to { background-position: 200% center; } }
 @keyframes rainbow-flow {
-    0% { background-position: 0% 0%; }
-    100% { background-position: 150% 0%; } /* 一方向に流し切る */
+    0% { background-position: 0% 50%; }
+    100% { background-position: 300% 50%; } /* 一方向に流し切る */
 }
 @keyframes sheen-move { 0% { transform: translateY(-30%) translateX(-30%); } 100% { transform: translateY(30%) translateX(30%); } }
 
