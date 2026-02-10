@@ -1143,15 +1143,14 @@ function winBattle() {
     }
 }
 
+// Updated: loseGame - 敗北時はRANKとTURNを保存しない（空文字と0を渡す）
 function loseGame() {
     isProcessing = true;
     playBGM("bgm-lose");
-
-    // Updated: 敗北時も履歴を保存する処理を追加
-    // finishSession(結果の種類, PPR, 倍率, ランク, ターン数)
+    
     const ppr = totalDarts > 0 ? ((totalScore / totalDarts) * 3).toFixed(1) : 0;
-    const stageTurns = totalGameTurns - stageStartTurn;
-    finishSession("LOSE", parseFloat(ppr), STAGE_MASTER[stage]?.multiplier || 1.0, "C", stageTurns);
+    // 敗北時はランクを "" (空)、ターンを 0 として保存
+    finishSession("LOSE", parseFloat(ppr), STAGE_MASTER[stage]?.multiplier || 1.0, "", 0);
 
     showDialog(
         "YOU DIED", 
@@ -2376,10 +2375,10 @@ function finishSession(resultType, ppr, multiplier = 1.0, rank = "", turn = 0) {
     return { isNewRecord: isNewRecord, gainedDP: gainedDP };
 }
 
-// main.js の showHistory を丸ごと差し替え
+// Updated: showHistory - 表記の修正とLOSE時の表示制限
 function showHistory() {
     const modal = el("history-modal");
-    // Updated: CLOSEボタンを削除し、ヘッダーにバツボタンを配置
+    
     modal.innerHTML = `
         <div class="modal-box history-box" style="max-width:850px; width:95%;">
             <div class="modal-header-row">
@@ -2405,15 +2404,18 @@ function showHistory() {
         list.innerHTML = "<div style='padding:40px; text-align:center; color:#666;'>NO DATA</div>";
     } else {
         savedData.history.forEach(h => {
-            // Updated: 敗北時(LOSE)の判定を明確化
-            let isLose = h.result === "LOSE";
+            let isLose = (h.result === "LOSE");
             let resultText = isLose ? "LOSE" : "CLEAR";
-            let rankText = h.rank || (isLose ? "C" : "-");
-            let turnText = h.turn || "-";
-
+            
+            // Updated: 敗北時、またはデータがない場合は "-" を表示
+            let rankText = (isLose || !h.rank) ? "-" : h.rank;
+            let turnText = (isLose || !h.turn) ? "-" : h.turn;
+            
             const master = STAGE_MASTER[h.stage] || { title: "Unknown" };
             const floorText = (h.stage === 5) ? "FINAL" : `${h.floor}F`;
-            const stageDisplay = `STG${h.stage} ${master.title} ${floorText}`;
+            
+            // Updated: "STG" から "STAGE " 表記に変更
+            const stageDisplay = `STAGE ${h.stage} ${master.title} ${floorText}`;
 
             let rankClass = "";
             if (rankText === "SSS") rankClass = "rank-sss";
@@ -2421,8 +2423,8 @@ function showHistory() {
             else if (rankText === "A") rankClass = "rank-a";
             
             const div = document.createElement("div");
-            // Updated: class名を整理してCSSで位置を合わせやすくする
             div.className = "history-row" + (isLose ? " row-lose" : " row-clear");
+            
             div.innerHTML = `
                 <div class="h-col-date">${h.date.split(' ')[0]}</div>
                 <div class="h-col-stage">${stageDisplay}</div>
