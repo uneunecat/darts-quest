@@ -582,7 +582,7 @@ html, body {
 
 
 /* =========================================
-   5. CARD DESIGN & RARITY (標準カード形式 v4.4 - Masked Border)
+   5. CARD DESIGN & RARITY (標準カード形式 v4.5 - Seamless & Rounded Fix)
    ========================================= */
 
 /* --- Base: カード本体 (コンテナの起点) --- */
@@ -594,7 +594,7 @@ html, body {
     background: #000;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: hidden; /* 通常時はhidden */
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
     transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s;
     cursor: pointer;
@@ -609,56 +609,53 @@ html, body {
     z-index: 100;
 }
 
-/* --- Updated: 枠線専用の擬似要素 (mask方式) --- */
+/* --- Masked Border (枠線) --- */
 .std-card::before {
     content: "";
     position: absolute;
-    inset: 0; /* 上下左右0 */
+    inset: 0;
     z-index: 20;
     pointer-events: none;
     border-radius: inherit; /* 親の角丸を継承 */
+    padding: max(2px, 1.8cqw); /* 最小2px幅を保証 */
     
-    /* ★重要: ここで枠の太さを定義 (最小2pxを保証) */
-    padding: max(2px, 1.8cqw); 
-    
-    /* マスクで「コンテンツボックス（中身）」をくり抜く */
+    /* コンテンツボックスをくり抜く */
     -webkit-mask: 
         linear-gradient(#fff 0 0) content-box, 
         linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     
-    /* デフォルト背景色 (これが枠の色になる) */
-    background: #555; 
+    background: #555; /* デフォルト枠色 */
 }
 
-/* --- Rarity Colors (backgroundで指定) --- */
+/* --- Rarity Colors --- */
 .rarity-frame-N::before  { background: #555; }
 .rarity-frame-R::before  { background: #c0c0c0; }
 .rarity-frame-SR::before { background: #ffd700; }
 
-/* URの特殊枠 (虹色ストリームライン) */
+/* UR演出 (シームレスループ修正版) */
 .rarity-frame-UR::before {
+    /* 始点と終点を同じ色(#ff0000)にしてループの切れ目をなくす */
     background: linear-gradient(115deg, 
-        #ff0000, #ff8000, #ffff00, #00ff00, 
-        #00ffff, #0000ff, #8000ff, #ff00ff, #ff0000
+        #ff0000, #ff00ff, #0000ff, #00ffff, 
+        #00ff00, #ffff00, #ff8000, #ff0000
     );
-    background-size: 300% 100%; /* 横に長くして滑らかに流す */
-    animation: rainbow-flow 2s linear infinite;
+    background-size: 400% 400%; /* サイズを大きくして斜め移動を滑らかに */
+    animation: rainbow-flow 3s linear infinite;
 }
 
 @keyframes rainbow-flow {
-    0% { background-position: 0% 50%; }
-    100% { background-position: 100% 50%; }
+    0% { background-position: 0% 0%; }
+    100% { background-position: 100% 100%; }
 }
 
-/* EMPTYカードの枠線 (maskを解除してborderを使用) */
+/* EMPTYカード (枠線あり) */
 .std-card.empty::before {
     padding: 0;
     -webkit-mask: none;
     mask: none;
     background: transparent;
-    /* EMPTYのみ dashed border を使う */
     border: max(2px, 1.2cqw) dashed rgba(255, 255, 255, 0.2);
 }
 
@@ -670,6 +667,10 @@ html, body {
     background: #000;
     overflow: hidden;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    
+    /* ★修正: 親がoverflow:visibleでも角丸を維持する設定 */
+    border-top-left-radius: inherit;
+    border-top-right-radius: inherit;
 }
 .std-art img { width: 100%; height: 100%; object-fit: cover; }
 
@@ -683,10 +684,15 @@ html, body {
     text-align: left;
     color: #fff;
     background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 10px);
+    
+    /* ★修正: 下部の角丸を維持 */
+    border-bottom-left-radius: inherit;
+    border-bottom-right-radius: inherit;
 }
+
 .std-art, .std-text-area {
     position: relative;
-    z-index: 10; /* 枠(20)の下、本体(0)の上 */
+    z-index: 10;
 }
 .bg-magic { background: linear-gradient(160deg, #00695c 0%, #004d40 60%, #00251a 100%); }
 .bg-trap { background: linear-gradient(160deg, #ad1457 0%, #880e4f 60%, #4a002c 100%); }
@@ -699,7 +705,8 @@ html, body {
     font-size: clamp(10px, 12cqw, 24px); 
     padding: 1cqw 4cqw;
     border-bottom-right-radius: 6px;
-    z-index: 25; /* 枠(20)より上に表示 */
+    border-top-left-radius: 6px; /* 角に合わせる */
+    z-index: 25;
     box-shadow: 1px 1px 3px rgba(0,0,0,0.5);
     text-shadow: 0 0 2px #000;
 }
@@ -714,7 +721,7 @@ html, body {
     z-index: 25;
 }
 
-/* --- Text: 文字装飾 --- */
+/* --- Text Styles --- */
 .std-name {
     font-weight: 900; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     font-size: 10cqw; line-height: 1.2; margin-bottom: 2cqw;
@@ -732,13 +739,13 @@ html, body {
 .std-type { font-size: 6cqw; opacity: 0.8; margin-bottom: 2cqw; font-family: 'Roboto Mono'; }
 .std-desc { font-size: 7cqw; line-height: 1.2; opacity: 0.95; overflow: hidden; }
 
-/* --- Special: シャイニング加工 --- */
+/* --- Special: Sheen --- */
 .card-sheen {
     position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
     background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.4) 45%, rgba(255,255,255,0.0) 50%);
     pointer-events: none; mix-blend-mode: overlay;
     animation: sheen-move 4s infinite; 
-    z-index: 15; /* コンテンツの上、枠(20)の下 */
+    z-index: 15;
 }
 
 /* --- Mode Adjustments --- */
@@ -760,12 +767,9 @@ html, body {
     color: rgba(255, 255, 255, 0.2);
     letter-spacing: 0.5cqw;
 }
-.std-card.empty .std-art,
-.std-card.empty .std-text-area {
-    display: none;
-}
+.std-card.empty .std-art, .std-card.empty .std-text-area { display: none; }
 
-/* --- Grid: 4列構造の維持 --- */
+/* --- Grid --- */
 .card-grid {
     display: grid !important;
     grid-template-columns: repeat(4, 1fr) !important;
@@ -774,41 +778,24 @@ html, body {
     align-content: start;
 }
 
-/* Zoom時の設定 (standard形式をそのまま巨大化) */
+/* --- Zoom Overlay --- */
 #card-zoom-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
+    position: fixed; top: 0; left: 0;
+    width: 100vw; height: 100vh;
     background: rgba(0, 0, 0, 0.9);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 5000;
-    backdrop-filter: blur(8px);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: all;
+    display: none; justify-content: center; align-items: center;
+    z-index: 5000; backdrop-filter: blur(8px);
+    opacity: 0; transition: opacity 0.3s ease; pointer-events: all;
 }
-#card-zoom-overlay.visible {
-    display: flex;
-    opacity: 1;
-}
+#card-zoom-overlay.visible { display: flex; opacity: 1; }
 #card-zoom-overlay .std-card {
-    width: 75vw;
-    max-width: 350px;
+    width: 75vw; max-width: 350px;
     box-shadow: 0 0 30px rgba(0, 210, 252, 0.4);
     animation: zoom-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
-
 .zoom-close-hint {
-    position: absolute;
-    bottom: 40px;
-    color: #aaa;
-    font-size: 14px;
-    letter-spacing: 2px;
-    animation: blink 1.5s infinite;
+    position: absolute; bottom: 40px; color: #aaa;
+    font-size: 14px; letter-spacing: 2px; animation: blink 1.5s infinite;
 }
 
 /* --- Animations --- */
