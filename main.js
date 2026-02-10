@@ -327,6 +327,7 @@ function initSlotScreen() {
     }
 }
 
+// main.js - selectSlot 関数 (修正後)
 function selectSlot(n) {
     currentSlot = "slot" + n;
     
@@ -339,21 +340,12 @@ function selectSlot(n) {
         };
     }
     
-    let loadedData = allSaveData[currentSlot];
+    savedData = allSaveData[currentSlot]; // ★★★ 移行処理を削除し、直接ロード ★★★
     
-    // ★★★ 修正: 必ず移行処理を試みる ★★★
-    // 移行済みであれば、移行後のデータが返ってくる
-    // 移行中でなければ、古いデータが渡され、migrateSaveDataが変換を行う
-    if (loadedData) { 
-        loadedData = migrateSaveData(loadedData);
-    }
-    
-    savedData = loadedData;
-    
-    // データ修復 (移行処理で対応済みだが、念のため)
+    // データ修復
     if (!savedData.deck) savedData.deck = [];
     if (!savedData.cards) savedData.cards = {};
-    allSaveData[currentSlot] = savedData; // 移行後のデータを保存し直す
+    allSaveData[currentSlot] = savedData;
     
     updateTitleScore();
     playSE("se-tap");
@@ -392,45 +384,6 @@ function updateTitleScore() {
             titleScreen.appendChild(btn);
         }
     }
-}
-// main.js - migrateSaveData 関数 (再修正)
-function migrateSaveData(oldData) {
-    const ID_MIGRATION_MAP = {
-        101: 101, 201: 102, 202: 103, 301: 104, 302: 105, 303: 106, 401: 107, 402: 108, 403: 109, 404: 110, 405: 111, 501: 112, 601: 113, 602: 114, 701: 115, 702: 116, 703: 117, 801: 118, 802: 119, 803: 120, 804: 121, 805: 122
-    };
-    
-    const newData = JSON.parse(JSON.stringify(oldData));
-    
-    // 1. デッキの変換
-    if (newData.deck) {
-        newData.deck = newData.deck.map(oldId => ID_MIGRATION_MAP[oldId] || oldId);
-    }
-    
-    // 2. カード所持枚数 (cards) の変換
-    if (newData.cards) {
-        const newCards = {};
-        for (const oldIdStr in newData.cards) { // oldIdStr は文字列（例: "201"）
-            const oldId = parseInt(oldIdStr);
-            const newId = ID_MIGRATION_MAP[oldId];
-            if (newId) {
-                newCards[newId] = newData.cards[oldIdStr]; // ★★★ キーが数値でも文字列でも、JSオブジェクトはキーを文字列化するため問題ないはず ★★★
-            } else {
-                newCards[oldIdStr] = newData.cards[oldIdStr]; // マップにないID（例: 101など）はそのまま維持
-            }
-        }
-        newData.cards = newCards;
-    }
-
-    // 3. 履歴 (history) の変換
-    if (newData.history) {
-        newData.history.forEach(h => {
-            // historyがカードIDリストを持つ可能性を考慮し、cardsと同様の変換を試みる
-            if (h.cards) { 
-                h.cards = h.cards.map(oldId => ID_MIGRATION_MAP[oldId] || oldId);
-            }
-        });
-    }
-    return newData;
 }
 
 
