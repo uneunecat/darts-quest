@@ -660,15 +660,32 @@ html, body {
 .text-sr { color: #ffd700; text-shadow: 0 0 3px rgba(218, 165, 32, 0.8), 1px 1px 0 #000; }
 .text-ur {
     font-weight: 900;
+    /* 1. 虹色の設定（ここは維持） */
     background: linear-gradient(45deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
     background-size: 200% auto;
     -webkit-background-clip: text !important;
+    background-clip: text !important;
     -webkit-text-fill-color: transparent !important;
+    color: transparent !important;
     animation: rainbow-text 3s linear infinite;
-    filter: none !important;
-    -webkit-text-stroke: 1px #d4af37; 
-    text-shadow: 1px 1px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000;
+
+    /* 2. 縁取り線の代わりに、ぼかさない影を8方向に配置して「金のフレーム」を作る */
+    /* これなら文字の内側が塗りつぶされることはありません */
+    text-shadow:
+        1px 1px 0 #d4af37,
+        -1px 1px 0 #d4af37,
+        1px -1px 0 #d4af37,
+        -1px -1px 0 #d4af37,
+        0px 1px 0 #d4af37,
+        0px -1px 0 #d4af37,
+        1px 0px 0 #d4af37,
+        -1px 0px 0 #d4af37,
+        /* 最後に、背景から浮き立たせるための薄い黒い影を1つ追加 */
+        2px 2px 2px rgba(0,0,0,0.8);
+
     display: inline-block;
+    filter: none !important;
+    /* -webkit-text-stroke は削除しました */
 }
 @keyframes rainbow-text {
     to {
