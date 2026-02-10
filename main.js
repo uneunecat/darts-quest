@@ -2366,39 +2366,99 @@ function finishSession(resultType, ppr, multiplier = 1.0) {
     return { isNewRecord: isNewRecord, gainedDP: gainedDP };
 }
 
+// main.js - showHistory 関数 (全体差し替え - 最終版)
 function showHistory() {
     const modal = el("history-modal");
+    // modal.innerHTML の再構築（ヘッダーを7列に変更）
     modal.innerHTML = `
-        <div class="modal-box" style="position:relative; width:90%; max-width:600px; max-height:80vh; padding:20px; background:rgba(0,0,0,0.95); border:1px solid #444;">
-            <div style="font-family:'Cinzel Decorative'; font-size:20px; margin-bottom:15px; text-align:center; color:#fff;">BATTLE LOG</div>
-            <button class="sub-btn" onclick="closeHistory()" style="background:transparent; border:none; font-size:24px; color:#fff; position:absolute; top:10px; right:15px; cursor:pointer;">×</button>
-            <div id="history-list" class="history-list"></div>
+        <div class="modal-box history-box">
+            <div class="modal-title" style="color:#00d2fc;">PLAY HISTORY</div>
+            <button class="header-close-btn" onclick="closeHistory()">×</button>
+            <div class="h-header"><div>DATE</div><div>STAGE INFO</div><div>RESULT</div><div>RANK</div><div>TURN</div><div>AVG(RT)</div><div>DP</div></div>
+            <div class="history-list" id="history-list"></div>
+            <button class="modal-btn" onclick="closeHistory()">CLOSE</button>
         </div>
     `;
+    
+    // CSSの変更を考慮し、history-boxのスタイルを調整
+    el("history-modal").querySelector(".history-box").style.maxWidth = "800px";
+    el("history-modal").querySelector(".history-box").style.padding = "20px";
+
     const list = el("history-list");
     
     if (!savedData.history || savedData.history.length === 0) {
-        list.innerHTML = "<div style='padding:40px; text-align:center; color:#666;'>NO DATA</div>";
+        list.innerHTML = "<div style='padding:40px; text-align:center; color:#666; font-family: 'Cinzel Decorative', serif;'>NO BATTLE LOG DATA</div>";
     } else {
         const sorted = [...savedData.history].sort((a, b) => {
-            const dateA = new Date(a.date);
-            const dateB = new Date(b.date);
-            return dateB - dateA;
+            return 0; // 登録順に表示（historyがunshift順のため）
         });
         
         sorted.forEach(h => {
             let rowClass = "history-row";
-            let resTextClass = "res-lose-text";
-            if (h.result.includes("WIN") || h.result.includes("CLEAR")) { rowClass += " win"; resTextClass = "res-win-text"; }
-            if (h.result.includes("EXTRA") || h.result.includes("GOD")) { rowClass += " extra"; resTextClass = "res-extra-text"; }
-            if (!h.result.includes("WIN") && !h.result.includes("CLEAR")) { rowClass += " lose"; }
+            let resultText = "";
+            let rankText = "";
+            let rankColor = "#fff";
+            let dpText = h.dp >= 0 ? `+${h.dp}` : `${h.dp}`;
+            let pprVal = h.ppr ? h.ppr.toFixed(1) : "-";
+
+            // --- ステージ表記の統一: STAGE [番号] - [ステージ名] [階層] ---
+            let stageNumber = h.stage || 1;
+            let floorInfo = "";
+            let stageTitle = "";
             
-            const pprVal = h.ppr ? h.ppr.toFixed(1) : "-";
+            if (GAME_DATA.bg[h.stage]) {
+                stageTitle = GAME_DATA.bg[h.stage].sub || STAGE_MASTER[h.stage].sub || "Stage";
+                
+                if (h.stage === 5) { // EXTRA
+                    floorInfo = "FINAL";
+                } else if (h.stage === 6) { // GOD
+                    floorInfo = `${h.floor}F`; // 1F-5F の階層情報をそのまま使用
+                } else {
+                    floorInfo = `${h.floor}F`;
+                }
+            }
+            
+            const stageDisplay = `STAGE ${stageNumber} - ${stageTitle} ${floorInfo}`;
+            
+            // --- 結果判定とカラーリング ---
+            if (h.result.includes("CLEAR") || h.result.includes("WIN")) {
+                resultText = "CLEAR";
+                rankText = h.rank || "N/A";
+                
+                // ランクカラー設定 (GOD-WIN/EXTRA-WINもCLEAR/S/A/B/Cに統合)
+                if (rankText === "SSS") {
+                    rankColor = "rainbow"; // 虹色クラスを適用
+                } else if (rankText === "S") {
+                    rankColor = "#ffd700"; // ゴールド
+                } else if (rankText === "A") {
+                    rankColor = "#ff8800"; // オレンジ
+                } else if (rankText === "B") {
+                    rankColor = "#ffffff"; // 白
+                } else if (rankText === "C") {
+                    rankColor = "#aaaaaa"; // グレー
+                } else {
+                    rankColor = "#ffffff"; // その他のクリア (例: GOD-WIN直後の表示など)
+                }
+            } else { // LOSE またはその他の結果
+                resultText = "LOSE";
+                rankText = ""; // LOSEの場合は空欄
+                rowClass += " lose";
+                rankColor = "#fff";
+            }
+            
             const dateStr = h.date ? h.date.split(' ')[0] : "-";
             
             const div = document.createElement("div");
             div.className = rowClass;
-            div.innerHTML = `<div class="h-date" style="font-size:10px;">${dateStr}</div><div class="h-stage" style="font-size:11px;">${h.stgName}</div><div class="h-result ${resTextClass}">${h.result}</div><div class="h-detail"><div style="font-size:11px;">+${h.dp} DP</div><div style="font-size:9px; color:#666;">Avg ${pprVal}</div></div>`;
+            div.innerHTML = `
+                <div class="h-date" style="font-size:10px;">${dateStr}</div>
+                <div class="h-stage" style="font-size:11px; font-weight:bold;">${stageDisplay}</div>
+                <div class="h-result" style="font-weight:bold; color:${resultText.includes('LOSE') ? '#888' : '#fff'};">${resultText}</div>
+                <div class="h-rank" style="font-weight:bold; color:${rankColor};">${rankText}</div>
+                <div class="h-turn" style="font-size:11px; color:#ccc;">${h.turn || "-"}</div>
+                <div class="h-detail" style="font-size:11px; color:#00d2fc;">${pprVal} (<span style="color:#fff;">Rt ${h.rt || '-'}</span>)</div>
+                <div class="h-dp" style="font-weight:bold; color:#ffd700; text-align:right;">${dpText} DP</div>
+            `;
             list.appendChild(div);
         });
     }

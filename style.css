@@ -888,23 +888,56 @@ html, body {
     padding: 5px; padding-right: 5px;
     scrollbar-width: thin; scrollbar-color: #00d2fc #333;
 }
+.h-header {
+    display: grid;
+    grid-template-columns: 80px 130px 100px 80px 80px 120px 80px; /* 7列構成に調整 */
+    gap: 10px;
+    padding: 10px 15px;
+    font-size: 11px;
+    font-weight: bold;
+    color: #00d2fc;
+    border-bottom: 2px solid #00d2fc;
+    background: rgba(0,0,0,0.4);
+    text-align: left;
+}
+.h-header div:nth-child(7) { text-align: right; } /* DP列 */
 .history-row {
-    display: flex; align-items: center; justify-content: space-between;
+    display: grid;
+    grid-template-columns: 80px 130px 100px 80px 80px 120px 80px; /* 7列構成に調整 */
+    gap: 10px;
+    align-items: center; justify-content: space-between;
     background: rgba(255, 255, 255, 0.05); border: 1px solid #444; border-radius: 6px;
     padding: 10px 15px; font-family: 'Roboto Mono', monospace; font-size: 12px;
     transition: all 0.2s;
 }
 .history-row:hover { background: rgba(255, 255, 255, 0.1); border-color: #00d2fc; }
 .history-row.win { border-left: 4px solid #ffd700; box-shadow: 0 0 10px rgba(255, 215, 0, 0.1); }
-.history-row.extra { border-left: 4px solid #f0f; box-shadow: 0 0 15px rgba(255, 0, 255, 0.2); }
+.history-row.extra { border-left: 4px solid #ff00ff; box-shadow: 0 0 15px rgba(255, 0, 255, 0.2); }
 .history-row.lose { border-left: 4px solid #555; opacity: 0.7; }
 .res-win-text { color: #ffd700; text-shadow: 0 0 5px gold; }
 .res-extra-text { color: #f0f; text-shadow: 0 0 5px #f0f; }
 .res-lose-text { color: #aaa; }
-.h-date { color: #888; width: 80px; }
-.h-stage { flex: 1; font-weight: bold; color: #eee; }
-.h-result { width: 100px; text-align: center; font-weight: 900; letter-spacing: 1px; }
-.h-detail { width: 100px; text-align: right; color: #00d2fc; }
+.h-date { font-size: 10px; }
+.h-stage { font-size: 11px; font-weight: bold; color: #eee; }
+.h-result { font-weight: 900; letter-spacing: 1px; }
+.h-rank { font-weight: 900; }
+.h-detail { font-size: 11px; color: #00d2fc; }
+.h-dp { font-weight: bold; color: #ffd700; text-align: right; }
+.h-stage { 
+    word-break: break-all;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.history-row .h-rank[style*="color: rgb(0, 255, 255)"] { /* SSSの色（シアン）にマッチ */
+    background: linear-gradient(45deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent !important;
+    animation: border-rotate 4s linear infinite; /* style.cssで定義済みのものを利用 */
+    padding: 0;
+}
 #history-modal .sub-btn {
     background: transparent !important; border: none !important;
     font-size: 24px !important; color: #fff !important;
