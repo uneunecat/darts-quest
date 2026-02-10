@@ -327,7 +327,6 @@ function initSlotScreen() {
     }
 }
 
-// main.js - selectSlot 関数 (修正後)
 function selectSlot(n) {
     currentSlot = "slot" + n;
     
