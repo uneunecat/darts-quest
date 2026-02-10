@@ -1247,12 +1247,12 @@ function nextStep() {
         
         // エンディング分岐
         if (stage === 5) {
-            const res = finishSession("EXTRA-WIN", parseFloat(ppr), mult);
+            const res = finishSession("EXTRA-WIN", parseFloat(ppr), mult, rank, stageTurns);
             showDialog("★ TRUE ENDING ★", `<span style="font-size:30px;color:#f0f;">THE LEGEND!!</span><br>最強の黒竜を倒した！<br><br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br>PPR: ${ppr}<br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{ text: "TITLE", action: returnToTitle }]);
             return;
         }
         if (stage === 6) {
-            const res = finishSession("GOD-WIN", parseFloat(ppr), mult);
+            const res = finishSession("GOD-WIN", parseFloat(ppr), mult, rank, stageTurns);
             showDialog("GOD DEFEATED!", `<span style="font-size:30px;color:#ffd700;">DIVINE VICTORY!</span><br>神の試練を乗り越えた！<br><br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{ text: "TITLE", action: returnToTitle }]);
             return;
         }
@@ -1276,7 +1276,7 @@ function nextStep() {
         const btnReturn = {
             text: "🏠 帰還する (確定)",
             action: () => {
-                const res = finishSession("RETURN", parseFloat(ppr), mult);
+                const res = finishSession("RETURN", parseFloat(ppr), mult, rank, stageTurns);
                 showDialog("MISSION COMPLETE", `帰還しました。<br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{ text: "TITLE", action: returnToTitle }]);
             }
         };
@@ -1297,7 +1297,7 @@ function nextStep() {
                 showDialog(title, msg, "clear", [{
                     text: "🏠 ALL CLEAR",
                     action: () => {
-                        const res = finishSession("WIN", parseFloat(ppr), mult);
+                        const res = finishSession("WIN", parseFloat(ppr), mult, rank, stageTurns);
                         showDialog("ALL CLEAR!", `おめでとうございます！<br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{ text: "TITLE", action: returnToTitle }]);
                     }
                 }]);
@@ -2313,7 +2313,8 @@ function calculateStageRank(stg, turns) {
     return [rank, RANK_BONUS[rank] || 50];
 }
 
-function finishSession(resultType, ppr, multiplier = 1.0) {
+// Updated: main.js (finishSession に rank と turn を保存するよう修正)
+function finishSession(resultType, ppr, multiplier = 1.0, rank = "", turn = 0) {
     let earnedDP = 0;
     clearedStagesLog.forEach(log => { earnedDP += log.dp; });
     savedData.dp = (savedData.dp || 0);
@@ -2348,13 +2349,16 @@ function finishSession(resultType, ppr, multiplier = 1.0) {
     
     if (clearedStagesLog.length > 0 && resultType === "RETURN") {
         const last = clearedStagesLog[clearedStagesLog.length - 1];
-        resultText = `CLEAR(${last.rank})`;
+        resultText = `CLEAR`; // Updated: シンプルにCLEARのみにする
     }
     
+    // Updated: rank と turn を保存対象に含める
     const historyItem = {
         date: dateStr, stage: stage, floor: floor, stgName: stgName,
         result: resultText, dp: gainedDP, ppr: isNaN(ppr) ? 0 : parseFloat(ppr),
-        rt: calculateRating(isNaN(ppr) ? 0 : parseFloat(ppr))
+        rt: calculateRating(isNaN(ppr) ? 0 : parseFloat(ppr)),
+        rank: rank, 
+        turn: turn
     };
     
     if (!savedData.history) savedData.history = [];
@@ -2366,98 +2370,68 @@ function finishSession(resultType, ppr, multiplier = 1.0) {
     return { isNewRecord: isNewRecord, gainedDP: gainedDP };
 }
 
-// main.js - showHistory 関数 (全体差し替え - 最終版)
 function showHistory() {
     const modal = el("history-modal");
-    // modal.innerHTML の再構築（ヘッダーを7列に変更）
     modal.innerHTML = `
-        <div class="modal-box history-box">
-            <div class="modal-title" style="color:#00d2fc;">PLAY HISTORY</div>
+        <div class="modal-box history-box" style="max-width:850px; width:95%;">
+            <div class="modal-title" style="color:#00d2fc; font-family:'Cinzel Decorative';">BATTLE LOG</div>
             <button class="header-close-btn" onclick="closeHistory()">×</button>
-            <div class="h-header"><div>DATE</div><div>STAGE INFO</div><div>RESULT</div><div>RANK</div><div>TURN</div><div>AVG(RT)</div><div>DP</div></div>
+            <div class="h-header">
+                <div>DATE</div>
+                <div>STAGE INFO</div>
+                <div>RESULT</div>
+                <div>RANK</div>
+                <div>TURN</div>
+                <div>AVG(RT)</div>
+                <div>DP</div>
+            </div>
             <div class="history-list" id="history-list"></div>
             <button class="modal-btn" onclick="closeHistory()">CLOSE</button>
         </div>
     `;
     
-    // CSSの変更を考慮し、history-boxのスタイルを調整
-    el("history-modal").querySelector(".history-box").style.maxWidth = "800px";
-    el("history-modal").querySelector(".history-box").style.padding = "20px";
-
     const list = el("history-list");
     
     if (!savedData.history || savedData.history.length === 0) {
-        list.innerHTML = "<div style='padding:40px; text-align:center; color:#666; font-family: 'Cinzel Decorative', serif;'>NO BATTLE LOG DATA</div>";
+        list.innerHTML = "<div style='padding:40px; text-align:center; color:#666;'>NO DATA</div>";
     } else {
-        const sorted = [...savedData.history].sort((a, b) => {
-            return 0; // 登録順に表示（historyがunshift順のため）
-        });
-        
-        sorted.forEach(h => {
-            let rowClass = "history-row";
-            let resultText = "";
-            let rankText = "";
-            let rankColor = "#fff";
-            let dpText = h.dp >= 0 ? `+${h.dp}` : `${h.dp}`;
-            let pprVal = h.ppr ? h.ppr.toFixed(1) : "-";
+        savedData.history.forEach(h => {
+            let resultText = "LOSE";
+            let rankText = h.rank || "";
+            let turnText = h.turn || "-";
 
-            // --- ステージ表記の統一: STAGE [番号] - [ステージ名] [階層] ---
-            let stageNumber = h.stage || 1;
-            let floorInfo = "";
-            let stageTitle = "";
-            
-            if (GAME_DATA.bg[h.stage]) {
-                stageTitle = GAME_DATA.bg[h.stage].sub || STAGE_MASTER[h.stage].sub || "Stage";
-                
-                if (h.stage === 5) { // EXTRA
-                    floorInfo = "FINAL";
-                } else if (h.stage === 6) { // GOD
-                    floorInfo = `${h.floor}F`; // 1F-5F の階層情報をそのまま使用
-                } else {
-                    floorInfo = `${h.floor}F`;
-                }
+            // 旧データの解析（result文字列からランクを抽出）
+            if (!rankText && h.result && h.result.includes("(")) {
+                rankText = h.result.split("(")[1].split(")")[0];
             }
-            
-            const stageDisplay = `STAGE ${stageNumber} - ${stageTitle} ${floorInfo}`;
-            
-            // --- 結果判定とカラーリング ---
-            if (h.result.includes("CLEAR") || h.result.includes("WIN")) {
+            if (h.result && (h.result.includes("WIN") || h.result.includes("CLEAR") || h.result.includes("RETURN"))) {
                 resultText = "CLEAR";
-                rankText = h.rank || "N/A";
-                
-                // ランクカラー設定 (GOD-WIN/EXTRA-WINもCLEAR/S/A/B/Cに統合)
-                if (rankText === "SSS") {
-                    rankColor = "rainbow"; // 虹色クラスを適用
-                } else if (rankText === "S") {
-                    rankColor = "#ffd700"; // ゴールド
-                } else if (rankText === "A") {
-                    rankColor = "#ff8800"; // オレンジ
-                } else if (rankText === "B") {
-                    rankColor = "#ffffff"; // 白
-                } else if (rankText === "C") {
-                    rankColor = "#aaaaaa"; // グレー
-                } else {
-                    rankColor = "#ffffff"; // その他のクリア (例: GOD-WIN直後の表示など)
-                }
-            } else { // LOSE またはその他の結果
-                resultText = "LOSE";
-                rankText = ""; // LOSEの場合は空欄
-                rowClass += " lose";
-                rankColor = "#fff";
             }
+
+            // ステージ情報の構築 (STAGE_MASTER参照)
+            const master = STAGE_MASTER[h.stage] || { title: "Unknown" };
+            const floorText = (h.stage === 5) ? "FINAL" : `${h.floor}F`;
+            const stageDisplay = `STAGE ${h.stage} - ${master.title} ${floorText}`;
+
+            // ランク別クラス
+            let rankClass = "";
+            if (rankText === "SSS") rankClass = "rank-sss";
+            else if (rankText === "S") rankClass = "rank-s";
+            else if (rankText === "A") rankClass = "rank-a";
             
+            const pprVal = h.ppr ? h.ppr.toFixed(1) : "-";
             const dateStr = h.date ? h.date.split(' ')[0] : "-";
             
             const div = document.createElement("div");
-            div.className = rowClass;
+            div.className = "history-row" + (resultText === "LOSE" ? " lose" : "");
             div.innerHTML = `
-                <div class="h-date" style="font-size:10px;">${dateStr}</div>
-                <div class="h-stage" style="font-size:11px; font-weight:bold;">${stageDisplay}</div>
-                <div class="h-result" style="font-weight:bold; color:${resultText.includes('LOSE') ? '#888' : '#fff'};">${resultText}</div>
-                <div class="h-rank" style="font-weight:bold; color:${rankColor};">${rankText}</div>
-                <div class="h-turn" style="font-size:11px; color:#ccc;">${h.turn || "-"}</div>
-                <div class="h-detail" style="font-size:11px; color:#00d2fc;">${pprVal} (<span style="color:#fff;">Rt ${h.rt || '-'}</span>)</div>
-                <div class="h-dp" style="font-weight:bold; color:#ffd700; text-align:right;">${dpText} DP</div>
+                <div class="h-date">${dateStr}</div>
+                <div class="h-stage-long">${stageDisplay}</div>
+                <div class="h-result">${resultText}</div>
+                <div class="h-rank ${rankClass}">${rankText}</div>
+                <div class="h-turn">${turnText}</div>
+                <div class="h-detail">${pprVal} (Rt ${h.rt || '-'})</div>
+                <div class="h-dp">+${h.dp} DP</div>
             `;
             list.appendChild(div);
         });
