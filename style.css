@@ -883,10 +883,11 @@ html, body {
 
 /* History Modal */
 .history-list {
-    max-height: 50vh !important; overflow-y: auto !important;
+    max-height: 50vh !important; overflow-y: scroll; 
     display: flex; flex-direction: column; gap: 8px;
     padding: 5px; padding-right: 5px;
     scrollbar-width: thin; scrollbar-color: #00d2fc #333;
+    scrollbar-gutter: stable; 
 }
 .h-header {
     display: grid;
@@ -901,6 +902,9 @@ html, body {
     text-align: center;
     font-family: 'Roboto Mono', monospace;
     letter-spacing: 1px;
+    box-sizing: border-box;
+    border-left: 4px solid transparent; 
+    margin-right: 0; 
 }
 .h-header div:nth-child(7) { text-align: right; } /* DP列 */
 .history-row {
@@ -913,6 +917,7 @@ html, body {
     transition: background 0.2s;
     margin-bottom: 4px;
     border-left: 4px solid #444;
+    box-sizing: border-box;
 }
 .modal-header-row {
     display: flex;
