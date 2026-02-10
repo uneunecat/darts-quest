@@ -659,9 +659,11 @@ html, body {
 .text-r { color: #e0e0e0; text-shadow: 0 0 2px rgba(255,255,255,0.5); }
 .text-sr { color: #ffd700; text-shadow: 0 0 3px rgba(218, 165, 32, 0.8), 1px 1px 0 #000; }
 .text-ur {
+    /* 1. サイズと太さを他のカードと完全に統一 */
     font-weight: 900;
-    font-size: 15px; /* 1. ほんの少しだけ大きくして、潰れにくくします */
-    
+    /* font-size は指定しません。これにより、親（.std-name など）の 10px や 8px をそのまま継承します */
+
+    /* 2. 虹色のアニメーション設定（SSSランクと同じロジック） */
     background: linear-gradient(45deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
     background-size: 200% auto;
     -webkit-background-clip: text !important;
@@ -670,15 +672,14 @@ html, body {
     color: transparent !important;
     animation: rainbow-text 3s linear infinite;
 
-    /* 2. text-shadowをすべて削除し、filter: drop-shadow に切り替えます */
-    /* 文字の「形」の外側にだけ、クッキリした黒い縁と、薄い金の光をまとわせます */
-    filter: 
-        drop-shadow(1px 1px 0px rgba(0,0,0,1))    /* 右下の黒縁(クッキリ) */
-        drop-shadow(-1px -1px 0px rgba(0,0,0,1))  /* 左上の黒縁(クッキリ) */
-        drop-shadow(0 0 2px #d4af37);             /* 全体の金色の輝き(ふんわり) */
-
+    /* 3. 視認性を濁らせる要素をすべてリセット */
+    filter: none !important;
+    text-shadow: none !important;
+    -webkit-text-stroke: 0 !important;
+    
+    /* 文字が並んだ時の自然な配置を維持 */
     display: inline-block;
-    letter-spacing: 0.5px; /* 文字の間隔をわずかに広げて「蘇」などが潰れるのを防ぎます */
+    vertical-align: bottom;
 }
 @keyframes rainbow-text {
     to {
