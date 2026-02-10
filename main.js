@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v2.13.0 Refactored for Readability)");
+console.log("★ main.js is loaded! (v2.13.1 Fixed Variable Scope)");
 
 // =========================================
 // 1. UTILITY FUNCTIONS (ヘルパー関数)
@@ -6,9 +6,7 @@ console.log("★ main.js is loaded! (v2.13.0 Refactored for Readability)");
 const el = (id) => document.getElementById(id);
 
 // ダーツのPPR(Point Per Round)からレーティングを算出
-// Updated: main.js (calculateRating)
 function calculateRating(ppr) {
-    // Updated: RATING_TABLE を参照するように変更
     const entry = RATING_TABLE.find(row => ppr >= row.ppr);
     return entry ? entry.rt : 1;
 }
@@ -45,9 +43,8 @@ function saveGameConfig() {
     localStorage.setItem("darts_quest_config", JSON.stringify(gameConfig));
 }
 
-// Updated: main.js (stopAllBGM)
 function stopAllBGM() {
-    AUDIO_ASSETS.BGM.forEach(id => { // Updated: AUDIO_ASSETS を使用
+    AUDIO_ASSETS.BGM.forEach(id => {
         const audioEl = document.getElementById(id);
         if (audioEl) {
             audioEl.pause();
@@ -75,12 +72,10 @@ function updateCurrentBgmVolume() {
     }
 }
 
-// Updated: main.js (playSE)
 function playSE(id) {
     const audioEl = document.getElementById(id);
     if (audioEl) {
         audioEl.currentTime = 0;
-        // Updated: AUDIO_ASSETS からカテゴリ判定
         if (AUDIO_ASSETS.SE_ATTACK.includes(id)) {
             audioEl.volume = gameConfig.atkVolume;
         } else {
@@ -268,7 +263,6 @@ let currentRevealIndex = 0;
 let pendingCardIndex = -1;
 let inputLockUntilRelease = false;
 
-// Updated: main.js (冒頭の変数定義エリア)
 let pendingEffectsQueue = []; // 中断されたエフェクトを保持するキュー
 
 // =========================================
@@ -339,7 +333,7 @@ function selectSlot(n) {
         };
     }
     
-    savedData = allSaveData[currentSlot]; // ★★★ 移行処理を削除し、直接ロード ★★★
+    savedData = allSaveData[currentSlot]; 
     
     // データ修復
     if (!savedData.deck) savedData.deck = [];
@@ -483,11 +477,10 @@ function handleBluetoothNotify(event) {
 // =========================================
 function initGameSession(startStage, continueMode = false) {
     if (!continueMode) {
-        // Updated: PLAYER_INITIAL_STATS から初期値を読み込み
         player = {
             ...JSON.parse(JSON.stringify(PLAYER_INITIAL_STATS)), // ディープコピー
             state: {
-                atkBuff: 1.0,    // 攻撃倍率 (1.0 = 標準) // Updated: 必要なプロパティのみを初期化
+                atkBuff: 1.0,    // 攻撃倍率 (1.0 = 標準)
                 atkFlat: 0,
                 atkDuration: 0,
                 guardTurn: 0,
@@ -505,7 +498,6 @@ function initGameSession(startStage, continueMode = false) {
     startTransition(startStage, continueMode);
 }
 
-// Updated: main.js (startTransition)
 function startTransition(sel, continueMode) {
     const info = STAGE_MASTER[sel] || { title: "UNKNOWN", sub: "Unknown Stage", warning: false };
     
@@ -605,7 +597,6 @@ function handlePreemptiveAI() {
     }
 }
 function spawnEnemy() {
-    // ★ FIX: 死亡状態での出現防止
     if (player.hp <= 0) return;
     
     try {        
@@ -789,7 +780,7 @@ function processOneThrow(score) {
         return;
     }
 
-    // --- 4. ターン終了判定 (Updated: ここを修正) ---
+    // --- 4. ターン終了判定 ---
     // 通常は3投、拘束されていた場合は1投で終了
     if (turnInputs.length >= 3 || (wasRestricted && turnInputs.length >= 1)) {
         setTimeout(finishPlayerTurn, 1000); // 1秒後に敵ターンへ移行
@@ -810,7 +801,6 @@ function finishPlayerTurn() {
 // =========================================
 // 10. ENEMY AI & BATTLE SYSTEM (敵ターン・決着)
 // =========================================
-// Updated: main.js (checkCondition - 汎用条件判定エンジン)
 function checkCondition(c) {
     if (!c) return true;
     
@@ -823,15 +813,16 @@ function checkCondition(c) {
         case "turn": targetVal = enemy.state.actionCount; break;
         case "turn_mod": return enemy.state.actionCount > 0 && (enemy.state.actionCount % c.val === 0);
         case "p_state": 
-            if (c.tag === "restrictInput") return restrictInput === c.val;
+            // Updated: 修正箇所
+            if (c.tag === "restrictInput") return player.state.restrictInput === c.val;
             return player.state[c.tag] === c.val;
         case "trap": return !!player.setCard === c.val;
     }
 
     if (c.op === "lt") return targetVal < c.val;
-    if (c.op === "lte") return targetVal <= c.val; // New: 以下
+    if (c.op === "lte") return targetVal <= c.val;
     if (c.op === "gt") return targetVal > c.val;
-    if (c.op === "gte") return targetVal >= c.val; // New: 以上
+    if (c.op === "gte") return targetVal >= c.val;
     if (c.op === "eq") return Math.round(targetVal) === c.val;
     
     return true;
@@ -906,7 +897,7 @@ function enemyTurn() {
         setTimeout(() => executeEnemySkill(selectedAction), 1200);
     }
 }
-// New: main.js (executeEnemySkill - 敵専用エフェクト解決)
+
 function executeEnemySkill(skill, isPreemptive = false) {
     enemy.state.charge = false;
 
@@ -927,7 +918,8 @@ function executeEnemySkill(skill, isPreemptive = false) {
             break;
 
         case "STATE_P":
-            if (skill.state.restrictInput) restrictInput = true;
+            // Updated: 修正箇所
+            if (skill.state.restrictInput) player.state.restrictInput = true;
             Object.assign(player.state, skill.state);
             if (skill.msg) addLog(skill.msg, "log-enemy");
             if (!isPreemptive) doEnemyAttack(1.0);
@@ -977,16 +969,15 @@ function executeEnemySkill(skill, isPreemptive = false) {
 }
 
 // 敵の攻撃実行関数
-// Updated: main.js (doEnemyAttack)
 function doEnemyAttack(mult, options = {}) {
     const { 
         isDrain = false, 
         isBossUlt = false, 
         fixedDmg = 0, 
         callback = null 
-    } = options; // Updated: ignoreShield を削除
+    } = options;
     
-    // Updated: 攻撃が発動した時点で敵のチャージ状態を解除する
+    // 攻撃が発動した時点で敵のチャージ状態を解除する
     enemy.state.charge = false;
 
     let baseDmg = 0;
@@ -1012,7 +1003,7 @@ function doEnemyAttack(mult, options = {}) {
         return;
     }
     
-    // 護封剣の判定（プレイヤーの「シールド」は廃止されたため、ここだけ残す）
+    // 護封剣の判定
     if (player.state.guardTurn > 0) {
         finalDmg = Math.floor(finalDmg * 0.5);
         addLog("護封剣！ダメージ半減", "log-skill");
@@ -1051,7 +1042,6 @@ function doEnemyAttack(mult, options = {}) {
     if (callback) callback(); else endEnemyTurn();
 }
 
-// Updated: main.js (triggerTrap - 原子システム対応版)
 function triggerTrap(triggerType, incomingDmg = 0) {
     if (!player.setCard) return incomingDmg;
 
@@ -1120,7 +1110,6 @@ function endEnemyTurn() {
 }
 
 function winBattle() {
-    // ★ FIX: 死亡時は勝利判定スキップ
     if (player.hp <= 0) return;
     
     addLog(`${enemy.name} を倒した`, "system");
@@ -1143,13 +1132,11 @@ function winBattle() {
     }
 }
 
-// Updated: loseGame - 敗北時はRANKとTURNを保存しない（空文字と0を渡す）
 function loseGame() {
     isProcessing = true;
     playBGM("bgm-lose");
     
     const ppr = totalDarts > 0 ? ((totalScore / totalDarts) * 3).toFixed(1) : 0;
-    // 敗北時はランクを "" (空)、ターンを 0 として保存
     finishSession("LOSE", parseFloat(ppr), STAGE_MASTER[stage]?.multiplier || 1.0, "", 0);
 
     showDialog(
@@ -1170,7 +1157,6 @@ function loseGame() {
 // 11. ITEM & DROP SYSTEM (ドロップ・進行)
 // =========================================
 function checkDrop() {
-    // 最終ボスはドロップなし
     if (stage === 5 && floor === 1) { nextStep(); return; }
     if (stage === 6 && floor === 5) { nextStep(); return; }
     if (stage === 4 && floor === 6) { nextStep(); return; }
@@ -1192,13 +1178,11 @@ function checkDrop() {
     }
 }
 
-// Updated: main.js (openChest)
 function openChest() {
     if (!waitingForChest) return;
     waitingForChest = false;
     playSE("se-item");
     
-    // Updated: CHEST_DROP_CONFIG を参照
     const conf = CHEST_DROP_CONFIG;
     let seedRate = conf.seed_rates.base;
     if (weakHitCount >= 3) seedRate = conf.seed_rates.weak3;
@@ -1324,20 +1308,19 @@ function returnToTitle() {
     updateTitleScore();
 }
 
-// Updated: main.js (useItem)
 function useItem(type) {
     if (isProcessing || waitingForChest) return;
     if (turnInputs.length > 0) {
         addLog(">> 投擲中はアイテムを使えません！", "log-system");
         return;
     }
-    if (player.state.itemLockTurn > 0) { // Updated: itemLockTurn > 0 をチェック
+    if (player.state.itemLockTurn > 0) {
         playSE("se-warning");
         addLog(`>> 粘着されていてアイテムが使えない！(残り${player.state.itemLockTurn}T)`, "log-system");
         return;
     }
     
-    const item = ITEM_EFFECTS[type]; // Updated: ITEM_EFFECTS を参照
+    const item = ITEM_EFFECTS[type];
     if (item && player.items[type] > 0) {
         player.items[type]--;
         playSE(item.type === "hp" || item.type === "mp" ? "se-heal" : "se-buff");
@@ -1397,7 +1380,7 @@ function playHandCard(index) {
         addLog(">> 投擲中はカードを使えません！", "log-system");
         return;
     }
-    if (player.state.itemLockTurn > 0) { // Updated: itemLockTurn > 0 をチェック
+    if (player.state.itemLockTurn > 0) {
         playSE("se-warning");
         addLog(`>> 粘着されていてアイテムが使えない！(残り${player.state.itemLockTurn}T)`, "log-system");
         return;
@@ -1447,7 +1430,6 @@ function playHandCard(index) {
 function resolveEffects(effects, context = {}) {
     if (!effects || effects.length === 0) return context;
 
-    // 現在のコンテキスト（罠のダメージ計算用など）
     if (context.modifiedDmg === undefined) context.modifiedDmg = context.incomingDmg || 0;
 
     for (let i = 0; i < effects.length; i++) {
@@ -1498,7 +1480,6 @@ function resolveEffects(effects, context = {}) {
                 break;
 
             case "DISCARD_SELECT":
-                // 重要: ここでループを中断し、ユーザーの入力を待つ
                 pendingEffectsQueue = effects.slice(i + 1); // 残りのエフェクトを保存
                 openDiscardSelector(e.count);
                 return context; 
@@ -1533,7 +1514,6 @@ function resolveEffects(effects, context = {}) {
     return context;
 }
 
-// Updated: main.js (applyCardEffect - 原子システム対応版)
 function applyCardEffect(card) {
     if (!card.effects) return;
     
@@ -1547,7 +1527,6 @@ function applyCardEffect(card) {
 // CARD SPECIAL LOGICS (特殊カード用処理)
 // =========================================
 
-// Updated: main.js (CARD SPECIAL LOGICS)
 function executeSalvageMagic() {
     const magics = player.discard.filter(did => {
         const c = CARD_DB.find(cd => cd.id === did);
@@ -1568,7 +1547,6 @@ function executeSalvageMagic() {
 // =========================================
 // 13. UI & MODAL HANDLING (UI操作)
 // =========================================
-// Updated: main.js (openDiscardSelector - 汎用版)
 function openDiscardSelector(count = 1) {
     const modal = el("card-selector-modal");
     const grid = el("cs-grid");
@@ -1586,7 +1564,6 @@ function openDiscardSelector(count = 1) {
     modal.style.display = "flex";
 }
 
-// Updated: main.js (executeDiscardStep - 段階的破棄と再開)
 function executeDiscardStep(handIndex, remainingCount) {
     const cardId = player.hand[handIndex];
     player.hand.splice(handIndex, 1);
@@ -1596,10 +1573,8 @@ function executeDiscardStep(handIndex, remainingCount) {
     remainingCount--;
 
     if (remainingCount > 0 && player.hand.length > 0) {
-        // まだ捨てる必要がある場合は再描画
         openDiscardSelector(remainingCount);
     } else {
-        // すべて捨て終わった
         closeCardSelector();
         updateInfo();
         
@@ -1720,7 +1695,7 @@ function updateInfo() {
         }
         overlay.innerText = `${player.hp} / ${player.maxHp}`;
     }
-    setText("player-hp", ""); // 数値はバー内に表示
+    setText("player-hp", ""); 
 
     // Player MP
     const mpValEl = document.querySelector("#player-mp")?.parentNode; 
@@ -1936,7 +1911,6 @@ function proceedUnboxing() {
     }
 }
 
-// Updated: showNextRevealCard - 標準カードシステム (createCardElement) に統合
 function showNextRevealCard() {
     if (currentRevealIndex >= packResults.length) {
         showPackResult();
@@ -2132,10 +2106,8 @@ function renderDeckEditor() {
 }
 
 
-// Updated: createCardElement - ホバーイベントとクラス構造を完全復元
 function createCardElement(card, mode = "standard", remainingCount = 1, totalCount = 0) {
     const div = document.createElement("div");
-    // card が null の場合は EMPTY カードを生成
     if (!card) {
         div.className = `std-card ${mode} empty`;
         return div;
@@ -2216,7 +2188,6 @@ function setupLongPress(element, card) {
     element.addEventListener("touchmove", cancel);
 }
 
-// main.js: showZoomCard を画像表示から「標準カード」表示にアップグレード
 function showZoomCard(card) {
     let overlay = document.getElementById("card-zoom-overlay");
     if (!overlay) {
@@ -2350,7 +2321,6 @@ function calculateStageRank(stg, turns) {
     return [rank, RANK_BONUS[rank] || 50];
 }
 
-// Updated: main.js (finishSession に rank と turn を保存するよう修正)
 function finishSession(resultType, ppr, multiplier = 1.0, rank = "", turn = 0) {
     let earnedDP = 0;
     clearedStagesLog.forEach(log => { earnedDP += log.dp; });
@@ -2388,10 +2358,9 @@ function finishSession(resultType, ppr, multiplier = 1.0, rank = "", turn = 0) {
     
     if (clearedStagesLog.length > 0 && resultType === "RETURN") {
         const last = clearedStagesLog[clearedStagesLog.length - 1];
-        resultText = `CLEAR`; // Updated: シンプルにCLEARのみにする
+        resultText = `CLEAR`; 
     }
     
-    // Updated: rank と turn を保存対象に含める
     const historyItem = {
         date: dateStr, stage: stage, floor: floor, stgName: stgName,
         result: resultText, dp: gainedDP, ppr: isNaN(ppr) ? 0 : parseFloat(ppr),
@@ -2409,7 +2378,6 @@ function finishSession(resultType, ppr, multiplier = 1.0, rank = "", turn = 0) {
     return { isNewRecord: isNewRecord, gainedDP: gainedDP };
 }
 
-// Updated: showHistory - 表記の修正とLOSE時の表示制限
 function showHistory() {
     const modal = el("history-modal");
     
@@ -2442,14 +2410,12 @@ function showHistory() {
             let isLose = (h.result === "LOSE");
             let resultText = isLose ? "LOSE" : "CLEAR";
             
-            // Updated: 敗北時、またはデータがない場合は "-" を表示
             let rankText = (isLose || !h.rank) ? "-" : h.rank;
             let turnText = (isLose || !h.turn) ? "-" : h.turn;
             
             const master = STAGE_MASTER[h.stage] || { title: "Unknown" };
             const floorText = (h.stage === 5) ? "FINAL" : `${h.floor}F`;
             
-            // Updated: "STG" から "STAGE " 表記に変更
             const stageDisplay = `STAGE ${h.stage} ${master.title} ${floorText}`;
 
             let rankClass = "";
@@ -2459,7 +2425,6 @@ function showHistory() {
             
             const div = document.createElement("div");
             div.className = "history-row" + (isLose ? " row-lose" : " row-clear");
-            const dpText = h.dp > 0 ? `+${h.dp}` : `+0`;
             
             div.innerHTML = `
                 <div class="h-col-date">${h.date.split(' ')[0]}</div>
