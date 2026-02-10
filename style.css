@@ -582,11 +582,19 @@ html, body {
 
 
 /* =========================================
-   5. CARD DESIGN & RARITY (標準カード形式 v4.0)
+   5. CARD DESIGN & RARITY (標準カード形式 v4.2 Stable)
    ========================================= */
 
-/* --- Base: カード本体 (コンテナクエリの起点) --- */
+/* --- 1. Base: 共通の設計図 --- */
 .std-card {
+    /* 全モード共通の変数（デフォルト） */
+    --b-width: 2px;
+    --f-name: 11px;
+    --f-desc: 9px;
+    --f-type: 8px;
+    --f-cost: 11px;
+    --p-area: 6px;
+
     position: relative;
     width: 100%;
     aspect-ratio: 2 / 3;
@@ -600,60 +608,49 @@ html, body {
     cursor: pointer;
     flex-shrink: 0;
     box-sizing: border-box;
-    /* 重要: 自分の幅を基準に中のサイズを決める設定 */
-    container-type: inline-size; 
 }
 
-/* --- Layout: 内部比率 --- */
-.std-art {
-    flex: 0 0 55%;
-    width: 100%;
-    position: relative;
-    background: #000;
-    overflow: hidden;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-}
-.std-art img { width: 100%; height: 100%; object-fit: cover; }
+/* --- 2. Modes: サイズに応じた変数の上書き --- */
 
-.std-text-area {
-    flex: 1;
-    padding: 6cqw; /* カード幅の6%を余白にする */
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    text-align: left;
-    color: #fff;
-    background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 10px);
+/* Standard (ショップ・リスト・開封結果) */
+.std-card.standard {
+    --b-width: 3px;
+    --f-name: 13px;
+    --f-desc: 10px;
+    --f-type: 9px;
+    --f-cost: 13px;
+    --p-area: 8px;
 }
 
-.bg-magic { background: linear-gradient(160deg, #00695c 0%, #004d40 60%, #00251a 100%); }
-.bg-trap { background: linear-gradient(160deg, #ad1457 0%, #880e4f 60%, #4a002c 100%); }
-
-/* --- Parts: コスト・カウント (復元) --- */
-.std-cost {
-    position: absolute; top: 0; left: 0;
-    background: linear-gradient(135deg, #00d2fc, #005c75);
-    color: #fff; font-weight: 900;
-    font-size: 12cqw; /* 幅に対してスケーリング */
-    padding: 1cqw 4cqw;
-    border-bottom-right-radius: 6px;
-    z-index: 5;
-    box-shadow: 1px 1px 3px rgba(0,0,0,0.5);
-    text-shadow: 0 0 2px #000;
+/* Battle (戦闘中の手札) */
+.std-card.battle {
+    --b-width: 2px;
+    --f-name: 10px;
+    --f-desc: 8px;
+    --p-area: 5px;
 }
 
-.std-count {
-    position: absolute; top: 4cqw; right: 4cqw;
-    background: rgba(0,0,0,0.8); color: #fff;
-    font-size: 8cqw;
-    padding: 1cqw 3cqw;
-    border-radius: 4px;
-    border: 1px solid rgba(255,255,255,0.3);
-    z-index: 5;
+/* Small (デッキ編集の左側) */
+.std-card.small {
+    --b-width: 1px;
 }
 
-/* --- Rarity: 枠線 --- */
-[class*="rarity-frame-"] { border-width: 2.5cqw !important; border-style: solid !important; }
+/* Zoom (長押し拡大時) */
+.zoom-card-img {
+    --b-width: 6px; /* 拡大時は枠も極太に */
+    --f-name: 24px;
+    --f-desc: 18px;
+    --f-type: 14px;
+    --f-cost: 24px;
+    --p-area: 15px;
+    width: 300px !important;
+    height: auto !important;
+}
+
+/* --- 3. Rarity Frames: 枠線の描画 --- */
+[class*="rarity-frame-"] {
+    border: var(--b-width) solid !important;
+}
 .rarity-frame-N  { border-color: #555 !important; }
 .rarity-frame-R  { border-color: #c0c0c0 !important; box-shadow: 0 0 8px rgba(192, 192, 192, 0.4) !important; }
 .rarity-frame-SR { border-color: #ffd700 !important; box-shadow: 0 0 12px rgba(255, 215, 0, 0.5) !important; }
@@ -666,16 +663,60 @@ html, body {
     animation: border-rotate 4s linear infinite !important;
 }
 
-/* --- Text: 文字装飾 (復元) --- */
+/* --- 4. Parts: 内部パーツの復元 --- */
+.std-art {
+    flex: 0 0 55%;
+    width: 100%;
+    position: relative;
+    background: #000;
+    overflow: hidden;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+.std-art img { width: 100%; height: 100%; object-fit: cover; }
+
+.std-text-area {
+    flex: 1;
+    padding: var(--p-area);
+    display: flex;
+    flex-direction: column;
+    background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 10px);
+}
+
+/* 魔法・罠の背景色（復元） */
+.bg-magic { background: linear-gradient(160deg, #00695c 0%, #004d40 60%, #00251a 100%); }
+.bg-trap { background: linear-gradient(160deg, #ad1457 0%, #880e4f 60%, #4a002c 100%); }
+
+.std-cost {
+    position: absolute; top: 0; left: 0;
+    background: linear-gradient(135deg, #00d2fc, #005c75);
+    color: #fff; font-weight: 900;
+    font-size: var(--f-cost);
+    padding: 2px 6px;
+    border-bottom-right-radius: 6px;
+    z-index: 5;
+}
+
+.std-count {
+    position: absolute; top: 2px; right: 2px;
+    background: rgba(0,0,0,0.8); color: #fff;
+    font-size: var(--f-type);
+    padding: 1px 4px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.3);
+    z-index: 5;
+}
+
+/* --- 5. Text: 文字装飾 --- */
 .std-name {
     font-weight: 900;
+    font-size: var(--f-name);
     width: 100%;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 10cqw; /* カード幅の10% */
-    line-height: 1.2;
-    margin-bottom: 2cqw;
+    line-height: 1.4;
+    padding-top: 2px;
+    margin-bottom: 2px;
 }
 
 .text-n  { color: #fff; text-shadow: 1px 1px 0 #000; }
@@ -690,14 +731,19 @@ html, body {
     -webkit-text-fill-color: transparent !important;
     color: transparent !important;
     animation: rainbow-text 3s linear infinite;
-    filter: none !important;
-    text-shadow: none !important;
 }
 
-.std-type { font-size: 6cqw; opacity: 0.8; margin-bottom: 2cqw; font-family: 'Roboto Mono'; }
-.std-desc { font-size: 7cqw; line-height: 1.2; opacity: 0.95; overflow: hidden; }
+.std-type { font-size: var(--f-type); opacity: 0.8; margin-bottom: 2px; font-family: 'Roboto Mono'; }
+.std-desc { font-size: var(--f-desc); line-height: 1.2; opacity: 0.95; overflow: hidden; }
 
-/* --- Special: シャイニング加工 (復元) --- */
+/* --- 6. Special: EMPTY & SHEEN --- */
+.std-card.empty {
+    border: 2px dashed #444 !important;
+    background: rgba(255, 255, 255, 0.02) !important;
+    display: flex; justify-content: center; align-items: center;
+}
+.empty-label { font-family: 'Roboto Mono', monospace; font-size: 14px; color: #444; font-weight: bold; }
+
 .card-sheen {
     position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
     background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.4) 45%, rgba(255,255,255,0.0) 50%);
@@ -705,38 +751,11 @@ html, body {
     animation: sheen-move 4s infinite; z-index: 10;
 }
 
-/* --- Mode Adjustments --- */
+/* --- 既存の .std-card.small などの個別消去設定は維持 --- */
 .std-card.battle .std-count, .std-card.battle .std-type { display: none; }
 .std-card.small .std-text-area, .std-card.small .std-count { display: none; }
 .std-card.small .std-art { flex: 0 0 100%; border-bottom: none; }
-.std-card.empty {
-    border: 2px dashed #444 !important; /* 点線枠 */
-    background: rgba(255, 255, 255, 0.02) !important; /* ほぼ透明 */
-    box-shadow: none !important;
-    cursor: default;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-.empty-label {
-    font-family: 'Roboto Mono', monospace;
-    font-size: 12cqw; /* カード幅の12%サイズで中央表示 */
-    color: #444;
-    font-weight: bold;
-    letter-spacing: 1px;
-}
 
-/* --- Grid: 4列構造の維持 --- */
-.card-grid {
-    display: grid !important;
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 10px !important;
-    padding: 10px;
-    align-content: start;
-}
-
-/* --- Animations --- */
-@keyframes zoom-pop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1.0); opacity: 1; } }
 @keyframes border-rotate { 100% { background-position: 200% 0; } }
 @keyframes rainbow-text { to { background-position: 200% center; } }
 @keyframes sheen-move { 0% { transform: translateY(-30%) translateX(-30%); } 100% { transform: translateY(30%) translateX(30%); } }
