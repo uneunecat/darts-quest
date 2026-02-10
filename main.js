@@ -2324,6 +2324,8 @@ function finishSession(resultType, ppr, multiplier = 1.0, rank = "", turn = 0) {
     clearedStagesLog.forEach(log => { earnedDP += log.dp; });
     savedData.dp = (savedData.dp || 0);
     
+    let resultText = resultType; 
+
     const curVal = stage * 100 + floor;
     const bestVal = savedData.highScore.stage * 100 + savedData.highScore.floor;
     let isNewRecord = false;
