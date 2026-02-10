@@ -1946,26 +1946,11 @@ function showNextRevealCard() {
     const area = el("reveal-area");
     playSE("se-item");
     
-    // 手書きHTMLを廃止し、共通関数で生成
-    // モードは "standard" をベースにし、演出用のクラスを追加
+    // standardモードで生成し、サイズはCSSで調整
     const div = createCardElement(card, "standard", 0, 1);
     div.id = `reveal-card-${currentRevealIndex}`;
     div.classList.add("reveal-card-zoom", "card-appear");
     
-    // レアリティに応じた追加演出
-    if (card.rarity === "UR") { 
-        playSE("se-boom"); 
-    } else if (card.rarity === "SR") { 
-        playSE("se-buff"); 
-    }
-    
-    if (card.isNew) {
-        const badge = document.createElement("div");
-        badge.className = "new-badge";
-        badge.innerText = "NEW!";
-        div.appendChild(badge);
-    }
-
     area.innerHTML = "";
     area.appendChild(div);
 }
@@ -2147,28 +2132,46 @@ function renderDeckEditor() {
     el("collection-rate").innerText = `${Math.floor((ownedCount / CARD_DB.length) * 100)}%`;
 }
 
+
 function createCardElement(card, mode = "standard", remainingCount = 1, totalCount = 0) {
     const div = document.createElement("div");
     const isOwned = (mode === "small" || mode === "battle" || totalCount > 0);
     const notOwnedClass = (!isOwned) ? "card-not-owned" : "";
     
+    // カード本体のクラス設定
     div.className = `std-card ${mode} rarity-${card.rarity} ${notOwnedClass}`;
-    if (mode === "small") div.classList.add("in-deck-card");
     
     const imgPath = `assets/cards/${card.id}.png`;
     const cost = (card.cost !== undefined) ? card.cost : "?";
+    
+    // 背景色クラスの決定
     const bgClass = (card.type === "TRAP") ? "bg-trap" : "bg-magic";
     
+    // レアリティ別テキストクラスの決定
     let textClass = "text-n";
     if (card.rarity === "UR") textClass = "text-ur";
     else if (card.rarity === "SR") textClass = "text-sr";
     else if (card.rarity === "R") textClass = "text-r";
     
     const sheenHTML = (card.rarity === "UR" || card.rarity === "SR") ? '<div class="card-sheen"></div>' : '';
-    const countText = (mode === "small") ? "" : `x${remainingCount}`;
+    const countText = (mode === "small" || mode === "battle") ? "" : `x${remainingCount}`;
     
-    div.innerHTML = `<div class="std-art"><img src="${imgPath}" onerror="this.style.display='none';"><div class="std-cost">${cost}</div><div class="std-count">${countText}</div>${sheenHTML}</div><div class="std-text-area ${bgClass}"><div class="std-name ${textClass}">${card.name}</div><div class="std-type">[${card.type}]</div><div class="std-desc">${card.desc}</div></div>`;
+    // 構造の生成（bgClassをstd-text-areaに適用）
+    div.innerHTML = `
+        <div class="std-art">
+            <img src="${imgPath}" onerror="this.style.display='none';">
+            <div class="std-cost">${cost}</div>
+            <div class="std-count">${countText}</div>
+            ${sheenHTML}
+        </div>
+        <div class="std-text-area ${bgClass}">
+            <div class="std-name ${textClass}">${card.name}</div>
+            <div class="std-type">[${card.type}]</div>
+            <div class="std-desc">${card.desc}</div>
+        </div>
+    `;
     
+    // イベント設定（既存ロジック維持）
     div.onclick = function (e) {
         if (div.dataset.longPressed === "true") { div.dataset.longPressed = "false"; return; }
         if (!isOwned) return;
@@ -2177,12 +2180,10 @@ function createCardElement(card, mode = "standard", remainingCount = 1, totalCou
         else if (mode === "standard") addToDeck(card.id);
     };
     
-    div.onmouseenter = (e) => {
-        if (mode !== "battle" && typeof showCardDetail === 'function') showCardDetail(card);
-    };
     if (isOwned) { setupLongPress(div, card); }
     return div;
 }
+
 
 function setupLongPress(element, card) {
     let pressTimer;
@@ -2214,25 +2215,28 @@ function showZoomCard(card) {
     if (!overlay) {
         overlay = document.createElement("div");
         overlay.id = "card-zoom-overlay";
+        // 背景をクリックしても閉じるように設定
         overlay.onclick = closeZoomCard;
         document.body.appendChild(overlay);
     }
     
-    // 画像だけを貼るのではなく、標準カードを生成して表示する
+    // 標準カード形式 (standard) を採用
     const cardEl = createCardElement(card, "standard", 0, 1);
-    cardEl.classList.add("zoom-card-img"); // CSSのアニメーションを適用
-    cardEl.onclick = null; // ズーム内でのクリックイベントを無効化
+    cardEl.classList.add("zoom-card-img"); 
+    cardEl.onclick = (e) => e.stopPropagation(); // カード自体のクリックで閉じないようにする
     
-    overlay.innerHTML = ""; // 一旦クリア
+    overlay.innerHTML = ""; 
     overlay.appendChild(cardEl);
     
-    // 下にヒントを表示
     const hint = document.createElement("div");
     hint.className = "zoom-close-hint";
     hint.innerText = "TAP TO CLOSE";
     overlay.appendChild(hint);
 
     overlay.style.display = "flex";
+    // 背景のスクロールや操作を防止
+    document.body.style.overflow = "hidden";
+    
     requestAnimationFrame(() => overlay.classList.add("visible"));
     playSE("se-tap");
 }
