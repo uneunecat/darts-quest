@@ -582,10 +582,10 @@ html, body {
 
 
 /* =========================================
-   5. CARD DESIGN & RARITY (標準カード形式 v4.5 - Seamless & Rounded Fix)
+   5. CARD DESIGN & RARITY (標準カード形式 v4.6 - Final Polish)
    ========================================= */
 
-/* --- Base: カード本体 (コンテナの起点) --- */
+/* --- Base: カード本体 --- */
 .std-card {
     position: relative;
     width: 100%;
@@ -594,15 +594,16 @@ html, body {
     background: #000;
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* 通常時はhidden */
+    overflow: hidden; /* 親枠からはみ出させない */
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s, filter 0.2s;
     cursor: pointer;
     flex-shrink: 0;
     box-sizing: border-box !important;
     container-type: inline-size; 
     border: none !important;
 }
+/* ホバー時の基本動作 */
 .std-card:hover {
     transform: translateY(-5px) scale(1.03);
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.6), 0 0 15px rgba(255, 255, 255, 0.1);
@@ -616,8 +617,8 @@ html, body {
     inset: 0;
     z-index: 20;
     pointer-events: none;
-    border-radius: inherit; /* 親の角丸を継承 */
-    padding: max(2px, 1.8cqw); /* 最小2px幅を保証 */
+    border-radius: inherit;
+    padding: max(2px, 1.8cqw);
     
     /* コンテンツボックスをくり抜く */
     -webkit-mask: 
@@ -626,31 +627,42 @@ html, body {
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     
-    background: #555; /* デフォルト枠色 */
+    background: #555; /* デフォルト */
 }
 
-/* --- Rarity Colors --- */
+/* --- Rarity Colors & Effects --- */
 .rarity-frame-N::before  { background: #555; }
 .rarity-frame-R::before  { background: #c0c0c0; }
 .rarity-frame-SR::before { background: #ffd700; }
 
-/* UR演出 (シームレスループ修正版) */
+/* ★UR新演出: 色相回転 (Hue Rotate) */
+/* 縞模様ではなく、グラデーション全体の色が滑らかに変化し続ける */
 .rarity-frame-UR::before {
-    /* 始点と終点を同じ色(#ff0000)にしてループの切れ目をなくす */
-    background: linear-gradient(115deg, 
-        #ff0000, #ff00ff, #0000ff, #00ffff, 
-        #00ff00, #ffff00, #ff8000, #ff0000
-    );
-    background-size: 400% 400%; /* サイズを大きくして斜め移動を滑らかに */
-    animation: rainbow-flow 3s linear infinite;
+    /* ベースとなる鮮やかなグラデーション */
+    background: linear-gradient(135deg, #ff0000, #ff0080, #8000ff, #0000ff);
+    /* 色相を360度回転させ続ける */
+    animation: ur-hue-loop 4s linear infinite;
+    /* 明るさを強調 */
+    filter: brightness(1.2);
 }
 
-@keyframes rainbow-flow {
-    0% { background-position: 0% 0%; }
-    100% { background-position: 100% 100%; }
+@keyframes ur-hue-loop {
+    0% { filter: brightness(1.2) hue-rotate(0deg); }
+    100% { filter: brightness(1.2) hue-rotate(360deg); }
 }
 
-/* EMPTYカード (枠線あり) */
+/* --- State Styles (状態ごとの見た目) --- */
+
+/* 1. EMPTY: ホバー無効、破線枠 */
+.std-card.empty {
+    cursor: default;
+    box-shadow: none;
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+.std-card.empty:hover {
+    transform: none; /* 動きを止める */
+    box-shadow: none;
+}
 .std-card.empty::before {
     padding: 0;
     -webkit-mask: none;
@@ -659,7 +671,31 @@ html, body {
     border: max(2px, 1.2cqw) dashed rgba(255, 255, 255, 0.2);
 }
 
-/* --- Layout: 内部比率 --- */
+/* 2. Not Owned: 未所持 (グレーアウト) */
+.std-card.card-not-owned {
+    filter: grayscale(1.0) brightness(0.4);
+    opacity: 0.8;
+}
+.std-card.card-not-owned:hover {
+    filter: grayscale(0.5) brightness(0.6); /* ホバー時は少し見えるように */
+}
+
+/* 3. Disabled: 使用不可 (戦闘中MP不足など) */
+.std-card.disabled {
+    filter: brightness(0.4);
+    cursor: not-allowed;
+}
+.std-card.disabled:hover {
+    transform: none; /* 動きを止める */
+    box-shadow: none;
+}
+/* Disabled時のコスト表示を目立たせる（赤くする等はお好みで） */
+.std-card.disabled .std-cost {
+    background: #555;
+    color: #aaa;
+}
+
+/* --- Layout: 内部比率 (角丸維持のFix込み) --- */
 .std-art {
     flex: 0 0 55%;
     width: 100%;
@@ -667,8 +703,6 @@ html, body {
     background: #000;
     overflow: hidden;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    
-    /* ★修正: 親がoverflow:visibleでも角丸を維持する設定 */
     border-top-left-radius: inherit;
     border-top-right-radius: inherit;
 }
@@ -684,20 +718,14 @@ html, body {
     text-align: left;
     color: #fff;
     background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 10px);
-    
-    /* ★修正: 下部の角丸を維持 */
     border-bottom-left-radius: inherit;
     border-bottom-right-radius: inherit;
 }
-
-.std-art, .std-text-area {
-    position: relative;
-    z-index: 10;
-}
+.std-art, .std-text-area { position: relative; z-index: 10; }
 .bg-magic { background: linear-gradient(160deg, #00695c 0%, #004d40 60%, #00251a 100%); }
 .bg-trap { background: linear-gradient(160deg, #ad1457 0%, #880e4f 60%, #4a002c 100%); }
 
-/* --- Parts: コスト・カウント --- */
+/* --- Parts --- */
 .std-cost {
     position: absolute; top: 0; left: 0;
     background: linear-gradient(135deg, #00d2fc, #005c75);
@@ -705,12 +733,11 @@ html, body {
     font-size: clamp(10px, 12cqw, 24px); 
     padding: 1cqw 4cqw;
     border-bottom-right-radius: 6px;
-    border-top-left-radius: 6px; /* 角に合わせる */
+    border-top-left-radius: 6px;
     z-index: 25;
     box-shadow: 1px 1px 3px rgba(0,0,0,0.5);
     text-shadow: 0 0 2px #000;
 }
-
 .std-count {
     position: absolute; top: 4cqw; right: 4cqw;
     background: rgba(0,0,0,0.8); color: #fff;
@@ -735,7 +762,6 @@ html, body {
     -webkit-text-fill-color: transparent !important; color: transparent !important;
     animation: rainbow-text 3s linear infinite;
 }
-
 .std-type { font-size: 6cqw; opacity: 0.8; margin-bottom: 2cqw; font-family: 'Roboto Mono'; }
 .std-desc { font-size: 7cqw; line-height: 1.2; opacity: 0.95; overflow: hidden; }
 
@@ -752,14 +778,8 @@ html, body {
 .std-card.battle .std-count, .std-card.battle .std-type { display: none; }
 .std-card.small .std-text-area, .std-card.small .std-count { display: none; }
 .std-card.small .std-art { flex: 0 0 100%; border-bottom: none; }
-.std-card.empty {
-    background: rgba(255, 255, 255, 0.05) !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: none;
-    cursor: default;
-}
+.std-card.empty .std-art, .std-card.empty .std-text-area { display: none; }
+/* EMPTYのテキスト */
 .std-card.empty::after {
     content: "EMPTY";
     font-family: 'Cinzel Decorative', serif;
@@ -767,23 +787,17 @@ html, body {
     color: rgba(255, 255, 255, 0.2);
     letter-spacing: 0.5cqw;
 }
-.std-card.empty .std-art, .std-card.empty .std-text-area { display: none; }
 
 /* --- Grid --- */
 .card-grid {
-    display: grid !important;
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 10px !important;
-    padding: 10px;
-    align-content: start;
+    display: grid !important; grid-template-columns: repeat(4, 1fr) !important;
+    gap: 10px !important; padding: 10px; align-content: start;
 }
 
 /* --- Zoom Overlay --- */
 #card-zoom-overlay {
-    position: fixed; top: 0; left: 0;
-    width: 100vw; height: 100vh;
-    background: rgba(0, 0, 0, 0.9);
-    display: none; justify-content: center; align-items: center;
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.9); display: none; justify-content: center; align-items: center;
     z-index: 5000; backdrop-filter: blur(8px);
     opacity: 0; transition: opacity 0.3s ease; pointer-events: all;
 }

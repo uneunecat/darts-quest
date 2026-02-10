@@ -1611,13 +1611,15 @@ function showCardDetail(card) {
     detailEl.innerHTML = `<span class="detail-name">${card.name}</span>${card.desc}`;
 }
 
+// Updated: renderHand (v4.6 - Disabled Style Fix)
 function renderHand() {
     const handArea = el("hand-area");
     handArea.innerHTML = "";
     el("hand-count-display").innerText = player.hand.length;
     
     const isThrowing = turnInputs.length > 0;
-    const isCardLocked = player.state.itemLockTurn > 0 || isThrowing;
+    // アイテムロック、または投擲中はカード使用不可
+    const isCardLocked = (player.state.itemLockTurn > 0) || isThrowing;
 
     if (player.deckLocked) {
         el("battle-deck-count").innerText = "-";
@@ -1629,10 +1631,14 @@ function renderHand() {
         } else {
             player.hand.forEach((cardId, index) => {
                 const card = CARD_DB.find(c => c.id === cardId);
+                // 戦闘モードで生成
                 const div = createCardElement(card, "battle", 0, 1);
                 div.className += " hand-card";
                 
-                if (player.mp < card.cost || isCardLocked) div.classList.add("disabled");
+                // コスト不足 or ロック状態で disabled クラス付与
+                if (player.mp < card.cost || isCardLocked) {
+                    div.classList.add("disabled");
+                }
                 
                 div.onclick = () => playHandCard(index);
                 handArea.appendChild(div);
@@ -2106,12 +2112,16 @@ function renderDeckEditor() {
 }
 
 
+// Updated: createCardElement (v4.6 - Status Class Support)
 function createCardElement(card, mode = "standard", remainingCount = 1, totalCount = 0) {
     const div = document.createElement("div");
+    // card が null の場合は EMPTY カード
     if (!card) {
         div.className = `std-card ${mode} empty`;
         return div;
     }
+    
+    // 所持判定 (battle/smallモードは所持前提、standardモードはtotalCountで判定)
     const isOwned = (mode === "small" || mode === "battle" || totalCount > 0);
     const notOwnedClass = (!isOwned) ? "card-not-owned" : "";
     
@@ -2146,20 +2156,27 @@ function createCardElement(card, mode = "standard", remainingCount = 1, totalCou
     // イベント設定
     div.onclick = function (e) {
         if (div.dataset.longPressed === "true") { div.dataset.longPressed = "false"; return; }
+        // 未所持ならクリック無効
         if (!isOwned) return;
+        
+        // パック開封中などのガード
         if (typeof isOpeningPack !== 'undefined' && isOpeningPack) return;
+        
+        // モード別動作
         if (mode === "small") removeFromDeck(card.id);
         else if (mode === "standard") addToDeck(card.id);
     };
 
-    // Updated: ホバー時に詳細を表示する機能を復元
+    // ホバー時に詳細を表示
     div.onmouseenter = () => {
         if (mode !== "battle" && typeof showCardDetail === 'function') {
             showCardDetail(card);
         }
     };
     
+    // 長押し詳細表示 (未所持でも詳細だけは見れるようにしても良いが、一旦所持者のみ)
     if (isOwned) { setupLongPress(div, card); }
+    
     return div;
 }
 
