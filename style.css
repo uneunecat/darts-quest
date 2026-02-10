@@ -892,6 +892,9 @@ html, body {
     border-radius: 4px;
 }
 .h-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
     display: grid;
     grid-template-columns: 60px 280px 80px 60px 60px 110px 1fr;
     gap: 10px;
