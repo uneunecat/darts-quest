@@ -2338,19 +2338,19 @@ function finishSession(resultType, ppr, multiplier = 1.0, rank = "", turn = 0) {
         isNewRecord = true;
     }
     if (resultType === "EXTRA-WIN") savedData.clearedExtra = true;
-    
+
+    const isLose = (resultType === "LOSE");
+    const scoreDP = isLose ? 0 : Math.floor(totalScore * 0.2 * multiplier);
+    let rankDP = 0;
+    if (!isLose) {
+        clearedStagesLog.forEach(log => rankDP += log.dp);
+    }
+    const gainedDP = scoreDP + rankDP;
+    savedData.dp += gainedDP;
+
     const now = new Date();
     const dateStr = `${now.getMonth() + 1}/${now.getDate()} ${now.getHours()}:${("0" + now.getMinutes()).slice(-2)}`;
     let stgName = (stage === 6) ? "STAGE 5" : (stage === 5 ? "EXTRA" : "S" + stage + "-" + floor + "F");
-    
-    let resultText = resultType;
-    let gainedDP = 0;
-    const scoreDP = Math.floor(totalScore * 0.2 * multiplier);
-    let rankDP = 0;
-    
-    clearedStagesLog.forEach(log => rankDP += log.dp);
-    gainedDP = scoreDP + rankDP;
-    savedData.dp += gainedDP;
     
     if (clearedStagesLog.length > 0 && resultType === "RETURN") {
         const last = clearedStagesLog[clearedStagesLog.length - 1];
@@ -2425,6 +2425,7 @@ function showHistory() {
             
             const div = document.createElement("div");
             div.className = "history-row" + (isLose ? " row-lose" : " row-clear");
+            const dpText = h.dp > 0 ? `+${h.dp}` : `+0`;
             
             div.innerHTML = `
                 <div class="h-col-date">${h.date.split(' ')[0]}</div>
