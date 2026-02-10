@@ -1936,6 +1936,7 @@ function proceedUnboxing() {
     }
 }
 
+// Updated: showNextRevealCard - 標準カードシステム (createCardElement) に統合
 function showNextRevealCard() {
     if (currentRevealIndex >= packResults.length) {
         showPackResult();
@@ -1944,27 +1945,27 @@ function showNextRevealCard() {
     const card = packResults[currentRevealIndex];
     const area = el("reveal-area");
     playSE("se-item");
-    let effectClass = "";
     
-    if (card.rarity === "UR") { playSE("se-boom"); effectClass = "card-show-ur"; }
-    else if (card.rarity === "SR") { playSE("se-buff"); effectClass = "card-show-sr"; }
-    
-    const div = document.createElement("div");
+    // 手書きHTMLを廃止し、共通関数で生成
+    // モードは "standard" をベースにし、演出用のクラスを追加
+    const div = createCardElement(card, "standard", 0, 1);
     div.id = `reveal-card-${currentRevealIndex}`;
-    div.className = `std-card rarity-${card.rarity} reveal-card-zoom card-appear ${effectClass}`;
+    div.classList.add("reveal-card-zoom", "card-appear");
     
-    const imgPath = `assets/cards/${card.id}.png`;
-    const cost = (card.cost !== undefined) ? card.cost : "?";
-    const bgClass = (card.type === "TRAP") ? "bg-trap" : "bg-magic";
-    let textClass = "text-n";
-    if (card.rarity === "UR") textClass = "text-ur";
-    else if (card.rarity === "SR") textClass = "text-sr";
-    else if (card.rarity === "R") textClass = "text-r";
+    // レアリティに応じた追加演出
+    if (card.rarity === "UR") { 
+        playSE("se-boom"); 
+    } else if (card.rarity === "SR") { 
+        playSE("se-buff"); 
+    }
     
-    const sheenHTML = (card.rarity === "UR" || card.rarity === "SR") ? '<div class="card-sheen"></div>' : '';
-    
-    div.innerHTML = `${card.isNew ? '<div class="new-badge">NEW!</div>' : ''}<div class="std-art"><img src="${imgPath}" onerror="this.style.display='none';"><div class="std-cost">${cost}</div><div class="std-count">GET</div>${sheenHTML}</div><div class="std-text-area ${bgClass}"><div class="std-name ${textClass}" style="font-size:14px;">${card.name}</div><div class="std-type">[${card.type}]</div><div class="std-desc" style="font-size:10px;">${card.desc}</div></div>`;
-    
+    if (card.isNew) {
+        const badge = document.createElement("div");
+        badge.className = "new-badge";
+        badge.innerText = "NEW!";
+        div.appendChild(badge);
+    }
+
     area.innerHTML = "";
     area.appendChild(div);
 }
