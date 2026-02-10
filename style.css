@@ -658,11 +658,22 @@ html, body {
 .text-n { color: #fff; }
 .text-r { color: #e0e0e0; text-shadow: 0 0 2px rgba(255,255,255,0.5); }
 .text-sr { color: #ffd700; text-shadow: 0 0 3px rgba(218, 165, 32, 0.8), 1px 1px 0 #000; }
+/* Updated: URカードの文字色をSSSランクと同じ虹色アニメーションに変更 */
 .text-ur {
-    background: linear-gradient(to bottom, #fbf5b7 0%, #bf953f 50%, #aa771c 100%) !important;
-    background-size: 100%; -webkit-background-clip: text !important;
-    -webkit-text-fill-color: transparent !important; color: transparent !important;
-    font-weight: 900; filter: drop-shadow(1px 1px 0 rgba(0,0,0,0.8)) !important;
+    font-weight: 900;
+    background: linear-gradient(45deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+    background-size: 200% auto;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    color: transparent !important;
+    animation: rainbow-text 3s linear infinite;
+    filter: drop-shadow(1px 1px 0 rgba(0,0,0,0.8));
+    display: inline-block;
+}
+@keyframes rainbow-text {
+    to {
+        background-position: 200% center;
+    }
 }
 .std-type { font-size: 8px; opacity: 0.9; margin-bottom: 3px; font-family: 'Roboto Mono'; }
 .std-desc {
