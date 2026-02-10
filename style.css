@@ -627,10 +627,12 @@ html, body {
 /* URの特殊枠 (::before にすべての装飾を集約) */
 .rarity-frame-UR::before {
     border-color: transparent;
-    background-image: linear-gradient(#111, #111), 
-                      linear-gradient(45deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
-    background-origin: border-box;
-    background-clip: padding-box, border-box;
+    background-image: linear-gradient(45deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+    background-size: 200% auto;
+    /* 中央をくり抜くためのマスク設定 */
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
     animation: border-rotate 4s linear infinite;
 }
 
@@ -654,13 +656,17 @@ html, body {
     flex: 1;
     padding: 6cqw;
     display: flex;
+    z-index: 10;
     flex-direction: column;
     align-items: flex-start;
     text-align: left;
     color: #fff;
     background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 10px);
 }
-
+.std-art, .std-text-area {
+    position: relative;
+    z-index: 10; /* 枠(20)の下、本体(0)の上 */
+}
 .bg-magic { background: linear-gradient(160deg, #00695c 0%, #004d40 60%, #00251a 100%); }
 .bg-trap { background: linear-gradient(160deg, #ad1457 0%, #880e4f 60%, #4a002c 100%); }
 
@@ -754,12 +760,12 @@ html, body {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.9); /* 背景をしっかり暗転 */
+    background: rgba(0, 0, 0, 0.9);
     display: none;
     justify-content: center;
     align-items: center;
-    z-index: 5000; /* 最前面 */
-    backdrop-filter: blur(8px); /* 背景をぼかして高級感を出す */
+    z-index: 5000;
+    backdrop-filter: blur(8px);
     opacity: 0;
     transition: opacity 0.3s ease;
 }
@@ -768,14 +774,14 @@ html, body {
     opacity: 1;
 }
 /* ズーム時のカードサイズ指定 */
-#card-zoom-overlay .std-card.standard {
-    width: 75vw; /* 画面幅の75% */
-    max-width: 350px; /* ただし最大350pxまで */
-    height: auto;
-    border-width: 1cqw !important;
+#card-zoom-overlay .std-card {
+    width: 75vw;     /* コンテナが幅を指定 */
+    max-width: 350px; /* 最大サイズを制限 */
+    /* 演出（アニメーションと影）だけを追加 */
     box-shadow: 0 0 30px rgba(0, 210, 252, 0.4);
     animation: zoom-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
+
 /* ズーム時のヒントテキスト */
 .zoom-close-hint {
     position: absolute;
@@ -788,10 +794,19 @@ html, body {
 
 /* --- Animations --- */
 @keyframes zoom-pop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1.0); opacity: 1; } }
-@keyframes border-rotate { 
-    0% { background-position: 0% 0%; filter: brightness(1); }
-    50% { filter: brightness(1.3); }
-    100% { background-position: 200% 0%; filter: brightness(1); }
+@keyframes border-rotate {
+    0% { 
+        background-position: 0% 0%; 
+        box-shadow: 0 0 10px rgba(255, 215, 0, 0.3); 
+    }
+    50% { 
+        box-shadow: 0 0 25px rgba(255, 215, 0, 0.6); 
+        transform: scale(1.01); /* わずかに浮き上がる */
+    }
+    100% { 
+        background-position: 200% 0%; 
+        box-shadow: 0 0 10px rgba(255, 215, 0, 0.3); 
+    }
 }
 @keyframes rainbow-text { to { background-position: 200% center; } }
 @keyframes sheen-move { 0% { transform: translateY(-30%) translateX(-30%); } 100% { transform: translateY(30%) translateX(30%); } }
