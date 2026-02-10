@@ -339,11 +339,20 @@ function selectSlot(n) {
         };
     }
     
-    savedData = allSaveData[currentSlot];
-    // データ修復
+    let loadedData = allSaveData[currentSlot];
+    
+    // ★★★ 修正: 古いバージョンのセーブデータチェックと移行処理 ★★★
+    // savedDataとしてロードする前に、古いID構造を新しいID構造に変換する
+    if (loadedData && !loadedData.cards) { // cardsキーがない、またはhistoryがない/古い可能性
+        loadedData = migrateSaveData(loadedData);
+    }
+    
+    savedData = loadedData;
+    
+    // データ修復 (上記移行処理で対応済みのものも含む)
     if (!savedData.deck) savedData.deck = [];
     if (!savedData.cards) savedData.cards = {};
-    allSaveData.lastPlayed = n;
+    allSaveData[currentSlot] = savedData; // 移行後のデータを保存し直す
     
     updateTitleScore();
     playSE("se-tap");
@@ -382,6 +391,47 @@ function updateTitleScore() {
             titleScreen.appendChild(btn);
         }
     }
+}
+// main.js - 新規追加
+function migrateSaveData(oldData) {
+    // 旧IDから新IDへのマッピング（旧IDの数値順）
+    const ID_MIGRATION_MAP = {
+        101: 101, 201: 102, 202: 103, 301: 104, 302: 105, 303: 106, 401: 107, 402: 108, 403: 109, 404: 110, 405: 111, 501: 112, 601: 113, 602: 114, 701: 115, 702: 116, 703: 117, 801: 118, 802: 119, 803: 120, 804: 121, 805: 122
+    };
+    
+    const newData = JSON.parse(JSON.stringify(oldData));
+    
+    // 1. デッキの変換
+    if (newData.deck) {
+        newData.deck = newData.deck.map(oldId => ID_MIGRATION_MAP[oldId] || oldId);
+    }
+    
+    // 2. カード所持枚数 (cards) の変換
+    if (newData.cards) {
+        const newCards = {};
+        for (const oldIdStr in newData.cards) {
+            const oldId = parseInt(oldIdStr);
+            const newId = ID_MIGRATION_MAP[oldId];
+            if (newId) {
+                newCards[newId] = newData.cards[oldIdStr];
+            } else {
+                newCards[oldIdStr] = newData.cards[oldIdStr]; // マップにないID（例: 101など）はそのまま維持
+            }
+        }
+        newData.cards = newCards;
+    }
+
+    // 3. 履歴 (history) の変換
+    if (newData.history) {
+        newData.history.forEach(h => {
+            if (h.cards) { 
+                h.cards = h.cards.map(oldId => ID_MIGRATION_MAP[oldId] || oldId);
+            }
+        });
+    }
+    
+    console.log("Save Data Migration Complete.");
+    return newData;
 }
 
 

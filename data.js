@@ -163,76 +163,97 @@ const GAME_DATA = {
 // Updated: data.js (CARD_DB アトミック・システム完全版)
 
 const CARD_DB = [
-    // --- MAGIC CARDS ---
+    // --- RE-NUMBERED CARDS (Total 22 cards: New ID 101 to 122) ---
+    // 旧ID: 101 -> 新ID: 101
     { id: 101, name: "死者蘇生", rarity: "UR", type: "MAGIC", cost: 8, desc: "HPを最大値まで完全回復", se: "se-heal",
       effects: [{ type: "HEAL", value: "FULL" }], packs: ["vol1"] },
 
-    { id: 201, name: "サンダー・ボルト", rarity: "SR", type: "MAGIC", cost: 6, desc: "100ダメ＋スタン(1T行動不能)", se: "se-boom",
+    // 旧ID: 201 -> 新ID: 102
+    { id: 102, name: "サンダー・ボルト", rarity: "SR", type: "MAGIC", cost: 6, desc: "100ダメ＋スタン(1T行動不能)", se: "se-boom",
       effects: [{ type: "DAMAGE", value: 100 }, { type: "STATE_E", stun: true }], packs: ["vol1"] },
 
-    { id: 202, name: "強欲な壺", rarity: "SR", type: "MAGIC", cost: 2, desc: "カードを2枚引く", se: "se-heal",
+    // 旧ID: 202 -> 新ID: 103
+    { id: 103, name: "強欲な壺", rarity: "SR", type: "MAGIC", cost: 2, desc: "カードを2枚引く", se: "se-heal",
       effects: [{ type: "DRAW", value: 2 }], packs: ["vol1"] },
 
-    { id: 301, name: "光の護封剣", rarity: "R", type: "MAGIC", cost: 5, desc: "3ターンの間、被ダメージ半減", se: "se-buff",
+    // 旧ID: 301 -> 新ID: 104
+    { id: 104, name: "光の護封剣", rarity: "R", type: "MAGIC", cost: 5, desc: "3ターンの間、被ダメージ半減", se: "se-buff",
       effects: [{ type: "STATE_P", state: { guardTurn: 3 }, msg: "3ターン防御(被ダメ半減)！" }], packs: ["vol1"] },
 
-    { id: 401, name: "火の粉", rarity: "N", type: "MAGIC", cost: 1, desc: "敵に30ダメージ", se: "se-attack",
+    // 旧ID: 302 -> 新ID: 105 (TRAP)
+    { id: 105, name: "落とし穴", rarity: "R", type: "TRAP", cost: 3, desc: "敵出現時、50ダメ＋1Tスタン", se: "se-hit",
+      trap: { trigger: "summon", effects: [{ type: "DAMAGE", value: 50 }, { type: "STATE_E", stun: true }] }, packs: ["vol1"] },
+
+    // 旧ID: 303 -> 新ID: 106 (TRAP)
+    { id: 106, name: "聖なるバリア", rarity: "R", type: "TRAP", cost: 4, desc: "攻撃無効化＋50ダメ", se: "se-boom",
+      trap: { trigger: "attack", effects: [{ type: "NEGATE" }, { type: "DAMAGE", value: 50 }] }, packs: ["vol1"] },
+
+    // 旧ID: 401 -> 新ID: 107
+    { id: 107, name: "火の粉", rarity: "N", type: "MAGIC", cost: 1, desc: "敵に30ダメージ", se: "se-attack",
       effects: [{ type: "DAMAGE", value: 30 }], packs: ["vol1"] },
 
-    { id: 402, name: "治療の神", rarity: "N", type: "MAGIC", cost: 4, desc: "HPを50回復", se: "se-heal",
+    // 旧ID: 402 -> 新ID: 108
+    { id: 108, name: "治療の神", rarity: "N", type: "MAGIC", cost: 4, desc: "HPを50回復", se: "se-heal",
       effects: [{ type: "HEAL", value: 50 }], packs: ["vol1"] },
 
-    { id: 404, name: "昼夜の大火事", rarity: "N", type: "MAGIC", cost: 3, desc: "敵に80ダメージ", se: "se-attack",
+    // 旧ID: 403 -> 新ID: 109 (TRAP)
+    { id: 109, name: "はさみ撃ち", rarity: "N", type: "TRAP", cost: 2, desc: "被弾時に敵に80ダメージ", se: "se-attack",
+      trap: { trigger: "attack", effects: [{ type: "DAMAGE", value: 80 }] }, packs: ["vol1"] },
+
+    // 旧ID: 404 -> 新ID: 110
+    { id: 110, name: "昼夜の大火事", rarity: "N", type: "MAGIC", cost: 3, desc: "敵に80ダメージ", se: "se-attack",
       effects: [{ type: "DAMAGE", value: 80 }], packs: ["vol1"] },
 
-    { id: 405, name: "突進", rarity: "N", type: "MAGIC", cost: 2, desc: "攻撃力2倍(次の1投のみ)", se: "se-buff",
+    // 旧ID: 405 -> 新ID: 111
+    { id: 111, name: "突進", rarity: "N", type: "MAGIC", cost: 2, desc: "攻撃力2倍(次の1投のみ)", se: "se-buff",
       effects: [{ type: "STATE_P", state: { atkBuff: 2.0, atkDuration: 1 }, msg: "攻撃力2倍(次の一撃)！" }], packs: ["vol1"] },
 
-    { id: 501, name: "天使の施し", rarity: "UR", type: "MAGIC", cost: 2, desc: "手札を1枚選んで捨て、3枚引く", se: "se-heal",
+    // 旧ID: 501 -> 新ID: 112
+    { id: 112, name: "天使の施し", rarity: "UR", type: "MAGIC", cost: 2, desc: "手札を1枚選んで捨て、3枚引く", se: "se-heal",
       effects: [{ type: "DISCARD_SELECT", count: 1 }, { type: "DRAW", value: 3 }], packs: ["vol2"] },
 
-    { id: 601, name: "ブラック・ホール", rarity: "SR", type: "MAGIC", cost: 7, desc: "手札全捨て＋150ダメ", se: "se-boom",
+    // 旧ID: 601 -> 新ID: 113
+    { id: 113, name: "ブラック・ホール", rarity: "SR", type: "MAGIC", cost: 7, desc: "手札全捨て＋150ダメ", se: "se-boom",
       effects: [{ type: "DAMAGE", value: 150 }, { type: "DISCARD_ALL" }], packs: ["vol2"] },
 
-    { id: 701, name: "巨大化", rarity: "R", type: "MAGIC", cost: 3, desc: "HP半分以下なら3倍、半分以上なら0.5倍", se: "se-buff",
+    // 旧ID: 602 -> 新ID: 114 (TRAP)
+    { id: 114, name: "魔法の筒", rarity: "SR", type: "TRAP", cost: 4, desc: "攻撃無効＋そのダメを反射", se: "se-boom",
+      trap: { trigger: "attack", effects: [{ type: "NEGATE" }, { type: "REFLECT", mult: 1.0 }] }, packs: ["vol2"] },
+
+    // 旧ID: 701 -> 新ID: 115
+    { id: 115, name: "巨大化", rarity: "R", type: "MAGIC", cost: 3, desc: "HP半分以下なら3倍、半分以上なら0.5倍", se: "se-buff",
       effects: [
         { cond: { src: "p_hp", op: "lte", val: 50 }, type: "STATE_P", state: { atkBuff: 3.0, atkDuration: 1 }, msg: "HP劣勢…逆転の3倍パワー！" },
         { cond: { src: "p_hp", op: "gt", val: 50 }, type: "STATE_P", state: { atkBuff: 0.5, atkDuration: 1 }, msg: "HP優勢…油断の0.5倍パワー…" }
     ], packs: ["vol2"] },
 
-    { id: 702, name: "地割れ", rarity: "R", type: "MAGIC", cost: 3, desc: "40ダメ＋敵の防御を破壊", se: "se-attack",
+    // 旧ID: 702 -> 新ID: 116
+    { id: 116, name: "地割れ", rarity: "R", type: "MAGIC", cost: 3, desc: "40ダメ＋敵の防御を破壊", se: "se-attack",
       effects: [{ type: "DAMAGE", value: 40 }, { type: "STATE_E", state: { guard: false }, msg: "敵の防御を破壊！" }], packs: ["vol2"] },
 
-    { id: 801, name: "守備封じ", rarity: "N", type: "MAGIC", cost: 1, desc: "敵の防御状態を解除", se: "se-tap",
+    // 旧ID: 703 -> 新ID: 117 (TRAP)
+    { id: 117, name: "六芒星の呪縛", rarity: "R", type: "TRAP", cost: 3, desc: "敵攻撃半減＋1Tスタン", se: "se-buff",
+      trap: { trigger: "attack", effects: [{ type: "STATE_E", stun: true }, { type: "DAMAGE_MULT", value: 0.5 }] }, packs: ["vol2"] },
+
+    // 旧ID: 801 -> 新ID: 118
+    { id: 118, name: "守備封じ", rarity: "N", type: "MAGIC", cost: 1, desc: "敵の防御状態を解除", se: "se-tap",
       effects: [{ type: "STATE_E", state: { guard: false }, msg: "敵の防御を解除した！" }], packs: ["vol2"] },
 
-    { id: 802, name: "火あぶりの刑", rarity: "N", type: "MAGIC", cost: 2, desc: "敵に60ダメージ", se: "se-attack",
+    // 旧ID: 802 -> 新ID: 119
+    { id: 119, name: "火あぶりの刑", rarity: "N", type: "MAGIC", cost: 2, desc: "敵に60ダメージ", se: "se-attack",
       effects: [{ type: "DAMAGE", value: 60 }], packs: ["vol2"] },
 
-    { id: 803, name: "援軍", rarity: "N", type: "MAGIC", cost: 2, desc: "HP30回復＋次の一撃+20", se: "se-heal",
+    // 旧ID: 803 -> 新ID: 120
+    { id: 120, name: "援軍", rarity: "N", type: "MAGIC", cost: 2, desc: "HP30回復＋次の一撃+20", se: "se-heal",
       effects: [{ type: "HEAL", value: 30 }, { type: "STATE_P", state: { atkFlat: 20, atkDuration: 1 } }], packs: ["vol2"] },
 
-    { id: 804, name: "闇の仮面", rarity: "N", type: "MAGIC", cost: 4, desc: "墓地の魔法カードを回収", se: "se-tap",
+    // 旧ID: 804 -> 新ID: 121
+    { id: 121, name: "闇の仮面", rarity: "N", type: "MAGIC", cost: 4, desc: "墓地の魔法カードを回収", se: "se-tap",
       effects: [{ type: "SPECIAL_SALVAGE" }], packs: ["vol2"] },
 
-    { id: 805, name: "最終戦争", rarity: "N", type: "MAGIC", cost: 5, desc: "自傷50＋敵に150ダメージ", se: "se-boom",
-      effects: [{ type: "DAMAGE", value: 150 }, { type: "DAMAGE", target: "PLAYER", value: 50 }], packs: ["vol2"] },
-
-    // --- TRAP CARDS ---
-    { id: 302, name: "落とし穴", rarity: "R", type: "TRAP", cost: 3, desc: "敵出現時、50ダメ＋1Tスタン", se: "se-hit",
-      trap: { trigger: "summon", effects: [{ type: "DAMAGE", value: 50 }, { type: "STATE_E", stun: true }] }, packs: ["vol1"] },
-
-    { id: 303, name: "聖なるバリア", rarity: "R", type: "TRAP", cost: 4, desc: "攻撃無効化＋50ダメ", se: "se-boom",
-      trap: { trigger: "attack", effects: [{ type: "NEGATE" }, { type: "DAMAGE", value: 50 }] }, packs: ["vol1"] },
-
-    { id: 403, name: "はさみ撃ち", rarity: "N", type: "TRAP", cost: 2, desc: "被弾時に敵に80ダメージ", se: "se-attack",
-      trap: { trigger: "attack", effects: [{ type: "DAMAGE", value: 80 }] }, packs: ["vol1"] },
-
-    { id: 602, name: "魔法の筒", rarity: "SR", type: "TRAP", cost: 4, desc: "攻撃無効＋そのダメを反射", se: "se-boom",
-      trap: { trigger: "attack", effects: [{ type: "NEGATE" }, { type: "REFLECT", mult: 1.0 }] }, packs: ["vol2"] },
-
-    { id: 703, name: "六芒星の呪縛", rarity: "R", type: "TRAP", cost: 3, desc: "敵攻撃半減＋1Tスタン", se: "se-buff",
-      trap: { trigger: "attack", effects: [{ type: "STATE_E", stun: true }, { type: "DAMAGE_MULT", value: 0.5 }] }, packs: ["vol2"] }
+    // 旧ID: 805 -> 新ID: 122
+    { id: 122, name: "最終戦争", rarity: "N", type: "MAGIC", cost: 5, desc: "自傷50＋敵に150ダメージ", se: "se-boom",
+      effects: [{ type: "DAMAGE", value: 150 }, { type: "DAMAGE", target: "PLAYER", value: 50 }], packs: ["vol2"] }
 ];
 
 // Pack Data
