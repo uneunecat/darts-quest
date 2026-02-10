@@ -344,6 +344,7 @@ function selectSlot(n) {
     // ★★★ 修正: 古いバージョンのセーブデータチェックと移行処理 ★★★
     // savedDataとしてロードする前に、古いID構造を新しいID構造に変換する
     if (loadedData && !loadedData.cards) { // cardsキーがない、またはhistoryがない/古い可能性
+        console.log("Migrating Save Data for slot:", currentSlot);
         loadedData = migrateSaveData(loadedData);
     }
     
@@ -354,6 +355,9 @@ function selectSlot(n) {
     if (!savedData.cards) savedData.cards = {};
     allSaveData[currentSlot] = savedData; // 移行後のデータを保存し直す
     
+    // ★★★ デバッグログ追加: 移行後のデータ構造を確認 ★★★
+    console.log("Saved Data State after Load/Migrate:", savedData);
+
     updateTitleScore();
     playSE("se-tap");
     playBGM("bgm-title");
@@ -2180,6 +2184,10 @@ function renderDeckEditor() {
     listGrid.innerHTML = "";
     let ownedCount = 0;
     CARD_DB.forEach(card => {
+        if (!card) { // ★★★ 新規追加: undefined チェック ★★★
+            console.error("Error: CARD_DB contains an undefined element! Please re-check data.js.");
+            return; // この要素をスキップ
+        }
         const count = savedData.cards[card.id] || 0;
         if (count > 0) ownedCount++;
         const inDeckCount = savedData.deck.filter(id => id === card.id).length;
