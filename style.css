@@ -653,7 +653,7 @@ html, body {
 }
 
 /* --- Rarity: 枠線 --- */
-[class*="rarity-frame-"] { border-width: 2px !important; border-style: solid !important; }
+[class*="rarity-frame-"] { border-width: 2.5cqw !important; border-style: solid !important; }
 .rarity-frame-N  { border-color: #555 !important; }
 .rarity-frame-R  { border-color: #c0c0c0 !important; box-shadow: 0 0 8px rgba(192, 192, 192, 0.4) !important; }
 .rarity-frame-SR { border-color: #ffd700 !important; box-shadow: 0 0 12px rgba(255, 215, 0, 0.5) !important; }
@@ -709,6 +709,22 @@ html, body {
 .std-card.battle .std-count, .std-card.battle .std-type { display: none; }
 .std-card.small .std-text-area, .std-card.small .std-count { display: none; }
 .std-card.small .std-art { flex: 0 0 100%; border-bottom: none; }
+.std-card.empty {
+    border: 2px dashed #444 !important; /* 点線枠 */
+    background: rgba(255, 255, 255, 0.02) !important; /* ほぼ透明 */
+    box-shadow: none !important;
+    cursor: default;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.empty-label {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 12cqw; /* カード幅の12%サイズで中央表示 */
+    color: #444;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
 
 /* --- Grid: 4列構造の維持 --- */
 .card-grid {

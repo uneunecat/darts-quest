@@ -2102,21 +2102,21 @@ function renderDeckEditor() {
         if (cardId) {
             const card = CARD_DB.find(c => c.id === cardId);
             const totalOwned = savedData.cards[card.id] || 0;
+            // デッキ内は small モード
             const div = createCardElement(card, "small", 0, totalOwned);
-            div.onmouseenter = () => showCardDetail(card);
             deckGrid.appendChild(div);
         } else {
-            const div = document.createElement("div");
-            div.className = "std-card small empty-slot";
-            div.innerHTML = `<div class="std-art">EMPTY</div><div class="std-text-area"></div>`;
+            // Updated: 手書きHTMLを廃止し、標準システムの "empty" モードを呼び出す
+            const div = createCardElement(null, "empty");
             deckGrid.appendChild(div);
         }
     }
     
+    // (以下、カードリスト側の描画ロジックは変更なし)
     const deckCount = savedData.deck.length;
     const countEl = el("deck-count");
     countEl.innerText = deckCount;
-    if (deckCount < DECK_SIZE) { countEl.style.color = "#ff5555"; } else { countEl.style.color = "#00ff00"; }
+    countEl.style.color = (deckCount < DECK_SIZE) ? "#ff5555" : "#00ff00";
     
     const listGrid = el("card-grid");
     listGrid.innerHTML = "";
@@ -2136,6 +2136,15 @@ function renderDeckEditor() {
 // Updated: createCardElement - ホバーイベントとクラス構造を完全復元
 function createCardElement(card, mode = "standard", remainingCount = 1, totalCount = 0) {
     const div = document.createElement("div");
+    
+    // --- EMPTY状態の処理 ---
+    if (mode === "empty" || !card) {
+        div.className = `std-card empty`;
+        div.innerHTML = `<div class="empty-label">EMPTY</div>`;
+        return div;
+    }
+
+    // --- 通常カードの処理 (既存ロジック) ---
     const isOwned = (mode === "small" || mode === "battle" || totalCount > 0);
     const notOwnedClass = (!isOwned) ? "card-not-owned" : "";
     
@@ -2167,7 +2176,6 @@ function createCardElement(card, mode = "standard", remainingCount = 1, totalCou
         </div>
     `;
     
-    // イベント設定
     div.onclick = function (e) {
         if (div.dataset.longPressed === "true") { div.dataset.longPressed = "false"; return; }
         if (!isOwned) return;
@@ -2176,11 +2184,8 @@ function createCardElement(card, mode = "standard", remainingCount = 1, totalCou
         else if (mode === "standard") addToDeck(card.id);
     };
 
-    // Updated: ホバー時に詳細を表示する機能を復元
     div.onmouseenter = () => {
-        if (mode !== "battle" && typeof showCardDetail === 'function') {
-            showCardDetail(card);
-        }
+        if (mode !== "battle" && typeof showCardDetail === 'function') showCardDetail(card);
     };
     
     if (isOwned) { setupLongPress(div, card); }
