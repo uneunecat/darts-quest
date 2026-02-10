@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v2.13.1 Fixed Variable Scope)");
+console.log("★ main.js is loaded! (v2.15.16 Fixed Variable Scope)");
 
 // =========================================
 // 1. UTILITY FUNCTIONS (ヘルパー関数)
@@ -2425,7 +2425,8 @@ function showHistory() {
             
             const div = document.createElement("div");
             div.className = "history-row" + (isLose ? " row-lose" : " row-clear");
-            
+            const dpText = h.dp > 0 ? `+${h.dp}` : `+0`;
+
             div.innerHTML = `
                 <div class="h-col-date">${h.date.split(' ')[0]}</div>
                 <div class="h-col-stage">${stageDisplay}</div>
