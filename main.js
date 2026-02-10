@@ -341,23 +341,20 @@ function selectSlot(n) {
     
     let loadedData = allSaveData[currentSlot];
     
-    // ★★★ 修正: 古いバージョンのセーブデータチェックと移行処理 ★★★
-    // savedDataとしてロードする前に、古いID構造を新しいID構造に変換する
-    if (loadedData && !loadedData.cards) { // cardsキーがない、またはhistoryがない/古い可能性
-        console.log("Migrating Save Data for slot:", currentSlot);
+    // ★★★ 修正: 必ず移行処理を試みる ★★★
+    // 移行済みであれば、移行後のデータが返ってくる
+    // 移行中でなければ、古いデータが渡され、migrateSaveDataが変換を行う
+    if (loadedData) { 
         loadedData = migrateSaveData(loadedData);
     }
     
     savedData = loadedData;
     
-    // データ修復 (上記移行処理で対応済みのものも含む)
+    // データ修復 (移行処理で対応済みだが、念のため)
     if (!savedData.deck) savedData.deck = [];
     if (!savedData.cards) savedData.cards = {};
     allSaveData[currentSlot] = savedData; // 移行後のデータを保存し直す
     
-    // ★★★ デバッグログ追加: 移行後のデータ構造を確認 ★★★
-    console.log("Saved Data State after Load/Migrate:", savedData);
-
     updateTitleScore();
     playSE("se-tap");
     playBGM("bgm-title");
@@ -412,11 +409,11 @@ function migrateSaveData(oldData) {
     // 2. カード所持枚数 (cards) の変換
     if (newData.cards) {
         const newCards = {};
-        for (const oldIdStr in newData.cards) {
+        for (const oldIdStr in newData.cards) { // oldIdStr は文字列（例: "201"）
             const oldId = parseInt(oldIdStr);
             const newId = ID_MIGRATION_MAP[oldId];
             if (newId) {
-                newCards[newId] = newData.cards[oldIdStr]; // ★★★ キーを新しいIDに変換 ★★★
+                newCards[newId] = newData.cards[oldIdStr]; // ★★★ キーが数値でも文字列でも、JSオブジェクトはキーを文字列化するため問題ないはず ★★★
             } else {
                 newCards[oldIdStr] = newData.cards[oldIdStr]; // マップにないID（例: 101など）はそのまま維持
             }
