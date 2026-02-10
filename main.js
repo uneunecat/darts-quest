@@ -430,8 +430,6 @@ function migrateSaveData(oldData) {
             }
         });
     }
-    
-    console.log("Save Data Migration Complete.");
     return newData;
 }
 
@@ -2181,10 +2179,6 @@ function renderDeckEditor() {
     listGrid.innerHTML = "";
     let ownedCount = 0;
     CARD_DB.forEach(card => {
-        if (!card) { // ★★★ デバッグチェックを追加 ★★★
-            console.error("Error: CARD_DB contains an undefined element in the list loop! Check data.js definition.");
-            return; // undefined要素はスキップ
-        }
         const count = savedData.cards[card.id] || 0;
         if (count > 0) ownedCount++;
         const inDeckCount = savedData.deck.filter(id => id === card.id).length;
