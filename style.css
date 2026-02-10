@@ -596,14 +596,17 @@ html, body {
     flex-direction: column;
     overflow: hidden;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-    transition: transform 0.1s;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s; /* Updated: 浮き上がり用 */
     cursor: pointer;
     flex-shrink: 0;
     box-sizing: border-box !important;
-    /* 重要: 自分自身をコンテナとして定義 */
     container-type: inline-size; 
-    /* 本体に枠線は持たせない(擬似要素で描画するため) */
     border: none !important;
+}
+.std-card:hover {
+    transform: translateY(-5px) scale(1.03);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.6), 0 0 15px rgba(255, 255, 255, 0.1);
+    z-index: 100;
 }
 
 /* --- Updated: 枠線専用の擬似要素 (cqwを正しく参照するための仕組み) --- */
@@ -627,9 +630,8 @@ html, body {
 /* URの特殊枠 (::before にすべての装飾を集約) */
 .rarity-frame-UR::before {
     border-color: transparent;
-    background-image: linear-gradient(45deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
-    background-size: 200% auto;
-    /* 中央をくり抜くためのマスク設定 */
+    background-image: linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+    background-size: 300% 100%; /* 幅を広げて流れを緩やかに */
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
@@ -675,7 +677,7 @@ html, body {
     position: absolute; top: 0; left: 0;
     background: linear-gradient(135deg, #00d2fc, #005c75);
     color: #fff; font-weight: 900;
-    font-size: 12cqw;
+    font-size: clamp(10px, 12cqw, 24px); /* Updated: 下限10pxを保証 */
     padding: 1cqw 4cqw;
     border-bottom-right-radius: 6px;
     z-index: 25; /* 枠(20)より上に表示 */
@@ -686,7 +688,7 @@ html, body {
 .std-count {
     position: absolute; top: 4cqw; right: 4cqw;
     background: rgba(0,0,0,0.8); color: #fff;
-    font-size: 8cqw;
+    font-size: clamp(8px, 8cqw, 16px); /* Updated: 下限8pxを保証 */
     padding: 1cqw 3cqw;
     border-radius: 4px;
     border: 1px solid rgba(255,255,255,0.3);
@@ -768,6 +770,7 @@ html, body {
     backdrop-filter: blur(8px);
     opacity: 0;
     transition: opacity 0.3s ease;
+    pointer-events: all; /* タップを確実に拾う */
 }
 #card-zoom-overlay.visible {
     display: flex;
@@ -809,6 +812,10 @@ html, body {
     }
 }
 @keyframes rainbow-text { to { background-position: 200% center; } }
+@keyframes rainbow-flow {
+    0% { background-position: 0% 0%; }
+    100% { background-position: 150% 0%; } /* 一方向に流し切る */
+}
 @keyframes sheen-move { 0% { transform: translateY(-30%) translateX(-30%); } 100% { transform: translateY(30%) translateX(30%); } }
 
 
@@ -898,7 +905,7 @@ html, body {
 .column-header { color: #fff; font-size: 14px; margin-bottom: 5px; text-align: left; padding-left: 5px; border-bottom: 1px solid #444; padding-bottom: 5px; }
 .deck-grid {
     display: grid !important; grid-template-columns: repeat(5, 1fr) !important;
-    gap: 6px !important; padding: 10px; align-content: start; overflow-y: scroll !important;
+    gap: 8px !important; padding: 12px; align-content: start; overflow-y: scroll !important;
 }
 .deck-grid .std-card {
     width: 100% !important; height: auto !important; aspect-ratio: 2/3 !important;

@@ -2222,26 +2222,27 @@ function showZoomCard(card) {
     if (!overlay) {
         overlay = document.createElement("div");
         overlay.id = "card-zoom-overlay";
-        overlay.onclick = closeZoomCard;
         document.body.appendChild(overlay);
     }
     
-    // standard モードで生成
+    // 既存のイベントを一度削除して再登録（二重登録防止）
+    overlay.onclick = closeZoomCard;
+    
     const cardEl = createCardElement(card, "standard", 0, 1);
+    // カード自体をクリックしても閉じないようにストップ
+    cardEl.onclick = (e) => e.stopPropagation();
     
     overlay.innerHTML = ""; 
     overlay.appendChild(cardEl);
     
     const hint = document.createElement("div");
     hint.className = "zoom-close-hint";
-    hint.innerText = "TAP TO CLOSE";
+    hint.innerText = "TAP ANYWHERE TO CLOSE";
     overlay.appendChild(hint);
 
-    // 表示開始
     overlay.style.display = "flex";
-    document.body.style.overflow = "hidden"; // 背面のスクロール禁止
+    document.body.style.overflow = "hidden";
     
-    // transitionを効かせるため、次のフレームでクラス追加
     requestAnimationFrame(() => {
         overlay.classList.add("visible");
     });
