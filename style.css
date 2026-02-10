@@ -599,8 +599,8 @@ html, body {
     transition: transform 0.1s;
     cursor: pointer;
     flex-shrink: 0;
-    box-sizing: border-box;
-    /* 重要: 自分の幅を基準に中のサイズを決める設定 */
+    /* 重要: 枠線の太さが外寸(width)に影響しないよう border-box を指定 */
+    box-sizing: border-box !important;
     container-type: inline-size; 
 }
 
@@ -653,7 +653,7 @@ html, body {
 }
 
 /* --- Rarity: 枠線 --- */
-[class*="rarity-frame-"] { border-width: 2px !important; border-style: solid !important; }
+[class*="rarity-frame-"] { border-width: 1.5cqw !important; border-style: solid !important; }
 .rarity-frame-N  { border-color: #555 !important; }
 .rarity-frame-R  { border-color: #c0c0c0 !important; box-shadow: 0 0 8px rgba(192, 192, 192, 0.4) !important; }
 .rarity-frame-SR { border-color: #ffd700 !important; box-shadow: 0 0 12px rgba(255, 215, 0, 0.5) !important; }
@@ -709,6 +709,26 @@ html, body {
 .std-card.battle .std-count, .std-card.battle .std-type { display: none; }
 .std-card.small .std-text-area, .std-card.small .std-count { display: none; }
 .std-card.small .std-art { flex: 0 0 100%; border-bottom: none; }
+.std-card.empty {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1.5cqw dashed rgba(255, 255, 255, 0.2) !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: none;
+    cursor: default;
+}
+.std-card.empty::after {
+    content: "EMPTY";
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 12cqw;
+    color: rgba(255, 255, 255, 0.2);
+    letter-spacing: 0.5cqw;
+}
+.std-card.empty .std-art,
+.std-card.empty .std-text-area {
+    display: none;
+}
 
 /* --- Grid: 4列構造の維持 --- */
 .card-grid {
@@ -717,6 +737,13 @@ html, body {
     gap: 10px !important;
     padding: 10px;
     align-content: start;
+}
+
+/* Zoom時の設定 (standard形式をそのまま巨大化) */
+#card-zoom-overlay .std-card.standard {
+    width: 85vw;
+    max-width: 400px;
+    animation: zoom-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
 /* --- Animations --- */

@@ -2102,13 +2102,12 @@ function renderDeckEditor() {
         if (cardId) {
             const card = CARD_DB.find(c => c.id === cardId);
             const totalOwned = savedData.cards[card.id] || 0;
+            // 既存カードを表示
             const div = createCardElement(card, "small", 0, totalOwned);
-            div.onmouseenter = () => showCardDetail(card);
             deckGrid.appendChild(div);
         } else {
-            const div = document.createElement("div");
-            div.className = "std-card small empty-slot";
-            div.innerHTML = `<div class="std-art">EMPTY</div><div class="std-text-area"></div>`;
+            // Updated: null を渡して EMPTY カードを生成
+            const div = createCardElement(null, "small");
             deckGrid.appendChild(div);
         }
     }
@@ -2136,6 +2135,11 @@ function renderDeckEditor() {
 // Updated: createCardElement - ホバーイベントとクラス構造を完全復元
 function createCardElement(card, mode = "standard", remainingCount = 1, totalCount = 0) {
     const div = document.createElement("div");
+    // card が null の場合は EMPTY カードを生成
+    if (!card) {
+        div.className = `std-card ${mode} empty`;
+        return div;
+    }
     const isOwned = (mode === "small" || mode === "battle" || totalCount > 0);
     const notOwnedClass = (!isOwned) ? "card-not-owned" : "";
     
