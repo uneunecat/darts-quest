@@ -2133,21 +2133,18 @@ function renderDeckEditor() {
 }
 
 
+// Updated: createCardElement - ホバーイベントとクラス構造を完全復元
 function createCardElement(card, mode = "standard", remainingCount = 1, totalCount = 0) {
     const div = document.createElement("div");
     const isOwned = (mode === "small" || mode === "battle" || totalCount > 0);
     const notOwnedClass = (!isOwned) ? "card-not-owned" : "";
     
-    // カード本体のクラス設定
-    div.className = `std-card ${mode} rarity-${card.rarity} ${notOwnedClass}`;
+    div.className = `std-card ${mode} rarity-frame-${card.rarity} ${notOwnedClass}`;
     
     const imgPath = `assets/cards/${card.id}.png`;
     const cost = (card.cost !== undefined) ? card.cost : "?";
-    
-    // 背景色クラスの決定
     const bgClass = (card.type === "TRAP") ? "bg-trap" : "bg-magic";
     
-    // レアリティ別テキストクラスの決定
     let textClass = "text-n";
     if (card.rarity === "UR") textClass = "text-ur";
     else if (card.rarity === "SR") textClass = "text-sr";
@@ -2156,7 +2153,6 @@ function createCardElement(card, mode = "standard", remainingCount = 1, totalCou
     const sheenHTML = (card.rarity === "UR" || card.rarity === "SR") ? '<div class="card-sheen"></div>' : '';
     const countText = (mode === "small" || mode === "battle") ? "" : `x${remainingCount}`;
     
-    // 構造の生成（bgClassをstd-text-areaに適用）
     div.innerHTML = `
         <div class="std-art">
             <img src="${imgPath}" onerror="this.style.display='none';">
@@ -2171,13 +2167,20 @@ function createCardElement(card, mode = "standard", remainingCount = 1, totalCou
         </div>
     `;
     
-    // イベント設定（既存ロジック維持）
+    // イベント設定
     div.onclick = function (e) {
         if (div.dataset.longPressed === "true") { div.dataset.longPressed = "false"; return; }
         if (!isOwned) return;
         if (typeof isOpeningPack !== 'undefined' && isOpeningPack) return;
         if (mode === "small") removeFromDeck(card.id);
         else if (mode === "standard") addToDeck(card.id);
+    };
+
+    // Updated: ホバー時に詳細を表示する機能を復元
+    div.onmouseenter = () => {
+        if (mode !== "battle" && typeof showCardDetail === 'function') {
+            showCardDetail(card);
+        }
     };
     
     if (isOwned) { setupLongPress(div, card); }
