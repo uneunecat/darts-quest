@@ -2222,15 +2222,12 @@ function showZoomCard(card) {
     if (!overlay) {
         overlay = document.createElement("div");
         overlay.id = "card-zoom-overlay";
-        // 背景をクリックしても閉じるように設定
         overlay.onclick = closeZoomCard;
         document.body.appendChild(overlay);
     }
     
-    // 標準カード形式 (standard) を採用
+    // standard モードで生成
     const cardEl = createCardElement(card, "standard", 0, 1);
-    cardEl.classList.add("zoom-card-img"); 
-    cardEl.onclick = (e) => e.stopPropagation(); // カード自体のクリックで閉じないようにする
     
     overlay.innerHTML = ""; 
     overlay.appendChild(cardEl);
@@ -2240,11 +2237,15 @@ function showZoomCard(card) {
     hint.innerText = "TAP TO CLOSE";
     overlay.appendChild(hint);
 
+    // 表示開始
     overlay.style.display = "flex";
-    // 背景のスクロールや操作を防止
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow = "hidden"; // 背面のスクロール禁止
     
-    requestAnimationFrame(() => overlay.classList.add("visible"));
+    // transitionを効かせるため、次のフレームでクラス追加
+    requestAnimationFrame(() => {
+        overlay.classList.add("visible");
+    });
+    
     playSE("se-tap");
 }
 
@@ -2252,7 +2253,11 @@ function closeZoomCard() {
     const overlay = document.getElementById("card-zoom-overlay");
     if (overlay) {
         overlay.classList.remove("visible");
-        setTimeout(() => { overlay.style.display = "none"; }, 200);
+        // アニメーションが終わるのを待ってから非表示
+        setTimeout(() => {
+            overlay.style.display = "none";
+            document.body.style.overflow = ""; // スクロール禁止解除
+        }, 300);
     }
 }
 

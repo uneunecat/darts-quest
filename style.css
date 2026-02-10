@@ -653,7 +653,7 @@ html, body {
 }
 
 /* --- Rarity: 枠線 --- */
-[class*="rarity-frame-"] { border-width: 1.5cqw !important; border-style: solid !important; }
+[class*="rarity-frame-"] { border-width: 1cqw !important; border-style: solid !important; }
 .rarity-frame-N  { border-color: #555 !important; }
 .rarity-frame-R  { border-color: #c0c0c0 !important; box-shadow: 0 0 8px rgba(192, 192, 192, 0.4) !important; }
 .rarity-frame-SR { border-color: #ffd700 !important; box-shadow: 0 0 12px rgba(255, 215, 0, 0.5) !important; }
@@ -711,7 +711,7 @@ html, body {
 .std-card.small .std-art { flex: 0 0 100%; border-bottom: none; }
 .std-card.empty {
     background: rgba(255, 255, 255, 0.05) !important;
-    border: 1.5cqw dashed rgba(255, 255, 255, 0.2) !important;
+    border: 1cqw dashed rgba(255, 255, 255, 0.2) !important;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -740,14 +740,45 @@ html, body {
 }
 
 /* Zoom時の設定 (standard形式をそのまま巨大化) */
+#card-zoom-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.9); /* 背景をしっかり暗転 */
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 5000; /* 最前面 */
+    backdrop-filter: blur(8px); /* 背景をぼかして高級感を出す */
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+#card-zoom-overlay.visible {
+    display: flex;
+    opacity: 1;
+}
+/* ズーム時のカードサイズ指定 */
 #card-zoom-overlay .std-card.standard {
-    width: 85vw;
-    max-width: 400px;
+    width: 75vw; /* 画面幅の75% */
+    max-width: 350px; /* ただし最大350pxまで */
+    height: auto;
+    box-shadow: 0 0 30px rgba(0, 210, 252, 0.4);
     animation: zoom-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+/* ズーム時のヒントテキスト */
+.zoom-close-hint {
+    position: absolute;
+    bottom: 40px;
+    color: #aaa;
+    font-size: 14px;
+    letter-spacing: 2px;
+    animation: blink 1.5s infinite;
 }
 
 /* --- Animations --- */
-@keyframes zoom-pop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1.0); opacity: 1; } }
+@keyframes zoom-pop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1.0); opacity: 1; } }
 @keyframes border-rotate { 100% { background-position: 200% 0; } }
 @keyframes rainbow-text { to { background-position: 200% center; } }
 @keyframes sheen-move { 0% { transform: translateY(-30%) translateX(-30%); } 100% { transform: translateY(30%) translateX(30%); } }
