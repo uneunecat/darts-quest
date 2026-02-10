@@ -890,26 +890,35 @@ html, body {
 }
 .h-header {
     display: grid;
-    grid-template-columns: 60px 280px 80px 60px 60px 120px 80px; /* 7列構成に調整 */
-    gap: 8px;
-    padding: 12px 15px;
+    grid-template-columns: 70px 240px 80px 60px 60px 110px 1fr;
+    gap: 10px;
+    padding: 10px 15px;
     font-size: 11px;
     font-weight: bold;
     color: #00d2fc;
     border-bottom: 2px solid #00d2fc;
-    background: rgba(0,0,0,0.4);
+    background: rgba(0,210,252,0.2);
     text-align: center;
     font-family: 'Roboto Mono', monospace;
 }
 .h-header div:nth-child(7) { text-align: right; } /* DP列 */
 .history-row {
     display: grid;
-    grid-template-columns: 60px 280px 80px 60px 60px 120px 80px; /* 7列構成に調整 */
-    gap: 8px;
+    grid-template-columns: 70px 240px 80px 60px 60px 110px 1fr;
+    gap: 10px;
     align-items: center; justify-content: space-between;
-    background: rgba(255, 255, 255, 0.05); border: 1px solid #444; border-radius: 6px;
-    padding: 10px 15px; font-family: 'Roboto Mono', monospace; font-size: 12px;
+    background: rgba(255, 255, 255, 0.05); border: 1px solid #444; border-radius: 4px;
+    padding: 10px 15px; font-family: 'Roboto Mono', monospace; font-size: 13px;
     transition: all 0.2s;
+    margin-bottom: 5px;
+    border-left: 4px solid #444;
+}
+.modal-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding: 0 10px;
 }
 .history-row:hover { background: rgba(255, 255, 255, 0.1); border-color: #00d2fc; }
 .history-row.win { border-left: 4px solid #ffd700; box-shadow: 0 0 10px rgba(255, 215, 0, 0.1); }
@@ -918,6 +927,9 @@ html, body {
 .res-win-text { color: #ffd700; text-shadow: 0 0 5px gold; }
 .res-extra-text { color: #f0f; text-shadow: 0 0 5px #f0f; }
 .res-lose-text { color: #aaa; }
+.row-clear { border-left-color: #ffd700; }
+.row-lose { border-left-color: #ff4444; opacity: 0.8; }
+.row-lose .h-col-res { color: #ff4444; }
 .h-date { font-size: 10px; }
 .h-stage { font-size: 11px; font-weight: bold; color: #eee; }
 .h-result { font-weight: 900; letter-spacing: 1px; }
@@ -930,8 +942,9 @@ html, body {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+.h-col-stage { text-align: left; } /* ステージ名は左寄せ */
+.h-col-dp { text-align: right; color: #ffd700; font-weight: bold; } /* DPは右寄せ */
 .h-stage-long {
-    text-align: left;
     font-size: 11px;
     font-weight: bold;
     color: #eee;
@@ -969,6 +982,24 @@ html, body {
 #history-modal .sub-btn:hover {
     color: #ff5555 !important; transform: scale(1.2) !important;
     background: none !important; box-shadow: none !important;
+}
+* 右上のバツボタンのデザイン */
+.header-close-btn {
+    background: none;
+    border: 1px solid #555;
+    color: #888;
+    font-size: 20px;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    line-height: 28px;
+    border-radius: 50%;
+    transition: 0.2s;
+}
+.header-close-btn:hover {
+    color: #fff;
+    border-color: #fff;
+    background: rgba(255,255,255,0.1);
 }
 
 /* Pack Opening */

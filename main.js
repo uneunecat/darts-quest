@@ -1146,7 +1146,13 @@ function winBattle() {
 function loseGame() {
     isProcessing = true;
     playBGM("bgm-lose");
-    // ★ FIX: showDialog を使用して安全にボタン生成
+
+    // Updated: 敗北時も履歴を保存する処理を追加
+    // finishSession(結果の種類, PPR, 倍率, ランク, ターン数)
+    const ppr = totalDarts > 0 ? ((totalScore / totalDarts) * 3).toFixed(1) : 0;
+    const stageTurns = totalGameTurns - stageStartTurn;
+    finishSession("LOSE", parseFloat(ppr), STAGE_MASTER[stage]?.multiplier || 1.0, "C", stageTurns);
+
     showDialog(
         "YOU DIED", 
         "力尽きました...", 
@@ -2370,23 +2376,26 @@ function finishSession(resultType, ppr, multiplier = 1.0, rank = "", turn = 0) {
     return { isNewRecord: isNewRecord, gainedDP: gainedDP };
 }
 
+// main.js の showHistory を丸ごと差し替え
 function showHistory() {
     const modal = el("history-modal");
+    // Updated: CLOSEボタンを削除し、ヘッダーにバツボタンを配置
     modal.innerHTML = `
         <div class="modal-box history-box" style="max-width:850px; width:95%;">
-            <div class="modal-title" style="color:#00d2fc; font-family:'Cinzel Decorative';">BATTLE LOG</div>
-            <button class="header-close-btn" onclick="closeHistory()">×</button>
+            <div class="modal-header-row">
+                <div class="modal-title" style="color:#00d2fc; font-family:'Cinzel Decorative'; margin:0;">BATTLE LOG</div>
+                <button class="header-close-btn" onclick="closeHistory()">×</button>
+            </div>
             <div class="h-header">
-                <div>DATE</div>
-                <div>STAGE INFO</div>
-                <div>RESULT</div>
-                <div>RANK</div>
-                <div>TURN</div>
-                <div>AVG(RT)</div>
-                <div>DP</div>
+                <div class="h-col-date">DATE</div>
+                <div class="h-col-stage">STAGE INFO</div>
+                <div class="h-col-res">RESULT</div>
+                <div class="h-col-rank">RANK</div>
+                <div class="h-col-turn">TURN</div>
+                <div class="h-col-ppr">AVG(RT)</div>
+                <div class="h-col-dp">DP</div>
             </div>
             <div class="history-list" id="history-list"></div>
-            <button class="modal-btn" onclick="closeHistory()">CLOSE</button>
         </div>
     `;
     
@@ -2396,42 +2405,32 @@ function showHistory() {
         list.innerHTML = "<div style='padding:40px; text-align:center; color:#666;'>NO DATA</div>";
     } else {
         savedData.history.forEach(h => {
-            let resultText = "LOSE";
-            let rankText = h.rank || "";
+            // Updated: 敗北時(LOSE)の判定を明確化
+            let isLose = h.result === "LOSE";
+            let resultText = isLose ? "LOSE" : "CLEAR";
+            let rankText = h.rank || (isLose ? "C" : "-");
             let turnText = h.turn || "-";
 
-            // 旧データの解析（result文字列からランクを抽出）
-            if (!rankText && h.result && h.result.includes("(")) {
-                rankText = h.result.split("(")[1].split(")")[0];
-            }
-            if (h.result && (h.result.includes("WIN") || h.result.includes("CLEAR") || h.result.includes("RETURN"))) {
-                resultText = "CLEAR";
-            }
-
-            // ステージ情報の構築 (STAGE_MASTER参照)
             const master = STAGE_MASTER[h.stage] || { title: "Unknown" };
             const floorText = (h.stage === 5) ? "FINAL" : `${h.floor}F`;
-            const stageDisplay = `STAGE ${h.stage} - ${master.title} ${floorText}`;
+            const stageDisplay = `STG${h.stage} ${master.title} ${floorText}`;
 
-            // ランク別クラス
             let rankClass = "";
             if (rankText === "SSS") rankClass = "rank-sss";
             else if (rankText === "S") rankClass = "rank-s";
             else if (rankText === "A") rankClass = "rank-a";
             
-            const pprVal = h.ppr ? h.ppr.toFixed(1) : "-";
-            const dateStr = h.date ? h.date.split(' ')[0] : "-";
-            
             const div = document.createElement("div");
-            div.className = "history-row" + (resultText === "LOSE" ? " lose" : "");
+            // Updated: class名を整理してCSSで位置を合わせやすくする
+            div.className = "history-row" + (isLose ? " row-lose" : " row-clear");
             div.innerHTML = `
-                <div class="h-date">${dateStr}</div>
-                <div class="h-stage-long">${stageDisplay}</div>
-                <div class="h-result">${resultText}</div>
-                <div class="h-rank ${rankClass}">${rankText}</div>
-                <div class="h-turn">${turnText}</div>
-                <div class="h-detail">${pprVal} (Rt ${h.rt || '-'})</div>
-                <div class="h-dp">+${h.dp} DP</div>
+                <div class="h-col-date">${h.date.split(' ')[0]}</div>
+                <div class="h-col-stage">${stageDisplay}</div>
+                <div class="h-col-res">${resultText}</div>
+                <div class="h-col-rank ${rankClass}">${rankText}</div>
+                <div class="h-col-turn">${turnText}</div>
+                <div class="h-col-ppr">${h.ppr.toFixed(1)} (Rt${h.rt})</div>
+                <div class="h-col-dp">+${h.dp}</div>
             `;
             list.appendChild(div);
         });
