@@ -607,7 +607,7 @@ function spawnEnemy() {
             actionCount: 0
         };
         
-        currentTurn = 1;
+        currentTurn = 0;
         turnInputs = [];
         currentInput = "";
         isJustFinish = false;
@@ -1113,7 +1113,13 @@ function endEnemyTurn() {
     }
 
     updateInfo();
-    preparePlayerTurn();
+    // Updated: 1.5秒待ってからインターバルへ（敵の行動を見せる）
+    setTimeout(() => {
+        // 敗北時はインターバルを出さない
+        if (player.hp > 0) {
+            preparePlayerTurn();
+        }
+    }, 1500);
 }
 
 // Updated: プレイヤーターンの準備（インターバル開始）
@@ -1138,36 +1144,34 @@ function preparePlayerTurn() {
     updateInfo();
 }
 
-// Updated: プレイヤーターンの開始（ドロー実行）
-function startPlayerTurn() {
+// Updated: startPlayerTurn (演出強化版)
+async function startPlayerTurn() {
     if (!isInterval) return;
     
     isInterval = false;
     el("interval-screen").style.display = "none";
     
-    // 1. MPチャージ演出 (タップした瞬間に実行)
-    playSE("se-heal");
-    player.mp = Math.min(player.mp + 3, player.maxMp);
-    triggerFloatText("MP+3", el("player-mp-dots"));
+    // 1. MPチャージ演出 (非同期で1つずつ増やす)
+    await animateMPGain(3);
     
     // 2. ターンの進行
     currentTurn++;
     
-    // 3. ドロー演出（時間差でカードを出現させる）
+    // 3. ドロー演出
     if (floor === 1 && player.hand.length === 0) {
         let dCount = 0;
         const drawLoop = setInterval(() => {
-            executeDrawWithAnim(); // 演出付きドロー
+            executeDrawWithAnim();
             dCount++;
             if (dCount >= 3) {
                 clearInterval(drawLoop);
-                addLog("--- YOUR TURN ---", "system");
+                addLog("--- YOUR TURN ---", "log-skill");
             }
         }, 250);
     } else {
         setTimeout(() => {
             executeDrawWithAnim();
-            addLog("--- YOUR TURN ---", "system");
+            addLog("--- YOUR TURN ---", "log-skill");
         }, 200);
     }
 }
@@ -1187,18 +1191,38 @@ function executeDrawWithAnim() {
         lastCard.classList.add("card-draw-anim");
     }
 }
+// Updated: MPを1つずつチャージする演出
+async function animateMPGain(amount) {
+    for (let i = 0; i < amount; i++) {
+        if (player.mp >= player.maxMp) break;
+        
+        player.mp++;
+        playSE("se-tap"); // 1音ずつ鳴らす
+        
+        // UI更新（一瞬だけchargingクラスを付けるために手動で操作）
+        const dots = el("player-mp-dots").querySelectorAll(".mp-dot");
+        const targetDot = dots[player.mp - 1];
+        if (targetDot) {
+            targetDot.classList.add("charging");
+            setTimeout(() => targetDot.classList.remove("charging"), 200);
+        }
+        
+        updateInfo(); // 全体更新
+        await new Promise(resolve => setTimeout(resolve, 150)); // 少し待機
+    }
+}
 
+// Updated: winBattle (自動リソース回復を削除)
 function winBattle() {
     if (player.hp <= 0) return;
     
     addLog(`${enemy.name} を倒した`, "system");
-    player.mp = Math.min(player.mp + 3, player.maxMp);
-    triggerFloatText("MP+3", el("player-mp-bar"));
-    drawCard();
     
+    // Updated: ここにあった自動MP回復(player.mp += 3)とdrawCard()を削除しました。
+    // リソースは次のフロアの「開始タップ」で手に入ります。
+
     if (isJustFinish) {
         player.maxHp += 10;
-        const oldHP = player.hp;
         player.hp = Math.min(player.hp + 10, player.maxHp);
         playSE("se-heal");
         addLog(`★JUST FINISH! MaxHP+10 & HP+10`, "heal");
