@@ -243,6 +243,7 @@ let cheatBuffer = "";
 let stageStartTurn = 0;
 let totalGameTurns = 0;
 let clearedStagesLog = [];
+let isInterval = false; // Updated: インターバル中（入力遮断）フラグ
 
 // セーブデータ構造
 let allSaveData = { "slot1": null, "slot2": null, "slot3": null, "lastPlayed": 1 };
@@ -447,8 +448,7 @@ function onDisconnected(event) {
 }
 
 function handleBluetoothNotify(event) {
-    // ゲーム画面以外や処理中は入力を無視
-    if (el("game-screen").style.display === "none" || isProcessing) return;
+    if (el("game-screen").style.display === "none" || isProcessing || isInterval) return; // Updated: isInterval を追加
     
     const value = event.target.value;
     if (value.byteLength > 2) {
@@ -553,7 +553,7 @@ function setupStage(sel, continueMode) {
     }
     
     if (!continueMode) {
-        player.mp = 3;
+        player.mp = 0;
         player.deckLocked = false;
         
         // デッキチェック
@@ -567,7 +567,6 @@ function setupStage(sel, continueMode) {
             player.deck = shuffleArray([...savedData.deck]);
             player.hand = [];
             player.discard = [];
-            for (let i = 0; i < INITIAL_HAND; i++) drawCard(true);
         }
     } else {
         addLog(">> 前ステージの状態を引き継ぎました", "log-system");
@@ -670,7 +669,11 @@ function spawnEnemy() {
         // Chapter Screen が完全に消えるタイミングを待つ (約 3.5秒後)
         setTimeout(handlePreemptiveAI, 3000); 
     } else {
-        // フロア2以降（戦闘中）は即時実行
+        // Updated: 2F以降、先制がない場合は即インターバルへ
+        const aiList = enemy.data.ai || [];
+        const hasPreemptive = aiList.some(a => a.preemptive && checkAICondition(a.cond));
+        if (!hasPreemptive) preparePlayerTurn(); 
+        else handlePreemptiveAI();
         handlePreemptiveAI();
     }
 }
@@ -682,7 +685,7 @@ function spawnEnemy() {
 
 // キーボード入力処理 (デバッグ用)
 function handleEnter() {
-    if (isProcessing) return;
+    if (isProcessing || isInterval) return; // Updated: isInterval を追加
     if (currentInput !== "") {
         const val = parseInt(currentInput);
         if (!isNaN(val)) {
@@ -908,13 +911,13 @@ function executeEnemySkill(skill, isPreemptive = false) {
             addLog(`${enemy.name}は ${healVal} 回復した`, "log-heal");
             el("enemy-hp-value").innerText = enemy.hp;
             displayEnemyHP = enemy.hp;
-            if (!isPreemptive) endEnemyTurn();
+            if (!isPreemptive) preparePlayerTurn(); // Updated: endEnemyTurnから変更
             break;
 
         case "BUFF_E":
             Object.assign(enemy.state, skill.state);
             if (skill.msg) addLog(skill.msg, "log-enemy");
-            if (!isPreemptive) endEnemyTurn();
+            if (!isPreemptive) preparePlayerTurn(); // Updated: endEnemyTurnから変更
             break;
 
         case "STATE_P":
@@ -949,7 +952,7 @@ function executeEnemySkill(skill, isPreemptive = false) {
                 count++;
                 doEnemyAttack(skill.mult, { callback: () => {
                     if (count < skill.count) setTimeout(loop, 600);
-                    else endEnemyTurn();
+                    else preparePlayerTurn();
                 }});
             };
             loop();
@@ -962,7 +965,7 @@ function executeEnemySkill(skill, isPreemptive = false) {
         case "CHARGE":
             enemy.state.charge = true;
             addLog(`${enemy.name}は力を溜めている…`, "log-enemy");
-            endEnemyTurn();
+            preparePlayerTurn();
             break;
     }
     updateInfo();
@@ -1102,11 +1105,63 @@ function endEnemyTurn() {
     }
 
     currentTurn++;
-    player.mp = Math.min(player.mp + 3, player.maxMp);
-    triggerFloatText("MP+3", el("player-mp-bar"));
-    drawCard();
     updateInfo();
     isProcessing = false;
+    preparePlayerTurn();
+}
+
+// Updated: プレイヤーターンの準備（インターバル開始）
+function preparePlayerTurn() {
+    isInterval = true;
+    isProcessing = false;
+    
+    const overlay = el("interval-screen");
+    const msg = el("interval-msg");
+    const sub = el("interval-sub");
+    
+    // 1Fかつ手札がない場合は初期ドローを案内
+    if (floor === 1 && player.hand.length === 0) {
+        msg.innerText = "GET CARDS";
+        sub.innerText = "TAP TO DRAW 3 CARDS";
+    } else {
+        msg.innerText = "PULL DARTS";
+        sub.innerText = "TAP TO DRAW";
+    }
+    
+    overlay.style.display = "flex";
+    updateInfo();
+}
+
+// Updated: プレイヤーターンの開始（ドロー実行）
+function startPlayerTurn() {
+    if (!isInterval) return; // 二重クリック防止
+    
+    isInterval = false;
+    el("interval-screen").style.display = "none";
+    
+    playSE("se-buff"); // 回復・ドロー開始音
+    
+    // 1. MPチャージ
+    player.mp = Math.min(player.mp + 3, player.maxMp);
+    triggerFloatText("MP+3", el("player-mp-dots"));
+    
+    // 2. ドロー（演出込み）
+    if (floor === 1 && player.hand.length === 0) {
+        // 初期ドロー3枚
+        let dCount = 0;
+        const drawLoop = setInterval(() => {
+            drawCard();
+            dCount++;
+            if (dCount >= 3) clearInterval(drawLoop);
+        }, 200);
+    } else {
+        // 通常ドロー1枚
+        drawCard();
+    }
+    
+    currentTurn++;
+    addLog("--- YOUR TURN ---", "system");
+    updateInfo();
 }
 
 function winBattle() {
@@ -1743,7 +1798,7 @@ function updateInfo() {
         const b = el(btnId); if (!b) return;
         b.innerHTML = `${icon}x${count}`;
         b.className = "item-btn";
-        if (player.state.itemLockTurn > 0 || turnInputs.length > 0) b.classList.add("disabled");
+        if (player.state.itemLockTurn > 0 || turnInputs.length > 0 || isInterval) b.classList.add("disabled");
         else if (count > 0) b.classList.add("has-item");
         else b.classList.add("disabled");
     };
