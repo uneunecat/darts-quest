@@ -575,22 +575,20 @@ function setupStage(sel, continueMode) {
     spawnEnemy();
     resizeGame();
 }
-// Updated: handlePreemptiveAI (v4.7 - Integrated Timer)
+// Updated: handlePreemptiveAI (v4.9 - Synchronized)
 function handlePreemptiveAI() {
     const aiList = enemy.data.ai || [];
     const preemptiveAction = aiList.find(a => a.preemptive && checkAICondition(a.cond));
 
-    // 1F(ステージ開始時)はタイトル表示のために3秒、それ以外は1.5秒待つ
-    const waitTime = (floor === 1) ? 3500 : 1500;
+    // 出現演出の完了(0.8s)を待ってから次のフェーズへ
+    const waitAfterAppear = 1000;
 
     setTimeout(() => {
         if (preemptiveAction) {
-            // 先制攻撃がある場合
             if (preemptiveAction.name) {
                 showSkillCutin(preemptiveAction.name, preemptiveAction.color || "gold");
                 setTimeout(() => {
                     executeEnemySkill(preemptiveAction, true); 
-                    // 先制攻撃の演出が終わった後、さらに余韻を入れてからインターバルへ
                     setTimeout(preparePlayerTurn, 1500); 
                 }, 1200);
             } else {
@@ -598,12 +596,11 @@ function handlePreemptiveAI() {
                 setTimeout(preparePlayerTurn, 1500);
             }
         } else {
-            // 先制攻撃がない場合、そのままインターバル（ドロー待ち）へ
             preparePlayerTurn();
         }
-    }, waitTime);
+    }, waitAfterAppear);
 }
-// Updated: spawnEnemy (v4.8 - Encounter Effects)
+// Updated: spawnEnemy (v4.9 - Robust Encounter Fix)
 function spawnEnemy() {
     if (player.hp <= 0) return;
     
@@ -624,19 +621,18 @@ function spawnEnemy() {
         
         updateScoreDisplay();
         
-        // --- 2. ビジュアルの基本セット ---
+        // --- 2. 共通ビジュアルリセット ---
         el("flash-overlay").className = "";
         el("game-container").classList.remove("shake-heavy", "shake-medium", "shake-small", "boss-mode");
         el("boss-label").style.display = "none";
         el("chest-img").style.display = "none";
         
-        // ステージ背景設定
+        // 背景・敵データのセット（演出より前に行う）
         let bgKey = stage;
         if (stage === 4) bgKey = floor >= 5 ? "4_2" : "4_1";
         if (stage === 6) bgKey = 6;
         if (GAME_DATA.bg[bgKey]) el("game-container").style.backgroundImage = `url('${GAME_DATA.bg[bgKey]}')`;
         
-        // 敵データの特定
         let list = GAME_DATA.enemies[stage] || GAME_DATA.enemies[1];
         if (stage === 5) list = GAME_DATA.enemies[5];
         if (stage === 6) list = GAME_DATA.enemies[6];
@@ -647,46 +643,55 @@ function spawnEnemy() {
         enemy.hp = enemy.maxHp;
         displayEnemyHP = enemy.hp;
 
-        // --- 3. 出現演出の分岐 ---
-        const isBoss = (floor === 5 || (stage === 4 && floor === 6));
-        const img = el("enemy-img");
+        // --- 3. 演出実行 (1Fなら遅延、2F以降なら即時) ---
+        isProcessing = true;
+        const encounterDelay = (floor === 1) ? 1200 : 0; // チャプター暗転明けに合わせる
 
-        if (isBoss) {
-            // 【ボス演出】
-            el("game-container").classList.add("boss-mode");
-            el("boss-label").style.display = "inline";
-            playBGM("bgm-boss");
-            
-            // 地響きと警告
-            playSE("se-warning");
-            el("game-container").classList.add("shake-heavy");
-            setTimeout(() => el("game-container").classList.remove("shake-heavy"), 1000);
-            
-            announce(`WARNING: ${enemy.name}`, "danger");
-        } else {
-            // 【通常演出】
-            playBGM("bgm-battle");
-            playSE("se-attack"); // シュパッという鋭い音
-            announce(`${enemy.name} APPEARED!`, "normal");
-        }
+        setTimeout(() => {
+            triggerEncounterEffects();
+            handlePreemptiveAI(); 
+        }, encounterDelay);
 
-        // 共通：画像のアニメーション適用
-        img.src = enemy.data.name === "???" ? "" : enemy.data.img; // 画像未設定対策
-        img.classList.remove("enemy-appear-anim");
-        void img.offsetWidth; // リフロー強制
-        img.classList.add("enemy-appear-anim");
-        
         triggerTrap('summon'); 
         updateInfo();
-
-        // 演出管理へ
-        isProcessing = true; 
-        handlePreemptiveAI(); 
 
     } catch (e) {
         console.error("Spawn Error:", e);
         isProcessing = false;
     }
+}
+
+// Updated: 敵出現の演出コアロジック (v4.9)
+function triggerEncounterEffects() {
+    const isBoss = (floor === 5 || (stage === 4 && floor === 6));
+    const img = el("enemy-img");
+
+    // 画像の「真っさら」なリセット
+    img.classList.remove("enemy-appear-anim");
+    img.style.opacity = "0"; 
+    img.src = enemy.data.img;
+
+    if (isBoss) {
+        el("game-container").classList.add("boss-mode");
+        el("boss-label").style.display = "inline";
+        playBGM("bgm-boss");
+        playSE("se-warning");
+        el("game-container").classList.add("shake-heavy");
+        setTimeout(() => el("game-container").classList.remove("shake-heavy"), 1000);
+        announce(`WARNING: ${enemy.name}`, "danger");
+    } else {
+        playBGM("bgm-battle");
+        playSE("se-attack");
+        announce(`${enemy.name} APPEARED!`, "normal");
+    }
+
+    // ブラウザの描画準備が整ってからアニメーションを開始
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            img.style.opacity = "1";
+            img.classList.add("enemy-appear-anim");
+        });
+    });
 }
 
 
