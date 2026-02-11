@@ -575,26 +575,35 @@ function setupStage(sel, continueMode) {
     spawnEnemy();
     resizeGame();
 }
+// Updated: handlePreemptiveAI (v4.7 - Integrated Timer)
 function handlePreemptiveAI() {
     const aiList = enemy.data.ai || [];
-    // preemptive: true かつ 条件を満たすアクションを探す
     const preemptiveAction = aiList.find(a => a.preemptive && checkAICondition(a.cond));
 
-    if (preemptiveAction) {
-        if (preemptiveAction.name) {
-            // 少し遅延させて演出を見せる
-            setTimeout(() => {
+    // 1F(ステージ開始時)はタイトル表示のために3秒、それ以外は1.5秒待つ
+    const waitTime = (floor === 1) ? 3500 : 1500;
+
+    setTimeout(() => {
+        if (preemptiveAction) {
+            // 先制攻撃がある場合
+            if (preemptiveAction.name) {
                 showSkillCutin(preemptiveAction.name, preemptiveAction.color || "gold");
                 setTimeout(() => {
-                    // executeEnemySkillを「先制モード」で呼び出す
                     executeEnemySkill(preemptiveAction, true); 
+                    // 先制攻撃の演出が終わった後、さらに余韻を入れてからインターバルへ
+                    setTimeout(preparePlayerTurn, 1500); 
                 }, 1200);
-            }, 500);
+            } else {
+                executeEnemySkill(preemptiveAction, true);
+                setTimeout(preparePlayerTurn, 1500);
+            }
         } else {
-            executeEnemySkill(preemptiveAction, true);
+            // 先制攻撃がない場合、そのままインターバル（ドロー待ち）へ
+            preparePlayerTurn();
         }
-    }
+    }, waitTime);
 }
+// Updated: spawnEnemy (セットアップに専念)
 function spawnEnemy() {
     if (player.hp <= 0) return;
     
@@ -607,7 +616,7 @@ function spawnEnemy() {
             actionCount: 0
         };
         
-        currentTurn = 0;
+        currentTurn = 0; 
         turnInputs = [];
         currentInput = "";
         isJustFinish = false;
@@ -617,7 +626,7 @@ function spawnEnemy() {
         
         updateScoreDisplay();
         
-        // 画面リセット
+        // UIリセット
         el("flash-overlay").className = "";
         el("game-container").classList.remove("shake-heavy", "shake-medium", "shake-small");
         el("game-container").className = "container";
@@ -625,13 +634,12 @@ function spawnEnemy() {
         el("enemy-img").style.display = "block";
         el("chest-img").style.display = "none";
         
-        // 背景設定
+        // 背景・敵の選定
         let bgKey = stage;
         if (stage === 4) bgKey = floor >= 5 ? "4_2" : "4_1";
         if (stage === 6) bgKey = 6;
         if (GAME_DATA.bg[bgKey]) el("game-container").style.backgroundImage = `url('${GAME_DATA.bg[bgKey]}')`;
         
-        // 敵選択
         let list = GAME_DATA.enemies[stage] || GAME_DATA.enemies[1];
         if (stage === 5) list = GAME_DATA.enemies[5];
         if (stage === 6) list = GAME_DATA.enemies[6];
@@ -639,9 +647,7 @@ function spawnEnemy() {
         enemy.data = list[(floor - 1) % list.length];
         enemy.maxHp = enemy.data.hp || (100 + (stage - 1) * 50 + (floor - 1) * 30);
         
-        // ボス補正
         if (floor === 5 || (stage === 4 && floor === 6)) {
-            if (!enemy.data.hp) { enemy.maxHp += 50; }
             el("game-container").classList.add("boss-mode");
             el("boss-label").style.display = "inline";
             playBGM("bgm-boss");
@@ -654,36 +660,18 @@ function spawnEnemy() {
         enemy.hp = enemy.maxHp;
         displayEnemyHP = enemy.hp;
         
-        triggerTrap('summon'); // 召喚時トラップ発動判定
+        triggerTrap('summon');
         updateInfo();
         addLog(`=== STAGE ${stage} - ${floor}F START ===`, "system"); 
 
-        isProcessing = false;
-
-        if (floor === 1) {
-            // Updated: 3秒待ってから、先制AIの有無で分岐
-            setTimeout(() => {
-                const aiList = enemy.data.ai || [];
-                const hasPreemptive = aiList.some(a => a.preemptive && checkAICondition(a.cond));
-                if (hasPreemptive) {
-                    handlePreemptiveAI();
-                } else {
-                    preparePlayerTurn(); // 先制がなければインターバル画面へ
-                }
-            }, 3000);
-        } else {
-            // Updated: 2F以降、先制がない場合は即インターバルへ
-            const aiList = enemy.data.ai || [];
-            const hasPreemptive = aiList.some(a => a.preemptive && checkAICondition(a.cond));
-            if (!hasPreemptive) preparePlayerTurn(); 
-            else handlePreemptiveAI();
-        }
+        // ここから演出管理へ
+        isProcessing = true; // 演出待ちの間は操作不能にする
+        handlePreemptiveAI();
 
     } catch (e) {
         console.error("Spawn Error:", e);
         isProcessing = false;
     }
-
 }
 
 
@@ -693,7 +681,11 @@ function spawnEnemy() {
 
 // キーボード入力処理 (デバッグ用)
 function handleEnter() {
-    if (isProcessing || isInterval) return; // Updated: isInterval を追加
+    if (isInterval) {
+        startPlayerTurn(); // インターバル中にEnterで次へ
+        return;
+    }
+    if (isProcessing) return;
     if (currentInput !== "") {
         const val = parseInt(currentInput);
         if (!isNaN(val)) {
@@ -911,6 +903,13 @@ function enemyTurn() {
 
 function executeEnemySkill(skill, isPreemptive = false) {
     enemy.state.charge = false;
+
+    // ヘルパー: 余韻の後に次のステップへ
+    const proceed = () => {
+        if (!isPreemptive) {
+            setTimeout(preparePlayerTurn, 1500); // Updated: 余韻を追加
+        }
+    };
 
     switch (skill.type) {
         case "HEAL":
@@ -1165,13 +1164,11 @@ async function startPlayerTurn() {
             dCount++;
             if (dCount >= 3) {
                 clearInterval(drawLoop);
-                addLog("--- YOUR TURN ---", "log-skill");
             }
         }, 250);
     } else {
         setTimeout(() => {
             executeDrawWithAnim();
-            addLog("--- YOUR TURN ---", "log-skill");
         }, 200);
     }
 }
@@ -1189,6 +1186,9 @@ function executeDrawWithAnim() {
     const lastCard = handCards[handCards.length - 1];
     if (lastCard) {
         lastCard.classList.add("card-draw-anim");
+        setTimeout(() => {
+            lastCard.classList.remove("card-draw-anim");
+        }, 500);
     }
 }
 // Updated: MPを1つずつチャージする演出
