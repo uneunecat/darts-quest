@@ -659,23 +659,31 @@ function spawnEnemy() {
         addLog(`=== STAGE ${stage} - ${floor}F START ===`, "system"); 
 
         isProcessing = false;
-        
+
+        if (floor === 1) {
+            // Updated: 3秒待ってから、先制AIの有無で分岐
+            setTimeout(() => {
+                const aiList = enemy.data.ai || [];
+                const hasPreemptive = aiList.some(a => a.preemptive && checkAICondition(a.cond));
+                if (hasPreemptive) {
+                    handlePreemptiveAI();
+                } else {
+                    preparePlayerTurn(); // 先制がなければインターバル画面へ
+                }
+            }, 3000);
+        } else {
+            // Updated: 2F以降、先制がない場合は即インターバルへ
+            const aiList = enemy.data.ai || [];
+            const hasPreemptive = aiList.some(a => a.preemptive && checkAICondition(a.cond));
+            if (!hasPreemptive) preparePlayerTurn(); 
+            else handlePreemptiveAI();
+        }
+
     } catch (e) {
         console.error("Spawn Error:", e);
         isProcessing = false;
     }
 
-    if (floor === 1) {
-        // Chapter Screen が完全に消えるタイミングを待つ (約 3.5秒後)
-        setTimeout(handlePreemptiveAI, 3000); 
-    } else {
-        // Updated: 2F以降、先制がない場合は即インターバルへ
-        const aiList = enemy.data.ai || [];
-        const hasPreemptive = aiList.some(a => a.preemptive && checkAICondition(a.cond));
-        if (!hasPreemptive) preparePlayerTurn(); 
-        else handlePreemptiveAI();
-        handlePreemptiveAI();
-    }
 }
 
 
@@ -1104,9 +1112,7 @@ function endEnemyTurn() {
         }
     }
 
-    currentTurn++;
     updateInfo();
-    isProcessing = false;
     preparePlayerTurn();
 }
 
@@ -1134,34 +1140,52 @@ function preparePlayerTurn() {
 
 // Updated: プレイヤーターンの開始（ドロー実行）
 function startPlayerTurn() {
-    if (!isInterval) return; // 二重クリック防止
+    if (!isInterval) return;
     
     isInterval = false;
     el("interval-screen").style.display = "none";
     
-    playSE("se-buff"); // 回復・ドロー開始音
-    
-    // 1. MPチャージ
+    // 1. MPチャージ演出 (タップした瞬間に実行)
+    playSE("se-heal");
     player.mp = Math.min(player.mp + 3, player.maxMp);
     triggerFloatText("MP+3", el("player-mp-dots"));
     
-    // 2. ドロー（演出込み）
+    // 2. ターンの進行
+    currentTurn++;
+    
+    // 3. ドロー演出（時間差でカードを出現させる）
     if (floor === 1 && player.hand.length === 0) {
-        // 初期ドロー3枚
         let dCount = 0;
         const drawLoop = setInterval(() => {
-            drawCard();
+            executeDrawWithAnim(); // 演出付きドロー
             dCount++;
-            if (dCount >= 3) clearInterval(drawLoop);
-        }, 200);
+            if (dCount >= 3) {
+                clearInterval(drawLoop);
+                addLog("--- YOUR TURN ---", "system");
+            }
+        }, 250);
     } else {
-        // 通常ドロー1枚
-        drawCard();
+        setTimeout(() => {
+            executeDrawWithAnim();
+            addLog("--- YOUR TURN ---", "system");
+        }, 200);
     }
+}
+function executeDrawWithAnim() {
+    if (player.deck.length === 0 || player.hand.length >= HAND_SIZE) return;
     
-    currentTurn++;
-    addLog("--- YOUR TURN ---", "system");
-    updateInfo();
+    const cardId = player.deck.pop();
+    player.hand.push(cardId);
+    playSE("se-item");
+    
+    updateInfo(); // DOMを作成
+    
+    // 作成されたばかりの最後のカード要素にアニメーションクラスを付与
+    const handCards = el("hand-area").querySelectorAll(".std-card");
+    const lastCard = handCards[handCards.length - 1];
+    if (lastCard) {
+        lastCard.classList.add("card-draw-anim");
+    }
 }
 
 function winBattle() {
