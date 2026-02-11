@@ -1221,4 +1221,43 @@ html, body {
     .enemy-hp-container { bottom: 0 !important; position: relative; }
     .hp-mega-text { font-size: 200px !important; }
     .hand-overlay-container { position: relative; bottom: auto; left: auto; height: 130px; margin-top: 20px; width: 100%; pointer-events: auto; }
-    .hand-area { justify-con
+    .hand-area { justify-content: flex-start; padding: 0 10px; overflow-x: auto; }
+    .hand-card { width: 70px !important; height: 105px !important; } .hand-card:hover { transform: none; }
+    .trap-slot-container { width: 80px; height: 120px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .trap-slot { width: 70px; height: 105px; font-size: 10px; } 
+    .hand-wrapper { gap: 10px; justify-content: center; width: 100%; } 
+    .side-block { min-height: auto; }
+}
+@media (min-width: 900px) {
+    .stage-list-container { flex-direction: row; flex-wrap: wrap; align-content: flex-start; } 
+    .stage-card-item { width: 300px; }
+    .hand-card { width: 80px !important; height: 120px !important; transition: transform 0.2s;}
+    .hand-card:hover { transform: translateY(-30px) scale(1.3) !important; z-index: 1000; box-shadow: 0 0 15px #fff; }
+}
+
+/* =========================================
+   6. INTERVAL OVERLAY (新設)
+   ========================================= */
+.interval-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.7); z-index: 2500;
+    display: none; justify-content: center; align-items: center;
+    cursor: pointer; backdrop-filter: blur(4px);
+    animation: fadeIn 0.3s forwards;
+}
+.interval-content { text-align: center; pointer-events: none; }
+.interval-msg {
+    font-family: 'Cinzel Decorative', serif; font-size: 48px; color: #fff;
+    text-shadow: 0 0 20px #00d2fc; margin-bottom: 5px; animation: zoomIn 0.3s;
+}
+.interval-sub { font-size: 18px; color: #aaa; margin-bottom: 30px; letter-spacing: 2px; }
+.interval-btn {
+    display: inline-block; padding: 15px 40px; background: #00d2fc; color: #000;
+    font-weight: bold; border-radius: 30px; font-size: 20px;
+    box-shadow: 0 0 20px rgba(0, 210, 252, 0.5); animation: pulse-blue 1.5s infinite;
+}
+@keyframes pulse-blue {
+    0% { transform: scale(1); box-shadow: 0 0 20px rgba(0, 210, 252, 0.5); }
+    50% { transform: scale(1.05); box-shadow: 0 0 40px rgba(0, 210, 252, 0.8); }
+    100% { transform: scale(1); box-shadow: 0 0 20px rgba(0, 210, 252, 0.5); }
+}
