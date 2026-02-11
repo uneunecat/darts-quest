@@ -603,19 +603,17 @@ function handlePreemptiveAI() {
         }
     }, waitTime);
 }
-// Updated: spawnEnemy (セットアップに専念)
+// Updated: spawnEnemy (v4.8 - Encounter Effects)
 function spawnEnemy() {
     if (player.hp <= 0) return;
     
     try {        
+        // --- 1. 内部状態の初期化 ---
         enemy.state = {
-            charge: false, isStunned: false,
-            atkBuff: 0, atkBuffTurn: 0,
+            charge: false, isStunned: false, atkBuff: 0, atkBuffTurn: 0,
             guardTurn: 0, guardType: null, guardValue: 0,
-            barrierTurn: 0, barrierLimit: 0,
-            actionCount: 0
+            barrierTurn: 0, barrierLimit: 0, actionCount: 0
         };
-        
         currentTurn = 0; 
         turnInputs = [];
         currentInput = "";
@@ -626,47 +624,64 @@ function spawnEnemy() {
         
         updateScoreDisplay();
         
-        // UIリセット
+        // --- 2. ビジュアルの基本セット ---
         el("flash-overlay").className = "";
-        el("game-container").classList.remove("shake-heavy", "shake-medium", "shake-small");
-        el("game-container").className = "container";
+        el("game-container").classList.remove("shake-heavy", "shake-medium", "shake-small", "boss-mode");
         el("boss-label").style.display = "none";
-        el("enemy-img").style.display = "block";
         el("chest-img").style.display = "none";
         
-        // 背景・敵の選定
+        // ステージ背景設定
         let bgKey = stage;
         if (stage === 4) bgKey = floor >= 5 ? "4_2" : "4_1";
         if (stage === 6) bgKey = 6;
         if (GAME_DATA.bg[bgKey]) el("game-container").style.backgroundImage = `url('${GAME_DATA.bg[bgKey]}')`;
         
+        // 敵データの特定
         let list = GAME_DATA.enemies[stage] || GAME_DATA.enemies[1];
         if (stage === 5) list = GAME_DATA.enemies[5];
         if (stage === 6) list = GAME_DATA.enemies[6];
         
         enemy.data = list[(floor - 1) % list.length];
         enemy.maxHp = enemy.data.hp || (100 + (stage - 1) * 50 + (floor - 1) * 30);
-        
-        if (floor === 5 || (stage === 4 && floor === 6)) {
+        enemy.name = enemy.data.name;
+        enemy.hp = enemy.maxHp;
+        displayEnemyHP = enemy.hp;
+
+        // --- 3. 出現演出の分岐 ---
+        const isBoss = (floor === 5 || (stage === 4 && floor === 6));
+        const img = el("enemy-img");
+
+        if (isBoss) {
+            // 【ボス演出】
             el("game-container").classList.add("boss-mode");
             el("boss-label").style.display = "inline";
             playBGM("bgm-boss");
+            
+            // 地響きと警告
+            playSE("se-warning");
+            el("game-container").classList.add("shake-heavy");
+            setTimeout(() => el("game-container").classList.remove("shake-heavy"), 1000);
+            
+            announce(`WARNING: ${enemy.name}`, "danger");
         } else {
+            // 【通常演出】
             playBGM("bgm-battle");
+            playSE("se-attack"); // シュパッという鋭い音
+            announce(`${enemy.name} APPEARED!`, "normal");
         }
-        
-        enemy.name = enemy.data.name;
-        el("enemy-img").src = enemy.data.img;
-        enemy.hp = enemy.maxHp;
-        displayEnemyHP = enemy.hp;
-        
-        triggerTrap('summon');
-        updateInfo();
-        addLog(`=== STAGE ${stage} - ${floor}F START ===`, "system"); 
 
-        // ここから演出管理へ
-        isProcessing = true; // 演出待ちの間は操作不能にする
-        handlePreemptiveAI();
+        // 共通：画像のアニメーション適用
+        img.src = enemy.data.name === "???" ? "" : enemy.data.img; // 画像未設定対策
+        img.classList.remove("enemy-appear-anim");
+        void img.offsetWidth; // リフロー強制
+        img.classList.add("enemy-appear-anim");
+        
+        triggerTrap('summon'); 
+        updateInfo();
+
+        // 演出管理へ
+        isProcessing = true; 
+        handlePreemptiveAI(); 
 
     } catch (e) {
         console.error("Spawn Error:", e);
