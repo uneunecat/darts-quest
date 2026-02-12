@@ -675,13 +675,14 @@ function setupStage(sel, continueMode) {
     spawnEnemy();
     resizeGame();
 }
-// Updated: spawnEnemy (v6.1 - Using ID Helper)
-// Updated: spawnEnemy (v6.2 - Fix Display None)
+// Updated: spawnEnemy (v7.1 - ATK assignment & Image Reset)
 function spawnEnemy() {
     if (player.hp <= 0) return;
     
     try {        
-        enemy.state = { charge: false, isStunned: false, atkBuff: 0, atkBuffTurn: 0, guardTurn: 0, guardType: null, guardValue: 0, barrierTurn: 0, barrierLimit: 0, actionCount: 0 };
+        enemy.state = { charge: false, isStunned: false, atkBuff: 0, atkBuffTurn: 0, guardTurn: 0, guardType: null, guardValue: 0, barrierTurn: 0, barrierLimit: 0, actionCount: 0, 
+            patternQueue: enemy.state?.patternQueue || [] // 継続中の行動を維持
+        };
         currentTurn = 0; turnInputs = []; currentInput = ""; isJustFinish = false; waitingForChest = false; dropGuaranteed = false; weakHitCount = 0;
         
         updateScoreDisplay();
@@ -692,23 +693,24 @@ function spawnEnemy() {
         el("boss-label").style.display = "none";
         el("chest-img").style.display = "none";
         
-        // ★追加: 隠れていた敵画像を再表示する
-        el("enemy-img").style.display = "block";
-        
-        // 背景設定 (ヘルパーでID取得)
+        // ★修正: 出現前に画像を一度消し、不透明度をリセット
+        const img = el("enemy-img");
+        img.style.display = "none";
+        img.src = "";
+        img.classList.remove("enemy-appear-anim");
+
         const bgID = getBackgroundKey(stage, floor);
         const bgUrl = GAME_DATA.bg[bgID];
-        
-        if (bgUrl) {
-            container.style.backgroundImage = `url('${bgUrl}')`;
-        } else {
-            console.warn(`Background ID "${bgID}" not found in data.js`);
-        }
+        if (bgUrl) container.style.backgroundImage = `url('${bgUrl}')`;
 
         let list = GAME_DATA.enemies[stage] || GAME_DATA.enemies[1];
         if (stage === 5) list = GAME_DATA.enemies[5];
         if (stage === 6) list = GAME_DATA.enemies[6];
         enemy.data = list[(floor - 1) % list.length];
+        
+        // ★重要: 基礎攻撃力を反映
+        enemy.atk = enemy.data.atk || 10; 
+        
         enemy.maxHp = enemy.data.hp || (100 + (stage - 1) * 50 + (floor - 1) * 30);
         enemy.name = enemy.data.name;
         enemy.hp = enemy.maxHp;
@@ -717,9 +719,14 @@ function spawnEnemy() {
         const isBoss = (floor === 5 || (stage === 4 && floor === 6));
         if (isBoss) playBGM("bgm-boss");
 
-        // 演出へ
         isProcessing = true;
-        triggerEncounterEffects();
+        
+        // 余韻のあとに画像を表示して開始
+        const spawnDelay = (floor === 1) ? 1500 : 500;
+        setTimeout(() => {
+            img.style.display = "block"; // ここで表示
+            triggerEncounterEffects();
+        }, spawnDelay);
 
         triggerTrap('summon'); 
         updateInfo();
@@ -754,25 +761,23 @@ function triggerEncounterEffects() {
     setTimeout(handlePreemptiveAI, 1000);
 }
 
-// Updated: handlePreemptiveAI (v6.0)
-function handlePreemptiveAI() {
+// Updated: handlePreemptiveAI (v3.0 Async Support)
+async function handlePreemptiveAI() {
     const aiList = enemy.data.ai || [];
-    const preemptiveAction = aiList.find(a => a.preemptive && checkAICondition(a.cond));
+    const preemptiveSkill = aiList.find(a => a.preemptive && checkAICondition(a.cond));
 
-    if (preemptiveAction) {
-        if (preemptiveAction.name) {
-            showSkillCutin(preemptiveAction.name, preemptiveAction.color || "gold");
-            setTimeout(() => {
-                executeEnemySkill(preemptiveAction, true); 
-                setTimeout(preparePlayerTurn, 1500); 
-            }, 1200);
-        } else {
-            executeEnemySkill(preemptiveAction, true);
-            setTimeout(preparePlayerTurn, 1500);
-        }
+    // 出現演出の完了を少し待つ
+    await wait(1000);
+
+    if (preemptiveSkill) {
+        // 新エンジンで実行し、完了を待つ
+        await executeSkill(preemptiveSkill, true);
+        await wait(1500);
+        preparePlayerTurn();
     } else {
-        // 余韻を持たせてインターバルへ
-        setTimeout(preparePlayerTurn, 500); 
+        // 先制なし
+        await wait(500);
+        preparePlayerTurn();
     }
 }
 
@@ -899,7 +904,7 @@ function finishPlayerTurn() {
     currentInput = "";
     updateScoreDisplay();
     
-    setTimeout(enemyTurn, 500);
+    setTimeout(processEnemyTurn, 500); 
 }
 
 
@@ -935,225 +940,6 @@ function checkCondition(c) {
 // 互換性維持のためエイリアスを設定
 const checkAICondition = checkCondition;
 
-function enemyTurn() {
-    if (enemy.state.isStunned) {
-        addLog(`${enemy.name}はスタン中`, "log-system");
-        enemy.state.isStunned = false;
-        endEnemyTurn();
-        return;
-    }
-
-    enemy.state.actionCount++;
-    let selectedAction = null;
-
-    // 1. 進行中のシーケンス（連続行動）があれば、それを最優先
-    if (enemy.state.patternQueue && enemy.state.patternQueue.length > 0) {
-        selectedAction = enemy.state.patternQueue.shift();
-    } else {
-        // 2. 現在の条件を満たしているアクションを抽出
-        const aiList = enemy.data.ai || [{ id: "attack", weight: 1 }];
-        const validActions = aiList.filter(a => {
-            if (!checkAICondition(a.cond)) return false;
-
-            // すでにバフが有効なら、そのバフ系スキルは除外する
-            if (a.type === "BUFF_E" && a.state) {
-                if (a.state.atkBuff && enemy.state.atkBuffTurn > 0) return false;
-                if (a.state.guardTurn && enemy.state.guardTurn > 0) return false;
-                if (a.state.barrierTurn && enemy.state.barrierTurn > 0) return false;
-            }
-            return true;
-        });
-        // 3. 【新設】確定発動(guaranteed)設定があり、かつ条件を満たしているものを探す
-        const guaranteedAction = validActions.find(a => a.guaranteed);
-
-        if (guaranteedAction) {
-            // 確定アクションがあれば、抽選せずこれに決定
-            if (guaranteedAction.sequence) {
-                enemy.state.patternQueue = [...guaranteedAction.sequence];
-                selectedAction = enemy.state.patternQueue.shift();
-            } else {
-                selectedAction = guaranteedAction;
-            }
-        } else {
-            // 4. 確定アクションがなければ、通常通り重み(weight)で抽選
-            const totalWeight = validActions.reduce((sum, a) => sum + (a.weight || 1), 0);
-            let r = Math.random() * totalWeight;
-            for (const a of validActions) {
-                const w = a.weight || 1;
-                if (r < w) {
-                    if (a.sequence) {
-                        enemy.state.patternQueue = [...a.sequence];
-                        selectedAction = enemy.state.patternQueue.shift();
-                    } else {
-                        selectedAction = a;
-                    }
-                    break;
-                }
-                r -= w;
-            }
-        }
-    }
-
-    // 5. 実行
-    if (!selectedAction || selectedAction.id === "attack") {
-        doEnemyAttack(1.0);
-    } else {
-        if (selectedAction.name) showSkillCutin(selectedAction.name, selectedAction.color || "fire");
-        setTimeout(() => executeEnemySkill(selectedAction), 1200);
-    }
-}
-
-function executeEnemySkill(skill, isPreemptive = false) {
-    enemy.state.charge = false;
-
-    // ヘルパー: 余韻の後に次のステップへ
-    const proceed = () => {
-        if (!isPreemptive) {
-            setTimeout(preparePlayerTurn, 1500); // Updated: 余韻を追加
-        }
-    };
-
-    switch (skill.type) {
-        case "HEAL":
-            const healVal = skill.value > 100 ? (enemy.maxHp - enemy.hp) : skill.value;
-            enemy.hp = Math.min(enemy.maxHp, enemy.hp + healVal);
-            addLog(`${enemy.name}は ${healVal} 回復した`, "log-heal");
-            el("enemy-hp-value").innerText = enemy.hp;
-            displayEnemyHP = enemy.hp;
-            if (!isPreemptive) preparePlayerTurn(); // Updated: endEnemyTurnから変更
-            break;
-
-        case "BUFF_E":
-            Object.assign(enemy.state, skill.state);
-            if (skill.msg) addLog(skill.msg, "log-enemy");
-            if (!isPreemptive) preparePlayerTurn(); // Updated: endEnemyTurnから変更
-            break;
-
-        case "STATE_P":
-            // Updated: 修正箇所
-            if (skill.state.restrictInput) player.state.restrictInput = true;
-            Object.assign(player.state, skill.state);
-            if (skill.msg) addLog(skill.msg, "log-enemy");
-            if (!isPreemptive) doEnemyAttack(1.0);
-            break;
-
-        case "MP_DAMAGE":
-            player.mp = Math.max(0, player.mp - skill.value);
-            addLog(`${skill.name}！プレイヤーのMPを ${skill.value} 減らした`, "log-enemy");
-            doEnemyAttack(skill.mult || 1.0, { fixedDmg: skill.fixedDmg, isBossUlt: skill.isBossUlt });
-            break;
-
-        case "MP_DRAIN":
-            const dVal = Math.min(player.mp, skill.value);
-            player.mp -= dVal;
-            enemy.hp = Math.min(enemy.maxHp, enemy.hp + skill.heal);
-            addLog(`MPを ${dVal} 吸収！敵が ${skill.heal} 回復`, "log-enemy");
-            doEnemyAttack(1.0);
-            break;
-
-        case "ATTACK":
-            doEnemyAttack(skill.mult || 1.0, { fixedDmg: skill.fixedDmg, isBossUlt: skill.isBossUlt });
-            break;
-
-        case "MULTI_ATTACK":
-            let count = 0;
-            const loop = () => {
-                count++;
-                doEnemyAttack(skill.mult, { callback: () => {
-                    if (count < skill.count) setTimeout(loop, 600);
-                    else preparePlayerTurn();
-                }});
-            };
-            loop();
-            break;
-
-        case "DRAIN":
-            doEnemyAttack(skill.mult, { isDrain: true });
-            break;
-
-        case "CHARGE":
-            enemy.state.charge = true;
-            addLog(`${enemy.name}は力を溜めている…`, "log-enemy");
-            preparePlayerTurn();
-            break;
-    }
-    updateInfo();
-}
-
-// 敵の攻撃実行関数
-function doEnemyAttack(mult, options = {}) {
-    const { 
-        isDrain = false, 
-        isBossUlt = false, 
-        fixedDmg = 0, 
-        callback = null 
-    } = options;
-    
-    // 攻撃が発動した時点で敵のチャージ状態を解除する
-    enemy.state.charge = false;
-
-    let baseDmg = 0;
-
-    // 敵のバフ倍率を計算
-    let currentMult = mult;
-    if (enemy.state.atkBuffTurn > 0) {
-        currentMult += enemy.state.atkBuff;
-    }
-
-    if (fixedDmg > 0) {
-        baseDmg = Math.floor(fixedDmg * currentMult);
-    } else {
-        const base = 2 + floor + (stage - 1) * 3;
-        baseDmg = Math.floor((base + Math.floor(Math.random() * 6)) * currentMult);
-    }
-    
-    let finalDmg = triggerTrap('attack', baseDmg);
-    
-    if (finalDmg === 0) {
-        updateInfo();
-        if (callback) callback(); else endEnemyTurn();
-        return;
-    }
-    
-    // 護封剣の判定
-    if (player.state.guardTurn > 0) {
-        finalDmg = Math.floor(finalDmg * 0.5);
-        addLog("護封剣！ダメージ半減", "log-skill");
-    }
-    
-    if (isBossUlt) {
-        playSE("se-boom");
-        el("flash-overlay").className = "flash-fire";
-        setTimeout(() => el("flash-overlay").className = "", 600);
-    } else {
-        playSE("se-hit");
-    }
-    
-    const oldHp = player.hp;
-    player.hp = Math.max(0, player.hp - finalDmg);
-    triggerEffect(el("game-screen"), finalDmg, true);
-    displayPlayerHP = player.hp;
-    
-    if (player.hp <= 0) {
-        isProcessing = true;
-        updateInfo();
-        setTimeout(loseGame, 1000);
-        return;
-    }
-    
-    if (isDrain && finalDmg > 0) {
-        const heal = Math.floor(finalDmg * 0.5);
-        enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal);
-        addLog(`敵が ${heal} 回復！`, "log-skill");
-        triggerEffect(el("enemy-panel"), heal, false, true);
-        el("enemy-hp-value").innerText = enemy.hp;
-        displayEnemyHP = enemy.hp;
-    }
-    
-    updateInfo();
-    if (callback) callback(); else endEnemyTurn();
-}
-
 function triggerTrap(triggerType, incomingDmg = 0) {
     if (!player.setCard) return incomingDmg;
 
@@ -1176,15 +962,220 @@ function triggerTrap(triggerType, incomingDmg = 0) {
     return result.modifiedDmg; // 修正されたダメージを返す
 }
 
-function endEnemyTurn() {
+// =========================================
+// NEW: ATOMIC SKILL ENGINE (v3.0 - Async & Simplified Wait)
+// =========================================
 
+// Updated: 指定時間待機するための非同期ヘルパー
+const wait = ms => new Promise(res => setTimeout(res, ms));
+
+// Updated: 演出終了後の「余韻」を算出 (v3.0 簡略版)
+function getCalculatedWait(skill) {
+    // 1. データ側に個別指定があれば最優先
+    if (skill.visual && skill.visual.wait) return skill.visual.wait;
+    // 2. 基本は1000ms。名前のある技（特別演出）なら1500ms
+    return skill.name ? 1500 : 1000;
+}
+
+// Updated: processEnemyTurn (v7.1 - Multi-turn Sequence Support)
+async function processEnemyTurn() {
+    if (enemy.state.isStunned) {
+        addLog(`${enemy.name}はスタン中`, "log-system");
+        enemy.state.isStunned = false;
+        endEnemyTurn(); 
+        return;
+    }
+
+    enemy.state.actionCount++;
+    let selectedSkill = null;
+
+    // 1. 進行中の連続行動(sequence)があれば、それを優先
+    if (enemy.state.patternQueue && enemy.state.patternQueue.length > 0) {
+        selectedSkill = enemy.state.patternQueue.shift();
+    } else {
+        // 2. 通常の抽選
+        const aiList = enemy.data.ai || [{ weight: 1, actions: [{ type: "DAMAGE", mult: 1.0 }] }];
+        selectedSkill = aiList.find(s => s.guaranteed && checkAICondition(s.cond));
+        
+        if (!selectedSkill) {
+            const validActions = aiList.filter(s => checkAICondition(s.cond));
+            const totalWeight = validActions.reduce((sum, s) => sum + (s.weight || 1), 0);
+            let r = Math.random() * totalWeight;
+            for (const s of validActions) {
+                r -= (s.weight || 1);
+                if (r <= 0) { selectedSkill = s; break; }
+            }
+        }
+    }
+
+    if (!selectedSkill) selectedSkill = enemy.data.ai[0];
+
+    // 3. 抽選されたものが「sequence（複数ターンの行動）」だった場合
+    if (selectedSkill.sequence) {
+        const queue = [...selectedSkill.sequence];
+        const currentAction = queue.shift();
+        enemy.state.patternQueue = queue; // 残りをキューに保存
+        await executeSkill(currentAction);
+    } else {
+        // 単発スキルの実行
+        await executeSkill(selectedSkill);
+    }
+    
+    endEnemyTurn();
+}
+
+// Updated: スキル実行エンジン（シーケンサー）
+async function executeSkill(skill, isPreemptive = false) {
+    enemy.state.charge = false;
+
+    // 1. スキル名カットイン（ある場合）
+    if (skill.name) {
+        showSkillCutin(skill.name, skill.visual?.cutin?.color || "fire");
+        await wait(1200); // カットイン演出時間
+    }
+
+    // 2. スキル全体メッセージ（ある場合）
+    if (skill.visual?.msg) {
+        addLog(skill.visual.msg, "log-enemy");
+    }
+
+    // 3. 各アトム（行動単位）を順番に実行
+    for (const action of skill.actions) {
+        await resolveAction(action);
+        await wait(300); // アクション間の微小な間隔
+    }
+
+    // 4. スキル全体の余韻（名前の有無で1000ms〜1500ms）
+    if (!isPreemptive) {
+        const finalWait = getCalculatedWait(skill);
+        await wait(finalWait);
+    }
+}
+
+// Updated: アトム実行機（具体的な効果と演出の解決）
+async function resolveAction(action) {
+    // 演出データの取得（なければデフォルト）
+    const visual = action.visual || {};
+
+    switch (action.type) {
+        case "DAMAGE":
+            const count = action.count || 1;
+            for (let i = 0; i < count; i++) {
+                // ダメージ計算: (敵ATK * 倍率 * 乱数0.9~1.1)
+                let dmg = 0;
+                if (action.mode === "fixed") {
+                    dmg = action.val;
+                } else {
+                    const mult = action.mult || 1.0;
+                    const boost = enemy.state.atkBuff || 0;
+                    const raw = enemy.atk * (mult + boost);
+                    const rand = 0.9 + (Math.random() * 0.2);
+                    dmg = Math.floor(raw * rand);
+                }
+
+                // プレイヤー防御（護封剣）
+                if (player.state.guardTurn > 0) dmg = Math.floor(dmg * 0.5);
+
+                // トラップ判定
+                dmg = triggerTrap('attack', dmg);
+
+                // 演出と適用
+                if (dmg > 0) {
+                    const isBossUlt = (action.mode === "fixed" && dmg > 50);
+                    if (isBossUlt) {
+                        playSE("se-boom");
+                        el("flash-overlay").className = "flash-fire";
+                        setTimeout(() => el("flash-overlay").className = "", 600);
+                    } else {
+                        playSE(visual.se || "se-hit");
+                    }
+                    
+                    player.hp = Math.max(0, player.hp - dmg);
+                    triggerEffect(el("game-screen"), dmg, true);
+                    
+                    if (action.drain) {
+                        const heal = Math.floor(dmg * 0.5);
+                        enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal);
+                        addLog(`体力を ${heal} 吸収！`, "log-skill");
+                        triggerEffect(el("enemy-panel"), heal, false, true);
+                    }
+                } else {
+                    triggerEffect(el("game-screen"), 0, true);
+                }
+
+                updateInfo();
+                if (player.hp <= 0) break;
+                if (count > 1) await wait(600); // 連続攻撃のヒット間隔
+            }
+            break;
+
+        case "HEAL":
+            const hVal = action.val > 500 ? (enemy.maxHp - enemy.hp) : action.val;
+            enemy.hp = Math.min(enemy.maxHp, enemy.hp + hVal);
+            playSE(visual.se || "se-heal");
+            addLog(`${enemy.name}は ${hVal} 回復した`, "log-heal");
+            triggerEffect(el("enemy-panel"), hVal, false, true);
+            break;
+
+        case "MP_ACTION":
+            const oldMp = player.mp;
+            player.mp = Math.max(0, player.mp + (action.val || 0));
+            playSE(visual.se || "se-debuff");
+            if (action.drain) {
+                const drained = Math.max(0, oldMp - player.mp);
+                const heal = drained * 20;
+                enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal);
+                addLog(`MPを ${drained} 吸収し、${heal} 回復！`, "log-skill");
+            }
+            break;
+
+        case "STATE":
+            const targetObj = (action.target === "self") ? enemy : player;
+            const turn = action.turn || 1;
+            const val = action.val || 0;
+            
+            if (action.kind === "atk_buff") {
+                targetObj.state.atkBuff = val;
+                targetObj.state.atkBuffTurn = turn;
+            } else if (action.kind === "guard_ratio") {
+                targetObj.state.guardTurn = turn;
+                targetObj.state.guardType = 'ratio';
+                targetObj.state.guardValue = val;
+            } else if (action.kind === "guard_fixed") {
+                targetObj.state.guardTurn = turn;
+                targetObj.state.guardType = 'fixed';
+                targetObj.state.guardValue = val;
+            } else if (action.kind === "barrier") {
+                targetObj.state.barrierTurn = turn;
+                targetObj.state.barrierLimit = val;
+            } else if (action.kind === "charge") {
+                targetObj.state.charge = true;
+            } else if (action.kind === "item_lock") {
+                targetObj.state.itemLockTurn = turn;
+            } else if (action.kind === "bind") {
+                player.state.restrictInput = true;
+            } else if (action.kind === "stun") {
+                enemy.state.isStunned = true;
+            }
+            
+            playSE(visual.se || "se-buff");
+            if (visual.msg) addLog(visual.msg, "log-skill");
+            break;
+    }
+    updateInfo();
+}
+
+// Updated: endEnemyTurn (v6.3 - Longer Wait)
+function endEnemyTurn() {
+    // 敵のバフ経過処理
     if (enemy.state.atkBuffTurn > 0) {
         enemy.state.atkBuffTurn--;
         if (enemy.state.atkBuffTurn === 0) {
-            enemy.state.atkBuff = 0; // 効果終了
+            enemy.state.atkBuff = 0;
             addLog(`${enemy.name}の攻撃力増加が解けた`, "log-system");
         }
     }
+    // ガード・バリア経過
     if (enemy.state.guardTurn > 0) {
         enemy.state.guardTurn--;
         if (enemy.state.guardTurn === 0) {
@@ -1199,7 +1190,7 @@ function endEnemyTurn() {
         }
     }
     
-    // バフ経過
+    // プレイヤーのバフ経過処理
     if (player.state.guardTurn > 0) {
         player.state.guardTurn--;
         if (player.state.guardTurn === 0) {
@@ -1214,13 +1205,13 @@ function endEnemyTurn() {
     }
 
     updateInfo();
-    // Updated: 1.5秒待ってからインターバルへ（敵の行動を見せる）
+    
+    // ★修正: 待機時間を延長 (1.5s -> 2.2s)
     setTimeout(() => {
-        // 敗北時はインターバルを出さない
         if (player.hp > 0) {
             preparePlayerTurn();
         }
-    }, 1500);
+    }, 2200);
 }
 
 // Updated: プレイヤーターンの準備（インターバル開始）
@@ -1314,14 +1305,14 @@ async function animateMPGain(amount) {
     }
 }
 
-// Updated: winBattle (自動リソース回復を削除)
+// Updated: winBattle (v7.1 - Clear image)
 function winBattle() {
     if (player.hp <= 0) return;
     
     addLog(`${enemy.name} を倒した`, "system");
     
-    // Updated: ここにあった自動MP回復(player.mp += 3)とdrawCard()を削除しました。
-    // リソースは次のフロアの「開始タップ」で手に入ります。
+    // ★追加: 敵の画像を消す
+    el("enemy-img").style.display = "none";
 
     if (isJustFinish) {
         player.maxHp += 10;
