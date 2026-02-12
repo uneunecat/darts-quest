@@ -479,9 +479,7 @@ html, body {
     height: auto; width: 90%; max-height: 400px;
     object-fit: contain; 
     filter: drop-shadow(0 0 20px rgba(0,0,0,0.8));
-    z-index: 5;
-    /* デフォルトでは透明にしておく。アニメーションで表示させるため */
-    opacity: 0; 
+    z-index: 5; display: block;
 }
 #chest-img {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -495,15 +493,6 @@ html, body {
     font-family: 'Impact', sans-serif; font-size: 200px !important; color: #fff;
     text-shadow: 6px 6px 0 #000, 0 0 40px rgba(255,0,0,0.6);
     line-height: 0.9; margin-bottom: -10px;
-}
-/* 登場アニメーションクラス */
-.enemy-appear-anim {
-    animation: enemy-fade-in 1.2s ease-out forwards;
-}
-
-@keyframes enemy-fade-in {
-    0% { opacity: 0; transform: scale(1.05); filter: brightness(2); }
-    100% { opacity: 1; transform: scale(1); filter: brightness(1); }
 }
 
 /* HP Blink (Restored) */

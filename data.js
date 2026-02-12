@@ -150,13 +150,13 @@ const GAME_DATA = {
         ]
     },
     bg: {
-        1: "assets/bg_stage1.png",
-        2: "assets/bg_stage2.png",
-        3: "assets/bg_stage3.png",
-        4_1: "assets/bg_stage4_1.png",
-        4_2: "assets/bg_stage4_2.png",
-        5: "assets/bg_extra.png",
-        6: "assets/bg_stage5_1.png"
+        "010": "assets/bg_stage1.png",
+        "020": "assets/bg_stage2.png",
+        "030": "assets/bg_stage3.png",
+        "041": "assets/bg_stage4_1.png",
+        "042": "assets/bg_stage4_2.png",
+        "050": "assets/bg_extra.png",
+        "060": "assets/bg_stage5_1.png"
     }
 };
 
