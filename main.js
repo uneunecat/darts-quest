@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v2.15.16 Fixed Variable Scope)");
+console.log("★ main.js is loaded! (v2.18.3 Fixed Variable Scope)");
 
 // =========================================
 // 1. UTILITY FUNCTIONS (ヘルパー関数)
@@ -1595,7 +1595,8 @@ function playHandCard(index) {
         playSE("se-warning");
         return;
     }
-    if (card.id === 501 && player.hand.length < 2) {
+    const hasDiscardSelect = card.effects?.some(e => e.type === "DISCARD_SELECT");
+    if (hasDiscardSelect && player.hand.length < 2) {
         addLog("捨てる手札がありません！", "log-system");
         playSE("se-warning");
         return;
