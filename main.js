@@ -475,6 +475,19 @@ function handleBluetoothNotify(event) {
 // =========================================
 // 8. GAME LOOP START (ゲーム開始・遷移)
 // =========================================
+// Updated: 指定したURLの画像をプリロードするヘルパー (v5.4)
+function preloadImage(url) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(url);
+        img.onerror = () => {
+            console.warn("Failed to preload:", url);
+            resolve(url); // エラーでも進行は止めない
+        };
+        img.src = url;
+    });
+}
+
 function initGameSession(startStage, continueMode = false) {
     if (!continueMode) {
         player = {
@@ -498,13 +511,15 @@ function initGameSession(startStage, continueMode = false) {
     startTransition(startStage, continueMode);
 }
 
-function startTransition(sel, continueMode) {
+// Updated: startTransition (v5.4 - Preloading Engine)
+async function startTransition(sel, continueMode) {
     const info = STAGE_MASTER[sel] || { title: "UNKNOWN", sub: "Unknown Stage", warning: false };
     
+    // 1. 画面の準備
     el("chapter-title").innerText = info.title;
     el("chapter-sub").innerText = info.sub;
-    
     const ch = el("chapter-screen");
+    
     if (info.warning) {
         playSE("se-warning");
         ch.classList.add("chapter-extra");
@@ -512,22 +527,49 @@ function startTransition(sel, continueMode) {
         playSE("se-tap");
         ch.classList.remove("chapter-extra");
     }
-    
+
+    // 2. 前回の背景を即座に消す
+    el("game-container").style.backgroundImage = "none";
+    el("game-container").style.backgroundColor = "#000";
+
+    // 3. BGM開始
+    const isBossStage = [5, 6].includes(sel);
+    playBGM(isBossStage ? "bgm-boss" : "bgm-battle");
+
+    // 4. 黒いカーテンを閉じる
     el("black-curtain").classList.add("fade-in");
+    
+    // --- プリロード開始 ---
+    const assetsToLoad = [];
+    // 背景画像
+    if (GAME_DATA.bg[sel]) assetsToLoad.push(preloadImage(GAME_DATA.bg[sel]));
+    // ステージ4などの特殊背景も考慮
+    if (sel === 4) assetsToLoad.push(preloadImage(GAME_DATA.bg["4_2"]));
+    
+    // 敵画像（そのステージの敵リスト全員分）
+    const enemyList = GAME_DATA.enemies[sel] || [];
+    enemyList.forEach(e => {
+        if (e.img) assetsToLoad.push(preloadImage(e.img));
+    });
+
+    // タイマーとプリロードの「両方」が完了するのを待つ
+    const introTime = info.warning ? 4000 : 2500;
+    const timerPromise = new Promise(resolve => setTimeout(resolve, introTime));
+    
+    el("title-screen").style.display = "none";
+    ch.style.display = "flex";
+    ch.style.opacity = 1;
+
+    // 同時並行で実行（最低でもintroTime分は黒画面を維持）
+    await Promise.all([...assetsToLoad, timerPromise]);
+
+    // 5. 準備完了：カーテンを開けて敵を出現させる
+    ch.style.opacity = 0;
     setTimeout(() => {
-        el("title-screen").style.display = "none";
-        ch.style.display = "flex";
-        ch.style.opacity = 1;
+        ch.style.display = "none";
+        el("black-curtain").classList.remove("fade-in");
         
-        setupStage(sel, continueMode);
-        
-        setTimeout(() => {
-            ch.style.opacity = 0;
-            setTimeout(() => {
-                ch.style.display = "none";
-                el("black-curtain").classList.remove("fade-in");
-            }, 1000);
-        }, info.warning ? 4000 : 2500);
+        setupStage(sel, continueMode); 
     }, 1000);
 }
 
@@ -575,82 +617,51 @@ function setupStage(sel, continueMode) {
     spawnEnemy();
     resizeGame();
 }
-// Updated: handlePreemptiveAI (v4.9 - Synchronized)
-function handlePreemptiveAI() {
-    const aiList = enemy.data.ai || [];
-    const preemptiveAction = aiList.find(a => a.preemptive && checkAICondition(a.cond));
-
-    // 出現演出の完了(0.8s)を待ってから次のフェーズへ
-    const waitAfterAppear = 1000;
-
-    setTimeout(() => {
-        if (preemptiveAction) {
-            if (preemptiveAction.name) {
-                showSkillCutin(preemptiveAction.name, preemptiveAction.color || "gold");
-                setTimeout(() => {
-                    executeEnemySkill(preemptiveAction, true); 
-                    setTimeout(preparePlayerTurn, 1500); 
-                }, 1200);
-            } else {
-                executeEnemySkill(preemptiveAction, true);
-                setTimeout(preparePlayerTurn, 1500);
-            }
-        } else {
-            preparePlayerTurn();
-        }
-    }, waitAfterAppear);
-}
-// Updated: spawnEnemy (v4.9 - Robust Encounter Fix)
+// Updated: spawnEnemy (v5.5 - Refined)
 function spawnEnemy() {
     if (player.hp <= 0) return;
     
     try {        
-        // --- 1. 内部状態の初期化 ---
-        enemy.state = {
-            charge: false, isStunned: false, atkBuff: 0, atkBuffTurn: 0,
-            guardTurn: 0, guardType: null, guardValue: 0,
-            barrierTurn: 0, barrierLimit: 0, actionCount: 0
-        };
-        currentTurn = 0; 
-        turnInputs = [];
-        currentInput = "";
-        isJustFinish = false;
-        waitingForChest = false;
-        dropGuaranteed = false;
-        weakHitCount = 0;
+        // 状態初期化
+        enemy.state = { charge: false, isStunned: false, atkBuff: 0, atkBuffTurn: 0, guardTurn: 0, guardType: null, guardValue: 0, barrierTurn: 0, barrierLimit: 0, actionCount: 0 };
+        currentTurn = 0; turnInputs = []; currentInput = ""; isJustFinish = false; waitingForChest = false; dropGuaranteed = false; weakHitCount = 0;
         
         updateScoreDisplay();
         
-        // --- 2. 共通ビジュアルリセット ---
+        // ビジュアル初期化
         el("flash-overlay").className = "";
-        el("game-container").classList.remove("shake-heavy", "shake-medium", "shake-small", "boss-mode");
+        const container = el("game-container");
+        container.classList.remove("shake-heavy", "shake-medium", "shake-small", "boss-mode");
         el("boss-label").style.display = "none";
         el("chest-img").style.display = "none";
         
-        // 背景・敵データのセット（演出より前に行う）
+        // 背景の確定
         let bgKey = stage;
         if (stage === 4) bgKey = floor >= 5 ? "4_2" : "4_1";
         if (stage === 6) bgKey = 6;
-        if (GAME_DATA.bg[bgKey]) el("game-container").style.backgroundImage = `url('${GAME_DATA.bg[bgKey]}')`;
-        
+        if (GAME_DATA.bg[bgKey]) container.style.backgroundImage = `url('${GAME_DATA.bg[bgKey]}')`;
+
+        // 敵データの確定
         let list = GAME_DATA.enemies[stage] || GAME_DATA.enemies[1];
         if (stage === 5) list = GAME_DATA.enemies[5];
         if (stage === 6) list = GAME_DATA.enemies[6];
-        
         enemy.data = list[(floor - 1) % list.length];
         enemy.maxHp = enemy.data.hp || (100 + (stage - 1) * 50 + (floor - 1) * 30);
         enemy.name = enemy.data.name;
         enemy.hp = enemy.maxHp;
         displayEnemyHP = enemy.hp;
 
-        // --- 3. 演出実行 (1Fなら遅延、2F以降なら即時) ---
-        isProcessing = true;
-        const encounterDelay = (floor === 1) ? 1200 : 0; // チャプター暗転明けに合わせる
+        // BGM管理
+        const isBoss = (floor === 5 || (stage === 4 && floor === 6));
+        if (isBoss) playBGM("bgm-boss");
 
-        setTimeout(() => {
-            triggerEncounterEffects();
-            handlePreemptiveAI(); 
-        }, encounterDelay);
+        // ★ここで画像を一度クリア（古い画像が見えないように）
+        el("enemy-img").src = "";
+        el("enemy-img").classList.remove("enemy-appear-anim");
+
+        // 出現演出へ
+        isProcessing = true;
+        triggerEncounterEffects();
 
         triggerTrap('summon'); 
         updateInfo();
@@ -661,37 +672,66 @@ function spawnEnemy() {
     }
 }
 
-// Updated: 敵出現の演出コアロジック (v4.9)
+// Updated: triggerEncounterEffects (v5.5 - Forced Reflow & Class Switch)
 function triggerEncounterEffects() {
     const isBoss = (floor === 5 || (stage === 4 && floor === 6));
     const img = el("enemy-img");
 
-    // 画像の「真っさら」なリセット
+    if (!img || !enemy.data || !enemy.data.img) {
+        console.error("Critical Error: Enemy data or image element is missing.");
+        handlePreemptiveAI();
+        return;
+    }
+
+    // 1. アニメーションクラスを一度剥がし、不透明度をリセット（CSSの初期値 opacity:0 に戻る）
     img.classList.remove("enemy-appear-anim");
-    img.style.opacity = "0"; 
+    img.style.opacity = ""; // JSでの上書きを消去
+    
+    // 2. 画像をセット
     img.src = enemy.data.img;
 
+    // 3. 名前と音の演出
     if (isBoss) {
         el("game-container").classList.add("boss-mode");
         el("boss-label").style.display = "inline";
-        playBGM("bgm-boss");
         playSE("se-warning");
-        el("game-container").classList.add("shake-heavy");
-        setTimeout(() => el("game-container").classList.remove("shake-heavy"), 1000);
         announce(`WARNING: ${enemy.name}`, "danger");
     } else {
-        playBGM("bgm-battle");
         playSE("se-attack");
         announce(`${enemy.name} APPEARED!`, "normal");
     }
 
-    // ブラウザの描画準備が整ってからアニメーションを開始
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            img.style.opacity = "1";
-            img.classList.add("enemy-appear-anim");
-        });
-    });
+    // 4. ★重要: ブラウザに「クラスが剥がれた状態」を一度認識させる（強制リフロー）
+    void img.offsetWidth; 
+
+    // 5. アニメーションクラスを再付与。これで opacity 0 -> 1 への変化が必ず起きる
+    img.classList.add("enemy-appear-anim");
+    
+    // 演出完了を待ってAIチェックへ
+    setTimeout(handlePreemptiveAI, 1200);
+}
+
+// Updated: handlePreemptiveAI (タイマーを削除)
+function handlePreemptiveAI() {
+    const aiList = enemy.data.ai || [];
+    const preemptiveAction = aiList.find(a => a.preemptive && checkAICondition(a.cond));
+
+    if (preemptiveAction) {
+        if (preemptiveAction.name) {
+            showSkillCutin(preemptiveAction.name, preemptiveAction.color || "gold");
+            setTimeout(() => {
+                executeEnemySkill(preemptiveAction, true); 
+                // 先制攻撃後、1.5秒待ってからインターバルへ（余韻）
+                setTimeout(preparePlayerTurn, 1500); 
+            }, 1200);
+        } else {
+            executeEnemySkill(preemptiveAction, true);
+            setTimeout(preparePlayerTurn, 1500);
+        }
+    } else {
+        // 先制がないなら、即座にインターバルへ（ここも少し余韻があってもいい）
+        setTimeout(preparePlayerTurn, 500); 
+    }
 }
 
 
@@ -2658,6 +2698,7 @@ function getRankColor(r) {
     return "#fff";
 }
 
+// Updated: 設定モーダルを開く関数 (修復版)
 function openConfigModal() {
     let modal = el("config-modal");
     if (!modal) {
@@ -2691,6 +2732,7 @@ function openConfigModal() {
     playSE("se-tap");
 }
 
+// 設定値をリアルタイム更新するグローバル関数
 window.updateConfigVal = function (type, val) {
     const floatVal = val / 100;
     if (type === 'bgm') {
@@ -2706,6 +2748,7 @@ window.updateConfigVal = function (type, val) {
     }
 };
 
+// 設定をリセット
 window.resetConfig = function () {
     gameConfig = { bgmVolume: 0.3, sysVolume: 0.5, atkVolume: 0.8 };
     playSE("se-tap");
@@ -2713,6 +2756,7 @@ window.resetConfig = function () {
     updateCurrentBgmVolume();
 };
 
+// 設定を閉じて保存
 window.closeConfig = function () {
     saveGameConfig();
     playSE("se-tap");
