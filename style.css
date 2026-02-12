@@ -126,13 +126,11 @@ html, body {
 
 .damage-float {
     position: absolute; font-family: 'Impact', sans-serif;
-    font-weight: bold; font-size: 80px; color: #ff0000;
-    text-shadow: 2px 2px 0 #000, 0 0 20px #ff0000;
-    pointer-events: none; z-index: 2000;
-    animation: float-damage-player 1.5s forwards;
-    left: 20px; bottom: 160px;
+    font-weight: bold; pointer-events: none; z-index: 2000;
+    text-shadow: 2px 2px 0 #000;
+    animation: float-damage 1.2s forwards; /* 1.5sから1.2sに短縮 */
 }
-.damage-float.heal { color: #00ff00; text-shadow: 0 0 10px #00ff00; }
+.damage-float.heal { color: #00ff00; text-shadow: 0 0 15px #00ff00; }
 .damage-float.miss { color: #aaa; font-size: 50px; }
 .damage-float.enemy-dmg {
     left: 50% !important; top: 40% !important; bottom: auto !important;
@@ -140,10 +138,27 @@ html, body {
     color: #ffd700; text-shadow: 4px 4px 0 #000, 0 0 20px gold;
     font-size: 100px;
 }
-@keyframes float-damage-player { 
-    0% { opacity: 0; transform: translateY(20px) scale(0.5); } 
-    10% { opacity: 1; transform: translateY(0) scale(1.5); } 
-    100% { opacity: 0; transform: translateY(-50px) scale(1.0); } 
+/* プレイヤー側 (左下のHPバー付近) */
+.damage-float.player-side {
+    left: 40px;
+    bottom: 180px;
+    font-size: 80px;
+    color: #ff0000;
+    text-shadow: 0 0 15px rgba(255,0,0,0.5);
+}
+/* 敵側 (敵の画像中央付近) */
+.damage-float.enemy-side {
+    left: 50%;
+    top: 40%;
+    transform: translate(-50%, -50%);
+    font-size: 110px;
+    color: #ffd700;
+    text-shadow: 4px 4px 0 #000, 0 0 25px gold;
+}
+@keyframes float-damage { 
+    0% { opacity: 0; transform: translate(-50%, 20px) scale(0.5); } 
+    15% { opacity: 1; transform: translate(-50%, 0) scale(1.2); } 
+    100% { opacity: 0; transform: translate(-50%, -60px) scale(1.0); } 
 }
 
 
@@ -580,6 +595,17 @@ html, body {
 .cutin-earth .cutin-text { color: #7fff00; text-shadow: 0 0 20px lime; }
 .cutin-wind .cutin-bg { background: radial-gradient(circle, rgba(200,50,200,0.6) 0%, rgba(0,0,0,0.9) 80%); }
 .cutin-wind .cutin-text { color: #d0f; text-shadow: 0 0 20px purple; }
+/* style.css: カットイン色の追加と修正 */
+.cutin-purple .cutin-bg { background: radial-gradient(circle, rgba(128,0,128,0.8) 0%, rgba(0,0,0,0.9) 80%); }
+.cutin-purple .cutin-text { color: #d0f; text-shadow: 0 0 20px purple; }
+
+.cutin-blue .cutin-bg { background: radial-gradient(circle, rgba(0,0,255,0.7) 0%, rgba(0,0,0,0.9) 80%); }
+.cutin-blue .cutin-text { color: #00d2fc; text-shadow: 0 0 20px blue; }
+
+/* Gold を黄色・金色のグラデーションへ修正 */
+.cutin-gold .cutin-bg { background: radial-gradient(circle, rgba(255,215,0,0.7) 0%, rgba(0,0,0,0.9) 80%); }
+.cutin-gold .cutin-text { color: #ffd700; text-shadow: 0 0 20px gold; border-top: 5px solid #ffd700; border-bottom: 5px solid #ffd700; }
+
 
 /* Battle Announcer */
 #battle-announcer {

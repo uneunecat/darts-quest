@@ -113,37 +113,26 @@ function triggerFloatText(text, targetEl) {
     setTimeout(() => float.remove(), 1500);
 }
 
-// ダメージ演出・画面振動
+// Updated: triggerEffect (位置情報をクラスで管理)
 function triggerEffect(el, dmg, isPlayer, isHeal = false) {
-    // 画面振動 (ダメージを受けた場合のみ)
     if (!isHeal && dmg > 0) {
         const shakeClass = dmg > 50 ? "shake-heavy" : "shake-small";
         const container = document.getElementById("game-container");
         container.classList.remove("shake-small", "shake-heavy");
-        void container.offsetWidth; // リフロー強制
+        void container.offsetWidth; 
         container.classList.add(shakeClass);
         setTimeout(() => container.classList.remove(shakeClass), 500);
     }
 
-    // ダメージポップアップ生成
     const pop = document.createElement("div");
-    pop.className = "damage-float";
-    if (isHeal) {
-        pop.classList.add("heal");
-    } else if (dmg === 0) {
-        pop.classList.add("miss");
-    }
-    
-    if (!isPlayer && !isHeal && dmg > 0) {
-        pop.classList.add("enemy-dmg");
-    }
+    // ★ターゲットに応じて側（side）を決定
+    const sideClass = isPlayer ? "player-side" : "enemy-side";
+    pop.className = `damage-float ${sideClass} ${isHeal ? 'heal' : ''}`;
     
     pop.innerText = dmg === 0 ? "MISS" : dmg;
-    document.getElementById("game-screen").appendChild(pop);
+    el.appendChild(pop);
     
-    setTimeout(() => {
-        if (pop.parentNode) pop.parentNode.removeChild(pop);
-    }, 1500);
+    setTimeout(() => pop.remove(), 1200);
 }
 
 // 画面サイズ調整 (レスポンシブ対応)
@@ -728,7 +717,6 @@ function spawnEnemy() {
             triggerEncounterEffects();
         }, spawnDelay);
 
-        triggerTrap('summon'); 
         updateInfo();
 
     } catch (e) {
@@ -767,7 +755,21 @@ async function handlePreemptiveAI() {
     const preemptiveSkill = aiList.find(a => a.preemptive && checkAICondition(a.cond));
 
     // 出現演出の完了を少し待つ
-    await wait(1000);
+    await wait(1200);
+
+    // ★追加: 敵が出現し、名前が出た後にトラップ(落とし穴)を判定
+    if (player.setCard) {
+        const incomingDmg = triggerTrap('summon', 0);
+        // トラップでダメージが発生した場合は少し待つ
+        if (incomingDmg > 0) {
+            updateInfo();
+            if (enemy.hp <= 0) {
+                setTimeout(winBattle, 800);
+                return;
+            }
+            await wait(1000);
+        }
+    }
 
     if (preemptiveSkill) {
         // 新エンジンで実行し、完了を待つ
@@ -969,12 +971,11 @@ function triggerTrap(triggerType, incomingDmg = 0) {
 // Updated: 指定時間待機するための非同期ヘルパー
 const wait = ms => new Promise(res => setTimeout(res, ms));
 
-// Updated: 演出終了後の「余韻」を算出 (v3.0 簡略版)
+// Updated: 余韻時間を一律1秒(1000ms)に短縮
 function getCalculatedWait(skill) {
-    // 1. データ側に個別指定があれば最優先
     if (skill.visual && skill.visual.wait) return skill.visual.wait;
-    // 2. 基本は1000ms。名前のある技（特別演出）なら1500ms
-    return skill.name ? 1500 : 1000;
+    // 名前がある技のみ、状況確認のため少しだけ(200ms)足す
+    return skill.name ? 1200 : 800;
 }
 
 // Updated: processEnemyTurn (v7.1 - Multi-turn Sequence Support)
@@ -983,6 +984,7 @@ async function processEnemyTurn() {
         addLog(`${enemy.name}はスタン中`, "log-system");
         enemy.state.isStunned = false;
         endEnemyTurn(); 
+        preparePlayerTurn();
         return;
     }
 
@@ -1022,6 +1024,11 @@ async function processEnemyTurn() {
     }
     
     endEnemyTurn();
+
+    if (player.hp > 0) {
+        preparePlayerTurn();
+    }
+
 }
 
 // Updated: スキル実行エンジン（シーケンサー）
@@ -1094,10 +1101,12 @@ async function resolveAction(action) {
                     triggerEffect(el("game-screen"), dmg, true);
                     
                     if (action.drain) {
-                        const heal = Math.floor(dmg * 0.5);
+                        await wait(400); // ダメージ数字が出てから少しずらす
+                        const heal = Math.floor(dmg * 1.0); 
                         enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal);
                         addLog(`体力を ${heal} 吸収！`, "log-skill");
-                        triggerEffect(el("enemy-panel"), heal, false, true);
+                        // ★敵への回復 (敵画像中央)
+                        triggerEffect(el("game-screen"), heal, false, true); 
                     }
                 } else {
                     triggerEffect(el("game-screen"), 0, true);
@@ -1205,13 +1214,6 @@ function endEnemyTurn() {
     }
 
     updateInfo();
-    
-    // ★修正: 待機時間を延長 (1.5s -> 2.2s)
-    setTimeout(() => {
-        if (player.hp > 0) {
-            preparePlayerTurn();
-        }
-    }, 2200);
 }
 
 // Updated: プレイヤーターンの準備（インターバル開始）
@@ -1535,18 +1537,19 @@ function useItem(type) {
 }
 
 
+// Updated: カットイン色のマッピングを正確に行う
 function showSkillCutin(name, type) {
     playSE("se-warning");
     el("cutin-text-val").innerText = name;
     
     const cutin = el("skill-cutin");
     cutin.className = "";
-    if (type === "fire") cutin.classList.add("cutin-fire");
-    if (type === "ice") cutin.classList.add("cutin-ice");
-    if (type === "earth") cutin.classList.add("cutin-earth");
-    if (type === "wind") cutin.classList.add("cutin-wind");
-    if (type === "gold") cutin.classList.add("cutin-earth");
-    if (type === "heal") cutin.classList.add("cutin-earth");
+    // 定義済みのCSSクラスを付与
+    if (["fire", "ice", "earth", "wind", "purple", "blue", "gold", "heal"].includes(type)) {
+        cutin.classList.add("cutin-" + type);
+    } else {
+        cutin.classList.add("cutin-fire"); // デフォルト
+    }
     
     cutin.style.display = "flex";
     el("game-container").classList.add("shake-heavy");
@@ -1556,6 +1559,7 @@ function showSkillCutin(name, type) {
         el("game-container").classList.remove("shake-heavy");
     }, 1500);
 }
+
 
 
 // =========================================
