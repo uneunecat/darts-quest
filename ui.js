@@ -214,6 +214,13 @@ function updateInfo() {
             trapContainer.innerHTML = `<div id="trap-slot" class="trap-slot empty">SET<br>TRAP</div>`;
         }
     }
+
+    // Stats (Avg / Rt) の計算と表示
+    // totalDarts が 0 の時は 0.0 を表示して division by zero を防ぐ
+    let ppr = totalDarts > 0 ? (totalScore / totalDarts) * 3 : 0;
+    setText("avg-display", ppr.toFixed(1));
+    setText("rt-display", `(Rt ${calculateRating(ppr)})`);
+
     renderHand();
 }
 
