@@ -295,9 +295,7 @@ function initSlotScreen() {
         if (!data) {
             infoEl.innerHTML = "<div class='slot-empty'>NO DATA<br>- Start New Game -</div>";
         } else {
-            let stgName = `STAGE ${data.highScore.stage}`;
-            if (data.highScore.stage === 5) stgName = "EXTRA";
-            if (data.highScore.stage === 6) stgName = "STAGE 5";
+            let stgName = getStageDisplayName(data.highScore.stage);
             
             let stg = `${stgName} - ${data.highScore.floor}F`;
             let badge = data.clearedExtra ? "<br><span style='color:#f0f;font-weight:bold;'>★ EXTRA CLEARED</span>" : "";
@@ -346,9 +344,7 @@ function backToSlots() {
 }
 
 function updateTitleScore() {
-    let stg = `STAGE ${savedData.highScore.stage}`;
-    if (savedData.highScore.stage === 5) stg = "EXTRA";
-    if (savedData.highScore.stage === 6) stg = "STAGE 5";
+    let stg = getStageDisplayName(savedData.highScore.stage);
     
     if (el("hs-reach")) el("hs-reach").innerText = `${stg} - ${savedData.highScore.floor}F`;
     if (el("hs-avg")) el("hs-avg").innerText = savedData.highScore.avg.toFixed(1);
@@ -464,15 +460,42 @@ function handleBluetoothNotify(event) {
 // =========================================
 // 8. GAME LOOP START (ゲーム開始・遷移)
 // =========================================
-// Updated: 背景IDを生成するヘルパー関数 (v6.1)
-function getBackgroundKey(stg, flr) {
-    // Stage 4 だけフロアで分岐
-    if (stg === 4) {
-        return (flr >= 5) ? "042" : "041";
-    }
-    // それ以外は "0" + Stage + "0" (例: 1 -> "010")
-    return "0" + stg + "0";
+// ステージ表示名を取得 (例: "STAGE 1", "EXTRA", "STAGE 5")
+function getStageDisplayName(stg) {
+    const info = STAGE_MASTER[stg];
+    return info ? info.displayName : `STAGE ${stg}`;
 }
+
+// ステージの最大フロア数を取得
+function getMaxFloors(stg) {
+    const info = STAGE_MASTER[stg];
+    return info ? info.floors : 5;
+}
+
+// ボスフロアかどうかを判定 (bossFloor未定義時はfloors値を使用)
+function isBossFloor(stg, flr) {
+    const info = STAGE_MASTER[stg];
+    if (!info) return false;
+    return flr >= (info.bossFloor || info.floors);
+}
+
+// ステージ背景画像のURLを取得
+function getStageBackground(stg, flr) {
+    const info = STAGE_MASTER[stg];
+    if (!info) return "";
+    if (typeof info.img === 'string') return info.img;
+    return isBossFloor(stg, flr) ? info.img.boss : info.img.default;
+}
+
+// ステージ解放判定 (一元管理)
+function isStageUnlocked(stageId) {
+    if (stageId <= 3) return true;
+    if (stageId === 4) return !!(savedData.unlockedStage4 || (savedData.bestRanks && savedData.bestRanks[3]) || savedData.clearedExtra);
+    if (stageId === 5) return !!savedData.clearedExtra;
+    if (stageId === 6) return !!(savedData.bestRanks && savedData.bestRanks[4]);
+    return false;
+}
+
 // Updated: 指定したURLの画像をプリロードするヘルパー (v5.4)
 function preloadImage(url) {
     return new Promise((resolve, reject) => {
@@ -528,20 +551,15 @@ async function startTransition(sel, continueMode) {
     
     // --- プリロード開始 ---
     const assetsToLoad = [];
-    
-    // 背景画像の解決 (ヘルパー使用)
-    // プリロード時はフロアが不明確な場合があるため、そのステージで使う可能性のある全背景をロード
-    let targetBgIDs = [];
-    if (sel === 4) {
-        targetBgIDs = ["041", "042"];
+
+    // 背景画像の解決 (STAGE_MASTERから全背景をプリロード)
+    const bgData = info.img;
+    if (typeof bgData === 'string') {
+        assetsToLoad.push(preloadImage(bgData));
     } else {
-        targetBgIDs = [getBackgroundKey(sel, 1)];
+        if (bgData.default) assetsToLoad.push(preloadImage(bgData.default));
+        if (bgData.boss) assetsToLoad.push(preloadImage(bgData.boss));
     }
-    
-    targetBgIDs.forEach(id => {
-        const url = GAME_DATA.bg[id];
-        if (url) assetsToLoad.push(preloadImage(url));
-    });
     
     // 敵画像の解決
     const enemyList = GAME_DATA.enemies[sel] || [];
@@ -570,7 +588,7 @@ async function startTransition(sel, continueMode) {
 
 // Updated: triggerEncounterEffects (v5.7 - Force Visibility)
 function triggerEncounterEffects() {
-    const isBoss = (floor === 5 || (stage === 4 && floor === 6));
+    const isBoss = isBossFloor(stage, floor);
     const img = el("enemy-img");
 
     // 一旦クリア
@@ -688,8 +706,7 @@ function spawnEnemy() {
         img.src = "";
         img.classList.remove("enemy-appear-anim");
 
-        const bgID = getBackgroundKey(stage, floor);
-        const bgUrl = GAME_DATA.bg[bgID];
+        const bgUrl = getStageBackground(stage, floor);
         if (bgUrl) container.style.backgroundImage = `url('${bgUrl}')`;
 
         let list = GAME_DATA.enemies[stage] || GAME_DATA.enemies[1];
@@ -705,7 +722,7 @@ function spawnEnemy() {
         enemy.hp = enemy.maxHp;
         displayEnemyHP = enemy.hp;
 
-        const isBoss = (floor === 5 || (stage === 4 && floor === 6));
+        const isBoss = isBossFloor(stage, floor);
         if (isBoss) playBGM("bgm-boss");
 
         isProcessing = true;
@@ -727,7 +744,7 @@ function spawnEnemy() {
 
 // Updated: triggerEncounterEffects (v6.0 - No Animation, Just Display)
 function triggerEncounterEffects() {
-    const isBoss = (floor === 5 || (stage === 4 && floor === 6));
+    const isBoss = isBossFloor(stage, floor);
     const img = el("enemy-img");
 
     // 画像パスのセット（即座に反映）
@@ -1355,11 +1372,10 @@ function loseGame() {
 // 11. ITEM & DROP SYSTEM (ドロップ・進行)
 // =========================================
 function checkDrop() {
-    if (stage === 5 && floor === 1) { nextStep(); return; }
-    if (stage === 6 && floor === 5) { nextStep(); return; }
-    if (stage === 4 && floor === 6) { nextStep(); return; }
-    
-    const isBoss = (floor === 5 || (stage === 4 && floor === 6));
+    // 最終ボス(Stage4以上)はドロップなしで次へ
+    if (floor === getMaxFloors(stage) && stage >= 4) { nextStep(); return; }
+
+    const isBoss = isBossFloor(stage, floor);
     let dropRate = isBoss ? 1.0 : 0.3;
     if (dropGuaranteed) dropRate = 1.0;
     
@@ -1404,12 +1420,9 @@ function openChest() {
 function nextStep() {
     floor++;
     const ppr = totalDarts > 0 ? ((totalScore / totalDarts) * 3).toFixed(1) : 0;
-    const isStage5Clear = (stage === 5 && floor > 1);
-    const isStage6Clear = (stage === 6 && floor > 5);
-    const isStage4Clear = (stage === 4 && floor > 6);
-    const isNormalClear = (stage <= 3 && floor > 5);
-    
-    if (isNormalClear || isStage4Clear || isStage6Clear || isStage5Clear) {
+    const isStageClear = floor > getMaxFloors(stage);
+
+    if (isStageClear) {
         // ステージクリア処理
         const stageTurns = totalGameTurns - stageStartTurn;
         const [rank, dpBonus] = calculateStageRank(stage, stageTurns);
@@ -1854,11 +1867,9 @@ function updateInfo() {
     const setHTML = (id, html) => { const e = el(id); if (e) e.innerHTML = html; };
 
     // Stage Display
-    let stgDisp = `STAGE ${stage}`;
-    if (stage === 5) stgDisp = "EXTRA";
-    if (stage === 6) stgDisp = "STAGE 5";
+    let stgDisp = getStageDisplayName(stage);
     setText("stage-display", stgDisp);
-    setText("floor-display", stage === 5 ? "FINAL" : `${floor}F`);
+    setText("floor-display", getMaxFloors(stage) === 1 ? "FINAL" : `${floor}F`);
     setHTML("turn-display", `TURN ${currentTurn} <span style="font-size:12px; color:#888;">(Total ${(totalGameTurns - stageStartTurn) + 1})</span>`);
 
     // Enemy Status
@@ -2572,7 +2583,7 @@ function finishSession(resultType, ppr, multiplier = 1.0, rank = "", turn = 0) {
 
     const now = new Date();
     const dateStr = `${now.getMonth() + 1}/${now.getDate()} ${now.getHours()}:${("0" + now.getMinutes()).slice(-2)}`;
-    let stgName = (stage === 6) ? "STAGE 5" : (stage === 5 ? "EXTRA" : "S" + stage + "-" + floor + "F");
+    let stgName = (stage >= 5) ? getStageDisplayName(stage) : "S" + stage + "-" + floor + "F";
     
     if (clearedStagesLog.length > 0 && resultType === "RETURN") {
         const last = clearedStagesLog[clearedStagesLog.length - 1];
@@ -2817,47 +2828,33 @@ function closeStageSelect() {
 function renderStageSelectScreen() {
     const container = el("stage-list-container");
     container.innerHTML = "";
-    
-    const stages = [
-        { id: 1, name: "旅立ちの森", sub: "Forest of Beginnings", img: "assets/bg_stage1.png" },
-        { id: 2, name: "荒れ狂う荒野", sub: "Raging Wasteland", img: "assets/bg_stage2.png" },
-        { id: 3, name: "誘惑の迷宮", sub: "Labyrinth of Temptation", img: "assets/bg_stage3.png" },
-        { id: 4, name: "幻想の狂宴", sub: "Toon Nightmare", img: "assets/bg_stage4_1.png" },
-        { id: 5, name: "燃えたぎる火口", sub: "Burning Crater", img: "assets/bg_extra.png", isExtra: true },
-        { id: 6, name: "神の試練", sub: "God's Testing Ground", img: "assets/bg_stage5_1.png", isExtra: true }
-    ];
-    
-    stages.forEach(st => {
-        let isLocked = false;
-        if (st.id === 4) isLocked = !(savedData.unlockedStage4 || (savedData.bestRanks && savedData.bestRanks[3]) || savedData.clearedExtra);
-        if (st.id === 5) isLocked = !savedData.clearedExtra;
-        if (st.id === 6) isLocked = !(savedData.bestRanks && savedData.bestRanks[4]);
-        
-        const rank = savedData.bestRanks ? savedData.bestRanks[st.id] : null;
-        let rankColor = "#444";
-        if (rank === "SSS") rankColor = "#00ffff";
-        else if (rank === "S") rankColor = "#ffd700";
-        else if (rank === "A") rankColor = "#ff5555";
-        else if (rank) rankColor = "#fff";
-        
+
+    Object.entries(STAGE_MASTER).forEach(([id, info]) => {
+        const stageId = parseInt(id);
+        const isLocked = !isStageUnlocked(stageId);
+
+        const rank = savedData.bestRanks ? savedData.bestRanks[stageId] : null;
+        const rankColor = getRankColor(rank || "");
+        const stageImg = typeof info.img === 'string' ? info.img : info.img.default;
+
         const div = document.createElement("div");
         div.className = "stage-card-item";
         if (isLocked) div.classList.add("locked");
-        
+
         div.innerHTML = `
-            <img src="${st.img}" class="st-img">
+            <img src="${stageImg}" class="st-img">
             <div class="st-info">
-                <div class="st-title">${isLocked ? "LOCKED" : st.name}</div>
-                <div class="st-sub">${st.sub}</div>
+                <div class="st-title">${isLocked ? "LOCKED" : info.title}</div>
+                <div class="st-sub">${info.sub}</div>
             </div>
             ${rank ? `<div class="st-rank" style="color:${rankColor}">${rank}</div>` : ""}
             ${isLocked ? `<div class="st-rank" style="font-size:20px;">🔒</div>` : ""}
         `;
-        
+
         if (!isLocked) {
             div.onclick = () => {
                 el("stage-select-screen").style.display = "none";
-                initGameSession(st.id);
+                initGameSession(stageId);
             };
         }
         container.appendChild(div);

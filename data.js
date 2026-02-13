@@ -410,18 +410,24 @@ const PLAYER_INITIAL_STATS = {
 
 // Stage & Rank Master
 const STAGE_MASTER = {
-    1: { title: "旅立ちの森", sub: "Forest of Beginnings", multiplier: 1.0, warning: false, 
-         thresholds: { SSS: 12, S: 16, A: 22, B: 30 } },
-    2: { title: "荒れ狂う荒野", sub: "Raging Wasteland", multiplier: 1.5, warning: false, 
-         thresholds: { SSS: 12, S: 16, A: 22, B: 30 } },
-    3: { title: "誘惑の迷宮", sub: "Labyrinth of Temptation", multiplier: 2.0, warning: false, 
-         thresholds: { SSS: 12, S: 16, A: 22, B: 30 } },
-    4: { title: "幻想の狂宴", sub: "Toon Nightmare", multiplier: 3.0, warning: true, 
-         thresholds: { SSS: 25, S: 35, A: 50, B: 70 } },
-    5: { title: "燃えたぎる火口", sub: "Burning Crater", multiplier: 5.0, warning: true, 
-         thresholds: { SSS: 25, S: 35, A: 50, B: 70 } }, // EXTRA
-    6: { title: "神の試練", sub: "God's Testing Ground", multiplier: 5.0, warning: true, 
-         thresholds: { SSS: 25, S: 35, A: 50, B: 70 } }  // GOD
+    1: { title: "旅立ちの森", sub: "Forest of Beginnings", displayName: "STAGE 1",
+         floors: 5, img: "assets/bg_stage1.png",
+         multiplier: 1.0, warning: false, thresholds: { SSS: 12, S: 16, A: 22, B: 30 } },
+    2: { title: "荒れ狂う荒野", sub: "Raging Wasteland", displayName: "STAGE 2",
+         floors: 5, img: "assets/bg_stage2.png",
+         multiplier: 1.5, warning: false, thresholds: { SSS: 12, S: 16, A: 22, B: 30 } },
+    3: { title: "誘惑の迷宮", sub: "Labyrinth of Temptation", displayName: "STAGE 3",
+         floors: 5, img: "assets/bg_stage3.png",
+         multiplier: 2.0, warning: false, thresholds: { SSS: 12, S: 16, A: 22, B: 30 } },
+    4: { title: "幻想の狂宴", sub: "Toon Nightmare", displayName: "STAGE 4",
+         floors: 6, bossFloor: 5, img: { default: "assets/bg_stage4_1.png", boss: "assets/bg_stage4_2.png" },
+         multiplier: 3.0, warning: true, thresholds: { SSS: 25, S: 35, A: 50, B: 70 } },
+    5: { title: "燃えたぎる火口", sub: "Burning Crater", displayName: "EXTRA",
+         floors: 1, img: "assets/bg_extra.png",
+         multiplier: 5.0, warning: true, thresholds: { SSS: 25, S: 35, A: 50, B: 70 } },
+    6: { title: "神の試練", sub: "God's Testing Ground", displayName: "STAGE 5",
+         floors: 5, img: { default: "assets/bg_stage5_1.png", boss: "assets/bg_stage5_2.png" },
+         multiplier: 5.0, warning: true, thresholds: { SSS: 25, S: 35, A: 50, B: 70 } }
 };
 
 const RANK_BONUS = {

@@ -136,6 +136,15 @@
 | `SAME_CARD_LIMIT` | 3 | 同名カード上限 (main.js内ハードコード) |
 | `LONG_PRESS_DURATION` | 500 | カード長押し判定(ms) |
 
+### 5.1 STAGE_MASTER 拡張プロパティ
+
+| プロパティ | 型 | 説明 | 例 |
+|-----------|-----|------|-----|
+| `displayName` | string | UI表示名 | `"STAGE 1"`, `"EXTRA"`, `"STAGE 5"` |
+| `floors` | number | 最大フロア数 | Stage4=6, Stage5(EXTRA)=1, 他=5 |
+| `bossFloor` | number? | ボス扱い開始フロア (省略時=floors) | Stage4のみ `5` (5F,6F両方ボス扱い) |
+| `img` | string\|{default,boss} | 背景画像URL (複数ならオブジェクト) | Stage4/6は2枚切り替え |
+
 ---
 
 ## 6. Battle System
@@ -519,10 +528,13 @@ PPR (Points Per Round) = `(totalScore / totalDarts) * 3` から算出。
 ### 17.2 ハードコード箇所
 - ~~`playHandCard()` 内の `card.id === 501` チェック~~ → **修正済み** (エフェクト内容 `DISCARD_SELECT` で判定するよう変更)
 - `SAME_CARD_LIMIT = 3` が `addToDeck()` 内にローカル定数として定義
-- `renderStageSelectScreen()` のステージ一覧がハードコード (STAGE_MASTER と重複)
+- ~~`renderStageSelectScreen()` のステージ一覧がハードコード~~ → **修正済み** (STAGE_MASTERベースのデータ駆動に全面書き換え)
+- ~~ボス判定 `floor===5||(stage===4&&floor===6)` が3箇所に散在~~ → **修正済み** (`isBossFloor()` ヘルパーに統一)
+- ~~ステージ表示名 `stage===5→EXTRA` が4箇所に重複~~ → **修正済み** (`getStageDisplayName()` ヘルパーに統一)
+- ~~フロア数ハードコード (`floor>5`, `floor>6` 等)~~ → **修正済み** (`getMaxFloors()` ヘルパーに統一)
 
 ### 17.3 背景キー
-**解決済み**: `getBackgroundKey()` ヘルパー関数が `"010"` 等の文字列キーを生成し、`GAME_DATA.bg` と一致。
+**解決済み**: `getStageBackground()` ヘルパーが `STAGE_MASTER` の `img` プロパティから直接URLを返す。`GAME_DATA.bg` + `getBackgroundKey()` は廃止。Stage 4 / Stage 6 はボスフロアで自動的にboss用背景に切り替わる。
 
 ### 17.4 チートコード
 - タイトル画面で `1111` を入力 → DP +5000
