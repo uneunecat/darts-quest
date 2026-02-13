@@ -7,7 +7,7 @@
 - **対応デバイス**: PC (900x620px スケーリング) / モバイル (フル幅レスポンシブ)
 - **外部連携**: DARTSLIVE ダーツボード (Web Bluetooth API)
 - **保存方式**: localStorage (3スロット制)
-- **バージョン**: v2.15.16 (main.js冒頭のログより)
+- **バージョン**: v2.18.6 (main.js冒頭のログより)
 
 ---
 
@@ -15,10 +15,15 @@
 
 | ファイル | 役割 | 行数(概算) |
 |---------|------|-----------|
-| `index.html` | 全画面のHTML構造 (338行) | UI骨格・Audio要素定義 |
-| `style.css` | 全スタイル・アニメーション (1263行) | カード・バトル・モーダル等 |
-| `data.js` | マスターデータ (464行) | 敵・カード・ステージ・定数 |
-| `main.js` | ゲームロジック全体 (約2864行) | 入力・戦闘・UI・ショップ等 |
+| `index.html` | 全画面のHTML構造 | 340行: UI骨格・Audio要素定義 |
+| `style.css` | 全スタイル・アニメーション | 1296行: カード・バトル・モーダル等 |
+| `data.js` | マスターデータ | 570行: 敵・カード・ステージ・定数 |
+| `state.js` | グローバル状態・ユーティリティ | 92行: el(), wait(), 全グローバル変数 |
+| `audio.js` | サウンド管理 | 66行: BGM/SE再生・音量設定 |
+| `visual.js` | 演出処理 | 118行: エフェクト・画面調整・カットイン |
+| `battle.js` | 戦闘エンジン | 876行: 入力・攻撃・AI・スキル・ターン管理 |
+| `ui.js` | UI描画・モーダル | 1042行: カード生成・ショップ・デッキ・設定 |
+| `main.js` | エントリーポイント | 645行: 初期化・BT接続・ゲームフロー |
 | `assets/` | 画像・BGM・SE リソース | PNG/MP3 |
 
 ---
@@ -35,23 +40,30 @@
     └── SLOTS → スロット選択に戻る
 
 [戦闘ループ] (1ステージ = 5フロア、Stage4のみ6フロア)
-  1. 敵出現 (spawnEnemy) → 先制スキル判定
+  1. 敵出現 (spawnEnemy) → 落とし穴トラップ判定 → 先制スキル判定
   2. インターバル画面 (PULL DARTS / TAP TO DRAW)
   3. プレイヤーターン開始 (startPlayerTurn)
-     - MP +3 チャージ (アニメーション付き)
-     - カード1枚ドロー
+     - MP +3 チャージ (1つずつアニメーション)
+     - カード1枚ドロー (初回ターンのみ3枚)
   4. ダーツ投擲 (3投/ターン、拘束時は1投)
      - キーボード入力 or Bluetooth入力
      - ダメージ計算 → 敵HP減少
-  5. 敵ターン (enemyTurn → executeEnemySkill)
+  5. 敵ターン (processEnemyTurn → executeSkill → resolveAction)
      - AI判定 → スキル or 通常攻撃
   6. 敵撃破 → 宝箱判定 (checkDrop) → 次フロアへ (nextStep)
   7. ボス撃破 → ステージクリア → ランク判定 → DP獲得
 
+[ステージ進行ルート]
+  Stage 1 → Stage 2 → Stage 3 → Stage 4 → Stage 6 (GOD)
+                                ↘ EXTRA (PPR≥70 or クリア済み)
+
 [ステージクリア後の選択]
   - 「次へ進む」: HP+30回復して次ステージへ (状態引継ぎ)
   - 「帰還する」: DP確定してタイトルへ
-  - Stage3クリア + PPR≥70: EXTRA STAGE 出現
+  - Stage 3クリア時: PPR≥70 or EXTRAクリア済み → EXTRA STAGE 選択肢出現
+  - Stage 3クリア時: 条件未達 → 全ステージ踏破扱いでALL CLEAR
+  - Stage 4クリア後「次へ進む」: Stage 6 (GOD) へ (Stage 5をスキップ)
+  - Stage 5 (EXTRA) / Stage 6 (GOD) クリア: タイトルへ直帰
 ```
 
 ---
@@ -65,10 +77,12 @@
   mp: 3, maxMp: 10,
   items: { potion: 0, ether: 0, seed: 0 },
   state: {
-    atkBuff: 1.0,       // 攻撃倍率
-    atkFlat: 0,          // 攻撃固定値加算
+    atkBuff: 0,          // 攻撃倍率加算 (0=増加なし, 1.0=2倍, 2.0=3倍)
+    atkFlat: 0,          // 攻撃固定値加算 (援軍など)
     atkDuration: 0,      // バフ残り投数
     guardTurn: 0,        // 護封剣残りターン
+    guardType: null,     // "ratio" | "fixed" | null
+    guardValue: 0,       // 軽減率 or 固定値
     itemLockTurn: 0,     // アイテム封印残りターン
     restrictInput: false // 拘束状態 (1投制限)
   },
@@ -86,6 +100,7 @@
   hp: 100, maxHp: 100,
   data: null,  // GAME_DATA.enemies[stage][floor] の参照
   name: "",
+  atk: 10,    // 基礎攻撃力 (data.jsのatk値を代入)
   state: {
     charge: false,      // チャージ中フラグ
     isStunned: false,   // スタン状態
@@ -133,17 +148,22 @@
 | `HAND_SIZE` | 5 | 手札上限 |
 | `INITIAL_HAND` | 3 | 初期ドロー枚数 |
 | `SAVE_KEY` | `"darts_quest_save"` | localStorageキー |
-| `SAME_CARD_LIMIT` | 3 | 同名カード上限 (main.js内ハードコード) |
-| `LONG_PRESS_DURATION` | 500 | カード長押し判定(ms) |
+| `SAME_CARD_LIMIT` | 3 | 同名カード上限 (addToDeck内ローカル定数) |
+| `LONG_PRESS_DURATION` | 500 | カード長押し判定(ms) (setupLongPress内ローカル) |
 
 ### 5.1 STAGE_MASTER 拡張プロパティ
 
 | プロパティ | 型 | 説明 | 例 |
 |-----------|-----|------|-----|
+| `title` | string | ステージ日本語名 | `"旅立ちの森"` |
+| `sub` | string | 英語サブタイトル | `"Forest of Beginnings"` |
 | `displayName` | string | UI表示名 | `"STAGE 1"`, `"EXTRA"`, `"STAGE 5"` |
 | `floors` | number | 最大フロア数 | Stage4=6, Stage5(EXTRA)=1, 他=5 |
 | `bossFloor` | number? | ボス扱い開始フロア (省略時=floors) | Stage4のみ `5` (5F,6F両方ボス扱い) |
 | `img` | string\|{default,boss} | 背景画像URL (複数ならオブジェクト) | Stage4/6は2枚切り替え |
+| `multiplier` | number | DP倍率 | 1.0〜5.0 |
+| `warning` | boolean | チャプター演出に警告効果を使うか | Stage 4〜6: true |
+| `thresholds` | object | ランク判定の基準ターン数 | `{ SSS: 12, S: 16, A: 22, B: 30 }` |
 
 ---
 
@@ -151,22 +171,31 @@
 
 ### 6.1 Damage Calculation
 ```
-[プレイヤー → 敵]
-1. ダーツスコア(0-60) = singleDmg
-2. バリア判定: score < barrierLimit → singleDmg = 0
-3. ガード判定:
-   - ratio: singleDmg *= guardValue
-   - fixed:  singleDmg -= guardValue (最低0)
-4. 攻撃バフ: singleDmg = floor((singleDmg + atkFlat) * atkBuff)
-5. enemy.hp -= singleDmg
+[プレイヤー → 敵 (ダーツ投擲)]
+  applyOffenseLogic(dartScore, player, applyRandom=false):
+  1. finalDmg = (dartScore + atkFlat) * (1.0 + atkBuff)
+  2. 乱数なし (ダーツスコアは既に実数値)
 
-[敵 → プレイヤー]
-1. base = 2 + floor + (stage - 1) * 3
-2. baseDmg = floor((base + random(0-5)) * mult)
-3. 敵バフ: baseDmg に atkBuff 加算
-4. トラップ判定 (triggerTrap)
-5. 護封剣: finalDmg *= 0.5
-6. player.hp -= finalDmg
+  applyDefenseLogic(dmg, enemy):
+  3. バリア判定: dmg < barrierLimit → dmg = 0
+  4. ガード判定:
+     - ratio: dmg *= guardValue (例: 0.5 → 半減)
+     - fixed:  dmg -= guardValue (最低0)
+  5. enemy.hp -= floor(finalDmg)
+
+[敵 → プレイヤー (スキル/通常攻撃)]
+  resolveAction (DAMAGE) → applyOffenseLogic:
+  1. basePower = enemy.atk * mult (multはスキルの倍率)
+  2. finalDmg = (basePower + atkFlat) * (1.0 + atkBuff) * random(0.9〜1.1)
+
+  applyDefenseLogic(dmg, player):
+  3. トラップ判定 (triggerTrap): 攻撃無効化/反射/減衰
+  4. 護封剣: guardType="ratio" → dmg *= 0.5
+  5. player.hp -= finalDmg
+
+[カード → 敵 (固定ダメージ)]
+  mode="fixed" の場合: dmg = action.val (ATK計算なし)
+  その後 applyDefenseLogic を通す
 ```
 
 ### 6.2 Weak Point System
@@ -175,7 +204,7 @@
 - WEAK HIT効果: 宝箱ドロップ率100%保証、命の種ドロップ率上昇
 
 ### 6.3 JUST FINISH
-- 敵HPをちょうど0にすると発動
+- 敵HPをちょうど0にすると発動 (singleDmg === enemy.hp の厳密一致)
 - 効果: MaxHP +10 & HP +10 回復
 
 ### 6.4 Turn Flow (詳細)
@@ -183,8 +212,8 @@
 [インターバル] (isInterval = true, 入力遮断)
   ↓ タップ/Enter
 [startPlayerTurn]
-  → MP +3 チャージアニメーション
-  → カード1枚ドロー
+  → MP +3 チャージアニメーション (1ずつ150ms間隔)
+  → カード1枚ドロー (初回のみ3枚を250ms間隔)
   → currentTurn++
   ↓
 [ダーツ投擲フェーズ] (最大3投)
@@ -194,16 +223,16 @@
   ↓
 [finishPlayerTurn]
   → totalGameTurns++
-  → enemyTurn()
+  → processEnemyTurn()
   ↓
-[enemyTurn]
+[processEnemyTurn]
   → スタン判定
-  → AI行動選択 (weight抽選 or guaranteed確定)
-  → executeEnemySkill or doEnemyAttack
+  → actionCount++
+  → AI行動選択 (patternQueue → guaranteed → weight抽選)
+  → executeSkill → resolveAction (各アトムを順番に実行)
   ↓
 [endEnemyTurn]
-  → バフ/デバフのターン経過処理
-  → 1.5秒待機
+  → バフ/デバフのターン経過処理 (tick)
   → preparePlayerTurn (インターバルへ戻る)
 ```
 
@@ -211,31 +240,26 @@
 
 ## 7. Enemy AI System
 
-### 7.1 現行アーキテクチャの注意点
+### 7.1 アトミック・スキル・エンジン (v3.0)
 
-**data.js** は v2.2「アトミック・スキル・システム」形式で記述されている:
+**解決済み**: data.js と main.js のフォーマットは統一されている。
+
+- **data.js**: `actions` 配列にアトム(効果単位)を記述
+- **main.js**: `processEnemyTurn` → `executeSkill` → `resolveAction` で実行
+- 旧関数 (`enemyTurn`, `executeEnemySkill`, `doEnemyAttack`) は削除済み
+
 ```javascript
-// data.js の新形式
+// 統一されたスキル形式 (data.js / CARD_DB 共通)
 {
   name: "スキル名",
   weight: 3,
   cond: { src: "e_hp", op: "lt", val: 80 },
-  visual: { cutin: { text: "...", color: "..." }, msg: "..." },
-  actions: [{ type: "HEAL", val: 20 }, { type: "DAMAGE", mult: 1.0 }]
+  visual: { cutin: { text: "...", color: "..." }, se: "se-xxx", msg: "..." },
+  actions: [{ type: "HEAL", target: "ENEMY", val: 20 }, { type: "DAMAGE", target: "PLAYER", mult: 1.0 }]
 }
 ```
 
-一方、**main.js** の `executeEnemySkill()` は旧形式を前提としている:
-```javascript
-// main.js が期待する旧形式
-{ type: "HEAL", value: 20 }
-{ type: "BUFF_E", state: { ... } }
-{ type: "ATTACK", mult: 2.0 }
-```
-
-**現状**: data.js の `actions` 配列内の個別エフェクトと、main.js の `skill.type` による分岐が一致していない。基本攻撃(name なし)は `doEnemyAttack(1.0)` にフォールスルーするため動作するが、複雑なスキルは正しく実行されない可能性がある。
-
-### 7.2 AI Condition System (`cond`)
+### 7.2 AI Condition System (`cond` / `checkCondition`)
 
 | src | 説明 | op | 例 |
 |-----|------|-----|-----|
@@ -246,13 +270,17 @@
 | `turn` | 敵行動回数 | 同上 | |
 | `turn_mod` | 行動回数の剰余 | (特殊) | `{src:"turn_mod", val:4}` → 4の倍数ターン |
 | `p_state` | プレイヤー状態 | (特殊) | `{src:"p_state", tag:"restrictInput", val:false}` |
+| `e_state` | 敵自身の状態 | (特殊) | `{src:"e_state", tag:"atkBuff", val:0}` |
 | `trap` | 罠セット有無 | (特殊) | `{src:"trap", val:true}` |
+
+**注**: `p_state`/`e_state` は `tag` と `tag+"Turn"` の両方をチェックする。
 
 ### 7.3 AI Action Selection Priority
 1. `patternQueue` にシーケンスが残っていれば最優先で消化
-2. 条件を満たすアクションをフィルタ (既に有効なバフスキルは除外)
+2. 条件を満たし、かつ `preemptive` でないアクションをフィルタ
 3. `guaranteed: true` のアクションがあれば確定発動
 4. なければ `weight` による加重ランダム抽選
+5. フォールバック: 通常攻撃 (mult: 1.0)
 
 ---
 
@@ -265,9 +293,9 @@
 | 1 | 1 | 旅立ちの森 | Forest of Beginnings | x1.0 | 5F | なし | 初期解放 |
 | 2 | 2 | 荒れ狂う荒野 | Raging Wasteland | x1.5 | 5F | なし | Stage1クリア |
 | 3 | 3 | 誘惑の迷宮 | Labyrinth of Temptation | x2.0 | 5F | なし | Stage2クリア |
-| 4 | 4 | 幻想の狂宴 | Toon Nightmare | x3.0 | 6F | あり | Stage3クリア or EXTRAクリア |
+| 4 | 4 | 幻想の狂宴 | Toon Nightmare | x3.0 | 6F | あり | Stage3のbestRank存在 or unlockedStage4 or EXTRAクリア |
 | 5 | 5 | 燃えたぎる火口 | Burning Crater (EXTRA) | x5.0 | 1F | あり | EXTRAクリア済み (再挑戦用) |
-| 6 | 6 | 神の試練 | God's Testing Ground (GOD) | x5.0 | 5F | あり | Stage4クリア |
+| 6 | 6 | 神の試練 | God's Testing Ground (GOD) | x5.0 | 5F | あり | Stage4のbestRank存在 |
 
 ### 8.2 Rank Thresholds (ターン数ベース)
 
@@ -281,6 +309,7 @@
 
 ### 8.3 EXTRA Stage 出現条件
 - Stage 3 クリア時に PPR ≥ 70.0 **または** 過去にEXTRAクリア済み
+- Stage 5 (EXTRA) をステージ選択から再挑戦するには `clearedExtra` が必要
 
 ### 8.4 DP 計算式
 ```
@@ -311,7 +340,7 @@ gainedDP = scoreDP + rankDP
 | 1F | トラコドン | 150 | 7 | 19 | なし |
 | 2F | ワイルド・ラプター | 280 | 8 | 18 | **俊足の連撃** (w3): 0.7倍 × 2連撃 |
 | 3F | 屍を貪る竜 | 310 | 9 | 17 | **死肉の渇望** (w3): 1.0倍ドレイン攻撃 |
-| 4F | 二頭を持つキング・レックス | 340 | 10 | 20 | **狂暴化** (HP<50%確定): ATK+1.0 × 10T |
+| 4F | 二頭を持つキング・レックス | 340 | 10 | 20 | **狂暴化** (atkBuff未適用時, 確定): ATK+1.0 × 10T |
 | 5F (BOSS) | 剣竜 | 540 | 12 | 19 | **恐竜剣・兜割り** (w3): 2.0倍攻撃 |
 
 ### Stage 3: 誘惑の迷宮 (ハーピィ系)
@@ -319,7 +348,7 @@ gainedDP = scoreDP + rankDP
 | Floor | 名前 | HP | ATK | WEAK | 特殊能力 |
 |-------|------|----|-----|------|---------|
 | 1F | デュナミス・ヴァルキリア | 300 | 10 | 20 | **護封剣の加護** (先制): ダメ半減3T |
-| 2F | ハーピィ・レディ | 330 | 11 | 19 | **誘惑の風** (MP>0, w3): MP-1 + 自己HP+20 |
+| 2F | ハーピィ・レディ | 330 | 11 | 19 | **誘惑の風** (MP>0, w3): MP-1ドレイン(敵HP+20) |
 | 3F | ハーピィ・レディ・SB | 360 | 12 | 18 | **サイバー・ボンテージ** (非拘束時, w8): 拘束(1投制限) + 攻撃 |
 | 4F | ハーピィ・レディ三姉妹 | 390 | 13 | 17 | **トライアングル・アタック** (w3): 0.6倍 × 3連撃 |
 | 5F (BOSS) | ハーピィズペット竜 | 550 | 15 | 20 | **愛の鞭・ブレス** (4T毎確定): MP全消去 + 2.0倍攻撃 |
@@ -365,8 +394,8 @@ gainedDP = scoreDP + rankDP
 ### 10.2 Card Types
 - **MAGIC**: 使用時にMPを消費し即時効果。使用後は墓地へ。
 - **TRAP**: MPを消費してセット (1枚のみ)。条件で自動発動後、墓地へ。
-  - `trigger: "summon"` → 敵出現時に発動
-  - `trigger: "attack"` → 敵の攻撃時に発動
+  - `trigger: "summon"` → 敵出現時に発動 (落とし穴)
+  - `trigger: "attack"` → 敵の攻撃時に発動 (バリア、筒、呪縛、はさみ撃ち)
 
 ### 10.3 Card Rarity
 | レアリティ | 枠色 | 名前演出 | パック通常排出率 | 3枚目保証排出率 |
@@ -374,24 +403,38 @@ gainedDP = scoreDP + rankDP
 | N | #555 (灰) | 白文字 | 60% | - |
 | R | #c0c0c0 (銀) | 光沢白 | 30% | 80% (R以上保証) |
 | SR | #ffd700 (金) | 金文字+影 | 9% | 17% |
-| UR | 虹色回転 | レインボー | 1% | 3% |
+| UR | 虹色回転(hue-rotate) | レインボー | 1% | 3% |
 
-### 10.4 Effect Resolution Engine (`resolveEffects`)
-カード・罠の共通エフェクト実行エンジン。エフェクト配列を順番に処理する。
+### 10.4 Atomic Action Engine (`resolveAction`)
+カード・敵スキル・罠の共通エフェクト実行エンジン。`actions` 配列のアトムを順番に処理する。
 
 | type | 効果 | パラメータ |
 |------|------|-----------|
-| `DAMAGE` | ダメージ | `value`, `target` ("PLAYER" or 敵) |
-| `DAMAGE_MULT` | ダメージ倍率変更 | `value` (罠用) |
-| `HEAL` | HP回復 | `value` (数値 or "FULL") |
-| `DRAW` | カードドロー | `value` (枚数) |
-| `STATE_P` | プレイヤー状態変更 | `state` (オブジェクト), `msg` |
-| `STATE_E` | 敵状態変更 | `state`, `stun`, `msg` |
+| `DAMAGE` | ダメージ | `target`, `mult`(ATK倍率) or `mode:"fixed",val`(固定), `count`(連撃), `drain`(吸収) |
+| `DAMAGE_MULT` | ダメージ倍率変更 | `val` (罠用: 受けるダメージに乗算) |
+| `HEAL` | HP回復 | `target`, `val` (数値 or 9999で全回復) |
+| `DRAW` | カードドロー | `val` (枚数) |
+| `STATE` | 状態変更 | `target`, `kind`, `val`, `turn` (下記kind表参照) |
+| `MP_ACTION` | MP増減 | `target`, `val` (負数で減少), `drain`(true=敵HP回復) |
 | `DISCARD_ALL` | 手札全捨て | - |
-| `DISCARD_SELECT` | 手札選択破棄 | `count` → モーダル表示後、残りエフェクトを `pendingEffectsQueue` に保存して再開 |
+| `DISCARD_SELECT` | 手札選択破棄 | `count` → モーダル表示後、非同期で待機 |
 | `NEGATE` | 攻撃無効化 | - (罠用) |
-| `REFLECT` | ダメージ反射 | `mult` (罠用) |
+| `REFLECT` | ダメージ反射 | `mult` (罠用: 元ダメージ × mult を敵に反射) |
 | `SPECIAL_SALVAGE` | 墓地回収 | 墓地のMAGICカードをランダム1枚回収 |
+
+**STATE kind 一覧**:
+| kind | 効果 | 対象 |
+|------|------|------|
+| `atk_buff` | 攻撃倍率バフ | P/E |
+| `atk_flat` | 攻撃固定値加算 | P |
+| `guard_ratio` | 割合軽減ガード | P/E |
+| `guard_fixed` | 固定値軽減ガード | E |
+| `barrier` | バリア (閾値未満無効) | E |
+| `charge` | チャージ状態 | E |
+| `item_lock` | アイテム封印 | P |
+| `bind` | 拘束 (1投制限) | P |
+| `stun` | スタン (1T行動不能) | E |
+| `break_guard` | 防御状態解除 | E |
 
 ---
 
@@ -449,6 +492,7 @@ gainedDP = scoreDP + rankDP
 - 投擲中 (`turnInputs.length > 0`) は使用不可
 - `itemLockTurn > 0` (スライムの粘着) 中は使用不可
 - カードの使用も同じ制限を共有
+- インターバル中もアイテムボタンは `disabled` 表示
 
 ---
 
@@ -459,7 +503,7 @@ gainedDP = scoreDP + rankDP
 |----|------|--------|
 | bgm-title | タイトル画面 | Yes |
 | bgm-battle | 通常戦闘 | Yes |
-| bgm-boss | ボス戦 | Yes |
+| bgm-boss | ボス戦 (Stage 5/6 開始時も使用) | Yes |
 | bgm-extra | EXTRA戦 | Yes |
 | bgm-win | 勝利 | No |
 | bgm-lose | 敗北 | No |
@@ -540,6 +584,9 @@ PPR (Points Per Round) = `(totalScore / totalDarts) * 3` から算出。
 - タイトル画面で `1111` を入力 → DP +5000
 
 ### 17.5 未使用変数 (軽微)
-- `main.js:1656` `oldHp` (HEAL処理内)
-- `main.js:2578` `last` (finishSession内)
-- `main.js:2646` `dpText` (showHistory内)
+- `battle.js` `oldHp` (useItem内で宣言されるが参照なし)
+- `ui.js` `last` (finishSession内で宣言されるが参照なし)
+- `ui.js` `dpText` (showHistory内で宣言されるが使わず直接 `h.dp` を使用)
+
+### 17.6 main.js の分割 (解決済み)
+**解決済み (v2.18.6)**: main.js (2838行) を6ファイルに分割。詳細は MEMORIES.md 参照。

@@ -2,6 +2,22 @@
 
 ## 履歴 (最新が上)
 
+### 2026-02-13: main.js 分割 (モジュール化 Step1-3)
+- **意図**: main.js (2839行) の肥大化を解消し、保守性を向上させるため6ファイルに分割。
+- **方針**: モジュールシステム不使用。`<script>` タグの読み込み順で依存を解決。グローバル関数・変数はそのまま維持。コードの移動のみ、ロジック変更なし。
+- **最終構成 (読み込み順)**:
+  1. `data.js` — 定数・マスタデータ (既存、変更なし)
+  2. `state.js` (92行) — el(), calculateRating(), shuffleArray(), wait(), グローバル変数全て
+  3. `audio.js` (66行) — gameConfig, loadGameConfig(), saveGameConfig(), stopAllBGM(), playBGM(), updateCurrentBgmVolume(), playSE()
+  4. `visual.js` (118行) — triggerFloatText(), triggerEffect(), resizeGame(), announce(), addLog(), showSkillCutin()
+  5. `battle.js` (876行) — handleEnter(), processOneThrow(), checkCondition(), triggerTrap(), executeSkill(), resolveAction(), applyOffenseLogic(), applyDefenseLogic(), processEnemyTurn(), endEnemyTurn(), preparePlayerTurn(), startPlayerTurn(), winBattle(), loseGame(), checkDrop(), openChest(), nextStep(), useItem(), drawCard(), playHandCard(), executeSalvageMagic()
+  6. `ui.js` (1042行) — openDiscardSelector(), renderHand(), updateInfo(), openCardShop(), buyPack(), startPackOpening(), proceedUnboxing(), createCardElement(), showDialog(), calculateStageRank(), finishSession(), showHistory(), updateScoreDisplay(), openConfigModal(), openStageSelect(), renderStageSelectScreen() 等
+  7. `main.js` (645行) — エントリーポイント: 初期化, BT接続, スロット管理, タイトル, ステージヘルパー, ゲームフロー(initGameSession, startTransition, setupStage, spawnEnemy), イベントハンドラ(keydown, keyup, mousedown), returnToTitle()
+- **読み込み順の根拠**: battle.js → ui.js → main.js。相互参照する関数は実行時に解決される（定義時には未定義でも問題なし）。
+- **注意**: triggerEncounterEffects() が main.js 内に2回定義されている（元のコードのまま維持）。
+- **合計行数**: 2839行 (分割前と同一、コード増減なし)
+
+---
 ### 2026-02-12: スプリングクリーニング (拡張性リファクタリング)
 - **意図**: TECH.md 基準で最も拡張性が低い3箇所を特定し、データ駆動設計に全面刷新。
 - **変更1 (STAGE_MASTER拡張)**: `displayName`, `floors`, `bossFloor`, `img` を追加。`renderStageSelectScreen()` をハードコード配列から `Object.entries(STAGE_MASTER)` ループに書き換え。解放判定は `isStageUnlocked()` に一元化。
