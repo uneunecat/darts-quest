@@ -124,37 +124,53 @@ html, body {
     100% { transform: translateY(-50px); opacity: 0; } 
 }
 
+/* =========================================
+   DAMAGE FLOAT EFFECTS (v4.8 Clean Architecture)
+   ========================================= */
+   
+/* 1. 基本設定（アニメーション・フォントなど共通項目） */
 .damage-float {
-    position: absolute; font-family: 'Impact', sans-serif;
-    font-weight: bold; pointer-events: none; z-index: 2000;
+    position: absolute;
+    font-family: 'Impact', sans-serif;
+    font-weight: bold;
+    pointer-events: none;
+    z-index: 2000;
     text-shadow: 2px 2px 0 #000;
-    animation: float-damage 1.2s forwards; /* 1.5sから1.2sに短縮 */
+    animation: float-damage 1.2s forwards;
+    color: #ff0000; /* デフォルトは赤 */
 }
-.damage-float.heal { color: #00ff00; text-shadow: 0 0 15px #00ff00; }
-.damage-float.miss { color: #aaa; font-size: 50px; }
-.damage-float.enemy-dmg {
-    left: 50% !important; top: 40% !important; bottom: auto !important;
-    transform: translate(-50%, -50%);
-    color: #ffd700; text-shadow: 4px 4px 0 #000, 0 0 20px gold;
-    font-size: 100px;
+
+/* 2. 色・サイズのバリエーション設定 */
+.damage-float.heal { 
+    color: #00ff00 !important; 
+    text-shadow: 0 0 15px #00ff00, 2px 2px 0 #000 !important; 
 }
+.damage-float.miss { 
+    color: #aaa !important; 
+    font-size: 50px !important; 
+    text-shadow: none !important; 
+}
+
+/* 3. 表示位置（side）の設定 */
+
 /* プレイヤー側 (左下のHPバー付近) */
 .damage-float.player-side {
     left: 40px;
     bottom: 180px;
     font-size: 80px;
-    color: #ff0000;
-    text-shadow: 0 0 15px rgba(255,0,0,0.5);
+    /* ここはデフォルトの赤を継承（回復時は.healで上書き） */
 }
+
 /* 敵側 (敵の画像中央付近) */
 .damage-float.enemy-side {
     left: 50%;
     top: 40%;
     transform: translate(-50%, -50%);
     font-size: 110px;
-    color: #ffd700;
+    color: #ffd700; /* 敵側への通常ヒットは黄色（金） */
     text-shadow: 4px 4px 0 #000, 0 0 25px gold;
 }
+
 @keyframes float-damage { 
     0% { opacity: 0; transform: translate(-50%, 20px) scale(0.5); } 
     15% { opacity: 1; transform: translate(-50%, 0) scale(1.2); } 
