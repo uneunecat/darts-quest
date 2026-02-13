@@ -568,6 +568,32 @@ window.addEventListener("keyup", (e) => {
 
 // Input Handling for Unboxing & Cheats
 window.addEventListener("keydown", function (e) {
+
+    // [開発用ショートカット]
+    if (el("game-screen").style.display !== "none") {
+        // 'K'キーで敵を即倒す (Kill)
+        if (e.key === 'k' || e.key === 'K') {
+            enemy.hp = 0;
+            updateInfo();
+            winBattle();
+            return;
+        }
+        // 'M'キーでMPを全快させる (Max MP)
+        if (e.key === 'm' || e.key === 'M') {
+            player.mp = player.maxMp;
+            updateInfo();
+            addLog("DEBUG: MP Refilled", "log-system");
+            return;
+        }
+        // 'H'キーでHPを全快させる (Heal)
+        if (e.key === 'h' || e.key === 'H') {
+            player.hp = player.maxHp;
+            updateInfo();
+            addLog("DEBUG: HP Fully Restored", "log-system");
+            return;
+        }
+    }
+
     if (el("pack-result-modal").style.display === "flex") {
         e.preventDefault();
         if (e.repeat && e.key === "Enter" && openingPhase >= 2 && openingPhase < 4) { skipUnboxing(); return; }
@@ -638,3 +664,39 @@ document.addEventListener('mousedown', (e) => {
     }
 });
 
+// =========================================
+// DEBUG TOOLS (開発用)
+// =========================================
+
+/**
+ * 指定したステージとフロアへ強制ジャンプ
+ * 例: debugJump(3, 2) -> ステージ3の2Fへ
+ */
+window.DJ = function(s, f = 1) {
+    console.log(`DEBUG: Jumping to Stage ${s}, Floor ${f}`);
+    
+    // 1. 全ての画面とBGMをリセット
+    stopAllBGM();
+    el("title-screen").style.display = "none";
+    el("stage-select-screen").style.display = "none";
+    el("chapter-screen").style.display = "none";
+    el("interval-screen").style.display = "none";
+    el("game-screen").style.display = "block";
+    
+    // 2. プレイヤーの状態を初期化（テスト用に全快させる）
+    player.hp = player.maxHp;
+    player.mp = player.maxMp;
+    player.states = [];
+    player.deck = shuffleArray([...savedData.deck]);
+    player.hand = [];
+    for(let i=0; i<3; i++) drawCard(true); // 初期手札3枚
+    
+    // 3. 座標をセットして敵を出現させる
+    stage = s;
+    floor = f;
+    spawnEnemy();
+    
+    // 4. インターバルを飛ばして即戦闘開始したい場合
+    isInterval = false;
+    el("interval-screen").style.display = "none";
+};
