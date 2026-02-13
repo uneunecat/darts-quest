@@ -127,7 +127,7 @@ html, body {
 /* =========================================
    DAMAGE FLOAT EFFECTS (v4.8 Clean Architecture)
    ========================================= */
-   
+
 /* 1. 基本設定（アニメーション・フォントなど共通項目） */
 .damage-float {
     position: absolute;
@@ -473,6 +473,12 @@ html, body {
     box-shadow: 0 0 15px #00d2fc, 0 0 5px #fff inset !important;
     transform: scale(1.3);
     transition: transform 0.2s;
+}
+.mp-dot.losing {
+    background: #ff4444 !important;
+    box-shadow: 0 0 15px #ff0000, 0 0 5px #fff inset !important;
+    transform: scale(1.3);
+    transition: transform 0.1s;
 }
 
 /* Items */

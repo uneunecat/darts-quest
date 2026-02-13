@@ -257,14 +257,7 @@ function initGameSession(startStage, continueMode = false) {
     if (!continueMode) {
         player = {
             ...JSON.parse(JSON.stringify(PLAYER_INITIAL_STATS)), // ディープコピー
-            state: {
-                atkBuff: 0,    // ★ 1.0 から 0 に修正 (0 = 増加なし)
-                atkFlat: 0,
-                atkDuration: 0,
-                guardTurn: 0,
-                itemLockTurn: 0,
-                restrictInput: false
-            },
+            states: [], // ★ 修正: 配列で初期化
             setCard: null,
             deck: [], hand: [], discard: [], deckLocked: false
         };
@@ -432,9 +425,11 @@ function spawnEnemy() {
     if (player.hp <= 0) return;
     
     try {        
-        enemy.state = { charge: false, isStunned: false, atkBuff: 0, atkBuffTurn: 0, guardTurn: 0, guardType: null, guardValue: 0, barrierTurn: 0, barrierLimit: 0, actionCount: 0, 
-            patternQueue: enemy.state?.patternQueue || [] // 継続中の行動を維持
-        };
+        // ★ 修正: 個別のフラグ管理をやめ、states配列を空にする
+        enemy.states = []; 
+        enemy.actionCount = 0;
+        enemy.patternQueue = [];
+        enemy.preemptiveTriggered = false; 
         currentTurn = 0; turnInputs = []; currentInput = ""; isJustFinish = false; waitingForChest = false; dropGuaranteed = false; weakHitCount = 0;
         
         updateScoreDisplay();

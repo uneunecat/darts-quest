@@ -116,3 +116,53 @@ function showSkillCutin(name, type) {
         el("game-container").classList.remove("shake-heavy");
     }, 1500);
 }
+
+// =========================================
+// MP ANIMATION EFFECTS (visual.js)
+// =========================================
+
+// Updated: MPを1つずつチャージする演出 (SE付き)
+async function animateMPGain(amount) {
+    for (let i = 0; i < amount; i++) {
+        if (player.mp >= player.maxMp) break;
+        
+        player.mp++;
+        // 増加音: 軽快なタップ音
+        playSE("se-tap"); 
+        
+        const dots = el("player-mp-dots").querySelectorAll(".mp-dot");
+        const targetDot = dots[player.mp - 1];
+        if (targetDot) {
+            targetDot.classList.add("charging");
+            await wait(150); // 発光時間
+            targetDot.classList.remove("charging");
+        }
+        
+        updateInfo(); // UIに反映
+        await wait(100); // 次のドットへの間隔
+    }
+}
+
+// Updated: MPを1つずつ減らす演出 (SE付き)
+async function animateMPLoss(amount) {
+    const absoluteAmount = Math.abs(amount);
+    for (let i = 0; i < absoluteAmount; i++) {
+        if (player.mp <= 0) break;
+        
+        // 現在点灯している一番右のドットを特定
+        const dots = el("player-mp-dots").querySelectorAll(".mp-dot");
+        const targetDot = dots[player.mp - 1];
+        
+        if (targetDot) {
+            targetDot.classList.add("losing");
+            // 減少音: 少し重みのあるデバフ音
+            playSE("se-debuff"); 
+            await wait(150); // 閃光時間
+            targetDot.classList.remove("losing");
+        }
+        
+        player.mp--;
+        updateInfo(); // 消灯を反映
+        await wait(100); // 次のドットへの間隔
+    }
+}

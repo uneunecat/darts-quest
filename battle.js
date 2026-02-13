@@ -30,32 +30,27 @@ function handleEnter() {
     }
 }
 
-// Updated: ダーツ投擲処理 (ジャストフィニッシュ判定の厳密化)
+// Updated: processOneThrow (v5.9 - Fixed Action Lock / Bind)
 async function processOneThrow(score) {
     if (enemy.hp <= 0 || player.hp <= 0 || isProcessing || isInterval) return;
-    if (player.state.restrictInput && turnInputs.length > 0) return;
 
-    // 1. 攻撃計算
+    // 1. 投擲開始時の拘束状態を記録
+    const isBound = hasState(player, "action_lock");
+
+    // 既に1投投げているのに、拘束フラグがある場合はガード（通常ここには来ない）
+    if (isBound && turnInputs.length > 0) return;
+
+    // 2. 攻撃計算とステートの進行
     let singleDmg = applyOffenseLogic(score, player, false);
+    
+    // 投げた瞬間に「投数(throw)」タイミングのステートを減らす (atk_buffなど)
+    tickStates(player, "throw"); 
+    tickStates(enemy, "throw"); 
 
-    if (player.state.atkDuration > 0) {
-        player.state.atkDuration--;
-        if (player.state.atkDuration <= 0) {
-            player.state.atkBuff = 0; player.state.atkFlat = 0;
-            addLog("攻撃強化終了", "log-system");
-        }
-    }
-
-    // 2. 防御計算
+    // 防御計算
     singleDmg = await applyDefenseLogic(singleDmg, enemy, true);
 
     // 3. 判定と適用
-    if (player.state.restrictInput) {
-        player.state.restrictInput = false;
-        addLog("拘束解除", "log-system");
-    }
-
-    // ★ジャストフィニッシュ判定 (単発ダメージが残りHPと「等しい」場合のみ)
     if (singleDmg === enemy.hp && enemy.hp > 0) { 
         isJustFinish = true; 
     }
@@ -75,12 +70,13 @@ async function processOneThrow(score) {
         playSE("se-weak");
     }
 
-    // 演出 (ターゲットは敵なので isPlayer=false)
+    // 演出
     triggerEffect(el("game-screen"), singleDmg, false);
     el("enemy-hp-value").innerText = enemy.hp;
     displayEnemyHP = enemy.hp;
     updateInfo();
 
+    // 4. 勝利判定
     if (enemy.hp <= 0) {
         isProcessing = true;
         totalGameTurns++;
@@ -88,7 +84,17 @@ async function processOneThrow(score) {
         return;
     }
 
-    if (turnInputs.length >= 3) {
+    // 5. ★ 拘束解除とターン終了判定
+    if (isBound) {
+        // 拘束ステートを強制削除
+        player.states = player.states.filter(s => STATE_MASTER[s.id].category !== "action_lock");
+        addLog("拘束解除", "log-system");
+        updateInfo();
+        
+        // 1投目だが拘束中だったので、即座にターン終了へ
+        setTimeout(finishPlayerTurn, 1000);
+    } else if (turnInputs.length >= 3) {
+        // 通常の3投終了
         setTimeout(finishPlayerTurn, 1000);
     }
 }
@@ -117,12 +123,16 @@ function checkCondition(c) {
         case "p_hp": targetVal = (player.hp / player.maxHp) * 100; break;
         case "p_mp": targetVal = player.mp; break;
         case "hand": targetVal = player.hand.length; break;
-        case "turn": targetVal = enemy.state.actionCount; break;
-        case "turn_mod": return enemy.state.actionCount > 0 && (enemy.state.actionCount % c.val === 0);
+        case "turn": targetVal = enemy.actionCount; break;
+        case "turn_mod": return enemy.actionCount > 0 && (enemy.actionCount % c.val === 0);
         case "p_state": 
         case "e_state": // ★追加: 敵自身の状態チェック
-            const stateObj = (c.src === "p_state") ? player.state : enemy.state;
-            const tag = c.tag.includes("Turn") ? c.tag : c.tag + "Turn";
+            const obj = (c.src === "p_state") ? player : enemy;
+            // 指定された tag (カテゴリ名) を持っているかチェック
+            // 持っていればその「残りターン/回数」を取得、なければ 0
+            const state = obj.states.find(s => STATE_MASTER[s.id]?.category === c.tag);
+            targetVal = state ? state.turn : 0;
+            break;
             // 指定された値（例: 0）と一致するか判定
             return (stateObj[c.tag] || stateObj[tag] || 0) === c.val;
         case "trap": return !!player.setCard === c.val;
@@ -195,23 +205,54 @@ function getCalculatedWait(skill) {
     // 名前がある技のみ、状況確認のため少しだけ(200ms)足す
     return skill.name ? 1200 : 800;
 }
+// Updated: ステートの持続時間を進める共通関数 (v5.0)
+// timingFilter: "throw" (1投ごと) または "round" (敵ターン終了ごと)
+function tickStates(obj, timingFilter) {
+    if (!obj.states || obj.states.length === 0) return;
+
+    // 1. 指定されたタイミングのステートのカウントを減らす
+    obj.states.forEach(s => {
+        const master = STATE_MASTER[s.id];
+        if (master && master.timing === timingFilter) {
+            s.turn--;
+        }
+    });
+
+    // 2. カウントが0になったステートを削除する前に、ログを出す（任意）
+    obj.states.forEach(s => {
+        if (s.turn === 0) {
+            const master = STATE_MASTER[s.id];
+            if (master && master.label) {
+                addLog(`【効果終了】${master.label}`, "log-system");
+            }
+        }
+    });
+
+    // 3. 0以下になったものを配列から取り除く
+    obj.states = obj.states.filter(s => s.turn > 0);
+}
+
+// ヘルパー: 特定のステートを持っているかチェックする
+function hasState(obj, category) {
+    return obj.states.some(s => STATE_MASTER[s.id]?.category === category);
+}
 
 // Updated: processEnemyTurn (v7.1 - Multi-turn Sequence Support)
 async function processEnemyTurn() {
-    if (enemy.state.isStunned) {
+    if (hasState(enemy, "stun")) { // ★修正: hasStateヘルパーを使用
         addLog(`${enemy.name}はスタン中`, "log-system");
-        enemy.state.isStunned = false;
+        // スタン(round)は endEnemyTurn の tickStates で自動消滅します
         endEnemyTurn(); 
-        preparePlayerTurn();
+        if (player.hp > 0) preparePlayerTurn();
         return;
     }
 
-    enemy.state.actionCount++;
+    enemy.actionCount++;
     let selectedSkill = null;
 
     // 1. 進行中の連続行動があれば優先
-    if (enemy.state.patternQueue && enemy.state.patternQueue.length > 0) {
-        selectedSkill = enemy.state.patternQueue.shift();
+    if (enemy.patternQueue && enemy.patternQueue.length > 0) {
+        selectedSkill = enemy.patternQueue.shift();
     } else {
         const aiList = enemy.data.ai || [{ weight: 1, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }];
         
@@ -238,7 +279,7 @@ async function processEnemyTurn() {
     if (selectedSkill.sequence) {
         const queue = [...selectedSkill.sequence];
         const currentAction = queue.shift();
-        enemy.state.patternQueue = queue; // 残りをキューに保存
+        enemy.patternQueue = queue;
         await executeSkill(currentAction);
     } else {
         // 単発スキルの実行
@@ -255,7 +296,6 @@ async function processEnemyTurn() {
 
 // Updated: executeSkill (プレイヤー/敵 共通)
 async function executeSkill(skill, isPreemptive = false, isCard = false) {
-    if (!isCard) enemy.state.charge = false;
 
     // skill.visual が存在しない場合のフォールバック
     const skillVis = skill.visual || {};
@@ -283,19 +323,21 @@ async function executeSkill(skill, isPreemptive = false, isCard = false) {
     }
 }
 
-// Updated: 攻撃ロジックの共通計算機 (v4.4)
-// basePower: 点数 または (ATK * 倍率)
-// sourceObj: 攻撃者 (player または enemy)
-// applyRandom: 乱数を適用するか (ダーツには不要、スキルには必要)
+// Updated: 攻撃ロジック (v5.0 ステート・スキャナー方式)
 function applyOffenseLogic(basePower, sourceObj, applyRandom = true) {
-    const s = sourceObj.state;
-    const boost = s.atkBuff || 0;  // 倍率バフ
-    const flat = s.atkFlat || 0;    // 固定値加算 (援軍など)
+    // 1. カテゴリが "atk_mult" (倍率) のステート値を合計する
+    const multBonus = sourceObj.states
+        .filter(s => STATE_MASTER[s.id]?.category === "atk_mult")
+        .reduce((sum, s) => sum + s.val, 0);
 
-    // 基本計算式: (基礎威力 + 固定加算) * (1.0 + 倍率バフ)
-    let finalDmg = (basePower + flat) * (1.0 + boost);
+    // 2. カテゴリが "atk_add" (加算) のステート値を合計する
+    const addBonus = sourceObj.states
+        .filter(s => STATE_MASTER[s.id]?.category === "atk_add")
+        .reduce((sum, s) => sum + s.val, 0);
 
-    // スキル攻撃などの場合は乱数(0.9~1.1)を適用
+    // 3. 計算実行: (威力 + 加算) * (1.0 + 倍率)
+    let finalDmg = (basePower + addBonus) * (1.0 + multBonus);
+
     if (applyRandom) {
         const rand = 0.9 + (Math.random() * 0.2);
         finalDmg *= rand;
@@ -304,25 +346,35 @@ function applyOffenseLogic(basePower, sourceObj, applyRandom = true) {
     return Math.floor(finalDmg);
 }
 
-// Updated: 防御ロジックの共通計算機 (v4.3)
+// Updated: 防御ロジック (v5.0 ステート・スキャナー方式)
 function applyDefenseLogic(dmg, targetObj, isDarts = false) {
     let finalDmg = dmg;
 
-    // 1. 結界 (Barrier) 判定
-    if (targetObj.state.barrierTurn > 0 && finalDmg < targetObj.state.barrierLimit) {
-        if (!isDarts) addLog("結界が攻撃を弾いた！", "log-enemy");
-        return 0; 
+    // 1. 結界 (barrier) チェック
+    const maxBarrier = targetObj.states
+        .filter(s => STATE_MASTER[s.id]?.category === "barrier")
+        .reduce((max, s) => Math.max(max, s.val), 0);
+
+    if (maxBarrier > 0 && finalDmg < maxBarrier) {
+        if (!isDarts) addLog("結界が攻撃を遮断！", "log-enemy");
+        return 0;
     }
 
-    // 2. ガード (Guard/Armor) 判定
-    if (finalDmg > 0 && targetObj.state.guardTurn > 0) {
-        if (targetObj.state.guardType === 'ratio') {
-            finalDmg = Math.floor(finalDmg * targetObj.state.guardValue);
-        } else if (targetObj.state.guardType === 'fixed') {
-            finalDmg = Math.max(0, finalDmg - targetObj.state.guardValue);
-        }
-    }
-    return finalDmg;
+    // 2. 倍率防御 (dmg_mult) チェック
+    const dmgMult = targetObj.states
+        .filter(s => STATE_MASTER[s.id]?.category === "dmg_mult")
+        .reduce((prod, s) => prod * s.val, 1.0); // 0.5が2つあれば0.25倍になる
+
+    finalDmg *= dmgMult;
+
+    // 3. 固定防御 (dmg_sub) チェック
+    const dmgSub = targetObj.states
+        .filter(s => STATE_MASTER[s.id]?.category === "dmg_sub")
+        .reduce((sum, s) => sum + s.val, 0);
+
+    finalDmg = Math.max(0, finalDmg - dmgSub);
+
+    return Math.floor(finalDmg);
 }
 
 // Updated: resolveAction (v4.9.1 - Fixed Reference Error)
@@ -395,6 +447,19 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
             }
             break;
 
+        case "MP_ACTION":
+            if (targetObj === player) {
+                const changeVal = action.val || 0;
+                if (changeVal < 0) {
+                    // ★ 減少演出を待機実行
+                    await animateMPLoss(changeVal);
+                } else if (changeVal > 0) {
+                    // ★ 増加演出（以前作ったものを流用）
+                    await animateMPGain(changeVal);
+                }
+            }
+            break;
+
         case "HEAL":
             playSE(effectiveVisual.se || "se-heal");
             const hVal = (action.val === "FULL" || action.val > 500) ? (targetObj.maxHp - targetObj.hp) : action.val;
@@ -405,33 +470,16 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
         case "STATE":
             const turn = action.turn || 1;
             const val = action.val || 0;
-            if (action.kind === "atk_buff" || action.kind === "atk_flat") {
-                if (action.kind === "atk_buff") targetObj.state.atkBuff = val;
-                if (action.kind === "atk_flat") targetObj.state.atkFlat = val;
-                if (isPlayerTarget) targetObj.state.atkDuration = turn;
-                else targetObj.state.atkBuffTurn = turn;
-            } else if (action.kind === "guard_ratio") {
-                targetObj.state.guardTurn = turn;
-                targetObj.state.guardType = 'ratio';
-                targetObj.state.guardValue = val;
-            } else if (action.kind === "guard_fixed") {
-                targetObj.state.guardTurn = turn;
-                targetObj.state.guardType = 'fixed';
-                targetObj.state.guardValue = val;
-            } else if (action.kind === "barrier") {
-                targetObj.state.barrierTurn = turn;
-                targetObj.state.barrierLimit = val;
-            } else if (action.kind === "charge") {
-                targetObj.state.charge = true;
-            } else if (action.kind === "item_lock") {
-                targetObj.state.itemLockTurn = turn;
-            } else if (action.kind === "bind") {
-                player.state.restrictInput = true;
-            } else if (action.kind === "stun") {
-                targetObj.state.isStunned = true;
-            } else if (action.kind === "break_guard") {
-                targetObj.state.guardTurn = 0;
-            }
+            const stateId = action.kind;
+
+            // エンジンは stateId の意味を知らなくていい。ただ積むだけ。
+            targetObj.states.push({
+                id: stateId,
+                turn: turn,
+                val: val
+            });
+            
+            // 演出だけは共通で実行
             playSE(effectiveVisual.se || "se-buff");
             if (effectiveVisual.msg) addLog(effectiveVisual.msg, "log-skill");
             break;
@@ -461,24 +509,9 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
 
 // Updated: endEnemyTurn (v4.3 - Universal Ticking)
 function endEnemyTurn() {
-    const tick = (obj) => {
-        const s = obj.state;
-        // 時間（ターン）で管理しているものだけを減らす
-        if (s.atkBuffTurn > 0) s.atkBuffTurn--; // 敵用
-        if (s.guardTurn > 0) s.guardTurn--;     // 共通
-        if (s.barrierTurn > 0) s.barrierTurn--; // 敵用
-        if (s.itemLockTurn > 0) s.itemLockTurn--; // プレイヤー用
-        
-        // --- 0になった時のクリーンアップ ---
-        if (s.guardTurn === 0) { s.guardType = null; s.guardValue = 0; }
-        if (s.barrierTurn === 0) s.barrierLimit = 0;
-        if (s.atkBuffTurn === 0 && obj === enemy) s.atkBuff = 0; 
-        
-        // ※ ここで player.state.atkDuration は「投数」なので触らない！
-    };
 
-    tick(enemy, false);
-    tick(player, true);
+    tickStates(enemy, "round");
+    tickStates(player, "round");
 
     updateInfo();
 }
@@ -550,26 +583,6 @@ function executeDrawWithAnim() {
         setTimeout(() => {
             lastCard.classList.remove("card-draw-anim");
         }, 500);
-    }
-}
-// Updated: MPを1つずつチャージする演出
-async function animateMPGain(amount) {
-    for (let i = 0; i < amount; i++) {
-        if (player.mp >= player.maxMp) break;
-        
-        player.mp++;
-        playSE("se-tap"); // 1音ずつ鳴らす
-        
-        // UI更新（一瞬だけchargingクラスを付けるために手動で操作）
-        const dots = el("player-mp-dots").querySelectorAll(".mp-dot");
-        const targetDot = dots[player.mp - 1];
-        if (targetDot) {
-            targetDot.classList.add("charging");
-            setTimeout(() => targetDot.classList.remove("charging"), 200);
-        }
-        
-        updateInfo(); // 全体更新
-        await new Promise(resolve => setTimeout(resolve, 150)); // 少し待機
     }
 }
 
@@ -765,9 +778,10 @@ function useItem(type) {
         addLog(">> 投擲中はアイテムを使えません！", "log-system");
         return;
     }
-    if (player.state.itemLockTurn > 0) {
+    // ★修正: hasStateを使用してアイテム封印を判定
+    if (hasState(player, "item_lock")) {
         playSE("se-warning");
-        addLog(`>> 粘着されていてアイテムが使えない！(残り${player.state.itemLockTurn}T)`, "log-system");
+        addLog(`>> アイテム封印中！`, "log-system");
         return;
     }
     
@@ -808,9 +822,9 @@ async function playHandCard(index) {
         addLog(">> 投擲中はカードを使えません！", "log-system");
         return;
     }
-    if (player.state.itemLockTurn > 0) {
+    if (hasState(player, "item_lock")) {
         playSE("se-warning");
-        addLog(`>> アイテム封印中！(残り${player.state.itemLockTurn}T)`, "log-system");
+        addLog(`>> アイテム封印中！`, "log-system");
         return;
     }
     

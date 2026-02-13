@@ -31,6 +31,24 @@ const INITIAL_HAND = 3;
 const SAVE_KEY = "darts_quest_save";
 
 // =========================================
+// STATE MASTER REGISTRY (v5.0)
+// =========================================
+// category: エンジンが計算時に参照する分類
+// timing: "throw" (投擲ごとに減少) | "round" (敵ターン終了時に減少)
+const STATE_MASTER = {
+    "p_atk_buff":  { label: "攻撃UP", icon: "⚔️", category: "atk_mult", timing: "throw", class: "chip-p-buff" },
+    "p_atk_flat":  { label: "ダメUP",   icon: "⚔️", category: "atk_add",  timing: "throw", class: "chip-p-buff" },
+    "e_atk_buff":  { label: "強攻",   icon: "⚔️", category: "atk_mult", timing: "round", class: "chip-e-buff" },
+    "guard_ratio": { label: "ガード",   icon: "🛡️", category: "dmg_mult",   timing: "round", class: "chip-guard" },
+    "guard_fixed": { label: "アーマー", icon: "🛡️", category: "dmg_sub",    timing: "round", class: "chip-guard" },
+    "barrier":     { label: "結界",     icon: "💠", category: "barrier",    timing: "round", class: "chip-barrier" },
+    "charge":      { label: "溜め",     icon: "⚡", category: "charge",     timing: "round", class: "chip-charge" },
+    "stun":        { label: "スタン",   icon: "😵", category: "stun",       timing: "round", class: "chip-stun" },
+    "item_lock":   { label: "アイテム封印", icon: "🔒", category: "item_lock", timing: "round", class: "chip-lock" },
+    "bind":        { label: "拘束",     icon: "⛓️", category: "action_lock", timing: "throw", class: "chip-stun" }
+};
+
+// =========================================
 // Updated: GAME_DATA.enemies (v2.2 アトミック・スキル・システム)
 // =========================================
 // atk: 基礎攻撃力 (ここから±10%の乱数でダメージ計算)
@@ -110,7 +128,7 @@ const GAME_DATA = {
             ]},
             { name: "二頭を持つキング・レックス", img: "assets/2-4.png", weak: 20, hp: 340, atk: 10, ai: [
                 { 
-                    name: "狂暴化", weight: 5, guaranteed: true, cond: { src: "e_state", tag: "atkBuff", val: 0 }, 
+                    name: "狂暴化", weight: 5, guaranteed: true, cond: { src: "e_state", tag: "atk_mult", val: 0 }, 
                     visual: { cutin: { text: "狂暴化", color: "fire" }, msg: "怒りで攻撃力が倍増した！" },
                     actions: [{ type: "STATE", target: "ENEMY", kind: "atk_buff", val: 1.0, turn: 10, visual: { se: "se-buff" } }]
                 },
@@ -136,17 +154,18 @@ const GAME_DATA = {
             ]},
             { name: "ハーピィ・レディ", img: "assets/3-2.png", weak: 19, hp: 330, atk: 11, ai: [
                 { 
-                    name: "誘惑の風", weight: 3, cond: { src: "p_mp", op: "gt", val: 0 },
-                    visual: { cutin: { text: "誘惑の風", color: "wind" }, msg: "MPを奪い、自らを癒やした！" },
+                    name: "誘惑の風", weight: 3, 
+                    visual: { cutin: { text: "誘惑の風", color: "wind" }, msg: "強烈な風がMPを削り、敵を癒やす！" },
                     actions: [
-                        { type: "MP_ACTION", target: "PLAYER", val: -1, drain: true }
+                        { type: "MP_ACTION", target: "PLAYER", val: -3 },
+                        { type: "HEAL", target: "ENEMY", val: 50, visual: { se: "se-heal" } }
                     ]
                 },
                 { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
             ]},
             { name: "ハーピィ・レディ・SB", img: "assets/3-3.png", weak: 18, hp: 360, atk: 12, ai: [
                 { 
-                    name: "サイバー・ボンテージ", weight: 8, cond: { src: "p_state", tag: "restrictInput", val: false },
+                    name: "サイバー・ボンテージ", weight: 8, cond: { src: "p_state", tag: "action_lock", val: false },
                     visual: { cutin: { text: "サイバー・ボンテージ", color: "purple" }, msg: "鞭で拘束された！(1投制限)" },
                     actions: [
                         { type: "STATE", target: "PLAYER", kind: "bind", turn: 1 },
@@ -259,7 +278,7 @@ const GAME_DATA = {
             ]},
             { name: "ヒューマノイド・ドレイク", img: "assets/5-4.png", weak: 17, hp: 600, atk: 25, ai: [
                 { 
-                    name: "スライムの粘着", weight: 3, cond: { src: "p_state", tag: "itemLockTurn", val: 0 },
+                    name: "スライムの粘着", weight: 3, cond: { src: "p_state", tag: "item_lock", val: 0 },
                     visual: { cutin: { text: "スライムの粘着", color: "green" }, msg: "アイテムの使用を封じられた！" },
                     actions: [
                         { type: "STATE", target: "PLAYER", kind: "item_lock", turn: 2 },

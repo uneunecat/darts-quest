@@ -29,21 +29,16 @@ let bluetoothServer = null;
 let player = {
     hp: 100, maxHp: 100, mp: 3, maxMp: 10,
     items: { potion: 0, ether: 0, seed: 0 },
-    state: {
-        guardTurn: 0, // 光の護封剣用
-        itemLockTurn: 0, // アイテムロック用
-        restrictInput: false // 1投制限用
-    },
+    states: [], // ★ここがステートの保管庫。個別の変数はすべて削除
     deck: [], hand: [], discard: [], deckLocked: false, setCard: null
 };
 
 // 敵状態
 let enemy = {
-    hp: 100, maxHp: 100, data: null, name: "",
-    state: {
-        charge: false, guard: false, guardType: null, guardTurn: 0,
-        atkBuff: 0, isStunned: false, barrierLimit: 0
-    }
+    hp: 100, maxHp: 100, data: null, name: "", atk: 10,
+    states: [], // ★ここがステートの保管庫
+    actionCount: 0, // 行動回数
+    patternQueue: [] // シーケンス
 };
 
 // ゲーム進行フラグ

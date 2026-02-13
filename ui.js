@@ -88,7 +88,7 @@ function renderHand() {
     
     const isThrowing = turnInputs.length > 0;
     // アイテムロック、または投擲中はカード使用不可
-    const isCardLocked = (player.state.itemLockTurn > 0) || isThrowing;
+    const isCardLocked = hasState(player, "item_lock") || isThrowing;
 
     if (player.deckLocked) {
         el("battle-deck-count").innerText = "-";
@@ -116,18 +116,19 @@ function renderHand() {
     }
 }
 
+// Updated: updateInfo (v5.6 - hasState Integration)
 function updateInfo() {
     if (!enemy.data) return;
     const setText = (id, text) => { const e = el(id); if (e) e.innerText = text; };
     const setHTML = (id, html) => { const e = el(id); if (e) e.innerHTML = html; };
 
-    // Stage Display
+    // Stage Info
     let stgDisp = getStageDisplayName(stage);
     setText("stage-display", stgDisp);
     setText("floor-display", getMaxFloors(stage) === 1 ? "FINAL" : `${floor}F`);
     setHTML("turn-display", `TURN ${currentTurn} <span style="font-size:12px; color:#888;">(Total ${(totalGameTurns - stageStartTurn) + 1})</span>`);
 
-    // Enemy Status
+    // Enemy Stats
     setText("enemy-name-side", enemy.name);
     const eHpEl = el("enemy-hp-value");
     if (eHpEl) {
@@ -137,85 +138,62 @@ function updateInfo() {
         else if (enemy.hp <= enemy.maxHp * 0.5) eHpEl.classList.add("blink-slow");
     }
     
-    let weakText = player.state.weakLock ? "★LOCK" : `WEAK: ${enemy.data.weak}+`;
+    let weakText = `WEAK: ${enemy.data.weak}+`;
     if (weakHitCount > 0) weakText += " <span style='color:#f0f;'>CHANCE!</span>";
     setHTML("weak-display", weakText);
 
-    let eChips = "";
-    if (enemy.state.charge) eChips += `<span class="status-chip chip-charge">⚡CHARGE</span>`;
-    if (enemy.state.isStunned) eChips += `<span class="status-chip chip-stun">😵STUN</span>`;
-    if (enemy.state.atkBuffTurn > 0) eChips += `<span class="status-chip chip-buff">⚔️ATK x${(1 + enemy.state.atkBuff).toFixed(1)}(${enemy.state.atkBuffTurn}T)</span>`;
-    if (enemy.state.guardTurn > 0) {
-        const label = enemy.state.guardType === 'ratio' ? 'GUARD' : 'ARMOR';
-        eChips += `<span class="status-chip chip-guard">🛡️${label}(${enemy.state.guardTurn}T)</span>`;
-    }
-    if (enemy.state.barrierTurn > 0) eChips += `<span class="status-chip chip-barrier">💠BARRIER(${enemy.state.barrierTurn}T)</span>`;
-    setHTML("enemy-states-side", eChips);
+    // ステートバッジ生成 (v5.0 汎用ロジック)
+    const renderChips = (obj) => {
+        if (!obj || !obj.states) return "";
+        return obj.states.map(s => {
+            const master = STATE_MASTER[s.id];
+            if (!master) return "";
+            let valText = "";
+            if (master.category === "atk_mult") valText = `x${(1 + s.val).toFixed(1)}`;
+            else if (master.category === "atk_add") valText = `+${s.val}`;
+            else if (s.val !== 0) valText = `${s.val}`;
+            const unit = (master.timing === "throw") ? "投" : "T";
+            return `<span class="status-chip ${master.class}">${master.icon}${master.label} ${valText}(${s.turn}${unit})</span>`;
+        }).join("");
+    };
+
+    setHTML("enemy-states-side", renderChips(enemy));
+    setHTML("player-states-side", renderChips(player));
 
     // Player HP
     const hpBar = el("player-hp-bar");
     if (hpBar) {
         const pct = (player.hp / player.maxHp) * 100;
         hpBar.style.width = Math.max(0, pct) + "%";
-        let hpClass = "hp-bar-fill player-fill";
-        if (pct <= 20) hpClass += " hp-danger";
-        else if (pct <= 50) hpClass += " hp-warning";
-        hpBar.className = hpClass;
+        hpBar.className = `hp-bar-fill player-fill ${pct <= 20 ? 'hp-danger' : pct <= 50 ? 'hp-warning' : ''}`;
         
-        const parent = hpBar.parentNode;
-        let overlay = parent.querySelector(".hp-text-overlay");
+        let overlay = hpBar.parentNode.querySelector(".hp-text-overlay");
         if (!overlay) {
             overlay = document.createElement("div");
             overlay.className = "hp-text-overlay";
-            parent.appendChild(overlay);
+            hpBar.parentNode.appendChild(overlay);
         }
         overlay.innerText = `${player.hp} / ${player.maxHp}`;
     }
-    setText("player-hp", ""); 
 
     // Player MP
-    const mpValEl = document.querySelector("#player-mp")?.parentNode; 
-    if (mpValEl && mpValEl.classList.contains("p-val")) mpValEl.style.display = "none";
-    
     let mpDots = "";
     for (let i = 0; i < player.maxMp; i++) {
         mpDots += `<span class="mp-dot ${i < player.mp ? 'active' : ''}"></span>`;
     }
     setHTML("player-mp-dots", mpDots);
-    
-    const mpContainer = el("player-mp-dots");
-    if (mpContainer) {
-        if (player.mp >= player.maxMp) mpContainer.classList.add("mp-max-glow");
-        else mpContainer.classList.remove("mp-max-glow");
-    }
+    if (player.mp >= player.maxMp) el("player-mp-dots").classList.add("mp-max-glow");
+    else el("player-mp-dots").classList.remove("mp-max-glow");
 
-    // Player States
-    let pChips = "";
-    if (player.state.atkDuration > 0) {
-        const valText = player.state.atkBuff > 0 ? `x${(1 + player.state.atkBuff).toFixed(1)}` : `+${player.state.atkFlat}`;
-        pChips += `<span class="status-chip chip-buff">⚔️ATK ${valText}(${player.state.atkDuration}投)</span>`;
-    }
-    if (player.state.guardTurn > 0) pChips += `<span class="status-chip chip-guard">🛡️SHIELD(${player.state.guardTurn}T)</span>`;
-    if (player.state.itemLockTurn > 0) pChips += `<span class="status-chip chip-lock">🔒ITEM LOCK(${player.state.itemLockTurn}T)</span>`;
-    if (player.state.restrictInput) pChips += `<span class="status-chip chip-stun">⛓️BIND</span>`;
-    setHTML("player-states-side", pChips);
-
-    const turnVal = currentTurn === 0 ? 1 : currentTurn; // 準備中も1と出す
-    setHTML("turn-display", `TURN ${turnVal}`);
-
-    // Stats
-    let ppr = totalDarts > 0 ? (totalScore / totalDarts) * 3 : 0;
-    setText("avg-display", ppr.toFixed(1));
-    setText("rt-display", `(Rt ${calculateRating(ppr)})`);
-    
     // Items
     const updateItemBtn = (btnId, count, icon) => {
         const b = el(btnId); if (!b) return;
         b.innerHTML = `${icon}x${count}`;
         b.className = "item-btn";
-        if (player.state.itemLockTurn > 0 || turnInputs.length > 0 || isInterval) b.classList.add("disabled");
-        else if (count > 0) b.classList.add("has-item");
-        else b.classList.add("disabled");
+        // ★修正: hasStateを使用してアイテム封印をチェック
+        const isLocked = hasState(player, "item_lock") || turnInputs.length > 0 || isInterval;
+        if (isLocked || count <= 0) b.classList.add("disabled");
+        else b.classList.add("has-item");
     };
     updateItemBtn("btn-potion", player.items.potion, "💊");
     updateItemBtn("btn-ether", player.items.ether, "⚗️");
@@ -233,14 +211,9 @@ function updateInfo() {
                 trapContainer.appendChild(cardEl);
             }
         } else {
-            const emptyDiv = document.createElement("div");
-            emptyDiv.id = "trap-slot";
-            emptyDiv.className = "trap-slot empty";
-            emptyDiv.innerHTML = "SET<br>TRAP";
-            trapContainer.appendChild(emptyDiv);
+            trapContainer.innerHTML = `<div id="trap-slot" class="trap-slot empty">SET<br>TRAP</div>`;
         }
     }
-    
     renderHand();
 }
 
