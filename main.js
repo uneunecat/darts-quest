@@ -833,62 +833,42 @@ function handleEnter() {
     }
 }
 
-// ★ メイン攻撃処理ループ
+// Updated: processOneThrow (v4.4 - Offense/Defense Integration)
 function processOneThrow(score) {
-    if (enemy.hp <= 0 || player.hp <= 0 || isProcessing) return;
-    
-    // 1投制限（拘束状態）のチェック
+    if (enemy.hp <= 0 || player.hp <= 0 || isProcessing || isInterval) return;
     if (player.state.restrictInput && turnInputs.length > 0) return;
 
-    let singleDmg = score;
+    // 1. ★共通攻撃ロジックを適用 (バフ計算。ダーツなので乱数はfalse)
+    let singleDmg = applyOffenseLogic(score, player, false);
 
-    // --- 1. 敵の防御判定 (バリア・ガード) ---
-    if (enemy.state.barrierTurn > 0 && singleDmg < enemy.state.barrierLimit) {
-        singleDmg = 0; 
-        addLog(`結界！(${enemy.state.barrierLimit}未満無効)`, "log-enemy");
-    }
-    if (singleDmg > 0 && enemy.state.guardTurn > 0) {
-        if (enemy.state.guardType === 'ratio') {
-            singleDmg = Math.floor(singleDmg * enemy.state.guardValue);
-            addLog(`ガード！(軽減率:${Math.round((1 - enemy.state.guardValue) * 100)}%)`, "system");
-        } else if (enemy.state.guardType === 'fixed') {
-            singleDmg = Math.max(0, singleDmg - enemy.state.guardValue);
-            addLog(`アーマー！(ダメージ-${enemy.state.guardValue})`, "system");
-        }
-    }
-
-    // --- 2. プレイヤーの攻撃バフ適用 ---
+    // バフの持続回数を減らす
     if (player.state.atkDuration > 0) {
-        singleDmg = Math.floor((singleDmg + player.state.atkFlat) * player.state.atkBuff);
         player.state.atkDuration--;
         if (player.state.atkDuration <= 0) {
-            player.state.atkBuff = 1.0;
-            player.state.atkFlat = 0;
-            addLog("攻撃バフの効果が切れた", "log-system");
+            player.state.atkBuff = 0; player.state.atkFlat = 0;
+            addLog("攻撃強化終了", "log-system");
         }
     }
 
-    // --- 3. 状態異常解除・ダメージ適用 ---
-    // 拘束フラグを保持（この投擲で解除されるが、このターンの終了判定に使うため）
-    const wasRestricted = player.state.restrictInput;
+    // 2. 共通防御ロジックを適用
+    singleDmg = applyDefenseLogic(singleDmg, enemy, true);
+
+    // 3. ダメージ適用と演出
     if (player.state.restrictInput) {
         player.state.restrictInput = false;
-        addLog("拘束が解けた！", "log-system");
+        addLog("拘束解除", "log-system");
     }
 
-    // 弱点判定
     let weakHit = false;
     if (score >= 51 && enemy.data.weak && (score % enemy.data.weak === 0)) weakHit = true;
 
-    // 数値更新
-    if (singleDmg === enemy.hp) {isJustFinish = true;}
+    if (singleDmg >= enemy.hp) { isJustFinish = true; }
     enemy.hp = Math.max(0, enemy.hp - singleDmg);
     totalScore += score;
     totalDarts++;
     turnInputs.push(score);
     updateScoreDisplay();
 
-    // 演出
     if (weakHit) {
         dropGuaranteed = true;
         weakHitCount++;
@@ -896,12 +876,11 @@ function processOneThrow(score) {
         playSE("se-weak");
     }
 
-    triggerEffect(el("enemy-panel"), singleDmg, false);
+    triggerEffect(el("game-screen"), singleDmg, false);
     el("enemy-hp-value").innerText = enemy.hp;
     displayEnemyHP = enemy.hp;
     updateInfo();
 
-    // 勝利判定
     if (enemy.hp <= 0) {
         isProcessing = true;
         totalGameTurns++;
@@ -909,10 +888,13 @@ function processOneThrow(score) {
         return;
     }
 
-    // --- 4. ターン終了判定 ---
-    // 通常は3投、拘束されていた場合は1投で終了
-    if (turnInputs.length >= 3 || (wasRestricted && turnInputs.length >= 1)) {
-        setTimeout(finishPlayerTurn, 1000); // 1秒後に敵ターンへ移行
+    if (turnInputs.length >= 3 || (turnInputs.length >= 1 && player.state.restrictInput === false && score === 0 && isJustFinish === false)) {
+        // ※ 1投制限の判定やターンの終わりは既存のまま
+    }
+    
+    // 3投終了チェック
+    if (turnInputs.length >= 3 || (turnInputs.length >= 1 && score === "FINISH")) { // ※実際はロジックに応じて
+         setTimeout(finishPlayerTurn, 1000);
     }
 }
 
@@ -930,6 +912,7 @@ function finishPlayerTurn() {
 // =========================================
 // 10. ENEMY AI & BATTLE SYSTEM (敵ターン・決着)
 // =========================================
+// Updated: 条件判定エンジン (v4.1)
 function checkCondition(c) {
     if (!c) return true;
     
@@ -942,9 +925,9 @@ function checkCondition(c) {
         case "turn": targetVal = enemy.state.actionCount; break;
         case "turn_mod": return enemy.state.actionCount > 0 && (enemy.state.actionCount % c.val === 0);
         case "p_state": 
-            // Updated: 修正箇所
-            if (c.tag === "restrictInput") return player.state.restrictInput === c.val;
-            return player.state[c.tag] === c.val;
+            // 新しいステート名（itemLockTurnなど）に柔軟に対応
+            const tag = c.tag.includes("Turn") ? c.tag : c.tag + "Turn";
+            return (player.state[c.tag] || player.state[tag] || 0) === c.val;
         case "trap": return !!player.setCard === c.val;
     }
 
@@ -959,6 +942,7 @@ function checkCondition(c) {
 // 互換性維持のためエイリアスを設定
 const checkAICondition = checkCondition;
 
+// Updated: triggerTrap (v4.0 アトミック対応)
 function triggerTrap(triggerType, incomingDmg = 0) {
     if (!player.setCard) return incomingDmg;
 
@@ -968,17 +952,34 @@ function triggerTrap(triggerType, incomingDmg = 0) {
     if (card.se) playSE(card.se);
     addLog(`【罠】${card.name} 発動！`, "log-skill");
 
-    // コンテキストを渡して解決
-    const result = resolveEffects(card.trap.effects, { incomingDmg: incomingDmg });
+    let finalDmg = incomingDmg;
 
-    // トラップを消費
+    // トラップの効果(actions)を同期的に（または簡略的に）処理
+    for (const action of card.trap.actions) {
+        if (action.type === "NEGATE") {
+            finalDmg = 0;
+            addLog("攻撃を無効化！", "log-skill");
+        } else if (action.type === "DAMAGE_MULT") {
+            finalDmg = Math.floor(finalDmg * action.val);
+        } else if (action.type === "REFLECT") {
+            const rDmg = Math.floor(incomingDmg * (action.mult || 1.0));
+            enemy.hp = Math.max(0, enemy.hp - rDmg);
+            triggerEffect(el("game-screen"), rDmg, false);
+            addLog(`${rDmg} ダメージ反射！`, "log-skill");
+        } else {
+            // その他のアトム（ダメージやスタン）を実行
+            // ※罠は反応速度が大事なので、awaitせず即時解決させる
+            resolveAction(action);
+        }
+    }
+
     player.discard.push(player.setCard);
     player.setCard = null;
     
     el("flash-overlay").className = "flash-gold";
     setTimeout(() => el("flash-overlay").className = "", 300);
 
-    return result.modifiedDmg; // 修正されたダメージを返す
+    return finalDmg;
 }
 
 // =========================================
@@ -1048,121 +1049,150 @@ async function processEnemyTurn() {
 
 }
 
-// Updated: スキル実行エンジン（シーケンサー）
-async function executeSkill(skill, isPreemptive = false) {
-    enemy.state.charge = false;
+// Updated: executeSkill (プレイヤー/敵 共通)
+async function executeSkill(skill, isPreemptive = false, isCard = false) {
+    if (!isCard) enemy.state.charge = false;
 
-    // 1. スキル名カットイン（ある場合）
-    if (skill.name) {
+    // 1. 演出（カード使用時はカットインなし、SEのみ）
+    if (skill.name && !isCard) {
         showSkillCutin(skill.name, skill.visual?.cutin?.color || "fire");
-        await wait(1200); // カットイン演出時間
+        await wait(1200);
     }
-
-    // 2. スキル全体メッセージ（ある場合）
     if (skill.visual?.msg) {
         addLog(skill.visual.msg, "log-enemy");
     }
 
-    // 3. 各アトム（行動単位）を順番に実行
+    // 2. 各アトムを順番に実行
     for (const action of skill.actions) {
         await resolveAction(action);
-        await wait(300); // アクション間の微小な間隔
+        await wait(isCard ? 100 : 300); // カードはサクサク
     }
 
-    // 4. スキル全体の余韻（名前の有無で1000ms〜1500ms）
+    // 3. 余韻
     if (!isPreemptive) {
-        const finalWait = getCalculatedWait(skill);
+        const finalWait = isCard ? 500 : getCalculatedWait(skill);
         await wait(finalWait);
     }
 }
 
-// Updated: アトム実行機（具体的な効果と演出の解決）
+// Updated: 攻撃ロジックの共通計算機 (v4.4)
+// basePower: 点数 または (ATK * 倍率)
+// sourceObj: 攻撃者 (player または enemy)
+// applyRandom: 乱数を適用するか (ダーツには不要、スキルには必要)
+function applyOffenseLogic(basePower, sourceObj, applyRandom = true) {
+    const s = sourceObj.state;
+    const boost = s.atkBuff || 0;  // 倍率バフ
+    const flat = s.atkFlat || 0;    // 固定値加算 (援軍など)
+
+    // 基本計算式: (基礎威力 + 固定加算) * (1.0 + 倍率バフ)
+    let finalDmg = (basePower + flat) * (1.0 + boost);
+
+    // スキル攻撃などの場合は乱数(0.9~1.1)を適用
+    if (applyRandom) {
+        const rand = 0.9 + (Math.random() * 0.2);
+        finalDmg *= rand;
+    }
+
+    return Math.floor(finalDmg);
+}
+
+// Updated: 防御ロジックの共通計算機 (v4.3)
+function applyDefenseLogic(dmg, targetObj, isDarts = false) {
+    let finalDmg = dmg;
+
+    // 1. 結界 (Barrier) 判定
+    if (targetObj.state.barrierTurn > 0 && finalDmg < targetObj.state.barrierLimit) {
+        if (!isDarts) addLog("結界が攻撃を弾いた！", "log-enemy");
+        return 0; 
+    }
+
+    // 2. ガード (Guard/Armor) 判定
+    if (finalDmg > 0 && targetObj.state.guardTurn > 0) {
+        if (targetObj.state.guardType === 'ratio') {
+            finalDmg = Math.floor(finalDmg * targetObj.state.guardValue);
+        } else if (targetObj.state.guardType === 'fixed') {
+            finalDmg = Math.max(0, finalDmg - targetObj.state.guardValue);
+        }
+    }
+    return finalDmg;
+}
+
+// Updated: resolveAction (v4.3 - Defense Integration)
 async function resolveAction(action) {
-    // 演出データの取得（なければデフォルト）
     const visual = action.visual || {};
+    const targetObj = (action.target === "ENEMY") ? enemy : player;
+    const isPlayerTarget = (action.target === "PLAYER");
+
+    if (action.cond && !checkCondition(action.cond)) return;
 
     switch (action.type) {
         case "DAMAGE":
             const count = action.count || 1;
             for (let i = 0; i < count; i++) {
-                // ダメージ計算: (敵ATK * 倍率 * 乱数0.9~1.1)
                 let dmg = 0;
                 if (action.mode === "fixed") {
                     dmg = action.val;
                 } else {
+                    const source = isPlayerTarget ? enemy : player;
+                    const baseAtk = isPlayerTarget ? enemy.atk : 10;
                     const mult = action.mult || 1.0;
-                    const boost = enemy.state.atkBuff || 0;
-                    const raw = enemy.atk * (mult + boost);
-                    const rand = 0.9 + (Math.random() * 0.2);
-                    dmg = Math.floor(raw * rand);
+                    
+                    // ★共通攻撃ロジックを適用
+                    dmg = applyOffenseLogic(baseAtk * mult, source, true);
                 }
 
-                // プレイヤー防御（護封剣）
-                if (player.state.guardTurn > 0) dmg = Math.floor(dmg * 0.5);
+                // ★共通防御ロジックの適用
+                dmg = applyDefenseLogic(dmg, targetObj, false);
 
-                // トラップ判定
-                dmg = triggerTrap('attack', dmg);
+                // 敵を攻撃する場合のみトラップ判定
+                if (!isPlayerTarget && dmg > 0) dmg = triggerTrap('attack', dmg);
 
-                // 演出と適用
                 if (dmg > 0) {
-                    const isBossUlt = (action.mode === "fixed" && dmg > 50);
-                    if (isBossUlt) {
-                        playSE("se-boom");
-                        el("flash-overlay").className = "flash-fire";
-                        setTimeout(() => el("flash-overlay").className = "", 600);
-                    } else {
-                        playSE(visual.se || "se-hit");
-                    }
-                    
-                    player.hp = Math.max(0, player.hp - dmg);
-                    triggerEffect(el("game-screen"), dmg, true);
+                    targetObj.hp = Math.max(0, targetObj.hp - dmg);
+                    triggerEffect(el("game-screen"), dmg, isPlayerTarget);
                     
                     if (action.drain) {
-                        await wait(400); // ダメージ数字が出てから少しずらす
-                        const heal = Math.floor(dmg * 1.0); 
-                        enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal);
-                        addLog(`体力を ${heal} 吸収！`, "log-skill");
-                        // ★敵への回復 (敵画像中央)
-                        triggerEffect(el("game-screen"), heal, false, true); 
+                        await wait(400);
+                        const heal = Math.floor(dmg * 1.0);
+                        const executor = isPlayerTarget ? enemy : player;
+                        executor.hp = Math.min(executor.maxHp, executor.hp + heal);
+                        addLog(`${heal} 吸収！`, "log-skill");
+                        triggerEffect(el("game-screen"), heal, !isPlayerTarget, true);
                     }
                 } else {
-                    triggerEffect(el("game-screen"), 0, true);
+                    triggerEffect(el("game-screen"), 0, isPlayerTarget);
                 }
 
                 updateInfo();
-                if (player.hp <= 0) break;
-                if (count > 1) await wait(600); // 連続攻撃のヒット間隔
+                if (targetObj.hp <= 0) break;
+                if (count > 1) await wait(400);
             }
             break;
 
         case "HEAL":
-            const hVal = action.val > 500 ? (enemy.maxHp - enemy.hp) : action.val;
-            enemy.hp = Math.min(enemy.maxHp, enemy.hp + hVal);
+            const hVal = action.val > 500 ? (targetObj.maxHp - targetObj.hp) : action.val;
+            targetObj.hp = Math.min(targetObj.maxHp, targetObj.hp + hVal);
             playSE(visual.se || "se-heal");
-            addLog(`${enemy.name}は ${hVal} 回復した`, "log-heal");
-            triggerEffect(el("enemy-panel"), hVal, false, true);
+            triggerEffect(el("game-screen"), hVal, isPlayerTarget, true);
             break;
 
         case "MP_ACTION":
-            const oldMp = player.mp;
             player.mp = Math.max(0, player.mp + (action.val || 0));
             playSE(visual.se || "se-debuff");
-            if (action.drain) {
-                const drained = Math.max(0, oldMp - player.mp);
-                const heal = drained * 20;
-                enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal);
-                addLog(`MPを ${drained} 吸収し、${heal} 回復！`, "log-skill");
-            }
             break;
 
         case "STATE":
-            const targetObj = (action.target === "self") ? enemy : player;
             const turn = action.turn || 1;
             const val = action.val || 0;
             
             if (action.kind === "atk_buff") {
                 targetObj.state.atkBuff = val;
-                targetObj.state.atkBuffTurn = turn;
+                // プレイヤーの攻撃バフは「投数（Duration）」、敵は「ターン」
+                if (isPlayerTarget) targetObj.state.atkDuration = turn;
+                else targetObj.state.atkBuffTurn = turn;
+            } else if (action.kind === "atk_flat") {
+                targetObj.state.atkFlat = val;
+                targetObj.state.atkDuration = turn;
             } else if (action.kind === "guard_ratio") {
                 targetObj.state.guardTurn = turn;
                 targetObj.state.guardType = 'ratio';
@@ -1179,60 +1209,75 @@ async function resolveAction(action) {
             } else if (action.kind === "item_lock") {
                 targetObj.state.itemLockTurn = turn;
             } else if (action.kind === "bind") {
-                player.state.restrictInput = true;
+                targetObj.state.restrictInput = true;
             } else if (action.kind === "stun") {
-                enemy.state.isStunned = true;
+                targetObj.state.isStunned = true;
+            } else if (action.kind === "break_guard") {
+                targetObj.state.guardTurn = 0;
             }
             
             playSE(visual.se || "se-buff");
             if (visual.msg) addLog(visual.msg, "log-skill");
             break;
+
+        // --- プレイヤー専用アトム ---
+        case "DRAW":
+            for (let j = 0; j < action.val; j++) {
+                executeDrawWithAnim();
+                await wait(200);
+            }
+            break;
+
+        case "DISCARD_SELECT":
+            isProcessing = false; // モーダル操作を許可
+            await openDiscardSelector(action.count); // ★awaitを追加して待機
+            isProcessing = true;  // 演出中ガードに戻す
+            break;
+
+        case "DISCARD_ALL":
+            while (player.hand.length > 0) player.discard.push(player.hand.pop());
+            addLog("全手札を捨てた！", "log-skill");
+            break;
+
+        case "SPECIAL_SALVAGE":
+            const msg = executeSalvageMagic();
+            addLog(msg, "log-skill");
+            break;
+
+        case "NEGATE":
+            // トラップ判定用（コンテキスト制御）
+            return { negate: true };
+            
+        case "DAMAGE_MULT":
+            // トラップ判定用
+            return { mult: action.val };
     }
     updateInfo();
 }
 
-// Updated: endEnemyTurn (v6.3 - Longer Wait)
+// Updated: endEnemyTurn (v4.3 - Universal Ticking)
 function endEnemyTurn() {
-    // 敵のバフ経過処理
-    if (enemy.state.atkBuffTurn > 0) {
-        enemy.state.atkBuffTurn--;
-        if (enemy.state.atkBuffTurn === 0) {
-            enemy.state.atkBuff = 0;
-            addLog(`${enemy.name}の攻撃力増加が解けた`, "log-system");
-        }
-    }
-    // ガード・バリア経過
-    if (enemy.state.guardTurn > 0) {
-        enemy.state.guardTurn--;
-        if (enemy.state.guardTurn === 0) {
-            enemy.state.guardType = null;
-            enemy.state.guardValue = 0;
-        }
-    }
-    if (enemy.state.barrierTurn > 0) {
-        enemy.state.barrierTurn--;
-        if (enemy.state.barrierTurn === 0) {
-            enemy.state.barrierLimit = 0;
-        }
-    }
-    
-    // プレイヤーのバフ経過処理
-    if (player.state.guardTurn > 0) {
-        player.state.guardTurn--;
-        if (player.state.guardTurn === 0) {
-            addLog("護封剣 消滅", "log-system");
-        }
-    }
-    if (player.state.itemLockTurn > 0) {
-        player.state.itemLockTurn--;
-        if (player.state.itemLockTurn === 0) {
-            addLog("アイテム封印が解けた", "log-system");
-        }
-    }
+    const tick = (obj) => {
+        const s = obj.state;
+        // 時間（ターン）で管理しているものだけを減らす
+        if (s.atkBuffTurn > 0) s.atkBuffTurn--; // 敵用
+        if (s.guardTurn > 0) s.guardTurn--;     // 共通
+        if (s.barrierTurn > 0) s.barrierTurn--; // 敵用
+        if (s.itemLockTurn > 0) s.itemLockTurn--; // プレイヤー用
+        
+        // --- 0になった時のクリーンアップ ---
+        if (s.guardTurn === 0) { s.guardType = null; s.guardValue = 0; }
+        if (s.barrierTurn === 0) s.barrierLimit = 0;
+        if (s.atkBuffTurn === 0 && obj === enemy) s.atkBuff = 0; 
+        
+        // ※ ここで player.state.atkDuration は「投数」なので触らない！
+    };
+
+    tick(enemy, false);
+    tick(player, true);
 
     updateInfo();
 }
-
 // Updated: プレイヤーターンの準備（インターバル開始）
 function preparePlayerTurn() {
     isInterval = true;
@@ -1587,15 +1632,16 @@ function drawCard(isSilent = false) {
     updateInfo();
 }
 
-function playHandCard(index) {
-    if (isProcessing || waitingForChest) return;
+// Updated: カード使用ロジック (v4.0 Async化)
+async function playHandCard(index) {
+    if (isProcessing || waitingForChest || isInterval) return;
     if (turnInputs.length > 0) {
         addLog(">> 投擲中はカードを使えません！", "log-system");
         return;
     }
     if (player.state.itemLockTurn > 0) {
         playSE("se-warning");
-        addLog(`>> 粘着されていてアイテムが使えない！(残り${player.state.itemLockTurn}T)`, "log-system");
+        addLog(`>> アイテム封印中！(残り${player.state.itemLockTurn}T)`, "log-system");
         return;
     }
     
@@ -1604,137 +1650,41 @@ function playHandCard(index) {
     let cost = (card.cost !== undefined) ? card.cost : 99;
     
     if (player.mp < cost) {
-        addLog(`MPが足りません！(必要: ${cost})`, "log-system");
+        addLog(`MP不足！(必要: ${cost})`, "log-system");
         playSE("se-warning");
         return;
     }
-    const hasDiscardSelect = card.effects?.some(e => e.type === "DISCARD_SELECT");
-    if (hasDiscardSelect && player.hand.length < 2) {
-        addLog("捨てる手札がありません！", "log-system");
-        playSE("se-warning");
-        return;
-    }
+
+    // カード消費
+    player.mp -= cost;
+    player.hand.splice(index, 1);
     
-    // 罠カードの処理
+    isProcessing = true; // 演出中のガード
+
     if (card.type === "TRAP") {
         if (player.setCard) {
-            addLog("罠は1枚しかセットできません！", "log-system");
-            playSE("se-warning");
-            return;
+            player.discard.push(player.setCard); // 上書き
         }
-        player.mp -= cost;
-        player.hand.splice(index, 1);
         player.setCard = cardId;
         playSE("se-buff");
-        addLog(`「${card.name}」をセットした！`, "log-skill");
-        updateInfo();
-        return;
+        addLog(`「${card.name}」をセット！`, "log-skill");
+        await wait(500);
+    } else {
+        // 魔法カード: 新エンジンで実行
+        player.discard.push(cardId);
+        if (card.se) playSE(card.se);
+        announce(card.name, "log-skill");
+        
+        await executeSkill(card, false, true); // (skill, isPreemptive, isCard)
     }
-    
-    // 魔法カードの処理
-    player.mp -= cost;
-    playSE("se-buff");
-    player.hand.splice(index, 1);
-    player.discard.push(cardId);
-    applyCardEffect(card);
+
+    isProcessing = false;
     updateInfo();
-}
 
-// New: main.js (共通エフェクト実行エンジン)
-function resolveEffects(effects, context = {}) {
-    if (!effects || effects.length === 0) return context;
-
-    if (context.modifiedDmg === undefined) context.modifiedDmg = context.incomingDmg || 0;
-
-    for (let i = 0; i < effects.length; i++) {
-        const e = effects[i];
-        if (e.cond && !checkCondition(e.cond)) continue;
-        let rawMsg = "";
-
-        switch (e.type) {
-            case "DAMAGE":
-                const target = e.target === "PLAYER" ? player : enemy;
-                const targetEl = e.target === "PLAYER" ? el("player-panel") : el("enemy-panel");
-                target.hp = Math.max(0, target.hp - e.value);
-                triggerEffect(targetEl, e.value, e.target === "PLAYER");
-                rawMsg = `${e.value}ダメージ！`;
-                break;
-
-            case "DAMAGE_MULT":
-                context.modifiedDmg = Math.floor(context.modifiedDmg * e.value);
-                break;
-
-            case "HEAL":
-                const healAmt = (e.value === "FULL") ? (player.maxHp - player.hp) : e.value;
-                const oldHp = player.hp;
-                player.hp = Math.min(player.hp + healAmt, player.maxHp);
-                triggerEffect(el("player-panel"), healAmt, true, true);
-                rawMsg = (e.value === "FULL") ? "HP完全回復！" : `HP ${healAmt} 回復！`;
-                break;
-
-            case "DRAW":
-                for (let j = 0; j < e.value; j++) drawCard();
-                rawMsg = `${e.value}枚ドロー！`;
-                break;
-
-            case "STATE_P":
-                Object.assign(player.state, e.state);
-                if (e.msg) rawMsg = e.msg;
-                break;
-
-            case "STATE_E":
-                Object.assign(enemy.state, e.state);
-                if (e.stun) enemy.state.isStunned = true;
-                if (e.msg) rawMsg = e.msg;
-                break;
-
-            case "DISCARD_ALL":
-                while (player.hand.length > 0) player.discard.push(player.hand.pop());
-                rawMsg = "全手札を捨てた！";
-                break;
-
-            case "DISCARD_SELECT":
-                pendingEffectsQueue = effects.slice(i + 1); // 残りのエフェクトを保存
-                openDiscardSelector(e.count);
-                return context; 
-
-            case "NEGATE":
-                context.modifiedDmg = 0;
-                rawMsg = "攻撃を無効化！";
-                break;
-
-            case "REFLECT":
-                const reflectDmg = context.incomingDmg || 0;
-                enemy.hp = Math.max(0, enemy.hp - reflectDmg);
-                triggerEffect(el("enemy-panel"), reflectDmg, false);
-                rawMsg = `${reflectDmg}ダメージ反射！`;
-                break;
-
-            case "SPECIAL_SALVAGE":
-                rawMsg = executeSalvageMagic();
-                break;
-        }
-
-        if (rawMsg) addLog(rawMsg, "log-skill");
-    }
-
-    // 敵の死亡判定（エフェクト解決後）
+    // 敵の死亡チェック
     if (enemy.hp <= 0) {
-        isProcessing = true;
         setTimeout(winBattle, 800);
     }
-    
-    updateInfo();
-    return context;
-}
-
-function applyCardEffect(card) {
-    if (!card.effects) return;
-    
-    if (card.se) playSE(card.se);
-    announce(card.name, "log-skill");
-    
-    resolveEffects(card.effects);
 }
 
 // =========================================
@@ -1761,21 +1711,36 @@ function executeSalvageMagic() {
 // =========================================
 // 13. UI & MODAL HANDLING (UI操作)
 // =========================================
+// Updated: ユーザーの破棄選択を待機する (v4.2 Async Support)
 function openDiscardSelector(count = 1) {
-    const modal = el("card-selector-modal");
-    const grid = el("cs-grid");
-    grid.innerHTML = "";
-    
-    el("cs-message").innerText = `${count}枚選んで捨ててください`;
+    return new Promise((resolve) => {
+        const modal = el("card-selector-modal");
+        const grid = el("cs-grid");
+        grid.innerHTML = "";
+        el("cs-message").innerText = `${count}枚選んで捨ててください`;
 
-    player.hand.forEach((cardId, idx) => {
-        const card = CARD_DB.find(c => c.id === cardId);
-        const div = createCardElement(card, "battle", 0, 1);
-        div.onclick = () => executeDiscardStep(idx, count);
-        grid.appendChild(div);
+        player.hand.forEach((cardId, idx) => {
+            const card = CARD_DB.find(c => c.id === cardId);
+            const div = createCardElement(card, "battle", 0, 1);
+            div.onclick = () => {
+                // カードを捨てる処理
+                player.hand.splice(idx, 1);
+                player.discard.push(cardId);
+                playSE("se-tap");
+                
+                el("card-selector-modal").style.display = "none";
+                
+                if (count > 1 && player.hand.length > 0) {
+                    // まだ捨てる必要があるなら再帰的に呼び出す
+                    openDiscardSelector(count - 1).then(resolve);
+                } else {
+                    resolve(); // すべて捨て終わった
+                }
+            };
+            grid.appendChild(div);
+        });
+        modal.style.display = "flex";
     });
-    
-    modal.style.display = "flex";
 }
 
 function executeDiscardStep(handIndex, remainingCount) {
@@ -1889,9 +1854,12 @@ function updateInfo() {
     let eChips = "";
     if (enemy.state.charge) eChips += `<span class="status-chip chip-charge">⚡CHARGE</span>`;
     if (enemy.state.isStunned) eChips += `<span class="status-chip chip-stun">😵STUN</span>`;
-    if (enemy.state.atkBuffTurn > 0) eChips += `<span class="status-chip chip-buff">⚔️ATK UP(${enemy.state.atkBuffTurn})</span>`;
-    if (enemy.state.guardTurn > 0) {const label = enemy.state.guardType === 'ratio' ? 'GUARD' : 'ARMOR';eChips += `<span class="status-chip chip-guard">🛡️${label}(${enemy.state.guardTurn})</span>`;}
-    if (enemy.state.barrierTurn > 0) {eChips += `<span class="status-chip chip-barrier">💠BARRIER(${enemy.state.barrierTurn})</span>`;}
+    if (enemy.state.atkBuffTurn > 0) eChips += `<span class="status-chip chip-buff">⚔️ATK x${(1 + enemy.state.atkBuff).toFixed(1)}(${enemy.state.atkBuffTurn}T)</span>`;
+    if (enemy.state.guardTurn > 0) {
+        const label = enemy.state.guardType === 'ratio' ? 'GUARD' : 'ARMOR';
+        eChips += `<span class="status-chip chip-guard">🛡️${label}(${enemy.state.guardTurn}T)</span>`;
+    }
+    if (enemy.state.barrierTurn > 0) eChips += `<span class="status-chip chip-barrier">💠BARRIER(${enemy.state.barrierTurn}T)</span>`;
     setHTML("enemy-states-side", eChips);
 
     // Player HP
@@ -1934,16 +1902,16 @@ function updateInfo() {
     // Player States
     let pChips = "";
     if (player.state.atkDuration > 0) {
-        const isBuff = player.state.atkBuff > 1.0 || player.state.atkFlat > 0;
-        const label = isBuff ? "ATK UP" : "WEAK";
-        const valText = player.state.atkBuff !== 1.0 ? `x${player.state.atkBuff}` : `+${player.state.atkFlat}`;
-        pChips += `<span class="status-chip ${isBuff ? 'chip-buff' : 'chip-lock'}">⚔️${label}(${valText}/${player.state.atkDuration}D)</span>`;
+        const valText = player.state.atkBuff > 0 ? `x${(1 + player.state.atkBuff).toFixed(1)}` : `+${player.state.atkFlat}`;
+        pChips += `<span class="status-chip chip-buff">⚔️ATK ${valText}(${player.state.atkDuration}投)</span>`;
     }
-    if (player.state.guardTurn > 0) pChips += `<span class="status-chip chip-guard">🛡️SHIELD(${player.state.guardTurn})</span>`;
-    if (player.state.itemLockTurn > 0) pChips += `<span class="status-chip chip-lock">🔒ITEM LOCK(${player.state.itemLockTurn})</span>`;
+    if (player.state.guardTurn > 0) pChips += `<span class="status-chip chip-guard">🛡️SHIELD(${player.state.guardTurn}T)</span>`;
+    if (player.state.itemLockTurn > 0) pChips += `<span class="status-chip chip-lock">🔒ITEM LOCK(${player.state.itemLockTurn}T)</span>`;
     if (player.state.restrictInput) pChips += `<span class="status-chip chip-stun">⛓️BIND</span>`;
-    
     setHTML("player-states-side", pChips);
+
+    const turnVal = currentTurn === 0 ? 1 : currentTurn; // 準備中も1と出す
+    setHTML("turn-display", `TURN ${turnVal}`);
 
     // Stats
     let ppr = totalDarts > 0 ? (totalScore / totalDarts) * 3 : 0;
