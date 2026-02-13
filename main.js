@@ -305,7 +305,7 @@ async function startTransition(sel, continueMode) {
         if (e && e.img) assetsToLoad.push(preloadImage(e.img));
     });
 
-    const introTime = info.warning ? 4000 : 2500;
+    const introTime = info.warning ? TIMING.BATTLE_TRANSITION_WARNING : TIMING.BATTLE_TRANSITION;
     const timerPromise = new Promise(resolve => setTimeout(resolve, introTime));
     
     el("title-screen").style.display = "none";
@@ -320,8 +320,8 @@ async function startTransition(sel, continueMode) {
     setTimeout(() => {
         ch.style.display = "none";
         el("black-curtain").classList.remove("fade-in");
-        setupStage(sel, continueMode); 
-    }, 1000);
+        setupStage(sel, continueMode);
+    }, TIMING.FADE_OUT);
 }
 
 // Updated: triggerEncounterEffects (v5.7 - Force Visibility)
@@ -372,8 +372,8 @@ function triggerEncounterEffects() {
             handlePreemptiveAI(); // 止まらないように次へ
         };
     }
-    
-    setTimeout(handlePreemptiveAI, 1200);
+
+    setTimeout(handlePreemptiveAI, TIMING.ENCOUNTER_WAIT_LONG);
 }
 
 function setupStage(sel, continueMode) {
@@ -466,9 +466,9 @@ function spawnEnemy() {
         if (isBoss) playBGM("bgm-boss");
 
         isProcessing = true;
-        
+
         // 余韻のあとに画像を表示して開始
-        const spawnDelay = (floor === 1) ? 1500 : 500;
+        const spawnDelay = (floor === 1) ? TIMING.SPAWN_DELAY_FIRST : TIMING.SPAWN_DELAY;
         setTimeout(() => {
             img.style.display = "block"; // ここで表示
             triggerEncounterEffects();
@@ -503,39 +503,46 @@ function triggerEncounterEffects() {
 
     // 画像の読み込み状況に関わらず、少し待ってから次へ進む
     // (画像が出なくてもゲームが止まらないようにする)
-    setTimeout(handlePreemptiveAI, 1000);
+    setTimeout(handlePreemptiveAI, TIMING.ENCOUNTER_WAIT);
 }
 
 // Updated: handlePreemptiveAI (v3.0 Async Support)
 async function handlePreemptiveAI() {
-    const aiList = enemy.data.ai || [];
-    const preemptiveSkill = aiList.find(a => a.preemptive && checkAICondition(a.cond));
+    try {
+        const aiList = enemy.data.ai || [];
+        const preemptiveSkill = aiList.find(a => a.preemptive && checkAICondition(a.cond));
 
-    // 出現演出の完了を少し待つ
-    await wait(1200);
+        // 出現演出の完了を少し待つ
+        await wait(TIMING.PREEMPTIVE_DELAY);
 
-    // ★追加: 敵が出現し、名前が出た後にトラップ(落とし穴)を判定
-    if (player.setCard) {
-        const incomingDmg = triggerTrap('summon', 0);
-        // トラップでダメージが発生した場合は少し待つ
-        if (incomingDmg > 0) {
-            updateInfo();
-            if (enemy.hp <= 0) {
-                setTimeout(winBattle, 800);
-                return;
+        // ★追加: 敵が出現し、名前が出た後にトラップ(落とし穴)を判定
+        if (player.setCard) {
+            const incomingDmg = triggerTrap('summon', 0);
+            // トラップでダメージが発生した場合は少し待つ
+            if (incomingDmg > 0) {
+                updateInfo();
+                if (enemy.hp <= 0) {
+                    setTimeout(winBattle, TIMING.WIN_DELAY);
+                    return;
+                }
+                await wait(TIMING.TRAP_DELAY);
             }
-            await wait(1000);
         }
-    }
 
-    if (preemptiveSkill) {
-        // 新エンジンで実行し、完了を待つ
-        await executeSkill(preemptiveSkill, true);
-        await wait(1500);
-        preparePlayerTurn();
-    } else {
-        // 先制なし
-        await wait(500);
+        if (preemptiveSkill) {
+            // 新エンジンで実行し、完了を待つ
+            await executeSkill(preemptiveSkill, true);
+            await wait(TIMING.PREEMPTIVE_AFTER);
+            preparePlayerTurn();
+        } else {
+            // 先制なし
+            await wait(TIMING.NO_PREEMPTIVE_DELAY);
+            preparePlayerTurn();
+        }
+    } catch (error) {
+        console.error("Battle Error (handlePreemptiveAI):", error);
+        addLog(">> エラーが発生しました", "log-system");
+        isProcessing = false;
         preparePlayerTurn();
     }
 }

@@ -32,70 +32,80 @@ function handleEnter() {
 
 // Updated: processOneThrow (v5.9 - Fixed Action Lock / Bind)
 async function processOneThrow(score) {
-    if (enemy.hp <= 0 || player.hp <= 0 || isProcessing || isInterval) return;
+    try {
+        if (enemy.hp <= 0 || player.hp <= 0 || isProcessing || isInterval) return;
 
-    // 1. 投擲開始時の拘束状態を記録
-    const isBound = hasState(player, "action_lock");
+        // 1. 投擲開始時の拘束状態を記録
+        const isBound = hasState(player, "action_lock");
 
-    // 既に1投投げているのに、拘束フラグがある場合はガード（通常ここには来ない）
-    if (isBound && turnInputs.length > 0) return;
+        // 既に1投投げているのに、拘束フラグがある場合はガード（通常ここには来ない）
+        if (isBound && turnInputs.length > 0) return;
 
-    // 2. 攻撃計算とステートの進行
-    let singleDmg = applyOffenseLogic(score, player, false);
-    
-    // 投げた瞬間に「投数(throw)」タイミングのステートを減らす (atk_buffなど)
-    tickStates(player, "throw"); 
-    tickStates(enemy, "throw"); 
+        // 2. 攻撃計算とステートの進行
+        let singleDmg = applyOffenseLogic(score, player, false);
 
-    // 防御計算
-    singleDmg = await applyDefenseLogic(singleDmg, enemy, true);
+        // 投げた瞬間に「投数(throw)」タイミングのステートを減らす (atk_buffなど)
+        tickStates(player, "throw");
+        tickStates(enemy, "throw");
 
-    // 3. 判定と適用
-    if (singleDmg === enemy.hp && enemy.hp > 0) { 
-        isJustFinish = true; 
-    }
+        // 防御計算
+        singleDmg = await applyDefenseLogic(singleDmg, enemy, true);
 
-    enemy.hp = Math.max(0, enemy.hp - singleDmg);
-    totalScore += score;
-    totalDarts++;
-    turnInputs.push(score);
-    updateScoreDisplay();
+        // 3. 判定と適用
+        if (singleDmg === enemy.hp && enemy.hp > 0) {
+            isJustFinish = true;
+        }
 
-    // 弱点判定
-    let weakHit = false;
-    if (score >= 51 && enemy.data.weak && (score % enemy.data.weak === 0)) {
-        dropGuaranteed = true;
-        weakHitCount++;
-        addLog(`WEAK HIT!!`, "log-weak");
-        playSE("se-weak");
-    }
+        enemy.hp = Math.max(0, enemy.hp - singleDmg);
+        totalScore += score;
+        totalDarts++;
+        turnInputs.push(score);
+        updateScoreDisplay();
 
-    // 演出
-    triggerEffect(el("game-screen"), singleDmg, false);
-    el("enemy-hp-value").innerText = enemy.hp;
-    displayEnemyHP = enemy.hp;
-    updateInfo();
+        // 弱点判定
+        let weakHit = false;
+        if (score >= 51 && enemy.data.weak && (score % enemy.data.weak === 0)) {
+            dropGuaranteed = true;
+            weakHitCount++;
+            addLog(`WEAK HIT!!`, "log-weak");
+            playSE("se-weak");
+        }
 
-    // 4. 勝利判定
-    if (enemy.hp <= 0) {
-        isProcessing = true;
-        totalGameTurns++;
-        setTimeout(winBattle, 1000);
-        return;
-    }
-
-    // 5. ★ 拘束解除とターン終了判定
-    if (isBound) {
-        // 拘束ステートを強制削除
-        player.states = player.states.filter(s => STATE_MASTER[s.id].category !== "action_lock");
-        addLog("拘束解除", "log-system");
+        // 演出
+        triggerEffect(el("game-screen"), singleDmg, false);
+        el("enemy-hp-value").innerText = enemy.hp;
+        displayEnemyHP = enemy.hp;
         updateInfo();
-        
-        // 1投目だが拘束中だったので、即座にターン終了へ
-        setTimeout(finishPlayerTurn, 1000);
-    } else if (turnInputs.length >= 3) {
-        // 通常の3投終了
-        setTimeout(finishPlayerTurn, 1000);
+
+        // 4. 勝利判定
+        if (enemy.hp <= 0) {
+            isProcessing = true;
+            totalGameTurns++;
+            setTimeout(winBattle, TIMING.WIN_DELAY_LONG);
+            return;
+        }
+
+        // 5. ★ 拘束解除とターン終了判定
+        if (isBound) {
+            // 拘束ステートを強制削除
+            player.states = player.states.filter(s => STATE_MASTER[s.id].category !== "action_lock");
+            addLog("拘束解除", "log-system");
+            updateInfo();
+
+            // 1投目だが拘束中だったので、即座にターン終了へ
+            setTimeout(finishPlayerTurn, TIMING.TURN_END_DELAY);
+        } else if (turnInputs.length >= 3) {
+            // 通常の3投終了
+            setTimeout(finishPlayerTurn, TIMING.TURN_END_DELAY);
+        }
+    } catch (error) {
+        console.error("Battle Error (processOneThrow):", error);
+        addLog(">> エラーが発生しました", "log-system");
+        isProcessing = false;
+        turnInputs = [];
+        currentInput = "";
+        updateScoreDisplay();
+        preparePlayerTurn();
     }
 }
 
@@ -105,8 +115,8 @@ function finishPlayerTurn() {
     turnInputs = [];
     currentInput = "";
     updateScoreDisplay();
-    
-    setTimeout(processEnemyTurn, 500); 
+
+    setTimeout(processEnemyTurn, TIMING.ENEMY_TURN_DELAY);
 }
 
 
@@ -151,47 +161,54 @@ const checkAICondition = checkCondition;
 
 // Updated: triggerTrap (v4.6 - Async Support)
 async function triggerTrap(triggerType, incomingDmg = 0) {
-    if (!player.setCard) return incomingDmg;
+    try {
+        if (!player.setCard) return incomingDmg;
 
-    const card = CARD_DB.find(c => c.id === player.setCard);
-    if (!card || !card.trap || card.trap.trigger !== triggerType) return incomingDmg;
+        const card = CARD_DB.find(c => c.id === player.setCard);
+        if (!card || !card.trap || card.trap.trigger !== triggerType) return incomingDmg;
 
-    if (card.se) playSE(card.se);
-    addLog(`【罠】${card.name} 発動！`, "log-skill");
+        if (card.se) playSE(card.se);
+        addLog(`【罠】${card.name} 発動！`, "log-skill");
 
-    let finalDmg = incomingDmg;
+        let finalDmg = incomingDmg;
 
-    // ★ 順番に解決するため for...of ループに変更
-    for (const action of card.trap.actions) {
-        if (action.type === "NEGATE") {
-            finalDmg = 0;
-            addLog("攻撃を無効化！", "log-skill");
-        } else if (action.type === "DAMAGE_MULT") {
-            finalDmg = Math.floor(finalDmg * action.val);
-        } else if (action.type === "REFLECT") {
-            const rDmg = Math.floor(incomingDmg * (action.mult || 1.0));
-            enemy.hp = Math.max(0, enemy.hp - rDmg);
-            triggerEffect(el("game-screen"), rDmg, false);
-            addLog(`${rDmg} ダメージ反射！`, "log-skill");
-        } else {
-            // ★ resolveAction を await して演出が終わるのを待つ
-            await resolveAction(action, true, card.visual);
+        // ★ 順番に解決するため for...of ループに変更
+        for (const action of card.trap.actions) {
+            if (action.type === "NEGATE") {
+                finalDmg = 0;
+                addLog("攻撃を無効化！", "log-skill");
+            } else if (action.type === "DAMAGE_MULT") {
+                finalDmg = Math.floor(finalDmg * action.val);
+            } else if (action.type === "REFLECT") {
+                const rDmg = Math.floor(incomingDmg * (action.mult || 1.0));
+                enemy.hp = Math.max(0, enemy.hp - rDmg);
+                triggerEffect(el("game-screen"), rDmg, false);
+                addLog(`${rDmg} ダメージ反射！`, "log-skill");
+            } else {
+                // ★ resolveAction を await して演出が終わるのを待つ
+                await resolveAction(action, true, card.visual);
+            }
+            // ★重要: トラップダメージで敵が死んだら即終了
+            if (enemy.hp <= 0) break;
         }
-        // ★重要: トラップダメージで敵が死んだら即終了
-        if (enemy.hp <= 0) break;
+
+        player.discard.push(player.setCard);
+        player.setCard = null;
+
+        el("flash-overlay").className = "flash-gold";
+        setTimeout(() => el("flash-overlay").className = "", TIMING.FLASH_DURATION);
+
+        if (enemy.hp <= 0) {
+            setTimeout(winBattle, TIMING.WIN_DELAY_SHORT); // 少し待って勝利演出へ
+        }
+
+        return finalDmg;
+    } catch (error) {
+        console.error("Battle Error (triggerTrap):", error);
+        addLog(">> トラップ実行エラー", "log-system");
+        // エラー時は罠を消費せずダメージをそのまま返す
+        return incomingDmg;
     }
-
-    player.discard.push(player.setCard);
-    player.setCard = null;
-    
-    el("flash-overlay").className = "flash-gold";
-    setTimeout(() => el("flash-overlay").className = "", 300);
-
-    if (enemy.hp <= 0) {
-        setTimeout(winBattle, 500); // 少し待って勝利演出へ
-    }
-
-    return finalDmg;
 }
 
 // =========================================
@@ -203,7 +220,7 @@ async function triggerTrap(triggerType, incomingDmg = 0) {
 function getCalculatedWait(skill) {
     if (skill.visual && skill.visual.wait) return skill.visual.wait;
     // 名前がある技のみ、状況確認のため少しだけ(200ms)足す
-    return skill.name ? 1200 : 800;
+    return skill.name ? TIMING.SKILL_AFTERGLOW_NAMED : TIMING.SKILL_AFTERGLOW;
 }
 // Updated: ステートの持続時間を進める共通関数 (v5.0)
 // timingFilter: "throw" (1投ごと) または "round" (敵ターン終了ごと)
@@ -239,87 +256,100 @@ function hasState(obj, category) {
 
 // Updated: processEnemyTurn (v7.1 - Multi-turn Sequence Support)
 async function processEnemyTurn() {
-    if (hasState(enemy, "stun")) { // ★修正: hasStateヘルパーを使用
-        addLog(`${enemy.name}はスタン中`, "log-system");
-        // スタン(round)は endEnemyTurn の tickStates で自動消滅します
-        endEnemyTurn(); 
-        if (player.hp > 0) preparePlayerTurn();
-        return;
-    }
+    try {
+        if (hasState(enemy, "stun")) { // ★修正: hasStateヘルパーを使用
+            addLog(`${enemy.name}はスタン中`, "log-system");
+            // スタン(round)は endEnemyTurn の tickStates で自動消滅します
+            endEnemyTurn();
+            if (player.hp > 0) preparePlayerTurn();
+            return;
+        }
 
-    enemy.actionCount++;
-    let selectedSkill = null;
+        enemy.actionCount++;
+        let selectedSkill = null;
 
-    // 1. 進行中の連続行動があれば優先
-    if (enemy.patternQueue && enemy.patternQueue.length > 0) {
-        selectedSkill = enemy.patternQueue.shift();
-    } else {
-        const aiList = enemy.data.ai || [{ weight: 1, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }];
-        
-        // 2. ★修正: 条件を満たし、かつ「先制用(preemptive)ではない」スキルだけを抽出
-        const validActions = aiList.filter(s => !s.preemptive && checkCondition(s.cond));
+        // 1. 進行中の連続行動があれば優先
+        if (enemy.patternQueue && enemy.patternQueue.length > 0) {
+            selectedSkill = enemy.patternQueue.shift();
+        } else {
+            const aiList = enemy.data.ai || [{ weight: 1, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }];
 
-        // 3. 確定(guaranteed)スキルがあれば選択、なければ重み抽選
-        selectedSkill = validActions.find(s => s.guaranteed);
-        
-        if (!selectedSkill && validActions.length > 0) {
-            const totalWeight = validActions.reduce((sum, s) => sum + (s.weight || 1), 0);
-            let r = Math.random() * totalWeight;
-            for (const s of validActions) {
-                r -= (s.weight || 1);
-                if (r <= 0) { selectedSkill = s; break; }
+            // 2. ★修正: 条件を満たし、かつ「先制用(preemptive)ではない」スキルだけを抽出
+            const validActions = aiList.filter(s => !s.preemptive && checkCondition(s.cond));
+
+            // 3. 確定(guaranteed)スキルがあれば選択、なければ重み抽選
+            selectedSkill = validActions.find(s => s.guaranteed);
+
+            if (!selectedSkill && validActions.length > 0) {
+                const totalWeight = validActions.reduce((sum, s) => sum + (s.weight || 1), 0);
+                let r = Math.random() * totalWeight;
+                for (const s of validActions) {
+                    r -= (s.weight || 1);
+                    if (r <= 0) { selectedSkill = s; break; }
+                }
             }
         }
-    }
 
-    // 万が一のフォールバック
-    if (!selectedSkill) selectedSkill = { weight: 1, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] };
+        // 万が一のフォールバック
+        if (!selectedSkill) selectedSkill = { weight: 1, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] };
 
-    // 3. 抽選されたものが「sequence（複数ターンの行動）」だった場合
-    if (selectedSkill.sequence) {
-        const queue = [...selectedSkill.sequence];
-        const currentAction = queue.shift();
-        enemy.patternQueue = queue;
-        await executeSkill(currentAction);
-    } else {
-        // 単発スキルの実行
-        await executeSkill(selectedSkill);
-    }
-    
-    endEnemyTurn();
+        // 3. 抽選されたものが「sequence（複数ターンの行動）」だった場合
+        if (selectedSkill.sequence) {
+            const queue = [...selectedSkill.sequence];
+            const currentAction = queue.shift();
+            enemy.patternQueue = queue;
+            await executeSkill(currentAction);
+        } else {
+            // 単発スキルの実行
+            await executeSkill(selectedSkill);
+        }
 
-    if (player.hp > 0) {
-        preparePlayerTurn();
+        endEnemyTurn();
+
+        if (player.hp > 0) {
+            preparePlayerTurn();
+        }
+    } catch (error) {
+        console.error("Battle Error (processEnemyTurn):", error);
+        addLog(">> エラーが発生しました", "log-system");
+        isProcessing = false;
+        endEnemyTurn();
+        if (player.hp > 0) preparePlayerTurn();
     }
 
 }
 
 // Updated: executeSkill (プレイヤー/敵 共通)
 async function executeSkill(skill, isPreemptive = false, isCard = false) {
+    try {
+        // skill.visual が存在しない場合のフォールバック
+        const skillVis = skill.visual || {};
 
-    // skill.visual が存在しない場合のフォールバック
-    const skillVis = skill.visual || {};
+        // 1. 演出（カード使用時はカットインなし、SEのみ）
+        if (skill.name && !isCard) {
+            showSkillCutin(skill.name, skill.visual?.cutin?.color || "fire");
+            await wait(TIMING.CUTIN_DISPLAY);
+        }
+        if (skill.visual?.msg) {
+            addLog(skill.visual.msg, "log-enemy");
+        }
 
-    // 1. 演出（カード使用時はカットインなし、SEのみ）
-    if (skill.name && !isCard) {
-        showSkillCutin(skill.name, skill.visual?.cutin?.color || "fire");
-        await wait(1200);
-    }
-    if (skill.visual?.msg) {
-        addLog(skill.visual.msg, "log-enemy");
-    }
+        // 2. 各アトムを順番に実行
+        for (const action of skill.actions) {
+             await resolveAction(action, isCard, skillVis);
+            if (enemy.hp <= 0 || player.hp <= 0) return; // 決着がついたら中断
+            await wait(isCard ? TIMING.CARD_ACTION_GAP : TIMING.ACTION_GAP);
+        }
 
-    // 2. 各アトムを順番に実行
-    for (const action of skill.actions) {
-         await resolveAction(action, isCard, skillVis);
-        if (enemy.hp <= 0 || player.hp <= 0) return; // 決着がついたら中断
-        await wait(isCard ? 100 : 300);
-    }
-
-    // 3. 余韻
-    if (!isPreemptive) {
-        const finalWait = isCard ? 500 : getCalculatedWait(skill);
-        await wait(finalWait);
+        // 3. 余韻
+        if (!isPreemptive) {
+            const finalWait = isCard ? TIMING.CARD_AFTERGLOW : getCalculatedWait(skill);
+            await wait(finalWait);
+        }
+    } catch (error) {
+        console.error("Battle Error (executeSkill):", error);
+        addLog(">> スキル実行エラー", "log-system");
+        // エラーが発生しても処理は続行（次のターンへ）
     }
 }
 
@@ -379,16 +409,17 @@ function applyDefenseLogic(dmg, targetObj, isDarts = false) {
 
 // Updated: resolveAction (v4.9.1 - Fixed Reference Error)
 async function resolveAction(action, executorIsPlayer = false, skillVisual = {}) {
-    // 1. 演出データの解決 (アトムのvisualを優先、なければスキルのvisual)
-    const atomVisual = action.visual || {};
-    const effectiveVisual = { ...skillVisual, ...atomVisual }; 
+    try {
+        // 1. 演出データの解決 (アトムのvisualを優先、なければスキルのvisual)
+        const atomVisual = action.visual || {};
+        const effectiveVisual = { ...skillVisual, ...atomVisual };
 
-    const targetObj = (action.target === "ENEMY") ? enemy : player;
-    const isPlayerTarget = (action.target === "PLAYER");
+        const targetObj = (action.target === "ENEMY") ? enemy : player;
+        const isPlayerTarget = (action.target === "PLAYER");
 
-    if (action.cond && !checkCondition(action.cond)) return;
+        if (action.cond && !checkCondition(action.cond)) return;
 
-    switch (action.type) {
+        switch (action.type) {
         case "DAMAGE":
             const count = action.count || 1;
             for (let i = 0; i < count; i++) {
@@ -413,7 +444,7 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
 
                 if (dmg > 0) {
                     targetObj.hp = Math.max(0, targetObj.hp - dmg);
-                    
+
                     const isBossUlt = (action.mode === "fixed" && dmg > 50);
                     if (isBossUlt) {
                         playSE("se-boom");
@@ -425,9 +456,9 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
                     }
 
                     triggerEffect(el("game-screen"), dmg, isPlayerTarget);
-                    
+
                     if (action.drain) {
-                        await wait(400);
+                        await wait(TIMING.DRAIN_DELAY);
                         const heal = Math.floor(dmg * 1.0);
                         const attacker = isPlayerTarget ? enemy : player;
                         attacker.hp = Math.min(attacker.maxHp, attacker.hp + heal);
@@ -440,10 +471,10 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
 
                 updateInfo();
                 if (targetObj.hp <= 0) {
-                    if (!isPlayerTarget) setTimeout(winBattle, 500);
-                    return; 
+                    if (!isPlayerTarget) setTimeout(winBattle, TIMING.WIN_DELAY_SHORT);
+                    return;
                 }
-                if (count > 1) await wait(400);
+                if (count > 1) await wait(TIMING.MULTI_HIT_GAP);
             }
             break;
 
@@ -487,7 +518,7 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
         case "DRAW":
             for (let j = 0; j < action.val; j++) {
                 executeDrawWithAnim();
-                await wait(250);
+                await wait(TIMING.CARD_DRAW_INTERVAL);
             }
             break;
         case "DISCARD_SELECT":
@@ -503,8 +534,13 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
             const msg = executeSalvageMagic();
             addLog(msg, "log-skill");
             break;
+        }
+        updateInfo();
+    } catch (error) {
+        console.error("Battle Error (resolveAction):", error);
+        addLog(">> アクション実行エラー", "log-system");
+        // エラーが発生しても処理は続行
     }
-    updateInfo();
 }
 
 // Updated: endEnemyTurn (v4.3 - Universal Ticking)
@@ -648,7 +684,7 @@ function checkDrop() {
         el("chest-img").classList.add("chest-shine");
         playSE("se-chest");
         addLog("宝箱を見つけた！", "log-item");
-        setTimeout(() => { if (waitingForChest) openChest(); }, 1500);
+        setTimeout(() => { if (waitingForChest) openChest(); }, TIMING.CHEST_AUTO_OPEN);
     } else {
         nextStep();
     }
@@ -817,56 +853,63 @@ function drawCard(isSilent = false) {
 
 // Updated: カード使用ロジック (v4.0 Async化)
 async function playHandCard(index) {
-    if (isProcessing || waitingForChest || isInterval) return;
-    if (turnInputs.length > 0) {
-        addLog(">> 投擲中はカードを使えません！", "log-system");
-        return;
-    }
-    if (hasState(player, "item_lock")) {
-        playSE("se-warning");
-        addLog(`>> アイテム封印中！`, "log-system");
-        return;
-    }
-    
-    const cardId = player.hand[index];
-    const card = CARD_DB.find(c => c.id === cardId);
-    let cost = (card.cost !== undefined) ? card.cost : 99;
-    
-    if (player.mp < cost) {
-        addLog(`MP不足！(必要: ${cost})`, "log-system");
-        playSE("se-warning");
-        return;
-    }
-
-    // カード消費
-    player.mp -= cost;
-    player.hand.splice(index, 1);
-    
-    isProcessing = true; // 演出中のガード
-
-    if (card.type === "TRAP") {
-        if (player.setCard) {
-            player.discard.push(player.setCard); // 上書き
+    try {
+        if (isProcessing || waitingForChest || isInterval) return;
+        if (turnInputs.length > 0) {
+            addLog(">> 投擲中はカードを使えません！", "log-system");
+            return;
         }
-        player.setCard = cardId;
-        playSE("se-buff");
-        addLog(`「${card.name}」をセット！`, "log-skill");
-        await wait(500);
-    } else {
-        // 魔法カード: 新エンジンで実行
-        player.discard.push(cardId);
-        if (card.se) playSE(card.se);
-        announce(card.name, "log-skill");
-        
-        await executeSkill(card, false, true); // (skill, isPreemptive, isCard)
-    }
+        if (hasState(player, "item_lock")) {
+            playSE("se-warning");
+            addLog(`>> アイテム封印中！`, "log-system");
+            return;
+        }
 
-    isProcessing = false;
-    updateInfo();
+        const cardId = player.hand[index];
+        const card = CARD_DB.find(c => c.id === cardId);
+        let cost = (card.cost !== undefined) ? card.cost : 99;
 
-    // 敵の死亡チェック
-    if (enemy.hp <= 0) {
-        setTimeout(winBattle, 800);
+        if (player.mp < cost) {
+            addLog(`MP不足！(必要: ${cost})`, "log-system");
+            playSE("se-warning");
+            return;
+        }
+
+        // カード消費
+        player.mp -= cost;
+        player.hand.splice(index, 1);
+
+        isProcessing = true; // 演出中のガード
+
+        if (card.type === "TRAP") {
+            if (player.setCard) {
+                player.discard.push(player.setCard); // 上書き
+            }
+            player.setCard = cardId;
+            playSE("se-buff");
+            addLog(`「${card.name}」をセット！`, "log-skill");
+            await wait(TIMING.TRAP_SET_DELAY);
+        } else {
+            // 魔法カード: 新エンジンで実行
+            player.discard.push(cardId);
+            if (card.se) playSE(card.se);
+            announce(card.name, "log-skill");
+
+            await executeSkill(card, false, true); // (skill, isPreemptive, isCard)
+        }
+
+        isProcessing = false;
+        updateInfo();
+
+        // 敵の死亡チェック
+        if (enemy.hp <= 0) {
+            setTimeout(winBattle, TIMING.WIN_DELAY);
+        }
+    } catch (error) {
+        console.error("Battle Error (playHandCard):", error);
+        addLog(">> カード使用エラー", "log-system");
+        isProcessing = false;
+        updateInfo();
     }
 }
 

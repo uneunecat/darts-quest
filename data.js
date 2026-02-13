@@ -588,3 +588,64 @@ const CHEST_DROP_CONFIG = {
         weak3: 1.0
     }
 };
+
+// =========================================
+// TIMING CONSTANTS (演出タイミング定数)
+// =========================================
+const TIMING = {
+    // スキル・カットイン演出
+    CUTIN_DISPLAY: 1200,           // スキルカットイン表示時間
+    CUTIN_DURATION: 1500,          // カットイン全体の表示時間
+    SKILL_AFTERGLOW: 800,          // スキル後の余韻（名前なし）
+    SKILL_AFTERGLOW_NAMED: 1200,   // スキル後の余韻（名前あり）
+    CARD_AFTERGLOW: 500,           // カード使用後の余韻
+
+    // アクション間隔
+    ACTION_GAP: 300,               // アクション間の標準間隔
+    CARD_ACTION_GAP: 100,          // カード効果間の短い間隔
+    MULTI_HIT_GAP: 400,            // 複数回攻撃の間隔
+
+    // 戦闘遷移
+    WIN_DELAY_SHORT: 500,          // 勝利演出までの待機（短）
+    WIN_DELAY: 800,                // 勝利演出までの待機（標準）
+    WIN_DELAY_LONG: 1000,          // 勝利演出までの待機（長）
+    TURN_END_DELAY: 1000,          // ターン終了処理の待機
+    ENEMY_TURN_DELAY: 500,         // 敵ターン開始までの待機
+    JUST_FINISH_DIALOG: 800,       // JUST FINISHダイアログ表示前の待機
+    DROP_CHECK_DELAY: 800,         // ドロップチェックまでの待機
+
+    // エンカウンター演出
+    ENCOUNTER_WAIT: 1000,          // エンカウンター演出後の待機
+    ENCOUNTER_WAIT_LONG: 1200,     // エンカウンター演出後の待機（長）
+    PREEMPTIVE_DELAY: 1200,        // 先制スキル前の待機
+    PREEMPTIVE_AFTER: 1500,        // 先制スキル後の待機
+    NO_PREEMPTIVE_DELAY: 500,      // 先制なし時の待機
+    TRAP_DELAY: 1000,              // トラップ後の待機
+    DRAIN_DELAY: 400,              // ドレイン前の待機
+
+    // ステージ遷移
+    BATTLE_TRANSITION: 2500,       // 戦闘遷移時の待機（通常）
+    BATTLE_TRANSITION_WARNING: 4000, // 戦闘遷移時の待機（警告ステージ）
+    FADE_OUT: 1000,                // フェードアウト時間
+    SPAWN_DELAY_FIRST: 1500,       // 敵出現待機（1F）
+    SPAWN_DELAY: 500,              // 敵出現待機（通常）
+
+    // MP演出
+    MP_CHARGE_GLOW: 150,           // MP回復1つあたりの発光時間
+    MP_CHARGE_STEP: 100,           // MP回復1つあたりの間隔
+    MP_LOSS_FLASH: 150,            // MP減少時の閃光時間
+    MP_LOSS_STEP: 100,             // MP減少時の間隔
+
+    // カード・アイテム
+    CARD_DRAW_INTERVAL: 250,       // カードドロー間隔
+    CARD_DRAW_PREP: 200,           // 通常ドロー前の待機
+    TRAP_SET_DELAY: 500,           // トラップセット時の待機
+    CHEST_AUTO_OPEN: 1500,         // 宝箱自動開封までの時間
+
+    // UI演出
+    FLOAT_TEXT_DURATION: 1500,     // フローティングテキスト表示時間
+    DAMAGE_POP_DURATION: 1200,     // ダメージ表示の消失時間
+    ANNOUNCER_DURATION: 2000,      // アナウンス表示時間
+    SHAKE_DURATION: 500,           // シェイクアニメーション継続時間
+    FLASH_DURATION: 300            // フラッシュエフェクト継続時間
+};

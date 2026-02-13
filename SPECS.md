@@ -76,16 +76,10 @@
   hp: 100, maxHp: 100,
   mp: 3, maxMp: 10,
   items: { potion: 0, ether: 0, seed: 0 },
-  state: {
-    atkBuff: 0,          // 攻撃倍率加算 (0=増加なし, 1.0=2倍, 2.0=3倍)
-    atkFlat: 0,          // 攻撃固定値加算 (援軍など)
-    atkDuration: 0,      // バフ残り投数
-    guardTurn: 0,        // 護封剣残りターン
-    guardType: null,     // "ratio" | "fixed" | null
-    guardValue: 0,       // 軽減率 or 固定値
-    itemLockTurn: 0,     // アイテム封印残りターン
-    restrictInput: false // 拘束状態 (1投制限)
-  },
+  states: [  // ★ v5.0: 配列形式で複数ステート管理
+    { id: "p_atk_buff", val: 1.0, turn: 1 },  // 攻撃倍率2倍 (次の1投)
+    { id: "guard_ratio", val: 0.5, turn: 3 }  // 被ダメ半減 (3ターン)
+  ],
   deck: [],    // 山札 (カードIDの配列)
   hand: [],    // 手札 (最大5枚: HAND_SIZE)
   discard: [], // 墓地
@@ -101,19 +95,13 @@
   data: null,  // GAME_DATA.enemies[stage][floor] の参照
   name: "",
   atk: 10,    // 基礎攻撃力 (data.jsのatk値を代入)
-  state: {
-    charge: false,      // チャージ中フラグ
-    isStunned: false,   // スタン状態
-    atkBuff: 0,         // 攻撃力バフ値
-    atkBuffTurn: 0,     // バフ残りターン
-    guardTurn: 0,       // ガード残りターン
-    guardType: null,    // "ratio" | "fixed"
-    guardValue: 0,      // 軽減率 or 固定値
-    barrierTurn: 0,     // バリア残りターン
-    barrierLimit: 0,    // バリア閾値 (未満のダメージ無効)
-    actionCount: 0,     // 行動回数カウンタ
-    patternQueue: []    // シーケンス行動のキュー
-  }
+  states: [   // ★ v5.0: 配列形式で複数ステート管理
+    { id: "e_atk_buff", val: 1.0, turn: 10 }, // 攻撃倍率2倍 (10ターン)
+    { id: "barrier", val: 10, turn: 999 }      // バリア (10未満無効)
+  ],
+  actionCount: 0,     // 行動回数カウンタ
+  patternQueue: [],   // シーケンス行動のキュー
+  preemptiveTriggered: false  // 先制スキル発動済みフラグ
 }
 ```
 
@@ -140,7 +128,7 @@
 
 ---
 
-## 5. Constants
+## 5. Constants & Master Data
 
 | 定数名 | 値 | 用途 |
 |--------|-----|------|
@@ -150,6 +138,42 @@
 | `SAVE_KEY` | `"darts_quest_save"` | localStorageキー |
 | `SAME_CARD_LIMIT` | 3 | 同名カード上限 (addToDeck内ローカル定数) |
 | `LONG_PRESS_DURATION` | 500 | カード長押し判定(ms) (setupLongPress内ローカル) |
+
+### 5.1 STATE_MASTER (v5.0 - ステート統合管理システム)
+
+全てのバフ/デバフをマスターテーブルで一元管理。エンジンは `category` を参照して自動的に効果を適用。
+
+```javascript
+STATE_MASTER = {
+  "p_atk_buff":  { label: "攻撃UP", icon: "⚔️", category: "atk_mult", timing: "throw" },
+  "p_atk_flat":  { label: "ダメUP", icon: "⚔️", category: "atk_add",  timing: "throw" },
+  "e_atk_buff":  { label: "強攻",   icon: "⚔️", category: "atk_mult", timing: "round" },
+  "guard_ratio": { label: "ガード", icon: "🛡️", category: "dmg_mult", timing: "round" },
+  "guard_fixed": { label: "アーマー", icon: "🛡️", category: "dmg_sub", timing: "round" },
+  "barrier":     { label: "結界",   icon: "💠", category: "barrier",  timing: "round" },
+  "charge":      { label: "溜め",   icon: "⚡", category: "charge",   timing: "round" },
+  "stun":        { label: "スタン", icon: "😵", category: "stun",     timing: "round" },
+  "item_lock":   { label: "アイテム封印", icon: "🔒", category: "item_lock", timing: "round" },
+  "bind":        { label: "拘束",   icon: "⛓️", category: "action_lock", timing: "throw" }
+}
+```
+
+**カテゴリ一覧**:
+| category | 効果 | 適用箇所 |
+|----------|------|---------|
+| `atk_mult` | 攻撃倍率加算 (val: 1.0 = 2倍) | applyOffenseLogic |
+| `atk_add` | 攻撃固定値加算 | applyOffenseLogic |
+| `dmg_mult` | 被ダメ倍率 (val: 0.5 = 半減) | applyDefenseLogic |
+| `dmg_sub` | 被ダメ固定減算 | applyDefenseLogic |
+| `barrier` | ダメージ閾値 (未満無効) | applyDefenseLogic |
+| `charge` | チャージ状態フラグ | UI表示・条件判定 |
+| `stun` | 行動不能 | processEnemyTurn |
+| `item_lock` | アイテム・カード使用不可 | useItem / playHandCard |
+| `action_lock` | 投擲制限 (1投のみ) | processOneThrow |
+
+**タイミング制御**:
+- `"throw"`: 投擲ごとにカウントダウン (例: 攻撃バフ、拘束)
+- `"round"`: 敵ターン終了時にカウントダウン (例: ガード、スタン)
 
 ### 5.1 STAGE_MASTER 拡張プロパティ
 
@@ -167,35 +191,66 @@
 
 ---
 
-## 6. Battle System
+## 6. Battle System (v5.0 - ステート・スキャナー方式)
 
 ### 6.1 Damage Calculation
+
+**攻撃力計算** (`applyOffenseLogic`):
+```javascript
+// 1. ステートをスキャンして効果を集計
+const multBonus = sourceObj.states
+    .filter(s => STATE_MASTER[s.id]?.category === "atk_mult")
+    .reduce((sum, s) => sum + s.val, 0);
+
+const addBonus = sourceObj.states
+    .filter(s => STATE_MASTER[s.id]?.category === "atk_add")
+    .reduce((sum, s) => sum + s.val, 0);
+
+// 2. 計算式: (威力 + 加算) * (1.0 + 倍率)
+finalDmg = (basePower + addBonus) * (1.0 + multBonus);
+
+// 3. 敵攻撃のみ乱数適用 (±10%)
+if (applyRandom) finalDmg *= (0.9 + Math.random() * 0.2);
 ```
-[プレイヤー → 敵 (ダーツ投擲)]
-  applyOffenseLogic(dartScore, player, applyRandom=false):
-  1. finalDmg = (dartScore + atkFlat) * (1.0 + atkBuff)
-  2. 乱数なし (ダーツスコアは既に実数値)
 
-  applyDefenseLogic(dmg, enemy):
-  3. バリア判定: dmg < barrierLimit → dmg = 0
-  4. ガード判定:
-     - ratio: dmg *= guardValue (例: 0.5 → 半減)
-     - fixed:  dmg -= guardValue (最低0)
-  5. enemy.hp -= floor(finalDmg)
+**防御力計算** (`applyDefenseLogic`):
+```javascript
+// 1. 結界チェック (barrier)
+const maxBarrier = targetObj.states
+    .filter(s => STATE_MASTER[s.id]?.category === "barrier")
+    .reduce((max, s) => Math.max(max, s.val), 0);
+if (dmg < maxBarrier) return 0;
 
-[敵 → プレイヤー (スキル/通常攻撃)]
-  resolveAction (DAMAGE) → applyOffenseLogic:
-  1. basePower = enemy.atk * mult (multはスキルの倍率)
-  2. finalDmg = (basePower + atkFlat) * (1.0 + atkBuff) * random(0.9〜1.1)
+// 2. 倍率防御 (dmg_mult) - 複数あれば積算
+const dmgMult = targetObj.states
+    .filter(s => STATE_MASTER[s.id]?.category === "dmg_mult")
+    .reduce((prod, s) => prod * s.val, 1.0);
+finalDmg *= dmgMult;
 
-  applyDefenseLogic(dmg, player):
-  3. トラップ判定 (triggerTrap): 攻撃無効化/反射/減衰
-  4. 護封剣: guardType="ratio" → dmg *= 0.5
-  5. player.hp -= finalDmg
+// 3. 固定減算 (dmg_sub) - 複数あれば合計
+const dmgSub = targetObj.states
+    .filter(s => STATE_MASTER[s.id]?.category === "dmg_sub")
+    .reduce((sum, s) => sum + s.val, 0);
+finalDmg = Math.max(0, finalDmg - dmgSub);
+```
 
-[カード → 敵 (固定ダメージ)]
-  mode="fixed" の場合: dmg = action.val (ATK計算なし)
-  その後 applyDefenseLogic を通す
+**実行フロー**:
+```
+[プレイヤー → 敵]
+  dartScore → applyOffenseLogic(score, player, false)
+           → applyDefenseLogic(dmg, enemy, true)
+           → enemy.hp -= finalDmg
+
+[敵 → プレイヤー]
+  action.mult → applyOffenseLogic(enemy.atk * mult, enemy, true)
+              → triggerTrap('attack', dmg) (罠判定)
+              → applyDefenseLogic(dmg, player, false)
+              → player.hp -= finalDmg
+
+[カード → 敵]
+  mode="fixed" → dmg = action.val (ATK計算スキップ)
+              → applyDefenseLogic(dmg, enemy, false)
+              → enemy.hp -= finalDmg
 ```
 
 ### 6.2 Weak Point System
@@ -207,7 +262,37 @@
 - 敵HPをちょうど0にすると発動 (singleDmg === enemy.hp の厳密一致)
 - 効果: MaxHP +10 & HP +10 回復
 
-### 6.4 Turn Flow (詳細)
+### 6.4 State Management (`tickStates` / `hasState`)
+
+**tickStates(obj, timingFilter)**: ステートのカウントダウン処理
+```javascript
+// 1. 指定されたタイミングのステートを減算
+obj.states.forEach(s => {
+    if (STATE_MASTER[s.id].timing === timingFilter) {
+        s.turn--;
+    }
+});
+
+// 2. 0になったステートを削除
+obj.states = obj.states.filter(s => s.turn > 0);
+```
+
+**呼び出しタイミング**:
+- `tickStates(player, "throw")` → 投擲ごと (processOneThrow内)
+- `tickStates(enemy, "throw")` → 投擲ごと (processOneThrow内)
+- `tickStates(player, "round")` → 敵ターン終了時 (endEnemyTurn内)
+- `tickStates(enemy, "round")` → 敵ターン終了時 (endEnemyTurn内)
+
+**hasState(obj, category)**: 特定のステートを持っているか判定
+```javascript
+return obj.states.some(s => STATE_MASTER[s.id]?.category === category);
+
+// 使用例:
+if (hasState(player, "action_lock")) { /* 拘束中 */ }
+if (hasState(enemy, "stun")) { /* スタン中 */ }
+```
+
+### 6.5 Turn Flow (詳細)
 ```
 [インターバル] (isInterval = true, 入力遮断)
   ↓ タップ/Enter
@@ -216,8 +301,12 @@
   → カード1枚ドロー (初回のみ3枚を250ms間隔)
   → currentTurn++
   ↓
-[ダーツ投擲フェーズ] (最大3投)
-  → processOneThrow(score) × 3
+[ダーツ投擲フェーズ] (最大3投、拘束時は1投のみ)
+  → processOneThrow(score):
+     - 拘束判定: isBound = hasState(player, "action_lock")
+     - ダメージ計算
+     - tickStates(player, "throw") / tickStates(enemy, "throw")
+     - 拘束中なら1投で強制終了 + ステート削除
   → 敵HP 0 → winBattle → checkDrop → nextStep
   → 3投完了 → finishPlayerTurn
   ↓
@@ -226,13 +315,13 @@
   → processEnemyTurn()
   ↓
 [processEnemyTurn]
-  → スタン判定
+  → スタン判定: hasState(enemy, "stun") → ログ出力して終了
   → actionCount++
   → AI行動選択 (patternQueue → guaranteed → weight抽選)
   → executeSkill → resolveAction (各アトムを順番に実行)
   ↓
 [endEnemyTurn]
-  → バフ/デバフのターン経過処理 (tick)
+  → tickStates(enemy, "round") / tickStates(player, "round")
   → preparePlayerTurn (インターバルへ戻る)
 ```
 
@@ -269,11 +358,23 @@
 | `hand` | プレイヤー手札数 | 同上 | |
 | `turn` | 敵行動回数 | 同上 | |
 | `turn_mod` | 行動回数の剰余 | (特殊) | `{src:"turn_mod", val:4}` → 4の倍数ターン |
-| `p_state` | プレイヤー状態 | (特殊) | `{src:"p_state", tag:"restrictInput", val:false}` |
-| `e_state` | 敵自身の状態 | (特殊) | `{src:"e_state", tag:"atkBuff", val:0}` |
+| `p_state` | プレイヤーの状態 | (特殊) | `{src:"p_state", tag:"action_lock", val:false}` |
+| `e_state` | 敵自身の状態 | (特殊) | `{src:"e_state", tag:"atk_mult", val:0}` |
 | `trap` | 罠セット有無 | (特殊) | `{src:"trap", val:true}` |
 
-**注**: `p_state`/`e_state` は `tag` と `tag+"Turn"` の両方をチェックする。
+**v5.0 更新**: `p_state`/`e_state` は **category** (`tag`) で状態を検索し、該当ステートの残りターン数を返します。
+```javascript
+case "p_state":
+case "e_state":
+    const obj = (c.src === "p_state") ? player : enemy;
+    const state = obj.states.find(s => STATE_MASTER[s.id]?.category === c.tag);
+    targetVal = state ? state.turn : 0;
+    break;
+```
+
+**使用例**:
+- `{src:"e_state", tag:"atk_mult", val:0}` → 敵に攻撃バフが**ない**場合に発動 (狂暴化スキル用)
+- `{src:"p_state", tag:"action_lock", val:false}` → プレイヤーが拘束されていない場合に発動
 
 ### 7.3 AI Action Selection Priority
 1. `patternQueue` にシーケンスが残っていれば最優先で消化
@@ -422,19 +523,22 @@ gainedDP = scoreDP + rankDP
 | `REFLECT` | ダメージ反射 | `mult` (罠用: 元ダメージ × mult を敵に反射) |
 | `SPECIAL_SALVAGE` | 墓地回収 | 墓地のMAGICカードをランダム1枚回収 |
 
-**STATE kind 一覧**:
-| kind | 効果 | 対象 |
-|------|------|------|
-| `atk_buff` | 攻撃倍率バフ | P/E |
-| `atk_flat` | 攻撃固定値加算 | P |
-| `guard_ratio` | 割合軽減ガード | P/E |
-| `guard_fixed` | 固定値軽減ガード | E |
-| `barrier` | バリア (閾値未満無効) | E |
-| `charge` | チャージ状態 | E |
-| `item_lock` | アイテム封印 | P |
-| `bind` | 拘束 (1投制限) | P |
-| `stun` | スタン (1T行動不能) | E |
-| `break_guard` | 防御状態解除 | E |
+**STATE kind 一覧** (v5.0 - STATE_MASTERに準拠):
+| kind | 効果 | category | timing | 対象 |
+|------|------|----------|--------|------|
+| `p_atk_buff` | 攻撃倍率バフ | atk_mult | throw | P |
+| `p_atk_flat` | 攻撃固定値加算 | atk_add | throw | P |
+| `e_atk_buff` | 攻撃倍率バフ | atk_mult | round | E |
+| `guard_ratio` | 割合軽減ガード | dmg_mult | round | P/E |
+| `guard_fixed` | 固定値軽減ガード | dmg_sub | round | E |
+| `barrier` | バリア (閾値未満無効) | barrier | round | E |
+| `charge` | チャージ状態 | charge | round | E |
+| `item_lock` | アイテム封印 | item_lock | round | P |
+| `bind` | 拘束 (1投制限) | action_lock | throw | P |
+| `stun` | スタン (1T行動不能) | stun | round | E |
+| `break_guard` | 防御状態解除 | (特殊処理) | - | E |
+
+**注**: `break_guard` は states配列から `dmg_mult`, `dmg_sub` のステートを削除する特殊効果。
 
 ---
 
@@ -580,8 +684,28 @@ PPR (Points Per Round) = `(totalScore / totalDarts) * 3` から算出。
 ### 17.3 背景キー
 **解決済み**: `getStageBackground()` ヘルパーが `STAGE_MASTER` の `img` プロパティから直接URLを返す。`GAME_DATA.bg` + `getBackgroundKey()` は廃止。Stage 4 / Stage 6 はボスフロアで自動的にboss用背景に切り替わる。
 
-### 17.4 チートコード
-- タイトル画面で `1111` を入力 → DP +5000
+### 17.4 デバッグ機能 (v2.18.6+)
+
+**キーボードショートカット** (戦闘画面のみ有効):
+| キー | 効果 | 説明 |
+|------|------|------|
+| `K` | 敵即死 | enemy.hp = 0 + winBattle() |
+| `M` | MP全快 | player.mp = player.maxMp |
+| `H` | HP全快 | player.hp = player.maxHp |
+
+**デバッグジャンプ関数** (コンソール):
+```javascript
+// 使用例: DJ(3, 2) → ステージ3の2Fへ強制ジャンプ
+window.DJ = function(stage, floor) {
+  // 1. 画面・BGMリセット
+  // 2. プレイヤー状態初期化 (HP/MP全快, 手札3枚)
+  // 3. stage/floorをセットして spawnEnemy()
+  // 4. インターバルをスキップして即戦闘開始
+};
+```
+
+**チートコード**:
+- タイトル画面で `1111` を4回入力 → DP +5000
 
 ### 17.5 未使用変数 (軽微)
 - `battle.js` `oldHp` (useItem内で宣言されるが参照なし)

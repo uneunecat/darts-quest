@@ -19,7 +19,7 @@ function triggerFloatText(text, targetEl) {
     float.style.top = `${top}px`;
     float.style.position = "fixed";
 
-    setTimeout(() => float.remove(), 1500);
+    setTimeout(() => float.remove(), TIMING.FLOAT_TEXT_DURATION);
 }
 
 // Updated: triggerEffect (位置情報をクラスで管理)
@@ -30,7 +30,7 @@ function triggerEffect(el, dmg, isPlayer, isHeal = false) {
         container.classList.remove("shake-small", "shake-heavy");
         void container.offsetWidth;
         container.classList.add(shakeClass);
-        setTimeout(() => container.classList.remove(shakeClass), 500);
+        setTimeout(() => container.classList.remove(shakeClass), TIMING.SHAKE_DURATION);
     }
 
     const pop = document.createElement("div");
@@ -41,7 +41,7 @@ function triggerEffect(el, dmg, isPlayer, isHeal = false) {
     pop.innerText = dmg === 0 ? "MISS" : dmg;
     el.appendChild(pop);
 
-    setTimeout(() => pop.remove(), 1200);
+    setTimeout(() => pop.remove(), TIMING.DAMAGE_POP_DURATION);
 }
 
 // 画面サイズ調整 (レスポンシブ対応)
@@ -80,7 +80,7 @@ function announce(text, type = "normal") {
 
     setTimeout(() => {
         ann.className = "";
-    }, 2000);
+    }, TIMING.ANNOUNCER_DURATION);
 }
 
 // ログ出力＆アナウンス振り分け
@@ -114,7 +114,7 @@ function showSkillCutin(name, type) {
     setTimeout(() => {
         cutin.style.display = "none";
         el("game-container").classList.remove("shake-heavy");
-    }, 1500);
+    }, TIMING.CUTIN_DURATION);
 }
 
 // =========================================
@@ -125,21 +125,21 @@ function showSkillCutin(name, type) {
 async function animateMPGain(amount) {
     for (let i = 0; i < amount; i++) {
         if (player.mp >= player.maxMp) break;
-        
+
         player.mp++;
         // 増加音: 軽快なタップ音
-        playSE("se-tap"); 
-        
+        playSE("se-tap");
+
         const dots = el("player-mp-dots").querySelectorAll(".mp-dot");
         const targetDot = dots[player.mp - 1];
         if (targetDot) {
             targetDot.classList.add("charging");
-            await wait(150); // 発光時間
+            await wait(TIMING.MP_CHARGE_GLOW); // 発光時間
             targetDot.classList.remove("charging");
         }
-        
+
         updateInfo(); // UIに反映
-        await wait(100); // 次のドットへの間隔
+        await wait(TIMING.MP_CHARGE_STEP); // 次のドットへの間隔
     }
 }
 
@@ -148,21 +148,21 @@ async function animateMPLoss(amount) {
     const absoluteAmount = Math.abs(amount);
     for (let i = 0; i < absoluteAmount; i++) {
         if (player.mp <= 0) break;
-        
+
         // 現在点灯している一番右のドットを特定
         const dots = el("player-mp-dots").querySelectorAll(".mp-dot");
         const targetDot = dots[player.mp - 1];
-        
+
         if (targetDot) {
             targetDot.classList.add("losing");
             // 減少音: 少し重みのあるデバフ音
-            playSE("se-debuff"); 
-            await wait(150); // 閃光時間
+            playSE("se-debuff");
+            await wait(TIMING.MP_LOSS_FLASH); // 閃光時間
             targetDot.classList.remove("losing");
         }
-        
+
         player.mp--;
         updateInfo(); // 消灯を反映
-        await wait(100); // 次のドットへの間隔
+        await wait(TIMING.MP_LOSS_STEP); // 次のドットへの間隔
     }
 }
