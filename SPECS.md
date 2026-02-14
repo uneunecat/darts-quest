@@ -18,12 +18,12 @@
 | `index.html` | 全画面のHTML構造 | 340行: UI骨格・Audio要素定義 | - |
 | `style.css` | 全スタイル・アニメーション | 1302行: カード・バトル・モーダル等 | - |
 | `data.js` | マスターデータ | 531行: WORLD_MAP・カード・定数・TIMING | 1 |
-| `state.js` | グローバル状態・ユーティリティ・ステートエンジン・ステージヘルパー | 281行: el(), wait(), 全グローバル変数, tickStates(), checkCondition(), WORLD_MAPヘルパー | 2 |
-| `audio.js` | サウンド管理 | 66行: BGM/SE再生・音量設定 | 3 |
-| `visual.js` | 演出処理 | 148行: エフェクト・カットイン・MPアニメーション | 4 |
-| `ui.js` | UI描画・モーダル・レイアウト | 974行: resizeGame, カード生成・ショップ・デッキ・設定 | 5 |
-| `battle.js` | 戦闘エンジン | 1037行: 入力・攻撃・AI・スキル・ターン管理・ステージセットアップ・敵出現・先制AI | 6 |
-| `main.js` | エントリーポイント | 545行: 初期化・BT接続・ゲームフロー・セッション管理・セーブ | 7 |
+| `state.js` | グローバル状態・ユーティリティ・ステートエンジン・ステージヘルパー | **Tick / Check / Utils** | 2 |
+| `audio.js` | サウンド管理 | BGM/SE再生・音量設定 | 3 |
+| `visual.js` | 演出処理 | エフェクト・カットイン・MPアニメーション | 4 |
+| `ui.js` | UI描画・モーダル・レイアウト | **StageSelect(TCG)**・カード生成・ショップ・デッキ | 5 |
+| `battle.js` | 戦闘エンジン | **ProcessTurn**・スキル実行・ステージセットアップ・敵出現 | 6 |
+| `main.js` | エントリーポイント | 初期化・BT接続・ゲームフロー・セッション管理・セーブ | 7 |
 | `assets/` | 画像・BGM・SE リソース | PNG/MP3 | - |
 
 ---
@@ -113,6 +113,10 @@
   clearedExtra: false,   // EXTRAクリア済みフラグ
   dp: 0,                 // ダーツポイント (通貨)
   bestRanks: {},         // { [stageId]: "SSS"|"S"|"A"|"B"|"C" }
+  stageStats: {          // ★ v7.0: ステージ戦績 (TCGスタイル用)
+    "1-1": { attempts: 10, clears: 5, maxDP: 1200, bestTurns: 8 },
+    // ...
+  },
   unlockedStage4: false, // Stage4解放フラグ
   deck: [],              // デッキ構成 (カードIDの配列, 20枚)
   cards: {},             // 所持カード { [cardId]: 所持枚数 }
@@ -688,7 +692,7 @@ PPR (Points Per Round) = `(totalScore / totalDarts) * 3` から算出。
 |------|--------|---------|---------|
 | セーブスロット | `slot-screen` | 2000 | display |
 | タイトル | `title-screen` | 5 | display |
-| ステージ選択 | `stage-select-screen` | 10 | display |
+| ステージ選択 | `stage-select-screen` | 10 | **TCGスタイル (v8.0)**: エリア別4列グリッド、カード型UI |
 | チャプター演出 | `chapter-screen` | 3500 | display+opacity |
 | 戦闘画面 | `game-screen` | 1 | display |
 | インターバル | `interval-screen` | 2500 | display |
