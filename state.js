@@ -3,11 +3,8 @@
 // =========================================
 const el = (id) => document.getElementById(id);
 
-// ダーツのPPR(Point Per Round)からレーティングを算出
-function calculateRating(ppr) {
-    const entry = RATING_TABLE.find(row => ppr >= row.ppr);
-    return entry ? entry.rt : 1;
-}
+// 指定時間待機するための非同期ヘルパー
+const wait = ms => new Promise(res => setTimeout(res, ms));
 
 // 配列のシャッフル (フィッシャー–イェーツ)
 function shuffleArray(array) {
@@ -18,9 +15,21 @@ function shuffleArray(array) {
     return array;
 }
 
+// 指定したURLの画像をプリロードするヘルパー
+function preloadImage(url) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(url);
+        img.onerror = () => {
+            console.warn("Failed to preload:", url);
+            resolve(url);
+        };
+        img.src = url;
+    });
+}
 
 // =========================================
-// 5. GLOBAL STATE MANAGEMENT (状態管理)
+// 2. GLOBAL STATE MANAGEMENT (状態管理)
 // =========================================
 let bluetoothDevice = null;
 let bluetoothServer = null;
@@ -42,7 +51,7 @@ let enemy = {
 };
 
 // ゲーム進行フラグ
-let stage = "1-1"; // ★数値の1から文字列へ変更
+let stage = "1-1";
 let floor = 1;
 let totalScore = 0;
 let totalDarts = 0;
@@ -60,7 +69,7 @@ let cheatBuffer = "";
 let stageStartTurn = 0;
 let totalGameTurns = 0;
 let clearedStagesLog = [];
-let isInterval = false; // Updated: インターバル中（入力遮断）フラグ
+let isInterval = false;
 
 // セーブデータ構造
 let allSaveData = { "slot1": null, "slot2": null, "slot3": null, "lastPlayed": 1 };
@@ -83,26 +92,35 @@ let inputLockUntilRelease = false;
 
 let pendingEffectsQueue = []; // 中断されたエフェクトを保持するキュー
 
-// 指定時間待機するための非同期ヘルパー
-const wait = ms => new Promise(res => setTimeout(res, ms));
-
-
 // =========================================
-// STATE ENGINE HELPERS (ステートエンジン)
+// 3. STATE ENGINE HELPERS (ステートエンジン)
 // =========================================
 
-// Updated: ステート更新ロジック (Caster-Based)
+// Updated: ステート更新ロジック (Caster-Based / Actor-Based)
 // turnOwner: "PLAYER" | "ENEMY"
-function tickStates(turnOwner) {
+// timing: "round" | "throw"
+function tickStates(turnOwner, timing) {
+    const ownerObj = (turnOwner === "PLAYER") ? player : enemy;
+
     // プレイヤーと敵、両方のステートをスキャン
     [player, enemy].forEach(obj => {
         if (!obj.states) return;
 
-        // 1. カウントダウン (このターンの持ち主が付与したものだけ)
+        // 1. カウントダウン
         obj.states.forEach(s => {
             const master = STATE_MASTER[s.id];
-            // timing: "round" かつ、casterが一致する場合のみ減らす
-            if (master && master.timing === "round" && s.caster === turnOwner) {
+            if (!master || master.timing !== timing) return;
+
+            let shouldDecrease = false;
+            if (timing === "round") {
+                // Roundタイミング: そのターンの持ち主(caster)がかけたものが、その人のターン周期で減少
+                shouldDecrease = (s.caster === turnOwner);
+            } else if (timing === "throw") {
+                // Throwタイミング: 今投げている本人(obj)にかかっているものが減少
+                shouldDecrease = (obj === ownerObj);
+            }
+
+            if (shouldDecrease) {
                 s.turn--;
             }
         });
@@ -163,9 +181,8 @@ function checkCondition(c) {
 // 互換性維持のためエイリアスを設定
 const checkAICondition = checkCondition;
 
-
 // =========================================
-// WORLD MAP HELPERS (ステージ情報)
+// 4. WORLD MAP HELPERS (ステージ情報)
 // =========================================
 
 // ステージIDからステージデータを検索・取得
@@ -266,15 +283,26 @@ function isStageUnlocked(stageId) {
     return false;
 }
 
-// 指定したURLの画像をプリロードするヘルパー
-function preloadImage(url) {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(url);
-        img.onerror = () => {
-            console.warn("Failed to preload:", url);
-            resolve(url);
-        };
-        img.src = url;
-    });
+// =========================================
+// 5. RATING & STATS (評価・統計)
+// =========================================
+
+// ダーツのPPR(Point Per Round)からレーティングを算出
+function calculateRating(ppr) {
+    const entry = RATING_TABLE.find(row => ppr >= row.ppr);
+    return entry ? entry.rt : 1;
+}
+
+// ステージクリア時のランク判定
+function calculateStageRank(stageId, turns) {
+    const data = getStageData(stageId);
+    const th = data.rankThresholds || { SSS: 12, S: 16, A: 22, B: 30 };
+    let rank = "C";
+
+    if (turns <= th.SSS) rank = "SSS";
+    else if (turns <= th.S) rank = "S";
+    else if (turns <= th.A) rank = "A";
+    else if (turns <= th.B) rank = "B";
+
+    return [rank, RANK_BONUS[rank] || 50];
 }

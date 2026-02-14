@@ -1,7 +1,7 @@
 console.log("★ main.js is loaded! (v2.18.6)");
 
 // =========================================
-// 6. INITIALIZATION (初期化処理)
+// 1. INITIALIZATION & DATA (初期化・データ)
 // =========================================
 window.addEventListener('resize', resizeGame);
 window.addEventListener('load', () => {
@@ -31,20 +31,24 @@ function saveToDrive() {
     localStorage.setItem(SAVE_KEY, JSON.stringify(allSaveData));
 }
 
+// =========================================
+// 2. SLOT MANAGEMENT (スロット管理)
+// =========================================
+
 function initSlotScreen() {
     for (let i = 1; i <= 3; i++) {
         const key = "slot" + i;
         const data = allSaveData[key];
         const infoEl = el("info-" + i);
-        
+
         if (!data) {
             infoEl.innerHTML = "<div class='slot-empty'>NO DATA<br>- Start New Game -</div>";
         } else {
             let stgName = getStageDisplayName(data.highScore.stage);
-            
+
             let stg = `${stgName} - ${data.highScore.floor}F`;
             let badge = data.clearedExtra ? "<br><span style='color:#f0f;font-weight:bold;'>★ EXTRA CLEARED</span>" : "";
-            
+
             infoEl.innerHTML = `
                 <div>${stg}</div>
                 <div style='color:#ffdd00;'>Avg: ${data.highScore.avg.toFixed(1)} (Rt ${calculateRating(data.highScore.avg)})</div>
@@ -56,7 +60,7 @@ function initSlotScreen() {
 
 function selectSlot(n) {
     currentSlot = "slot" + n;
-    
+
     // データがない場合は初期化
     if (!allSaveData[currentSlot]) {
         allSaveData[currentSlot] = {
@@ -65,18 +69,18 @@ function selectSlot(n) {
             bestRanks: {}, unlockedStage4: false, deck: [], cards: {}
         };
     }
-    
-    savedData = allSaveData[currentSlot]; 
-    
+
+    savedData = allSaveData[currentSlot];
+
     // データ修復
     if (!savedData.deck) savedData.deck = [];
     if (!savedData.cards) savedData.cards = {};
     allSaveData[currentSlot] = savedData;
-    
+
     updateTitleScore();
     playSE("se-tap");
     playBGM("bgm-title");
-    
+
     el("slot-screen").style.display = "none";
     el("title-screen").style.display = "flex";
 }
@@ -90,12 +94,12 @@ function backToSlots() {
 
 function updateTitleScore() {
     let stg = getStageDisplayName(savedData.highScore.stage);
-    
+
     if (el("hs-reach")) el("hs-reach").innerText = `${stg} - ${savedData.highScore.floor}F`;
     if (el("hs-avg")) el("hs-avg").innerText = savedData.highScore.avg.toFixed(1);
     if (el("hs-rt")) el("hs-rt").innerText = "Rt " + calculateRating(savedData.highScore.avg);
     if (el("dp-display")) el("dp-display").innerText = "DP: " + (savedData.dp || 0);
-    
+
     // コンフィグボタン生成
     if (!document.getElementById("btn-config-entry")) {
         const titleScreen = el("title-screen");
@@ -112,7 +116,7 @@ function updateTitleScore() {
 
 
 // =========================================
-// 7. BLUETOOTH CONNECTION (通信)
+// 3. BLUETOOTH CONNECTION (通信)
 // =========================================
 async function connectToBoard() {
     try {
@@ -121,31 +125,31 @@ async function connectToBoard() {
             alert("既に接続されています");
             return;
         }
-        
+
         unlockAudioContext(); // iOS対策
         btn.innerText = "Scanning...";
-        
+
         const device = await navigator.bluetooth.requestDevice({
             filters: [{ namePrefix: 'DARTSLIVE' }],
             optionalServices: [DL_SERVICE_UUID]
         });
-        
+
         bluetoothDevice = device;
         device.addEventListener('gattserverdisconnected', onDisconnected);
-        
+
         const server = await device.gatt.connect();
         bluetoothServer = server;
-        
+
         const service = await server.getPrimaryService(DL_SERVICE_UUID);
         const characteristic = await service.getCharacteristic(DL_NOTIFY_UUID);
-        
+
         await characteristic.startNotifications();
         characteristic.addEventListener('characteristicvaluechanged', handleBluetoothNotify);
-        
+
         btn.innerText = "📡 CONNECTED";
         btn.classList.add("connected");
         addLog(">> ダーツボード接続成功！", "log-heal");
-        
+
     } catch (error) {
         console.error("BT Error:", error);
         alert("接続に失敗しました: " + error);
@@ -179,23 +183,23 @@ function onDisconnected(event) {
 
 function handleBluetoothNotify(event) {
     if (el("game-screen").style.display === "none" || isProcessing || isInterval) return; // Updated: isInterval を追加
-    
+
     const value = event.target.value;
     if (value.byteLength > 2) {
         const areaId = value.getUint8(2);
         const scoreData = DL_SCORE_MAP[areaId];
-        
+
         if (scoreData !== undefined && scoreData !== "CHANGE") {
             const score = scoreData[0];
             const type = scoreData[1];
-            
+
             // 効果音再生
             if (type === 4) playSE("se-dbull");
             else if (type === 3) playSE("se-bull");
             else if (type === 2) playSE("se-triple");
             else if (type === 1) playSE("se-double");
             else playSE("se-single");
-            
+
             processOneThrow(score);
         }
     }
@@ -203,7 +207,7 @@ function handleBluetoothNotify(event) {
 
 
 // =========================================
-// GAME FLOW (Refactored for WORLD_MAP)
+// 4. GAME FLOW & SESSION (ゲーム進行・セッション)
 // =========================================
 
 function initGameSession(startStage, continueMode = false) {
@@ -225,13 +229,13 @@ function initGameSession(startStage, continueMode = false) {
 // Updated: startTransition (v6.1 - Using ID Helper)
 async function startTransition(sel, continueMode) {
     const stageData = getStageData(sel);
-    
+
     el("chapter-title").innerText = stageData.title;
     el("chapter-sub").innerText = stageData.sub;
     const ch = el("chapter-screen");
-    
+
     // warning プロパティ判定
-    if (stageData.warning) { playSE("se-warning"); ch.classList.add("chapter-extra"); } 
+    if (stageData.warning) { playSE("se-warning"); ch.classList.add("chapter-extra"); }
     else { playSE("se-tap"); ch.classList.remove("chapter-extra"); }
 
     el("game-container").style.backgroundImage = "none";
@@ -239,16 +243,16 @@ async function startTransition(sel, continueMode) {
 
     // ★修正: 共通関数でBGM決定 (フロア1として判定)
     updateStageBGM(sel, 1);
-    
+
     el("black-curtain").classList.add("fade-in");
-    
+
     // --- プリロード開始 ---
     const assetsToLoad = [];
 
     // 背景画像
     if (stageData.bg) assetsToLoad.push(preloadImage(stageData.bg));
     if (stageData.bossBg) assetsToLoad.push(preloadImage(stageData.bossBg));
-    
+
     // 敵画像 (floors配列から取得)
     if (stageData.floors) {
         stageData.floors.forEach(enemyDef => {
@@ -258,7 +262,7 @@ async function startTransition(sel, continueMode) {
 
     const introTime = stageData.warning ? TIMING.BATTLE_TRANSITION_WARNING : TIMING.BATTLE_TRANSITION;
     const timerPromise = new Promise(resolve => setTimeout(resolve, introTime));
-    
+
     el("title-screen").style.display = "none";
     ch.style.display = "flex";
     ch.style.opacity = 1;
@@ -286,21 +290,9 @@ function returnToTitle() {
 
 
 // =========================================
-// SESSION & SAVE DATA (セッション管理・セーブ)
+// 5. SAVE & EXPORT (セーブ・データ出力)
 // =========================================
 
-function calculateStageRank(stageId, turns) {
-    const data = getStageData(stageId);
-    const th = data.rankThresholds || { SSS: 12, S: 16, A: 22, B: 30 };
-    let rank = "C";
-
-    if (turns <= th.SSS) rank = "SSS";
-    else if (turns <= th.S) rank = "S";
-    else if (turns <= th.A) rank = "A";
-    else if (turns <= th.B) rank = "B";
-
-    return [rank, RANK_BONUS[rank] || 50];
-}
 
 function finishSession(resultType, ppr, multiplier = 1.0, rank = "", turn = 0) {
     let earnedDP = 0;
@@ -402,11 +394,14 @@ function importSave() {
 
 
 
+// =========================================
+// 6. INPUT & CHEATS (入力・チート)
+// =========================================
+
 // Input Lock for Enter Key Up
 window.addEventListener("keyup", (e) => {
     if (e.key === "Enter") inputLockUntilRelease = false;
 });
-
 
 // Input Handling for Unboxing & Cheats
 window.addEventListener("keydown", function (e) {
@@ -447,12 +442,12 @@ window.addEventListener("keydown", function (e) {
         }
         return;
     }
-    
+
     // Title Cheats
     if (el("title-screen").style.display !== "none") {
         if (e.key === "1") cheatBuffer += e.key;
         else cheatBuffer = "";
-        
+
         if (cheatBuffer.endsWith("1111")) {
             playSE("se-item");
             savedData.dp = (savedData.dp || 0) + 5000;
@@ -462,20 +457,20 @@ window.addEventListener("keydown", function (e) {
         }
         return;
     }
-    
+
     // Modal Interaction
     if (el("game-modal").style.display === "flex" && e.key === "Enter") {
         const btns = document.getElementById("modal-buttons");
         if (btns.children.length === 1) { e.preventDefault(); btns.children[0].click(); }
         return;
     }
-    
+
     // Chest Interaction
     if (waitingForChest) {
         if (e.key === 'Enter') { e.preventDefault(); openChest(); }
         return;
     }
-    
+
     // Battle Input (Debug)
     if (el("game-screen").style.display !== "none" && !isProcessing) {
         if (e.key >= '0' && e.key <= '9') {
@@ -507,16 +502,16 @@ document.addEventListener('mousedown', (e) => {
 });
 
 // =========================================
-// DEBUG TOOLS (開発用)
+// 7. DEBUG TOOLS (デバッグツール)
 // =========================================
 
 /**
  * 指定したステージとフロアへ強制ジャンプ
  * 例: debugJump(3, 2) -> ステージ3の2Fへ
  */
-window.DJ = function(s, f = 1) {
+window.DJ = function (s, f = 1) {
     console.log(`DEBUG: Jumping to Stage ${s}, Floor ${f}`);
-    
+
     // 1. 全ての画面とBGMをリセット
     stopAllBGM();
     el("title-screen").style.display = "none";
@@ -524,20 +519,20 @@ window.DJ = function(s, f = 1) {
     el("chapter-screen").style.display = "none";
     el("interval-screen").style.display = "none";
     el("game-screen").style.display = "block";
-    
+
     // 2. プレイヤーの状態を初期化（テスト用に全快させる）
     player.hp = player.maxHp;
     player.mp = player.maxMp;
     player.states = [];
     player.deck = shuffleArray([...savedData.deck]);
     player.hand = [];
-    for(let i=0; i<3; i++) drawCard(true); // 初期手札3枚
-    
+    for (let i = 0; i < 3; i++) drawCard(true); // 初期手札3枚
+
     // 3. 座標をセットして敵を出現させる
     stage = s;
     floor = f;
     spawnEnemy();
-    
+
     // 4. インターバルを飛ばして即戦闘開始したい場合
     isInterval = false;
     el("interval-screen").style.display = "none";

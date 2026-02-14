@@ -302,26 +302,21 @@ finalDmg = Math.max(0, finalDmg - dmgSub);
 
 ### 6.4 State Management (`tickStates` / `hasState`) — state.js
 
-**tickStates(turnOwner)**: Caster-Based ステートカウントダウン処理
+**tickStates(turnOwner, timing)**: Caster/Actor-Based ステート更新処理
 ```javascript
 // turnOwner: "PLAYER" | "ENEMY"
-// player と enemy 両方のステートをスキャン
-[player, enemy].forEach(obj => {
-    // 1. caster が turnOwner と一致し、timing が "round" のステートのみ減算
-    obj.states.forEach(s => {
-        const master = STATE_MASTER[s.id];
-        if (master && master.timing === "round" && s.caster === turnOwner) {
-            s.turn--;
-        }
-    });
-    // 2. 0になったステートを削除 (ログ出力付き)
-    obj.states = obj.states.filter(s => s.turn > 0);
-});
+// timing: "round" | "throw"
+// 1. timing==="round" の場合: 
+//    caster が turnOwner と一致するステートを減算 (自身のターン周期で減少)
+// 2. timing==="throw" の場合: 
+//    現在投げている本人 (turnOwner) にかかっているステートを減算 (行動回数で減少)
 ```
 
 **呼び出しタイミング**:
-- `tickStates("PLAYER")` → プレイヤーターン終了時 (投擲ステートは別途処理)
-- `tickStates("ENEMY")` → 敵ターン終了時 (endEnemyTurn内)
+- `tickStates("PLAYER", "round")` → プレイヤーターン開始時
+- `tickStates("PLAYER", "throw")` → プレイヤーの投擲ごと
+- `tickStates("ENEMY", "round")`  → 敵ターン終了時
+- `tickStates("ENEMY", "throw")`  → 敵の投擲ごと
 
 **hasState(obj, category)**: 特定のステートを持っているか判定
 ```javascript
@@ -634,7 +629,7 @@ gainedDP = scoreDP + rankDP
 
 ### 12.3 使用制限
 - 投擲中 (`turnInputs.length > 0`) は使用不可
-- `itemLockTurn > 0` (スライムの粘着) 中は使用不可
+- アイテム封印状態 (`hasState(player, "item_lock")`) 中は使用不可
 - カードの使用も同じ制限を共有
 - インターバル中もアイテムボタンは `disabled` 表示
 
@@ -720,6 +715,7 @@ PPR (Points Per Round) = `(totalScore / totalDarts) * 3` から算出。
 - ~~ボス判定 `floor===5||(stage===4&&floor===6)` が3箇所に散在~~ → **修正済み** (`isBossFloor()` ヘルパーに統一)
 - ~~ステージ表示名 `stage===5→EXTRA` が4箇所に重複~~ → **修正済み** (`getStageDisplayName()` ヘルパーに統一)
 - ~~フロア数ハードコード (`floor>5`, `floor>6` 等)~~ → **修正済み** (`getMaxFloors()` ヘルパーに統一)
+- ~~個別フラグ管理 (`itemLockTurn` 等)~~ → **修正済み** (v5.1: `states: []` 配列へ完全移行)
 
 ### 17.3 背景キー
 **解決済み**: `getStageBackground()` ヘルパー (state.js) が `WORLD_MAP` の `bg` / `bossBg` プロパティから直接URLを返す。`GAME_DATA.bg` + `getBackgroundKey()` は廃止。ボスフロアで自動的にboss用背景に切り替わる。
