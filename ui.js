@@ -894,62 +894,159 @@ function closeStageSelect() {
     el("title-screen").style.display = "flex";
 }
 
-// Updated: ステージ選択画面の描画 (v6.3 - WORLD_MAP対応)
+// Updated: ステージ選択画面の描画 (v8.0 - Area Grouping & 4-Col Grid)
 function renderStageSelectScreen() {
     const container = el("stage-list-container");
+    container.className = "stage-list-wrapper"; // スクロール用ラッパー
     container.innerHTML = "";
 
     // WORLD_MAP の各エリアをループ
     Object.values(WORLD_MAP).forEach(area => {
-        // エリア見出し (Area Header)
+        // 1. エリアコンテナ作成
+        const areaBox = document.createElement("div");
+        areaBox.className = "area-container";
+
+        // 2. エリアヘッダー
         const header = document.createElement("div");
-        // CSSファイルで .area-header を定義しても良いが、ここでは直接スタイル指定
-        header.style.width = "100%";
-        header.style.color = "#00d2fc";
-        header.style.borderBottom = "1px solid #444";
-        header.style.marginBottom = "10px";
-        header.style.marginTop = "20px";
-        header.style.paddingBottom = "5px";
-        header.style.fontFamily = "'Cinzel Decorative', serif";
-        header.style.fontSize = "18px";
-        header.innerText = area.name; // 例: "古の森と迷宮"
-        container.appendChild(header);
+        header.className = "area-header";
+        header.innerText = area.name;
+        areaBox.appendChild(header);
+
+        // 3. カードグリッド (4列)
+        const grid = document.createElement("div");
+        grid.className = "area-card-grid";
 
         // エリア内のステージをループ
         area.stages.forEach(stageData => {
             const isLocked = !isStageUnlocked(stageData.id);
+            // stageStatsから戦績取得
+            const sKey = String(stageData.id);
+            const stats = (savedData.stageStats && savedData.stageStats[sKey])
+                ? savedData.stageStats[sKey]
+                : { attempts: 0, clears: 0, maxDP: 0, bestTurns: null };
+
+            // ランク取得
             const rank = savedData.bestRanks ? savedData.bestRanks[stageData.id] : null;
-            const rankColor = getRankColor(rank || "");
 
-            // 背景画像 (ボス用があればそちらをサムネにするなど調整可。基本はbg)
-            const bgUrl = stageData.bg;
-
-            const div = document.createElement("div");
-            div.className = "stage-card-item";
-            if (isLocked) div.classList.add("locked");
-
-            // EXTRAステージは枠の色を変えるなどの演出も可能
-            const typeLabel = stageData.type === "EXTRA" ? '<span style="color:#f0f; font-size:10px; border:1px solid #f0f; padding:2px;">EXTRA</span> ' : '';
-
-            div.innerHTML = `
-                <img src="${bgUrl}" class="st-img" onerror="this.style.display='none'">
-                <div class="st-info">
-                    <div class="st-title">${typeLabel}${isLocked ? "LOCKED" : stageData.title}</div>
-                    <div class="st-sub">${stageData.sub}</div>
-                </div>
-                ${rank ? `<div class="st-rank" style="color:${rankColor}">${rank}</div>` : ""}
-                ${isLocked ? `<div class="st-rank" style="font-size:20px;">🔒</div>` : ""}
-            `;
-
-            if (!isLocked) {
-                div.onclick = () => {
-                    playSE("se-tap");
-                    el("stage-select-screen").style.display = "none";
-                    // 新ID (例: "1-1") を渡して開始
-                    initGameSession(stageData.id);
-                };
-            }
-            container.appendChild(div);
+            const card = createStageCard(stageData, stats, rank, isLocked);
+            grid.appendChild(card);
         });
+
+        areaBox.appendChild(grid);
+        container.appendChild(areaBox);
     });
+}
+
+/**
+ * TCG風ステージカードを生成するヘルパー関数
+ */
+function createStageCard(stageData, stats, rank, isLocked) {
+    const card = document.createElement("div");
+    card.className = "stage-card-tcg";
+    if (isLocked) card.classList.add("locked");
+
+    // 1. 枠 (Rarity Frame)
+    const frame = document.createElement("div");
+    // ID等からレアリティ判定（簡易的にEXTRAかどうかで判定）
+    let rarity = "NORMAL";
+    if (stageData.type === "EXTRA") rarity = "EXTRA";
+    else if (stageData.type === "BOSS") rarity = "GOD"; // BOSSタイプがあれば
+
+    frame.className = `card-frame ${rarity}`;
+    card.appendChild(frame);
+
+    if (isLocked) {
+        // --- Locked Face Data ---
+        const content = document.createElement("div");
+        content.className = "locked-content";
+        content.innerHTML = `
+            <div style="font-size:40px; margin-bottom:10px;">🔒</div>
+            <div style="font-size:12px; letter-spacing:2px;">TARGET<br>UNKNOWN</div>
+        `;
+        card.appendChild(content);
+
+    } else {
+        // --- Unlocked Face Data ---
+
+        // Header
+        const header = document.createElement("div");
+        header.className = "card-header-tcg";
+        header.innerHTML = `<span>ID: ${stageData.id}</span><span>${stageData.type || "MISSION"}</span>`;
+        card.appendChild(header);
+
+        // Rank Badge
+        if (rank) {
+            const rBadge = document.createElement("div");
+            rBadge.className = "card-rank-badge";
+            if (rank === "SSS") rBadge.classList.add("rank-sss-tcg");
+            else if (rank === "S") rBadge.classList.add("rank-s-tcg");
+            else if (rank === "A") rBadge.classList.add("rank-a-tcg");
+            rBadge.innerText = rank;
+            card.appendChild(rBadge);
+        }
+
+        // Art
+        const art = document.createElement("div");
+        art.className = "card-art-tcg";
+        const img = document.createElement("img");
+        img.src = stageData.bg;
+        img.onerror = () => { img.style.display = "none"; };
+        art.appendChild(img);
+
+        // DP Multiplier Badge
+        const dpMult = document.createElement("div");
+        dpMult.className = "card-dp-mult";
+        // data.js に multiplier 定義があれば使うが、なければ type から推定
+        let mult = 1.0;
+        if (stageData.type === "EXTRA") mult = 1.5;
+        dpMult.innerText = `DP x${mult.toFixed(1)}`;
+        art.appendChild(dpMult);
+
+        card.appendChild(art);
+
+        // Info Body
+        const info = document.createElement("div");
+        info.className = "card-info-tcg";
+
+        const title = document.createElement("div");
+        title.className = "tcg-title";
+        title.innerText = stageData.title;
+        info.appendChild(title);
+
+        const sub = document.createElement("div");
+        sub.className = "tcg-sub";
+        sub.innerText = stageData.sub;
+        info.appendChild(sub);
+
+        // Stats Box
+        const statBox = document.createElement("div");
+        statBox.className = "tcg-stats-box";
+        statBox.innerHTML = `
+            <div class="stat-row">
+                <span>BEST TURN</span>
+                <span class="stat-val" style="color:#00d2fc;">${stats.bestTurns !== null ? stats.bestTurns : "-"}</span>
+            </div>
+            <div class="stat-row">
+                <span>MAX DP</span>
+                <span class="stat-val" style="color:#ffd700;">${stats.maxDP}</span>
+            </div>
+            <div class="stat-row" style="margin-top:2px; border-top:1px dashed #444; padding-top:2px;">
+                <span>CLEAR/TRY</span>
+                <span class="stat-val">${stats.clears}/${stats.attempts}</span>
+            </div>
+        `;
+        info.appendChild(statBox);
+
+        card.appendChild(info);
+
+        // OnClick Action
+        card.onclick = () => {
+            playSE("se-tap"); // 本来は"se-flash"などが良い
+            el("stage-select-screen").style.display = "none";
+            // フラッシュ演出などを挟むならここに書く
+            initGameSession(stageData.id);
+        };
+    }
+
+    return card;
 }

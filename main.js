@@ -66,7 +66,8 @@ function selectSlot(n) {
         allSaveData[currentSlot] = {
             highScore: { stage: 1, floor: 1, avg: 0.0 },
             history: [], clearedExtra: false, dp: 0,
-            bestRanks: {}, unlockedStage4: false, deck: [], cards: {}
+            bestRanks: {}, unlockedStage4: false, deck: [], cards: {},
+            stageStats: {} // 新規: ステージ戦績
         };
     }
 
@@ -75,6 +76,7 @@ function selectSlot(n) {
     // データ修復
     if (!savedData.deck) savedData.deck = [];
     if (!savedData.cards) savedData.cards = {};
+    if (!savedData.stageStats) savedData.stageStats = {}; // 既存データ対応
     allSaveData[currentSlot] = savedData;
 
     updateTitleScore();
@@ -338,6 +340,33 @@ function finishSession(resultType, ppr, multiplier = 1.0, rank = "", turn = 0) {
     const now = new Date();
     const dateStr = `${now.getMonth() + 1}/${now.getDate()} ${now.getHours()}:${("0" + now.getMinutes()).slice(-2)}`;
     let stgName = getStageDisplayName(stage) + (resultType === "WIN" ? " CLEAR" : `-${floor}F`);
+
+    // --- stageStats 更新ロジック (v6.4) ---
+    if (!savedData.stageStats) savedData.stageStats = {};
+    // stageは数値IDの可能性があるため文字列化してキーにする
+    const sKey = String(stage);
+
+    if (!savedData.stageStats[sKey]) {
+        savedData.stageStats[sKey] = { attempts: 0, clears: 0, maxDP: 0, bestTurns: null };
+    }
+    const stats = savedData.stageStats[sKey];
+
+    // 1. 挑戦回数
+    stats.attempts++;
+
+    // 2. クリア回数 & 最短ターン
+    if (resultType === "WIN") {
+        stats.clears++;
+        if (stats.bestTurns === null || turn < stats.bestTurns) {
+            stats.bestTurns = turn;
+        }
+    }
+
+    // 3. 最高DP (敗北時もDPは入るため判定して更新)
+    if (totalDP > stats.maxDP) {
+        stats.maxDP = totalDP;
+    }
+    // ----------------------------------------
 
     const historyItem = {
         date: dateStr, stage: stage, floor: floor, stgName: stgName,
