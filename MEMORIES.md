@@ -2,6 +2,53 @@
 
 ## 履歴 (最新が上)
 
+### 2026-02-15: Battle Effects (Exhilaration Update)
+- **意図**: ダーツ命中時とラウンド終了時の演出を強化し、爽快感を高める。
+- **変更内容**:
+  - `visual.js`: 紫色のフラッシュ効果(`flash-purple`)、弱点破壊演出、Round Result Bonus（LOW TON, HAT TRICK, HIGH TON）のカットイン実装。
+  - `style.css`: ネオン/サイバーなテキストエフェクトとアニメーション定義。
+  - `battle.js`: 演出の統合と、不要な重複コード（古い `processOneThrow` 等）の削除。
+- **教訓**:
+  - **コードの重複に注意**: 大規模なリファクタリング後は、古い関数定義が残っていないか改めて検索（grep）して確認する。
+  - **SEの選択**: ユーザーの具体的な音イメージ（「サンダーボルト風」など）を既存のSE資産でどう表現するか、組み合わせの提案が重要。
+
+### 2026-02-15: Card Shop Redesign & Verification Protocol
+- **意図**: カードショップと開封画面を「Cyber/TCG」スタイルに刷新し、ユーザーの美的感覚（黒×ネオン）に合わせる。
+- **変更内容**:
+  - `style.css`: ネオンカラー (#e94560, #00d2fc) を基調とした `.shop-modal-cyber`, `.result-modal-cyber` スタイルを追加。
+  - `ui.js`: `openCardShop`, `showPackResult` をリファクタリングし、新しいHTML構造（Grid layout）を生成するように変更。
+- **トラブル**: 「NEW!」バッジがカード枠で見切れる問題が発生。
+  - **原因**: `.std-card` の `overflow: hidden` に対し、バッジを負の座標（枠外）に配置していたため。かつ、解決用の `.result-card` クラスが `ui.js` で付与されていなかった。
+  - **対応**: ユーザーにより `ui.js` に `classList.add("result-card")` が追加され、CSSで `overflow: visible !important` が適用された。
+- **教訓**:
+  - **CSS追加時はJSも確認**: 新しいスタイルクラスを作成した際は、それを適用するJS側のロジックが実装されているか必ず「俯瞰して」確認する。
+  - **検証プロトコル変更**: 今後はAIによる実装後の検証（ブラウザ操作）は行わず、ユーザー検証に委ねる（Verification Checklistのみ提示）。
+
+### 2026-02-14: Design Guidelines Creation
+- **意図**: 今後の開発Agentが、確立された「Cyber x Fantasy」の世界観を逸脱しないようにする。
+- **内容**:
+  - **Visual Identity**: ネオンカラー (#00d2fc, #bc13fe, #ffd700)、グリッド/ノイズテクスチャ、古代的フォント。
+  - **Interaction**: 物理的衝撃（Haptic）、演出待ち時間の活用。
+  - **Agent Rules**: "Make it Glow", "Make it Shake"。
+- **成果物**: `design_guidelines.md` を作成。
+
+### 2026-02-14: Battle Effect Specification (Exhilaration Update)
+- **意図**: 戦闘画面の爽快感を強化し、物理的なインパクトと達成感を高める。
+- **仕様策定**:
+  - **Hit Impact**: 弱点破壊時の「ガラス割り」演出、強打時の画面シェイク・バイブレーション。
+  - **Round Result Bonus**: 3段階のスコアボーナス演出。
+    - **LOW TON (100+)**: 氷結系の「Solid Cool」。
+    - **HAT TRICK (150)**: 金色の「Stylish Simple」。
+    - **HIGH TON (151+)**: 虹色の「Elegant Rainbow」。
+- **成果物**: `battle_effect_spec.md` を作成。
+
+### 2026-02-14: Vol.3 Card Pack Planning (Brainstorming)
+- **意図**: 新しいカードパック「Vol.3 - Rulers of Fate」のコンセプトとラインナップを策定し、戦略の幅を広げる。
+- **企画内容**:
+  - **テーマ**: 「Cyber x Fantasy」を継承しつつ、「運命の支配」と「リスク＆リワード」を強調。
+  - **ラインナップ**: 魔法・罠カード計15枚。洗脳、フィールド破壊、HP参照ダメージなどテクニカルな効果を導入。
+  - **レアリティ構成**: UR 2種, SR 3種, R 4種, N 6種。
+
 ### 2026-02-14: Gacha Effect Specification
 - **意図**: パック開封（ガチャ）の演出を強化し、TCGらしい「物質的開封体験」と「射幸心」を提供する。
 - **仕様策定**:
@@ -101,3 +148,4 @@
 ---
 ### 2026-02-12: Claude Code システム導入
 - **意図**: .md ファイルによる外部脳システムを構築し、記憶の混濁を防止。
+

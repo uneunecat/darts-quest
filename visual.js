@@ -66,7 +66,7 @@ function addLog(text, type = "") {
     console.log(`[${type}] ${text}`);
     // 特定のログタイプのみ画面中央にアナウンスする
     if ((type === "log-enemy" || type === "log-skill" || type === "log-weak" || type === "log-heal" ||
-         text.includes("WEAK") || text.includes("無効") || text.includes("回復")) &&
+        text.includes("WEAK") || text.includes("無効") || text.includes("回復")) &&
         !text.includes("倒した") && !text.includes("宝箱")) {
         announce(text, type);
     }
@@ -143,4 +143,105 @@ async function animateMPLoss(amount) {
         updateInfo(); // 消灯を反映
         await wait(TIMING.MP_LOSS_STEP); // 次のドットへの間隔
     }
+}
+
+// =========================================
+// 10. BATTLE EFFECTS (Hit Impact & Bonus)
+// =========================================
+
+// 10.1 Shatter Effect (弱点破壊)
+function triggerShatterEffect() {
+    
+    // 1. 画面フラッシュ (Purple for Weak Hit)
+    flashScreen("flash-purple"); // Added class arg
+    playSE("se-hit"); // Fallback for glass-break
+
+    // 2. 敵画像の粉砕アニメーション
+    const enemyImg = el("enemy-img");
+    if (enemyImg) {
+        enemyImg.classList.remove("anim-shatter");
+        void enemyImg.offsetWidth; // Reflow
+        enemyImg.classList.add("anim-shatter");
+    }
+
+    // 3. 激しいシェイク
+    const container = el("game-container");
+    container.classList.add("shake-heavy");
+    setTimeout(() => {
+        container.classList.remove("shake-heavy");
+        if (enemyImg) enemyImg.classList.remove("anim-shatter");
+    }, 500);
+}
+
+// 10.2 Screen Flash (Whiteout)
+function flashScreen(className = "") { // Added className param
+    let flash = el("screen-flash-overlay");
+    if (!flash) {
+        flash = document.createElement("div");
+        flash.id = "screen-flash-overlay";
+        flash.className = "screen-flash";
+        document.body.appendChild(flash);
+    }
+
+    flash.className = "screen-flash"; // Reset
+    if (className) flash.classList.add(className); // Apply custom class (e.g., flash-purple)
+
+    flash.classList.remove("flash-active");
+    void flash.offsetWidth;
+    flash.classList.add("flash-active");
+}
+
+// 10.3 Round Result Bonus (Low Ton / Hat Trick / High Ton)
+function showRoundBonus(type) {
+    return new Promise(resolve => {
+        let overlay = el("round-bonus-cutin");
+        if (!overlay) {
+            overlay = document.createElement("div");
+            overlay.id = "round-bonus-cutin";
+            document.body.appendChild(overlay);
+        }
+
+        // Reset classes
+        overlay.className = "";
+        overlay.innerHTML = "";
+
+        // Determine style and text
+        let text = "";
+        let styleClass = "";
+
+        if (type === "LOW_TON") {
+            text = "LOW TON";
+            styleClass = "style-low-ton";
+            // Request: Draw sound
+            playSE("se-item");
+        } else if (type === "HAT_TRICK") {
+            text = "HAT TRICK";
+            styleClass = "style-hat-trick";
+            // Request: Thunderbolt applied fierce sound
+            // Using se-boom (explosion) + se-flash (if avail) or se-warning
+            playSE("se-boom");
+            setTimeout(() => playSE("se-boom"), 150);
+            setTimeout(() => playSE("se-boom"), 300);
+        } else if (type === "HIGH_TON") {
+            text = "HIGH TON";
+            styleClass = "style-high-ton";
+            // Request: Same as Low Ton (Draw sound)
+            playSE("se-item");
+        } else {
+            resolve();
+            return;
+        }
+
+        overlay.classList.add(styleClass);
+        overlay.innerHTML = `<div class="bonus-text">${text}</div>`;
+        overlay.style.display = "flex";
+
+        // Wait for animation to finish
+        // Request: Shorten duration
+        setTimeout(() => {
+            overlay.style.display = "none";
+            overlay.className = "";
+            resolve();
+        }, 1800); // Reduced from 2500 -> 1800 (matches longest CSS anim time approx)
+    });
 }

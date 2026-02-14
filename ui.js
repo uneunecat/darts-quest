@@ -461,33 +461,67 @@ function closeZoomCard() {
 // =========================================
 function openCardShop() {
     playSE("se-tap");
-    const list = el("pack-list");
-    list.innerHTML = "";
-    if (el("shop-dp-display")) el("shop-dp-display").innerText = (savedData.dp || 0);
+
+    // Create Cyber Shop Modal Structure dynamically
+    const modalOverlay = el("card-shop-modal");
+    modalOverlay.innerHTML = ""; // Clear existing static structure
+    modalOverlay.style.display = "flex";
+
+    const shopContainer = document.createElement("div");
+    shopContainer.className = "shop-modal-cyber";
+
+    // 1. Header
+    const header = document.createElement("div");
+    header.className = "cyber-shop-header";
+    header.innerHTML = `
+        <div class="shop-title-cyber">CARD SHOP</div>
+        <div class="shop-currency">
+            DP: <span class="val" id="shop-dp-display">${savedData.dp || 0}</span>
+        </div>
+        <button class="close-btn-cyber" onclick="closeCardShop()">×</button>
+    `;
+    shopContainer.appendChild(header);
+
+    // 2. Pack Grid
+    const grid = document.createElement("div");
+    grid.className = "cyber-pack-grid";
+
     if (!savedData.cards) savedData.cards = {};
 
+    let hasPacks = false;
     PACK_DATA.forEach(pack => {
-        // ★修正: 解放条件をチェック (文字列ID対応)
-        // unlockStage が "1-1" なら、savedData.bestRanks["1-1"] があるか確認
-        // 互換性のため数値の1も許容
+        // Check unlock condition
         const unlockKey = pack.unlockStage;
         const isUnlocked = savedData.bestRanks && (savedData.bestRanks[unlockKey] || savedData.bestRanks[String(unlockKey)]);
 
         if (!isUnlocked) return;
+        hasPacks = true;
 
         const canBuy = (savedData.dp || 0) >= pack.price;
-        const imgHTML = `<img src="${pack.img}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; font-size:50px; background:#333; color:#555;">📦</div>`;
 
-        const div = document.createElement("div");
-        div.className = "pack-item";
-        div.innerHTML = `<div class="pack-img-container">${imgHTML}</div><div class="pack-name">${pack.name}</div><div class="pack-desc">${pack.desc}</div><button class="pack-buy-btn" ${canBuy ? "" : "disabled"} onclick="buyPack('${pack.id}')">${canBuy ? `BUY (${pack.price} DP)` : "LACK DP"}</button>`;
-        list.appendChild(div);
+        const cardItem = document.createElement("div");
+        cardItem.className = "pack-card-cyber";
+        cardItem.innerHTML = `
+            <div class="pack-visual-cyber">
+                <img src="${pack.img}" onerror="this.style.display='none'">
+            </div>
+            <div class="pack-info-cyber">
+                <div class="pack-name-cyber">${pack.name}</div>
+                <div class="pack-desc-cyber">${pack.desc}</div>
+                <button class="buy-btn-cyber" ${canBuy ? "" : "disabled"} onclick="buyPack('${pack.id}')">
+                    ${canBuy ? `BUY [${pack.price} DP]` : "INSUFFICIENT DP"}
+                </button>
+            </div>
+        `;
+        grid.appendChild(cardItem);
     });
 
-    if (list.innerHTML === "") {
-        list.innerHTML = "<div style='color:#666; width:100%; text-align:center; padding-top:20px;'>STAGE 1 CLEAR REQUIRED</div>";
+    if (!hasPacks) {
+        grid.innerHTML = "<div style='color:#666; width:100%; text-align:center; padding-top:20px; font-family:Orbitron;'>STAGE 1 CLEAR REQUIRED TO UNLOCK SHOP</div>";
     }
-    el("card-shop-modal").style.display = "flex";
+
+    shopContainer.appendChild(grid);
+    modalOverlay.appendChild(shopContainer);
 }
 
 function buyPack(packId) {
@@ -623,29 +657,69 @@ function showNextRevealCard() {
 function showPackResult() {
     openingPhase = 4;
     inputLockUntilRelease = true;
-    const area = el("reveal-area");
-    area.innerHTML = "";
-    area.className = "result-stage";
     playSE("se-win");
 
+    const container = el("pack-opening-container");
+    container.innerHTML = ""; // Clear earlier content
+
+    // Build Cyber Modal for Result
+    const modal = document.createElement("div");
+    modal.className = "result-modal-cyber";
+
+    // Header
+    const header = document.createElement("div");
+    header.className = "cyber-shop-header";
+    header.innerHTML = `<div class="shop-title-cyber">UNBOXING RESULT</div>`;
+    modal.appendChild(header);
+
+    // Grid
+    const grid = document.createElement("div");
+    grid.className = "result-card-grid";
+
     packResults.forEach((card, i) => {
-        const div = createCardElement(card, "standard", card.ownCount, card.ownCount);
-        div.className += " result-card";
-        div.style.animation = `pop-in 0.5s both ${i * 0.1}s`;
+        // Wrapper for animation
+        const wrapper = document.createElement("div");
+        wrapper.className = "result-card-cyber-wrapper";
+        wrapper.style.animationDelay = `${i * 0.1}s`;
+
+        // Card Element (Standard)
+        const cardDiv = createCardElement(card, "standard", card.ownCount, card.ownCount);
+
+        // ★ 修正: 見切れ防止用のクラスを追加
+        cardDiv.classList.add("result-card");
+
+        // New Badge
         if (card.isNew) {
             const badge = document.createElement("div");
             badge.className = "new-badge";
             badge.innerText = "NEW!";
-            div.appendChild(badge);
+            cardDiv.appendChild(badge);
         }
-        div.onclick = null;
-        setupLongPress(div, card);
-        area.appendChild(div);
-    });
 
-    const btnArea = el("action-buttons");
-    btnArea.style.display = "flex";
-    setTimeout(() => btnArea.classList.add("visible"), 100);
+        setupLongPress(cardDiv, card);
+
+        wrapper.appendChild(cardDiv);
+        grid.appendChild(wrapper);
+    });
+    modal.appendChild(grid);
+
+    // Actions
+    const btnArea = document.createElement("div");
+    btnArea.className = "cyber-result-actions";
+
+    // Check if player has enough DP for another pack
+    const pack = PACK_DATA.find(p => p.id === currentPackId);
+    const canBuy = pack && (savedData.dp >= pack.price);
+
+    btnArea.innerHTML = `
+        <button class="btn-cyber-primary" ${canBuy ? "" : "disabled"} onclick="buyPack('${currentPackId}')">
+            ONE MORE ${pack ? `(${pack.price})` : ""}
+        </button>
+        <button class="btn-cyber-secondary" onclick="closePackResult()">CLOSE</button>
+    `;
+    modal.appendChild(btnArea);
+
+    container.appendChild(modal);
 }
 
 function skipUnboxing() {

@@ -403,92 +403,6 @@ async function startPlayerTurn() {
     }
 }
 
-// Updated: processOneThrow (v5.9 - Fixed Action Lock / Bind)
-async function processOneThrow(score) {
-    try {
-        if (enemy.hp <= 0 || player.hp <= 0 || isProcessing || isInterval) return;
-
-        // 1. 投擲開始時の拘束状態を記録
-        const isBound = hasState(player, "action_lock");
-
-        // 既に1投投げているのに、拘束フラグがある場合はガード（通常ここには来ない）
-        if (isBound && turnInputs.length > 0) return;
-
-        // 2. 攻撃計算とステートの進行
-        let singleDmg = applyOffenseLogic(score, player, false);
-
-        // 投げた瞬間に「投数(throw)」タイミングのステートを減らす (atk_buffなど)
-        tickStates("PLAYER", "throw");
-        tickStates("ENEMY", "throw");
-
-        // 防御計算
-        singleDmg = await applyDefenseLogic(singleDmg, enemy, true);
-
-        // 3. 判定と適用
-        if (singleDmg === enemy.hp && enemy.hp > 0) {
-            isJustFinish = true;
-        }
-
-        enemy.hp = Math.max(0, enemy.hp - singleDmg);
-        totalScore += score;
-        totalDarts++;
-        turnInputs.push(score);
-        updateScoreDisplay();
-
-        // 弱点判定
-        let weakHit = false;
-        if (score >= 51 && enemy.data.weak && (score % enemy.data.weak === 0)) {
-            dropGuaranteed = true;
-            weakHitCount++;
-            addLog(`WEAK HIT!!`, "log-weak");
-            playSE("se-weak");
-        }
-
-        // 演出
-        triggerEffect(el("game-screen"), singleDmg, false);
-        el("enemy-hp-value").innerText = enemy.hp;
-        displayEnemyHP = enemy.hp;
-        updateInfo();
-
-        // 4. 勝利判定
-        if (enemy.hp <= 0) {
-            isProcessing = true;
-            totalGameTurns++;
-            setTimeout(winBattle, TIMING.WIN_DELAY_LONG);
-            return;
-        }
-
-        // 5. ★ 拘束解除とターン終了判定
-        if (isBound) {
-            // 手動削除を廃止。tickStates(player, "throw") で既に s.turn-- されており、自動的に削除される
-            updateInfo();
-
-            // 1投目だが拘束中だったので、即座にターン終了へ
-            setTimeout(finishPlayerTurn, TIMING.TURN_END_DELAY);
-        } else if (turnInputs.length >= 3) {
-            // 通常の3投終了
-            setTimeout(finishPlayerTurn, TIMING.TURN_END_DELAY);
-        }
-    } catch (error) {
-        console.error("Battle Error (processOneThrow):", error);
-        addLog(">> エラーが発生しました", "log-system");
-        isProcessing = false;
-        turnInputs = [];
-        currentInput = "";
-        updateScoreDisplay();
-        preparePlayerTurn();
-    }
-}
-
-function finishPlayerTurn() {
-    totalGameTurns++;
-    turnInputs = [];
-    currentInput = "";
-    updateScoreDisplay();
-
-    setTimeout(processEnemyTurn, TIMING.ENEMY_TURN_DELAY);
-}
-
 // Updated: processEnemyTurn (v7.1 - Multi-turn Sequence Support)
 async function processEnemyTurn() {
 
@@ -635,6 +549,7 @@ async function processOneThrow(score) {
             weakHitCount++;
             addLog(`WEAK HIT!!`, "log-weak");
             playSE("se-weak");
+            triggerShatterEffect();
         }
 
         // 演出
@@ -674,7 +589,29 @@ async function processOneThrow(score) {
 }
 
 // プレイヤーターン終了処理
-function finishPlayerTurn() {
+async function finishPlayerTurn() {
+    // --- Round Result Bonus Check ---
+    const totalRoundScore = turnInputs.reduce((a, b) => a + b, 0);
+    const isHatTrick = turnInputs.length === 3 && turnInputs.every(s => s === 50);
+
+    let bonusType = null;
+    if (isHatTrick) {
+        bonusType = "HAT_TRICK";
+        // Log removed as per request
+    } else if (totalRoundScore >= 151) {
+        bonusType = "HIGH_TON";
+        // Log removed as per request
+    } else if (totalRoundScore >= 100) {
+        bonusType = "LOW_TON";
+        // Log removed as per request
+    }
+
+    if (bonusType) {
+        // Wait for the cut-in effect to finish
+        await showRoundBonus(bonusType);
+    }
+    // --------------------------------
+
     totalGameTurns++;
     turnInputs = [];
     currentInput = "";
