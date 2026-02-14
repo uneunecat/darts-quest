@@ -2,6 +2,24 @@
 
 ## 履歴 (最新が上)
 
+### 2026-02-14: ファイル責務リファクタリング
+- **意図**: 分割後の各ファイルに責務外の関数が残っていたため、適切なファイルへ再配置。
+- **state.js に追加** (battle.js/main.js から移動):
+  - ステートエンジン: `tickStates()`, `hasState()`, `getCalculatedWait()`, `checkCondition()`
+  - WORLD_MAPヘルパー: `getStageData()`, `getNextStageId()`, `getStageDisplayName()`, `getMaxFloors()`, `isBossFloor()`, `getStageBackground()`, `updateStageBGM()`, `isStageUnlocked()`, `preloadImage()`
+- **battle.js に追加** (main.js から移動):
+  - `setupStage()`, `spawnEnemy()`, `triggerEncounterEffects()`, `handlePreemptiveAI()`
+- **main.js に追加** (ui.js から移動):
+  - `calculateStageRank()`, `finishSession()`, `resetSaveData()`, `exportSave()`, `importSave()`
+- **ui.js に追加** (visual.js から移動):
+  - `resizeGame()`
+- **バグ修正**:
+  - `triggerEncounterEffects()` が main.js 内に2回定義されていた問題を解消（1つに統合してbattle.jsへ）
+  - `checkCondition()` 内の `break` 後の到達不能 `return` 文を除去
+- **影響範囲**: state.js, battle.js, main.js, ui.js, visual.js。ゲーム挙動は変化なし（関数移動のみ）。
+
+---
+
 ### 2026-02-14: コード品質向上 (定数化 + エラーハンドリング)
 - **意図**: 保守性向上とゲーム進行の安定性確保。
 - **Task 1: マジックナンバーの定数化**

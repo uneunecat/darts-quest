@@ -203,146 +203,6 @@ function handleBluetoothNotify(event) {
 
 
 // =========================================
-// WORLD MAP HELPERS (v6.0)
-// =========================================
-
-// ステージIDからステージデータを検索・取得
-function getStageData(stageId) {
-    // 数値で来たら文字列に変換 (互換性維持)
-    const idStr = String(stageId);
-    
-    // 旧ID(1,2,3...) を 新ID(1-1, 1-2...) にマッピングする簡易対応 (必要なら)
-    // 今回は直接 WORLD_MAP を探索します
-    for (const areaKey in WORLD_MAP) {
-        const area = WORLD_MAP[areaKey];
-        const stageObj = area.stages.find(s => s.id === idStr);
-        if (stageObj) return stageObj;
-    }
-    // 見つからない場合のフォールバック (1-1を返すなど)
-    return WORLD_MAP["AREA_1"].stages[0];
-}
-
-// Updated: WORLD_MAPを走査して「次の通常ステージID」を見つける (v6.4)
-function getNextStageId(currentId) {
-    // 全エリアの「NORMAL」ステージだけを順番に並べた配列を作る
-    let allNormalStages = [];
-    Object.values(WORLD_MAP).forEach(area => {
-        allNormalStages = allNormalStages.concat(area.stages.filter(s => s.type === "NORMAL"));
-    });
-
-    const currentIndex = allNormalStages.findIndex(s => s.id === currentId);
-    // 次の通常ステージがあればそのIDを返し、なければ null
-    if (currentIndex >= 0 && currentIndex < allNormalStages.length - 1) {
-        return allNormalStages[currentIndex + 1].id;
-    }
-    return null; 
-}
-
-// ステージ表示名を取得 (例: "STAGE 1", "EXTRA", "STAGE 5")
-function getStageDisplayName(stageId) {
-    const data = getStageData(stageId);
-    return data ? data.title : "UNKNOWN";
-}
-
-// ステージの最大フロア数を取得
-function getMaxFloors(stageId) {
-    const data = getStageData(stageId);
-    return data ? data.floors.length : 1;
-}
-
-// ボスフロアかどうかを判定 (bossFloor未定義時はfloors値を使用)
-function isBossFloor(stageId, flr) {
-    const data = getStageData(stageId);
-    if (!data) return false;
-    // bossFloor定義があればそれ以降、なければ最終階のみ
-    const bossStart = data.bossFloor || data.floors.length;
-    return flr >= bossStart;
-}
-
-// ステージ背景画像のURLを取得
-function getStageBackground(stageId, flr) {
-    const data = getStageData(stageId);
-    if (!data) return "";
-    // ボスフロアかつボス背景設定があれば切り替え
-    if (isBossFloor(stageId, flr) && data.bossBg) {
-        return data.bossBg;
-    }
-    return data.bg;
-}
-
-// Updated: BGM管理の一元化関数
-function updateStageBGM(stgId, flr) {
-    const sData = getStageData(stgId);
-    if (!sData) return;
-
-    // 1. ボス戦かどうか
-    const isBoss = isBossFloor(stgId, flr);
-
-    // 2. ステージタイプによる判定
-    if (sData.type === "EXTRA") {
-        playBGM("bgm-extra");
-    } else if (isBoss) {
-        playBGM("bgm-boss");
-    } else {
-        // 将来的に data.js に bgm プロパティを持たせればここで分岐可能
-        playBGM("bgm-battle");
-    }
-}
-
-// Updated: ステージ解放判定 (v6.3 - Dynamic Logic)
-function isStageUnlocked(stageId) {
-    // 最初のステージ(1-1)は常に解放
-    if (stageId === "1-1") return true;
-
-    // ステージデータ取得
-    const sData = getStageData(stageId);
-    if (!sData) return false;
-
-    // EXTRAステージの特別条件
-    if (sData.type === "EXTRA") {
-        // 例: EXTRA解放済みフラグがある、またはキーとなるステージ(1-3)をクリア済みなど
-        // 今回はシンプルに「EXTRAクリア済みフラグ」または「前のステージ(1-3)クリア」で判定
-        // ※厳密な条件はゲームデザインによりますが、一旦「1-3クリアで解放」とします
-        return !!savedData.bestRanks["1-3"];
-    }
-
-    // 通常ステージ: 「一つ前のステージ」をクリアしているか？
-    // 全ステージリストを取得してインデックスで判定
-    let allStages = [];
-    Object.values(WORLD_MAP).forEach(area => {
-        allStages = allStages.concat(area.stages);
-    });
-    
-    const idx = allStages.findIndex(s => s.id === stageId);
-    if (idx > 0) {
-        const prevStage = allStages[idx - 1];
-        // 前のステージのランク記録があればクリア済みとみなす
-        // ただし、前のステージがEXTRAの場合は、その前(通常ステージ)を見るなどの調整が必要かもだが、
-        // 今回の並び順(1-3 -> 1-EX -> 2-1)だと、1-EXクリアしないと2-1に行けないことになる。
-        // それを避けるため、2-1の解放条件は「1-3クリア」としたい場合、データ構造順序に依存する。
-        // ★暫定対応: 2-1 は 1-3 クリアで解放
-        if (stageId === "2-1") return !!savedData.bestRanks["1-3"];
-        
-        return !!savedData.bestRanks[prevStage.id];
-    }
-
-    return false;
-}
-
-// Updated: 指定したURLの画像をプリロードするヘルパー (v5.4)
-function preloadImage(url) {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(url);
-        img.onerror = () => {
-            console.warn("Failed to preload:", url);
-            resolve(url); // エラーでも進行は止めない
-        };
-        img.src = url;
-    });
-}
-
-// =========================================
 // GAME FLOW (Refactored for WORLD_MAP)
 // =========================================
 
@@ -415,229 +275,6 @@ async function startTransition(sel, continueMode) {
     }, TIMING.FADE_OUT);
 }
 
-// Updated: triggerEncounterEffects (v5.7 - Force Visibility)
-function triggerEncounterEffects() {
-    const isBoss = isBossFloor(stage, floor);
-    const img = el("enemy-img");
-
-    // 一旦クリア
-    img.classList.remove("enemy-appear-anim");
-    img.style.opacity = "0"; 
-    
-    // パスチェック
-    const targetSrc = enemy.data.img;
-    if (!targetSrc) {
-        console.error("Enemy Image Path is Missing!");
-        handlePreemptiveAI();
-        return;
-    }
-
-    img.src = targetSrc;
-
-    // 演出
-    if (isBoss) {
-        el("game-container").classList.add("boss-mode");
-        el("boss-label").style.display = "inline";
-        playSE("se-warning");
-        announce(`WARNING: ${enemy.name}`, "danger");
-    } else {
-        playSE("se-attack");
-        announce(`${enemy.name} APPEARED!`, "normal");
-    }
-
-    // ★強制表示ロジック
-    const showImage = () => {
-        img.classList.add("enemy-appear-anim");
-        // アニメーションが失敗しても、0.2秒後には絶対に見えるように上書き
-        setTimeout(() => { 
-            img.style.opacity = "1"; 
-        }, 200);
-    };
-
-    if (img.complete) {
-        showImage();
-    } else {
-        img.onload = showImage;
-        img.onerror = () => {
-            console.error("Image Failed to Load in trigger:", targetSrc);
-            handlePreemptiveAI(); // 止まらないように次へ
-        };
-    }
-
-    setTimeout(handlePreemptiveAI, TIMING.ENCOUNTER_WAIT_LONG);
-}
-
-function setupStage(sel, continueMode) {
-    stage = sel;
-    floor = 1;
-    isProcessing = false;
-    extraBossTurnCount = 0;
-    currentTurn = 1;
-    stageStartTurn = totalGameTurns;
-    
-    if (!continueMode) totalDarts = 0;
-    if (el("avg-display")) el("avg-display").innerText = "0.0";
-    if (el("rt-display")) el("rt-display").innerText = "(Rt -)";
-    el("battle-log").innerHTML = "";
-    el("game-screen").style.display = "block";
-    
-    const enemyPanel = el("enemy-panel");
-    if (enemyPanel && !document.getElementById("battle-announcer")) {
-        const announcer = document.createElement("div");
-        announcer.id = "battle-announcer";
-        enemyPanel.appendChild(announcer);
-    }
-    
-    if (!continueMode) {
-        player.mp = 0;
-        player.deckLocked = false;
-        
-        // デッキチェック
-        if (!savedData.deck || savedData.deck.length < DECK_SIZE) {
-            player.deckLocked = true;
-            player.deck = [];
-            player.hand = [];
-            player.discard = [];
-            addLog(`⚠ デッキ不完全: カード機能封鎖`, "log-system");
-        } else {
-            player.deck = shuffleArray([...savedData.deck]);
-            player.hand = [];
-            player.discard = [];
-        }
-    } else {
-        addLog(">> 前ステージの状態を引き継ぎました", "log-system");
-    }
-    
-    spawnEnemy();
-    resizeGame();
-}
-// Updated: spawnEnemy (v7.1 - ATK assignment & Image Reset)
-function spawnEnemy() {
-    if (player.hp <= 0) return;
-    
-    try {        
-        enemy.states = []; 
-        enemy.actionCount = 0;
-        enemy.patternQueue = [];
-        enemy.preemptiveTriggered = false; 
-        currentTurn = 0; turnInputs = []; currentInput = ""; isJustFinish = false; waitingForChest = false; dropGuaranteed = false; weakHitCount = 0;
-        
-        updateScoreDisplay();
-        
-        el("flash-overlay").className = "";
-        const container = el("game-container");
-        container.classList.remove("shake-heavy", "shake-medium", "shake-small", "boss-mode");
-        el("boss-label").style.display = "none";
-        el("chest-img").style.display = "none";
-        
-        const img = el("enemy-img");
-        img.style.display = "none";
-        img.src = "";
-        img.classList.remove("enemy-appear-anim");
-
-        // ★新ヘルパーで背景取得
-        const bgUrl = getStageBackground(stage, floor);
-        if (bgUrl) container.style.backgroundImage = `url('${bgUrl}')`;
-        else console.warn("No Background URL found");
-
-        // ★新データ構造から敵を取得
-        const stageData = getStageData(stage);
-        const enemyList = stageData.floors;
-        
-        // フロアが範囲外ならループさせるかエラーにする（ここではループ）
-        const enemyDef = enemyList[(floor - 1) % enemyList.length];
-        
-        // Enemyオブジェクトへ展開
-        enemy.data = enemyDef; // AI参照用
-        enemy.atk = enemyDef.atk || 10; 
-        enemy.maxHp = enemyDef.hp || 100;
-        enemy.name = enemyDef.name;
-        enemy.hp = enemy.maxHp;
-        displayEnemyHP = enemy.hp;
-
-        // ★修正: 共通関数でBGM決定
-        updateStageBGM(stage, floor);
-
-        isProcessing = true;
-
-        const spawnDelay = (floor === 1) ? TIMING.SPAWN_DELAY_FIRST : TIMING.SPAWN_DELAY;
-        setTimeout(() => {
-            img.style.display = "block";
-            triggerEncounterEffects();
-        }, spawnDelay);
-
-        updateInfo();
-
-    } catch (e) {
-        console.error("Spawn Error:", e);
-        isProcessing = false;
-    }
-}
-
-
-// Updated: triggerEncounterEffects (v6.0 - No Animation, Just Display)
-function triggerEncounterEffects() {
-    const isBoss = isBossFloor(stage, floor);
-    // ...以下、既存ロジックと同じなので省略せず記述...
-    const img = el("enemy-img");
-    img.src = enemy.data.img;
-    
-    if (isBoss) {
-        el("game-container").classList.add("boss-mode");
-        el("boss-label").style.display = "inline";
-        playSE("se-warning");
-        announce(`WARNING: ${enemy.name}`, "danger");
-    } else {
-        playSE("se-attack");
-        announce(`${enemy.name} APPEARED!`, "normal");
-    }
-
-    setTimeout(handlePreemptiveAI, TIMING.ENCOUNTER_WAIT);
-}
-
-// Updated: handlePreemptiveAI (v3.0 Async Support)
-async function handlePreemptiveAI() {
-    try {
-        const aiList = enemy.data.ai || [];
-        const preemptiveSkill = aiList.find(a => a.preemptive && checkAICondition(a.cond));
-
-        // 出現演出の完了を少し待つ
-        await wait(TIMING.PREEMPTIVE_DELAY);
-
-        // ★追加: 敵が出現し、名前が出た後にトラップ(落とし穴)を判定
-        if (player.setCard) {
-            const incomingDmg = triggerTrap('summon', 0);
-            // トラップでダメージが発生した場合は少し待つ
-            if (incomingDmg > 0) {
-                updateInfo();
-                if (enemy.hp <= 0) {
-                    setTimeout(winBattle, TIMING.WIN_DELAY);
-                    return;
-                }
-                await wait(TIMING.TRAP_DELAY);
-            }
-        }
-
-        if (preemptiveSkill) {
-            // 新エンジンで実行し、完了を待つ
-            await executeSkill(preemptiveSkill, true);
-            await wait(TIMING.PREEMPTIVE_AFTER);
-            preparePlayerTurn();
-        } else {
-            // 先制なし
-            await wait(TIMING.NO_PREEMPTIVE_DELAY);
-            preparePlayerTurn();
-        }
-    } catch (error) {
-        console.error("Battle Error (handlePreemptiveAI):", error);
-        addLog(">> エラーが発生しました", "log-system");
-        isProcessing = false;
-        preparePlayerTurn();
-    }
-}
-
-
-
 function returnToTitle() {
     playBGM("bgm-title");
     el("game-container").classList.remove("boss-mode", "extra-mode");
@@ -648,7 +285,116 @@ function returnToTitle() {
 }
 
 
+// =========================================
+// SESSION & SAVE DATA (セッション管理・セーブ)
+// =========================================
 
+function calculateStageRank(stageId, turns) {
+    const data = getStageData(stageId);
+    const th = data.rankThresholds || { SSS: 12, S: 16, A: 22, B: 30 };
+    let rank = "C";
+
+    if (turns <= th.SSS) rank = "SSS";
+    else if (turns <= th.S) rank = "S";
+    else if (turns <= th.A) rank = "A";
+    else if (turns <= th.B) rank = "B";
+
+    return [rank, RANK_BONUS[rank] || 50];
+}
+
+function finishSession(resultType, ppr, multiplier = 1.0, rank = "", turn = 0) {
+    let earnedDP = 0;
+    clearedStagesLog.forEach(log => { earnedDP += log.dp; });
+
+    const scoreDP = (resultType === "LOSE") ? 0 : Math.floor(totalScore * 0.2 * multiplier);
+    const totalDP = earnedDP + scoreDP;
+
+    savedData.dp = (savedData.dp || 0) + totalDP;
+
+    const getStageIndex = (id) => {
+        let idx = 0;
+        let found = -1;
+        Object.values(WORLD_MAP).forEach(area => {
+            area.stages.forEach(s => {
+                if (s.id === id) found = idx;
+                idx++;
+            });
+        });
+        return found;
+    };
+
+    const currentIdx = getStageIndex(stage);
+    const bestIdx = getStageIndex(savedData.highScore.stage);
+
+    let isNewRecord = false;
+
+    if (currentIdx > bestIdx || (currentIdx === bestIdx && floor > savedData.highScore.floor)) {
+        savedData.highScore.stage = stage;
+        savedData.highScore.floor = floor;
+        isNewRecord = true;
+    }
+
+    if (parseFloat(ppr) > savedData.highScore.avg) {
+        savedData.highScore.avg = parseFloat(ppr);
+        isNewRecord = true;
+    }
+
+    if (getStageData(stage).type === "EXTRA" && resultType === "WIN") {
+        savedData.clearedExtra = true;
+    }
+
+    const now = new Date();
+    const dateStr = `${now.getMonth() + 1}/${now.getDate()} ${now.getHours()}:${("0" + now.getMinutes()).slice(-2)}`;
+    let stgName = getStageDisplayName(stage) + (resultType === "WIN" ? " CLEAR" : `-${floor}F`);
+
+    const historyItem = {
+        date: dateStr, stage: stage, floor: floor, stgName: stgName,
+        result: resultType === "LOSE" ? "LOSE" : "WIN",
+        dp: totalDP,
+        ppr: isNaN(ppr) ? 0 : parseFloat(ppr),
+        rt: calculateRating(isNaN(ppr) ? 0 : parseFloat(ppr)),
+        rank: rank,
+        turn: turn
+    };
+
+    if (!savedData.history) savedData.history = [];
+    savedData.history.unshift(historyItem);
+    if (savedData.history.length > 50) savedData.history.pop();
+
+    updateTitleScore();
+    saveToDrive();
+
+    return { isNewRecord: isNewRecord, gainedDP: totalDP };
+}
+
+function resetSaveData() {
+    if (confirm("【警告】現在のスロットのデータを完全に消去しますか？")) {
+        allSaveData[currentSlot] = null;
+        selectSlot(currentSlot.replace("slot", ""));
+        saveToDrive();
+    }
+}
+
+function exportSave() {
+    navigator.clipboard.writeText(JSON.stringify(savedData)).then(() => alert("現在のスロットのデータをコピーしました"));
+}
+
+function importSave() {
+    const json = prompt("セーブデータ(JSON)を貼り付けてください");
+    if (json) {
+        try {
+            const d = JSON.parse(json);
+            if (d.highScore && d.history) {
+                savedData = d;
+                updateTitleScore();
+                saveToDrive();
+                alert("読み込み完了");
+            }
+        } catch (e) {
+            alert("データ形式エラー");
+        }
+    }
+}
 
 
 

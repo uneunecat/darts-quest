@@ -44,28 +44,6 @@ function triggerEffect(el, dmg, isPlayer, isHeal = false) {
     setTimeout(() => pop.remove(), TIMING.DAMAGE_POP_DURATION);
 }
 
-// 画面サイズ調整 (レスポンシブ対応)
-function resizeGame() {
-    const scaler = el('game-scaler');
-    if (!scaler) return;
-
-    if (window.innerWidth >= 900) {
-        // PC向け: スケーリング処理
-        const scale = Math.min(window.innerWidth / 900, window.innerHeight / 620) * 0.95;
-        scaler.style.transform = `scale(${scale})`;
-        scaler.style.width = "900px";
-        scaler.style.height = "620px";
-        scaler.style.position = "static";
-        document.body.style.overflow = "hidden";
-    } else {
-        // モバイル向け: フル幅表示
-        scaler.style.transform = "none";
-        scaler.style.width = "100%";
-        scaler.style.height = "auto";
-        document.body.style.overflowY = "auto";
-    }
-}
-
 // バトルログのアナウンス表示
 function announce(text, type = "normal") {
     const ann = el("battle-announcer") || document.createElement("div");

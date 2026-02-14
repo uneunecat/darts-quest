@@ -13,18 +13,18 @@
 
 ## 2. File Structure
 
-| ファイル | 役割 | 行数(概算) |
-|---------|------|-----------|
-| `index.html` | 全画面のHTML構造 | 340行: UI骨格・Audio要素定義 |
-| `style.css` | 全スタイル・アニメーション | 1296行: カード・バトル・モーダル等 |
-| `data.js` | マスターデータ | 570行: 敵・カード・ステージ・定数 |
-| `state.js` | グローバル状態・ユーティリティ | 92行: el(), wait(), 全グローバル変数 |
-| `audio.js` | サウンド管理 | 66行: BGM/SE再生・音量設定 |
-| `visual.js` | 演出処理 | 118行: エフェクト・画面調整・カットイン |
-| `battle.js` | 戦闘エンジン | 876行: 入力・攻撃・AI・スキル・ターン管理 |
-| `ui.js` | UI描画・モーダル | 1042行: カード生成・ショップ・デッキ・設定 |
-| `main.js` | エントリーポイント | 645行: 初期化・BT接続・ゲームフロー |
-| `assets/` | 画像・BGM・SE リソース | PNG/MP3 |
+| ファイル | 役割 | 行数(概算) | 読み込み順 |
+|---------|------|-----------|-----------|
+| `index.html` | 全画面のHTML構造 | 340行: UI骨格・Audio要素定義 | - |
+| `style.css` | 全スタイル・アニメーション | 1302行: カード・バトル・モーダル等 | - |
+| `data.js` | マスターデータ | 531行: WORLD_MAP・カード・定数・TIMING | 1 |
+| `state.js` | グローバル状態・ユーティリティ・ステートエンジン・ステージヘルパー | 281行: el(), wait(), 全グローバル変数, tickStates(), checkCondition(), WORLD_MAPヘルパー | 2 |
+| `audio.js` | サウンド管理 | 66行: BGM/SE再生・音量設定 | 3 |
+| `visual.js` | 演出処理 | 148行: エフェクト・カットイン・MPアニメーション | 4 |
+| `ui.js` | UI描画・モーダル・レイアウト | 974行: resizeGame, カード生成・ショップ・デッキ・設定 | 5 |
+| `battle.js` | 戦闘エンジン | 1037行: 入力・攻撃・AI・スキル・ターン管理・ステージセットアップ・敵出現・先制AI | 6 |
+| `main.js` | エントリーポイント | 545行: 初期化・BT接続・ゲームフロー・セッション管理・セーブ | 7 |
+| `assets/` | 画像・BGM・SE リソース | PNG/MP3 | - |
 
 ---
 
@@ -92,7 +92,7 @@
 ```javascript
 {
   hp: 100, maxHp: 100,
-  data: null,  // GAME_DATA.enemies[stage][floor] の参照
+  data: null,  // WORLD_MAP floors[floor] の敵定義オブジェクトへの参照
   name: "",
   atk: 10,    // 基礎攻撃力 (data.jsのatk値を代入)
   states: [   // ★ v5.0: 配列形式で複数ステート管理
@@ -175,19 +175,57 @@ STATE_MASTER = {
 - `"throw"`: 投擲ごとにカウントダウン (例: 攻撃バフ、拘束)
 - `"round"`: 敵ターン終了時にカウントダウン (例: ガード、スタン)
 
-### 5.1 STAGE_MASTER 拡張プロパティ
+### 5.1 WORLD_MAP データ構造 (v6.0 - STAGE_MASTER置換)
+
+旧 `STAGE_MASTER` + `GAME_DATA.enemies` を統合した一元管理構造。ステージIDは文字列 (`"1-1"`, `"1-EX"`, `"2-1"` 等)。
+
+```javascript
+WORLD_MAP = {
+  "AREA_1": {
+    name: "古の森と迷宮",
+    stages: [
+      {
+        id: "1-1", title: "旅立ちの森", sub: "Forest of Beginnings",
+        type: "NORMAL", bg: "url...", bossBg: "url...",
+        warning: false, multiplier: 1.0,
+        bossFloor: 5, rankThresholds: { SSS: 12, S: 16, A: 22, B: 30 },
+        floors: [
+          { name: "プチモス", hp: 100, atk: 4, weak: 20, img: "url...", ai: [...] },
+          // ... 各フロアの敵定義
+        ]
+      },
+      // ... 他ステージ
+    ]
+  },
+  // ... 他エリア
+}
+```
 
 | プロパティ | 型 | 説明 | 例 |
 |-----------|-----|------|-----|
+| `id` | string | ステージID | `"1-1"`, `"1-EX"`, `"2-1"` |
 | `title` | string | ステージ日本語名 | `"旅立ちの森"` |
 | `sub` | string | 英語サブタイトル | `"Forest of Beginnings"` |
-| `displayName` | string | UI表示名 | `"STAGE 1"`, `"EXTRA"`, `"STAGE 5"` |
-| `floors` | number | 最大フロア数 | Stage4=6, Stage5(EXTRA)=1, 他=5 |
-| `bossFloor` | number? | ボス扱い開始フロア (省略時=floors) | Stage4のみ `5` (5F,6F両方ボス扱い) |
-| `img` | string\|{default,boss} | 背景画像URL (複数ならオブジェクト) | Stage4/6は2枚切り替え |
+| `type` | string | ステージ種別 | `"NORMAL"` / `"EXTRA"` |
+| `bg` | string | 通常背景URL | |
+| `bossBg` | string? | ボス背景URL | |
+| `floors` | array | 敵定義の配列 (=フロア数) | |
+| `bossFloor` | number? | ボス扱い開始フロア (省略時=floors.length) | |
 | `multiplier` | number | DP倍率 | 1.0〜5.0 |
-| `warning` | boolean | チャプター演出に警告効果を使うか | Stage 4〜6: true |
-| `thresholds` | object | ランク判定の基準ターン数 | `{ SSS: 12, S: 16, A: 22, B: 30 }` |
+| `warning` | boolean | チャプター演出に警告効果を使うか | |
+| `rankThresholds` | object | ランク判定の基準ターン数 | `{ SSS: 12, S: 16, A: 22, B: 30 }` |
+
+**ステージヘルパー関数** (state.js):
+| 関数 | 説明 |
+|------|------|
+| `getStageData(stageId)` | WORLD_MAPからステージデータを検索 |
+| `getNextStageId(currentId)` | 次のNORMALステージIDを取得 |
+| `getStageDisplayName(stageId)` | ステージ表示名を取得 |
+| `getMaxFloors(stageId)` | 最大フロア数を取得 |
+| `isBossFloor(stageId, flr)` | ボスフロアかどうか判定 |
+| `getStageBackground(stageId, flr)` | 背景画像URLを取得 |
+| `updateStageBGM(stgId, flr)` | BGMを適切に切り替え |
+| `isStageUnlocked(stageId)` | ステージ解放済みか判定 |
 
 ---
 
@@ -262,26 +300,28 @@ finalDmg = Math.max(0, finalDmg - dmgSub);
 - 敵HPをちょうど0にすると発動 (singleDmg === enemy.hp の厳密一致)
 - 効果: MaxHP +10 & HP +10 回復
 
-### 6.4 State Management (`tickStates` / `hasState`)
+### 6.4 State Management (`tickStates` / `hasState`) — state.js
 
-**tickStates(obj, timingFilter)**: ステートのカウントダウン処理
+**tickStates(turnOwner)**: Caster-Based ステートカウントダウン処理
 ```javascript
-// 1. 指定されたタイミングのステートを減算
-obj.states.forEach(s => {
-    if (STATE_MASTER[s.id].timing === timingFilter) {
-        s.turn--;
-    }
+// turnOwner: "PLAYER" | "ENEMY"
+// player と enemy 両方のステートをスキャン
+[player, enemy].forEach(obj => {
+    // 1. caster が turnOwner と一致し、timing が "round" のステートのみ減算
+    obj.states.forEach(s => {
+        const master = STATE_MASTER[s.id];
+        if (master && master.timing === "round" && s.caster === turnOwner) {
+            s.turn--;
+        }
+    });
+    // 2. 0になったステートを削除 (ログ出力付き)
+    obj.states = obj.states.filter(s => s.turn > 0);
 });
-
-// 2. 0になったステートを削除
-obj.states = obj.states.filter(s => s.turn > 0);
 ```
 
 **呼び出しタイミング**:
-- `tickStates(player, "throw")` → 投擲ごと (processOneThrow内)
-- `tickStates(enemy, "throw")` → 投擲ごと (processOneThrow内)
-- `tickStates(player, "round")` → 敵ターン終了時 (endEnemyTurn内)
-- `tickStates(enemy, "round")` → 敵ターン終了時 (endEnemyTurn内)
+- `tickStates("PLAYER")` → プレイヤーターン終了時 (投擲ステートは別途処理)
+- `tickStates("ENEMY")` → 敵ターン終了時 (endEnemyTurn内)
 
 **hasState(obj, category)**: 特定のステートを持っているか判定
 ```javascript
@@ -334,7 +374,7 @@ if (hasState(enemy, "stun")) { /* スタン中 */ }
 **解決済み**: data.js と main.js のフォーマットは統一されている。
 
 - **data.js**: `actions` 配列にアトム(効果単位)を記述
-- **main.js**: `processEnemyTurn` → `executeSkill` → `resolveAction` で実行
+- **battle.js**: `processEnemyTurn` → `executeSkill` → `resolveAction` で実行
 - 旧関数 (`enemyTurn`, `executeEnemySkill`, `doEnemyAttack`) は削除済み
 
 ```javascript
@@ -348,7 +388,7 @@ if (hasState(enemy, "stun")) { /* スタン中 */ }
 }
 ```
 
-### 7.2 AI Condition System (`cond` / `checkCondition`)
+### 7.2 AI Condition System (`cond` / `checkCondition`) — state.js
 
 | src | 説明 | op | 例 |
 |-----|------|-----|-----|
@@ -387,16 +427,16 @@ case "e_state":
 
 ## 8. Stage & Enemy Database
 
-### 8.1 Stage Master
+### 8.1 Stage Master (WORLD_MAP)
 
-| ID | 内部key | 名称 | 英名 | DP倍率 | フロア数 | 警告演出 | 解放条件 |
-|---|---------|------|------|--------|---------|---------|---------|
-| 1 | 1 | 旅立ちの森 | Forest of Beginnings | x1.0 | 5F | なし | 初期解放 |
-| 2 | 2 | 荒れ狂う荒野 | Raging Wasteland | x1.5 | 5F | なし | Stage1クリア |
-| 3 | 3 | 誘惑の迷宮 | Labyrinth of Temptation | x2.0 | 5F | なし | Stage2クリア |
-| 4 | 4 | 幻想の狂宴 | Toon Nightmare | x3.0 | 6F | あり | Stage3のbestRank存在 or unlockedStage4 or EXTRAクリア |
-| 5 | 5 | 燃えたぎる火口 | Burning Crater (EXTRA) | x5.0 | 1F | あり | EXTRAクリア済み (再挑戦用) |
-| 6 | 6 | 神の試練 | God's Testing Ground (GOD) | x5.0 | 5F | あり | Stage4のbestRank存在 |
+| ID | 名称 | 英名 | Type | DP倍率 | フロア数 | 警告演出 | 解放条件 |
+|----|------|------|------|--------|---------|---------|---------|
+| `"1-1"` | 旅立ちの森 | Forest of Beginnings | NORMAL | x1.0 | 5F | なし | 初期解放 |
+| `"1-2"` | 荒れ狂う荒野 | Raging Wasteland | NORMAL | x1.5 | 5F | なし | 1-1クリア |
+| `"1-3"` | 誘惑の迷宮 | Labyrinth of Temptation | NORMAL | x2.0 | 5F | なし | 1-2クリア |
+| `"1-EX"` | 燃えたぎる火口 | Burning Crater (EXTRA) | EXTRA | x5.0 | 1F | あり | 1-3クリア |
+| `"2-1"` | 幻想の狂宴 | Toon Nightmare | NORMAL | x3.0 | 6F | あり | 1-3クリア |
+| `"2-2"` | 神の試練 | God's Testing Ground (GOD) | NORMAL | x5.0 | 5F | あり | 2-1クリア |
 
 ### 8.2 Rank Thresholds (ターン数ベース)
 
@@ -670,8 +710,8 @@ PPR (Points Per Round) = `(totalScore / totalDarts) * 3` から算出。
 
 ## 17. Known Issues & Architecture Notes
 
-### 17.1 data.js と main.js のフォーマット不一致
-**解決済み**: main.js に新アトミックエンジン (`processEnemyTurn` → `executeSkill` → `resolveAction`) が実装済み。旧関数 (`enemyTurn`, `executeEnemySkill`, `doEnemyAttack`) は削除済み。
+### 17.1 data.js と battle.js のフォーマット不一致
+**解決済み**: battle.js に新アトミックエンジン (`processEnemyTurn` → `executeSkill` → `resolveAction`) が実装済み。旧関数 (`enemyTurn`, `executeEnemySkill`, `doEnemyAttack`) は削除済み。
 
 ### 17.2 ハードコード箇所
 - ~~`playHandCard()` 内の `card.id === 501` チェック~~ → **修正済み** (エフェクト内容 `DISCARD_SELECT` で判定するよう変更)
@@ -682,7 +722,7 @@ PPR (Points Per Round) = `(totalScore / totalDarts) * 3` から算出。
 - ~~フロア数ハードコード (`floor>5`, `floor>6` 等)~~ → **修正済み** (`getMaxFloors()` ヘルパーに統一)
 
 ### 17.3 背景キー
-**解決済み**: `getStageBackground()` ヘルパーが `STAGE_MASTER` の `img` プロパティから直接URLを返す。`GAME_DATA.bg` + `getBackgroundKey()` は廃止。Stage 4 / Stage 6 はボスフロアで自動的にboss用背景に切り替わる。
+**解決済み**: `getStageBackground()` ヘルパー (state.js) が `WORLD_MAP` の `bg` / `bossBg` プロパティから直接URLを返す。`GAME_DATA.bg` + `getBackgroundKey()` は廃止。ボスフロアで自動的にboss用背景に切り替わる。
 
 ### 17.4 デバッグ機能 (v2.18.6+)
 
@@ -709,8 +749,16 @@ window.DJ = function(stage, floor) {
 
 ### 17.5 未使用変数 (軽微)
 - `battle.js` `oldHp` (useItem内で宣言されるが参照なし)
-- `ui.js` `last` (finishSession内で宣言されるが参照なし)
-- `ui.js` `dpText` (showHistory内で宣言されるが使わず直接 `h.dp` を使用)
+- `ui.js` `pprDisp`, `rtDisp` (showHistory内で宣言されるが未使用)
+- `state.js` `reject` (preloadImage内のPromiseコールバック)
 
 ### 17.6 main.js の分割 (解決済み)
 **解決済み (v2.18.6)**: main.js (2838行) を6ファイルに分割。詳細は MEMORIES.md 参照。
+
+### 17.7 ファイル責務リファクタリング (解決済み)
+**解決済み**: 分割後に残っていた責務外の関数を適切なファイルへ再配置。
+- ステートエンジン・ステージヘルパー → state.js (battle.js/main.jsから移動)
+- 戦闘セットアップ・敵出現・先制AI → battle.js (main.jsから移動)
+- セッション管理・セーブ管理 → main.js (ui.jsから移動)
+- resizeGame → ui.js (visual.jsから移動)
+- `triggerEncounterEffects()` の重複定義を解消、`checkCondition()` のデッドコードを除去

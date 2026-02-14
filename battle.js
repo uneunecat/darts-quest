@@ -123,41 +123,6 @@ function finishPlayerTurn() {
 // =========================================
 // 10. ENEMY AI & BATTLE SYSTEM (敵ターン・決着)
 // =========================================
-// Updated: 条件判定エンジン (v4.1)
-function checkCondition(c) {
-    if (!c) return true;
-    
-    let targetVal = 0;
-    switch (c.src) {
-        case "e_hp": targetVal = (enemy.hp / enemy.maxHp) * 100; break;
-        case "p_hp": targetVal = (player.hp / player.maxHp) * 100; break;
-        case "p_mp": targetVal = player.mp; break;
-        case "hand": targetVal = player.hand.length; break;
-        case "turn": targetVal = enemy.actionCount; break;
-        case "turn_mod": return enemy.actionCount > 0 && (enemy.actionCount % c.val === 0);
-        case "p_state": 
-        case "e_state": // ★追加: 敵自身の状態チェック
-            const obj = (c.src === "p_state") ? player : enemy;
-            // 指定された tag (カテゴリ名) を持っているかチェック
-            // 持っていればその「残りターン/回数」を取得、なければ 0
-            const state = obj.states.find(s => STATE_MASTER[s.id]?.category === c.tag);
-            targetVal = state ? state.turn : 0;
-            break;
-            // 指定された値（例: 0）と一致するか判定
-            return (stateObj[c.tag] || stateObj[tag] || 0) === c.val;
-        case "trap": return !!player.setCard === c.val;
-    }
-
-    if (c.op === "lt") return targetVal < c.val;
-    if (c.op === "lte") return targetVal <= c.val;
-    if (c.op === "gt") return targetVal > c.val;
-    if (c.op === "gte") return targetVal >= c.val;
-    if (c.op === "eq") return Math.round(targetVal) === c.val;
-    
-    return true;
-}
-// 互換性維持のためエイリアスを設定
-const checkAICondition = checkCondition;
 
 // Updated: triggerTrap (v4.6 - Async Support)
 async function triggerTrap(triggerType, incomingDmg = 0) {
@@ -215,46 +180,6 @@ async function triggerTrap(triggerType, incomingDmg = 0) {
 // NEW: ATOMIC SKILL ENGINE (v3.0 - Async & Simplified Wait)
 // =========================================
 
-
-// Updated: 余韻時間を一律1秒(1000ms)に短縮
-function getCalculatedWait(skill) {
-    if (skill.visual && skill.visual.wait) return skill.visual.wait;
-    // 名前がある技のみ、状況確認のため少しだけ(200ms)足す
-    return skill.name ? TIMING.SKILL_AFTERGLOW_NAMED : TIMING.SKILL_AFTERGLOW;
-}
-// Updated: ステート更新ロジック (Caster-Based)
-// turnOwner: "PLAYER" | "ENEMY"
-function tickStates(turnOwner) {
-    // プレイヤーと敵、両方のステートをスキャン
-    [player, enemy].forEach(obj => {
-        if (!obj.states) return;
-
-        // 1. カウントダウン (このターンの持ち主が付与したものだけ)
-        obj.states.forEach(s => {
-            const master = STATE_MASTER[s.id];
-            // timing: "round" かつ、casterが一致する場合のみ減らす
-            if (master && master.timing === "round" && s.caster === turnOwner) {
-                s.turn--;
-            }
-        });
-
-        // 2. ログ出力と削除
-        obj.states.forEach(s => {
-            if (s.turn === 0) {
-                const master = STATE_MASTER[s.id];
-                if (master && master.label) {
-                    addLog(`【終了】${master.label}`, "log-system");
-                }
-            }
-        });
-        obj.states = obj.states.filter(s => s.turn > 0);
-    });
-}
-
-// ヘルパー: 特定のステートを持っているかチェックする
-function hasState(obj, category) {
-    return obj.states.some(s => STATE_MASTER[s.id]?.category === category);
-}
 
 // Updated: processEnemyTurn (v7.1 - Multi-turn Sequence Support)
 async function processEnemyTurn() {
@@ -949,4 +874,163 @@ function executeSalvageMagic() {
         return `墓地から「${CARD_DB.find(c => c.id === salvId).name}」を回収！`;
     }
     return "墓地に魔法がない…";
+}
+
+
+// =========================================
+// STAGE SETUP & ENCOUNTER (ステージ・出現)
+// =========================================
+
+function setupStage(sel, continueMode) {
+    stage = sel;
+    floor = 1;
+    isProcessing = false;
+    extraBossTurnCount = 0;
+    currentTurn = 1;
+    stageStartTurn = totalGameTurns;
+
+    if (!continueMode) totalDarts = 0;
+    if (el("avg-display")) el("avg-display").innerText = "0.0";
+    if (el("rt-display")) el("rt-display").innerText = "(Rt -)";
+    el("battle-log").innerHTML = "";
+    el("game-screen").style.display = "block";
+
+    const enemyPanel = el("enemy-panel");
+    if (enemyPanel && !document.getElementById("battle-announcer")) {
+        const announcer = document.createElement("div");
+        announcer.id = "battle-announcer";
+        enemyPanel.appendChild(announcer);
+    }
+
+    if (!continueMode) {
+        player.mp = 0;
+        player.deckLocked = false;
+
+        if (!savedData.deck || savedData.deck.length < DECK_SIZE) {
+            player.deckLocked = true;
+            player.deck = [];
+            player.hand = [];
+            player.discard = [];
+            addLog(`⚠ デッキ不完全: カード機能封鎖`, "log-system");
+        } else {
+            player.deck = shuffleArray([...savedData.deck]);
+            player.hand = [];
+            player.discard = [];
+        }
+    } else {
+        addLog(">> 前ステージの状態を引き継ぎました", "log-system");
+    }
+
+    spawnEnemy();
+    resizeGame();
+}
+
+function spawnEnemy() {
+    if (player.hp <= 0) return;
+
+    try {
+        enemy.states = [];
+        enemy.actionCount = 0;
+        enemy.patternQueue = [];
+        enemy.preemptiveTriggered = false;
+        currentTurn = 0; turnInputs = []; currentInput = ""; isJustFinish = false; waitingForChest = false; dropGuaranteed = false; weakHitCount = 0;
+
+        updateScoreDisplay();
+
+        el("flash-overlay").className = "";
+        const container = el("game-container");
+        container.classList.remove("shake-heavy", "shake-medium", "shake-small", "boss-mode");
+        el("boss-label").style.display = "none";
+        el("chest-img").style.display = "none";
+
+        const img = el("enemy-img");
+        img.style.display = "none";
+        img.src = "";
+        img.classList.remove("enemy-appear-anim");
+
+        const bgUrl = getStageBackground(stage, floor);
+        if (bgUrl) container.style.backgroundImage = `url('${bgUrl}')`;
+        else console.warn("No Background URL found");
+
+        const stageData = getStageData(stage);
+        const enemyList = stageData.floors;
+        const enemyDef = enemyList[(floor - 1) % enemyList.length];
+
+        enemy.data = enemyDef;
+        enemy.atk = enemyDef.atk || 10;
+        enemy.maxHp = enemyDef.hp || 100;
+        enemy.name = enemyDef.name;
+        enemy.hp = enemy.maxHp;
+        displayEnemyHP = enemy.hp;
+
+        updateStageBGM(stage, floor);
+
+        isProcessing = true;
+
+        const spawnDelay = (floor === 1) ? TIMING.SPAWN_DELAY_FIRST : TIMING.SPAWN_DELAY;
+        setTimeout(() => {
+            img.style.display = "block";
+            triggerEncounterEffects();
+        }, spawnDelay);
+
+        updateInfo();
+
+    } catch (e) {
+        console.error("Spawn Error:", e);
+        isProcessing = false;
+    }
+}
+
+function triggerEncounterEffects() {
+    const isBoss = isBossFloor(stage, floor);
+    const img = el("enemy-img");
+
+    img.src = enemy.data.img;
+
+    if (isBoss) {
+        el("game-container").classList.add("boss-mode");
+        el("boss-label").style.display = "inline";
+        playSE("se-warning");
+        announce(`WARNING: ${enemy.name}`, "danger");
+    } else {
+        playSE("se-attack");
+        announce(`${enemy.name} APPEARED!`, "normal");
+    }
+
+    setTimeout(handlePreemptiveAI, TIMING.ENCOUNTER_WAIT);
+}
+
+async function handlePreemptiveAI() {
+    try {
+        const aiList = enemy.data.ai || [];
+        const preemptiveSkill = aiList.find(a => a.preemptive && checkAICondition(a.cond));
+
+        await wait(TIMING.PREEMPTIVE_DELAY);
+
+        if (player.setCard) {
+            const incomingDmg = triggerTrap('summon', 0);
+            if (incomingDmg > 0) {
+                updateInfo();
+                if (enemy.hp <= 0) {
+                    setTimeout(winBattle, TIMING.WIN_DELAY);
+                    return;
+                }
+                await wait(TIMING.TRAP_DELAY);
+            }
+        }
+
+        if (preemptiveSkill) {
+            await executeSkill(preemptiveSkill, true);
+            await wait(TIMING.PREEMPTIVE_AFTER);
+            preparePlayerTurn();
+        } else {
+            await wait(TIMING.NO_PREEMPTIVE_DELAY);
+            preparePlayerTurn();
+        }
+    } catch (error) {
+        console.error("Battle Error (handlePreemptiveAI):", error);
+        addLog(">> エラーが発生しました", "log-system");
+        isProcessing = false;
+        preparePlayerTurn();
+    }
 }

@@ -1,6 +1,27 @@
 // =========================================
 // 13. UI & MODAL HANDLING (UI操作)
 // =========================================
+
+// 画面サイズ調整 (レスポンシブ対応)
+function resizeGame() {
+    const scaler = el('game-scaler');
+    if (!scaler) return;
+
+    if (window.innerWidth >= 900) {
+        const scale = Math.min(window.innerWidth / 900, window.innerHeight / 620) * 0.95;
+        scaler.style.transform = `scale(${scale})`;
+        scaler.style.width = "900px";
+        scaler.style.height = "620px";
+        scaler.style.position = "static";
+        document.body.style.overflow = "hidden";
+    } else {
+        scaler.style.transform = "none";
+        scaler.style.width = "100%";
+        scaler.style.height = "auto";
+        document.body.style.overflowY = "auto";
+    }
+}
+
 // Updated: ユーザーの破棄選択を待機する (v4.2 Async Support)
 function openDiscardSelector(count = 1) {
     return new Promise((resolve) => {
@@ -702,92 +723,6 @@ function showDialog(title, text, type = "normal", buttons = [{ text: "OK", actio
     }
 }
 
-// Updated: main.js (calculateStageRank)
-function calculateStageRank(stageId, turns) {
-    const data = getStageData(stageId);
-    const th = data.rankThresholds || { SSS: 12, S: 16, A: 22, B: 30 }; // デフォルト
-    let rank = "C";
-
-    if (turns <= th.SSS) rank = "SSS";
-    else if (turns <= th.S) rank = "S";
-    else if (turns <= th.A) rank = "A";
-    else if (turns <= th.B) rank = "B";
-
-    return [rank, RANK_BONUS[rank] || 50];
-}
-
-// Updated: finishSession (文字列ID対応版)
-function finishSession(resultType, ppr, multiplier = 1.0, rank = "", turn = 0) {
-    let earnedDP = 0;
-    clearedStagesLog.forEach(log => { earnedDP += log.dp; });
-    
-    // スコア分のDP計算 (LOSEなら0)
-    const scoreDP = (resultType === "LOSE") ? 0 : Math.floor(totalScore * 0.2 * multiplier);
-    const totalDP = earnedDP + scoreDP;
-    
-    savedData.dp = (savedData.dp || 0) + totalDP;
-
-    // --- ハイスコア判定 (進行度) ---
-    // 文字列IDのため、単純比較できない。WORLD_MAP内のインデックスで比較する
-    const getStageIndex = (id) => {
-        let idx = 0;
-        let found = -1;
-        Object.values(WORLD_MAP).forEach(area => {
-            area.stages.forEach(s => {
-                if (s.id === id) found = idx;
-                idx++;
-            });
-        });
-        return found;
-    };
-
-    const currentIdx = getStageIndex(stage);
-    const bestIdx = getStageIndex(savedData.highScore.stage);
-    
-    let isNewRecord = false;
-
-    // 「より先のステージ」または「同じステージでより奥のフロア」なら更新
-    if (currentIdx > bestIdx || (currentIdx === bestIdx && floor > savedData.highScore.floor)) {
-        savedData.highScore.stage = stage;
-        savedData.highScore.floor = floor;
-        isNewRecord = true;
-    }
-    
-    // PPR更新
-    if (parseFloat(ppr) > savedData.highScore.avg) {
-        savedData.highScore.avg = parseFloat(ppr);
-        isNewRecord = true;
-    }
-    
-    // EXTRAクリアフラグ
-    if (getStageData(stage).type === "EXTRA" && resultType === "WIN") {
-        savedData.clearedExtra = true;
-    }
-    
-    // 履歴保存
-    const now = new Date();
-    const dateStr = `${now.getMonth() + 1}/${now.getDate()} ${now.getHours()}:${("0" + now.getMinutes()).slice(-2)}`;
-    let stgName = getStageDisplayName(stage) + (resultType === "WIN" ? " CLEAR" : `-${floor}F`);
-    
-    const historyItem = {
-        date: dateStr, stage: stage, floor: floor, stgName: stgName,
-        result: resultType === "LOSE" ? "LOSE" : "WIN",
-        dp: totalDP, 
-        ppr: isNaN(ppr) ? 0 : parseFloat(ppr),
-        rt: calculateRating(isNaN(ppr) ? 0 : parseFloat(ppr)),
-        rank: rank, 
-        turn: turn
-    };
-    
-    if (!savedData.history) savedData.history = [];
-    savedData.history.unshift(historyItem);
-    if (savedData.history.length > 50) savedData.history.pop();
-    
-    updateTitleScore();
-    saveToDrive();
-    
-    return { isNewRecord: isNewRecord, gainedDP: totalDP };
-}
 
 function showHistory() {
     const modal = el("history-modal");
@@ -858,34 +793,6 @@ function closeHistory() {
     el("history-modal").style.display = "none";
 }
 
-function resetSaveData() {
-    if (confirm("【警告】現在のスロットのデータを完全に消去しますか？")) {
-        allSaveData[currentSlot] = null;
-        selectSlot(currentSlot.replace("slot", ""));
-        saveToDrive();
-    }
-}
-
-function exportSave() {
-    navigator.clipboard.writeText(JSON.stringify(savedData)).then(() => alert("現在のスロットのデータをコピーしました"));
-}
-
-function importSave() {
-    const json = prompt("セーブデータ(JSON)を貼り付けてください");
-    if (json) {
-        try {
-            const d = JSON.parse(json);
-            if (d.highScore && d.history) {
-                savedData = d;
-                updateTitleScore();
-                saveToDrive();
-                alert("読み込み完了");
-            }
-        } catch (e) {
-            alert("データ形式エラー");
-        }
-    }
-}
 
 function updateScoreDisplay() {
     [1, 2, 3].forEach((i) => {
