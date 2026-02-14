@@ -339,7 +339,7 @@ function finishSession(resultType, ppr, multiplier = 1.0, rank = "", turn = 0) {
 
     const now = new Date();
     const dateStr = `${now.getMonth() + 1}/${now.getDate()} ${now.getHours()}:${("0" + now.getMinutes()).slice(-2)}`;
-    let stgName = getStageDisplayName(stage) + (resultType === "WIN" ? " CLEAR" : `-${floor}F`);
+    let stgName = getStageDisplayName(stage) + ((resultType === "WIN" || resultType === "RETURN") ? " CLEAR" : `-${floor}F`);
 
     // --- stageStats 更新ロジック (v6.4) ---
     if (!savedData.stageStats) savedData.stageStats = {};
@@ -355,7 +355,8 @@ function finishSession(resultType, ppr, multiplier = 1.0, rank = "", turn = 0) {
     stats.attempts++;
 
     // 2. クリア回数 & 最短ターン
-    if (resultType === "WIN") {
+    // 2. クリア回数 & 最短ターン
+    if (resultType === "WIN" || resultType === "RETURN") {
         stats.clears++;
         if (stats.bestTurns === null || turn < stats.bestTurns) {
             stats.bestTurns = turn;
