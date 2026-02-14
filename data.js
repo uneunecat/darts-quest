@@ -49,269 +49,171 @@ const STATE_MASTER = {
 };
 
 // =========================================
-// Updated: GAME_DATA.enemies (v2.2 アトミック・スキル・システム)
+// WORLD MAP DATA (v1.0 - Area/Stage Integration)
 // =========================================
-// atk: 基礎攻撃力 (ここから±10%の乱数でダメージ計算)
-// actions: スキルを構成する「効果のアトム」リスト
-// visual.msg: スキル発動時の説明文。待機時間はエンジン側で自動計算するため省略。
+// 旧 GAME_DATA.enemies と STAGE_MASTER を統合
+// Area > Stage > Floor の階層構造を実現
 
-const GAME_DATA = {
-    enemies: {
-        1: [
-            { name: "プチモス", img: "assets/1-1.png", weak: 20, hp: 100, atk: 4, ai: [
-                { weight: 10, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]},
-            { name: "ラーバモス", img: "assets/1-2.png", weak: 19, hp: 130, atk: 5, ai: [
-                { weight: 10, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]},
-            { name: "進化の繭", img: "assets/1-3.png", weak: 18, hp: 260, atk: 6, ai: [
-                { 
-                    name: "自己再生", weight: 3, cond: { src: "e_hp", op: "lt", val: 80 },
-                    visual: { cutin: { text: "自己再生", color: "heal" }, msg: "傷ついた体を修復した！" },
-                    actions: [{ type: "HEAL", target: "ENEMY", val: 20, visual: { se: "se-heal" } }]
-                },
-                { 
-                    name: "鉄壁の守り", weight: 4,
-                    visual: { cutin: { text: "鉄壁の守り", color: "earth" }, msg: "硬化してダメージを半減する！" },
-                    actions: [{ type: "STATE", target: "ENEMY", kind: "guard_ratio", val: 0.5, turn: 3, visual: { se: "se-buff" } }]
-                },
-                { weight: 4, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]},
-            { name: "グレート・モス", img: "assets/1-4.png", weak: 17, hp: 290, atk: 8, ai: [
-                { 
-                    name: "猛毒の鱗粉", weight: 3, cond: { src: "p_mp", op: "gt", val: 0 },
-                    visual: { cutin: { text: "猛毒の鱗粉", color: "purple" }, msg: "毒の粉でMPを蝕む！" },
-                    actions: [
-                        { type: "MP_ACTION", target: "PLAYER", val: -1, visual: { se: "se-debuff" } },
-                        { type: "DAMAGE", target: "PLAYER", mult: 1.0 }
-                    ]
-                },
-                { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]},
-            { name: "究極完全態・グレート・モス", img: "assets/1-5.png", weak: 20, hp: 420, atk: 12, ai: [
-                { 
-                    weight: 5,
-                    sequence: [
-                        { 
-                            name: "力を溜めている…", visual: { msg: "次の一撃に備えている…" },
-                            actions: [{ type: "STATE", target: "ENEMY", kind: "charge", turn: 1, visual: { se: "se-warning" } }] 
-                        },
-                        { 
-                            name: "森の破壊衝動", 
-                            visual: { cutin: { text: "森の破壊衝動", color: "earth" }, se: "se-boom", anim: "shake-heavy", msg: "全てを破壊する一撃！" },
-                            actions: [{ type: "DAMAGE", target: "PLAYER", mult: 3.0 }] 
-                        }
-                    ]
-                },
-                { weight: 5, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]}
-        ],
-        2: [
-            { name: "トラコドン", img: "assets/2-1.png", weak: 19, hp: 150, atk: 7, ai: [
-                { weight: 10, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]},
-            { name: "ワイルド・ラプター", img: "assets/2-2.png", weak: 18, hp: 280, atk: 8, ai: [
-                { 
-                    name: "俊足の連撃", weight: 3,
-                    visual: { cutin: { text: "俊足の連撃", color: "wind" }, msg: "目にも止まらぬ連続攻撃！" },
-                    actions: [{ type: "DAMAGE", target: "PLAYER", mult: 0.7, count: 2 }]
-                },
-                { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]},
-            { name: "屍を貪る竜", img: "assets/2-3.png", weak: 17, hp: 310, atk: 9, ai: [
-                { 
-                    name: "死肉の渇望", weight: 3,
-                    visual: { cutin: { text: "死肉の渇望", color: "fire" }, msg: "噛みつきHPを吸収した！" },
-                    actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0, drain: true }]
-                },
-                { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]},
-            { name: "二頭を持つキング・レックス", img: "assets/2-4.png", weak: 20, hp: 340, atk: 10, ai: [
-                { 
-                    name: "狂暴化", weight: 5, guaranteed: true, cond: { src: "e_state", tag: "atk_mult", val: 0 }, 
-                    visual: { cutin: { text: "狂暴化", color: "fire" }, msg: "怒りで攻撃力が倍増した！" },
-                    actions: [{ type: "STATE", target: "ENEMY", kind: "atk_buff", val: 1.0, turn: 10, visual: { se: "se-buff" } }]
-                },
-                { weight: 5, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]},
-            { name: "剣竜", img: "assets/2-5.png", weak: 19, hp: 540, atk: 12, ai: [
-                { 
-                    name: "恐竜剣・兜割り", weight: 3,
-                    visual: { cutin: { text: "恐竜剣・兜割り", color: "earth" }, se: "se-boom", anim: "shake-medium", msg: "強烈な剣撃が襲う！" },
-                    actions: [{ type: "DAMAGE", target: "PLAYER", mult: 2.0 }]
-                },
-                { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]}
-        ],
-        3: [
-            { name: "デュナミス・ヴァルキリア", img: "assets/3-1.png", weak: 20, hp: 300, atk: 10, ai: [
-                { 
-                    name: "護封剣の加護", preemptive: true,
-                    visual: { cutin: { text: "護封剣の加護", color: "gold" }, msg: "光の剣で守りを固めた！" },
-                    actions: [{ type: "STATE", target: "ENEMY", kind: "guard_ratio", val: 0.5, turn: 3 }]
-                },
-                { weight: 10, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]},
-            { name: "ハーピィ・レディ", img: "assets/3-2.png", weak: 19, hp: 330, atk: 11, ai: [
-                { 
-                    name: "誘惑の風", weight: 3, 
-                    visual: { cutin: { text: "誘惑の風", color: "wind" }, msg: "強烈な風がMPを削り、敵を癒やす！" },
-                    actions: [
-                        { type: "MP_ACTION", target: "PLAYER", val: -3 },
-                        { type: "HEAL", target: "ENEMY", val: 50, visual: { se: "se-heal" } }
-                    ]
-                },
-                { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]},
-            { name: "ハーピィ・レディ・SB", img: "assets/3-3.png", weak: 18, hp: 360, atk: 12, ai: [
-                { 
-                    name: "サイバー・ボンテージ", weight: 8, cond: { src: "p_state", tag: "action_lock", val: false },
-                    visual: { cutin: { text: "サイバー・ボンテージ", color: "purple" }, msg: "鞭で拘束された！(1投制限)" },
-                    actions: [
-                        { type: "STATE", target: "PLAYER", kind: "bind", turn: 1 },
-                        { type: "DAMAGE", target: "PLAYER", mult: 1.0 }
-                    ]
-                },
-                { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]},
-            { name: "ハーピィ・レディ三姉妹", img: "assets/3-4.png", weak: 17, hp: 390, atk: 13, ai: [
-                { 
-                    name: "トライアングル・アタック", weight: 3,
-                    visual: { cutin: { text: "トライアングル・アタック", color: "wind" }, msg: "三位一体の連携攻撃！" },
-                    actions: [{ type: "DAMAGE", target: "PLAYER", mult: 0.6, count: 3 }]
-                },
-                { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]},
-            { name: "ハーピィズペット竜", img: "assets/3-5.png", weak: 20, hp: 550, atk: 15, ai: [
-                { 
-                    name: "愛の鞭・ブレス", guaranteed: true, cond: { src: "turn_mod", val: 4 },
-                    visual: { cutin: { text: "愛の鞭・ブレス", color: "fire" }, se: "se-boom", anim: "shake-heavy", msg: "強烈なブレスでMPが消し飛んだ！" },
-                    actions: [
-                        { type: "MP_ACTION", target: "PLAYER", val: -99 },
-                        { type: "DAMAGE", target: "PLAYER", mult: 2.0 }
-                    ]
-                },
-                { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]}
-        ],
-        4: [
-            { name: "ダーク・ラビット", img: "assets/4-1.png", weak: 20, hp: 380, atk: 13, ai: [
-                { 
-                    name: "トゥーン・ラッシュ", weight: 3,
-                    visual: { cutin: { text: "トゥーン・ラッシュ", color: "wind" }, msg: "コミカルな連続攻撃！" },
-                    actions: [{ type: "DAMAGE", target: "PLAYER", mult: 0.7, count: 2 }]
-                },
-                { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]},
-            { name: "デビル・ボックス", img: "assets/4-2.png", weak: 19, hp: 420, atk: 14, ai: [
-                { 
-                    name: "死のびっくり箱", guaranteed: true, cond: { src: "turn", op: "eq", val: 5 },
-                    visual: { cutin: { text: "死のびっくり箱", color: "purple" }, se: "se-boom", anim: "flash-purple", msg: "箱から死神が現れた！" },
-                    actions: [{ type: "DAMAGE", target: "PLAYER", mode: "fixed", val: 999 }]
-                },
-                { weight: 10, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]},
-            { name: "トゥーン・デーモン", img: "assets/4-3.png", weak: 18, hp: 460, atk: 15, ai: [
-                { 
-                    name: "呪いの視線", weight: 4,
-                    visual: { cutin: { text: "呪いの視線", color: "purple" }, msg: "邪悪な視線でMPを削られた！" },
-                    actions: [
-                        { type: "MP_ACTION", target: "PLAYER", val: -2 },
-                        { type: "DAMAGE", target: "PLAYER", mult: 1.0 }
-                    ]
-                },
-                { weight: 6, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]},
-            { name: "ブルーアイズ・トゥーン・ドラゴン", img: "assets/4-4.png", weak: 17, hp: 500, atk: 18, ai: [
-                { 
-                    name: "トゥーン・スキン", preemptive: true,
-                    visual: { cutin: { text: "トゥーン・スキン", color: "blue" }, msg: "ダメージを軽減する皮膚！" },
-                    actions: [{ type: "STATE", target: "ENEMY", kind: "guard_fixed", val: 10, turn: 5 }]
-                },
-                { weight: 5, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]},
-            { name: "サクリファイス", img: "assets/4-5.png", weak: 20, hp: 550, atk: 16, ai: [
-                { 
-                    name: "幻想の儀式", weight: 3, cond: { src: "turn_mod", val: 3 },
-                    visual: { cutin: { text: "幻想の儀式", color: "purple" }, msg: "幻想の力で体力を吸収された！" },
-                    actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.2, drain: true }]
-                },
-                { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]},
-            { name: "サウザンド・アイズ・サクリファイス", img: "assets/4-6.png", weak: 20, hp: 800, atk: 20, ai: [
-                { 
-                    name: "結界", preemptive: true,
-                    visual: { cutin: { text: "結界", color: "gold" }, msg: "邪教の力でバリアを展開した！" },
-                    actions: [{ type: "STATE", target: "ENEMY", kind: "barrier", val: 10, turn: 999 }]
-                },
-                { 
-                    name: "千眼の邪教神", guaranteed: true, cond: { src: "turn_mod", val: 4 },
-                    visual: { cutin: { text: "千眼の邪教神", color: "purple" }, se: "se-boom", msg: "全てを見通す邪眼で吸収！" },
-                    actions: [{ type: "DAMAGE", target: "PLAYER", mult: 2.0, drain: true }]
-                },
-                { weight: 5, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]}
-        ],
-        5: [
-            { name: "真紅眼の黒竜", img: "assets/extra.png", weak: 20, hp: 1500, atk: 25, ai: [
-                { 
-                    name: "黒 炎 弾", guaranteed: true, cond: { src: "turn_mod", val: 5 },
-                    visual: { cutin: { text: "黒 炎 弾", color: "fire" }, se: "se-boom", anim: "flash-fire", wait: 2500, msg: "焼き尽くす黒い炎！" },
-                    actions: [
-                        { type: "MP_ACTION", target: "PLAYER", val: -5 },
-                        { type: "DAMAGE", target: "PLAYER", mode: "fixed", val: 50 }
-                    ]
-                },
-                { weight: 8, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]}
-        ],
-        6: [
-            { name: "ワームドレイク", img: "assets/5-1.png", weak: 19, hp: 400, atk: 20, ai: [{ weight: 1, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }] },
-            { name: "ヒューマノイド・スライム", img: "assets/5-2.png", weak: 18, hp: 450, atk: 22, ai: [{ weight: 1, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }] },
-            { name: "リバイバルスライム", img: "assets/5-3.png", weak: 20, hp: 300, atk: 18, ai: [
-                { 
-                    name: "再 生", weight: 3,
-                    visual: { cutin: { text: "再 生", color: "blue" }, msg: "驚異的な速度で再生した！" },
-                    actions: [{ type: "HEAL", target: "ENEMY", val: 999 }]
-                },
-                { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]},
-            { name: "ヒューマノイド・ドレイク", img: "assets/5-4.png", weak: 17, hp: 600, atk: 25, ai: [
-                { 
-                    name: "スライムの粘着", weight: 3, cond: { src: "p_state", tag: "item_lock", val: 0 },
-                    visual: { cutin: { text: "スライムの粘着", color: "green" }, msg: "アイテムの使用を封じられた！" },
-                    actions: [
-                        { type: "STATE", target: "PLAYER", kind: "item_lock", turn: 2 },
-                        { type: "DAMAGE", target: "PLAYER", mult: 1.0 }
-                    ]
-                },
-                { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]},
-            { name: "オシリスの天空竜", img: "assets/5-5.png", weak: 20, hp: 2000, atk: 35, ai: [
-                { 
-                    name: "召雷弾", preemptive: true,
-                    visual: { cutin: { text: "召雷弾", color: "gold" }, msg: "神の弾丸で迎撃体勢！" },
-                    actions: [{ type: "STATE", target: "ENEMY", kind: "barrier", val: 15, turn: 999 }]
-                },
-                { 
-                    name: "サンダー・フォース", guaranteed: true, cond: { src: "turn_mod", val: 5 },
-                    visual: { cutin: { text: "サンダー・フォース", color: "gold" }, se: "se-boom", anim: "flash-gold", wait: 3000, msg: "神の雷が地上を滅ぼす！" },
-                    actions: [{ type: "DAMAGE", target: "PLAYER", mode: "fixed", val: 80 }]
-                },
-                { weight: 8, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
-            ]}
-        ],
+const WORLD_MAP = {
+    "AREA_1": {
+        id: "AREA_1",
+        name: "古の森と迷宮",
+        sub: "Ancient Forest & Labyrinth",
+        stages: [
+            {
+                id: "1-1",
+                title: "旅立ちの森",
+                sub: "Forest of Beginnings",
+                bg: "assets/bg_stage1.png",
+                multiplier: 1.0,
+                type: "NORMAL",
+                rankThresholds: { SSS: 12, S: 16, A: 22, B: 30 },
+                floors: [
+                    // Floor 1
+                    { name: "プチモス", img: "assets/1-1.png", weak: 20, hp: 100, atk: 4, ai: [{ weight: 10, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }] },
+                    // Floor 2
+                    { name: "ラーバモス", img: "assets/1-2.png", weak: 19, hp: 130, atk: 5, ai: [{ weight: 10, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }] },
+                    // Floor 3
+                    { name: "進化の繭", img: "assets/1-3.png", weak: 18, hp: 260, atk: 6, ai: [
+                        { name: "自己再生", weight: 3, cond: { src: "e_hp", op: "lt", val: 80 }, visual: { cutin: { text: "自己再生", color: "heal" }, msg: "傷ついた体を修復した！" }, actions: [{ type: "HEAL", target: "ENEMY", val: 20, visual: { se: "se-heal" } }] },
+                        { name: "鉄壁の守り", weight: 4, visual: { cutin: { text: "鉄壁の守り", color: "earth" }, msg: "硬化してダメージを半減する！" }, actions: [{ type: "STATE", target: "ENEMY", kind: "guard_ratio", val: 0.5, turn: 3, visual: { se: "se-buff" } }] },
+                        { weight: 4, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                    ]},
+                    // Floor 4
+                    { name: "グレート・モス", img: "assets/1-4.png", weak: 17, hp: 290, atk: 8, ai: [
+                        { name: "猛毒の鱗粉", weight: 3, cond: { src: "p_mp", op: "gt", val: 0 }, visual: { cutin: { text: "猛毒の鱗粉", color: "purple" }, msg: "毒の粉でMPを蝕む！" }, actions: [{ type: "MP_ACTION", target: "PLAYER", val: -1, visual: { se: "se-debuff" } }, { type: "DAMAGE", target: "PLAYER", mult: 1.0 }] },
+                        { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                    ]},
+                    // Floor 5 (BOSS)
+                    { name: "究極完全態・グレート・モス", img: "assets/1-5.png", weak: 20, hp: 420, atk: 12, ai: [
+                        { weight: 5, sequence: [
+                            { name: "力を溜めている…", visual: { msg: "次の一撃に備えている…" }, actions: [{ type: "STATE", target: "ENEMY", kind: "charge", turn: 1, visual: { se: "se-warning" } }] },
+                            { name: "森の破壊衝動", visual: { cutin: { text: "森の破壊衝動", color: "earth" }, se: "se-boom", anim: "shake-heavy", msg: "全てを破壊する一撃！" }, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 3.0 }] }
+                        ]},
+                        { weight: 5, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                    ]}
+                ]
+            },
+            {
+                id: "1-2",
+                title: "荒れ狂う荒野",
+                sub: "Raging Wasteland",
+                bg: "assets/bg_stage2.png",
+                multiplier: 1.5,
+                type: "NORMAL",
+                rankThresholds: { SSS: 12, S: 16, A: 22, B: 30 },
+                floors: [
+                    { name: "トラコドン", img: "assets/2-1.png", weak: 19, hp: 150, atk: 7, ai: [{ weight: 10, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }] },
+                    { name: "ワイルド・ラプター", img: "assets/2-2.png", weak: 18, hp: 280, atk: 8, ai: [
+                        { name: "俊足の連撃", weight: 3, visual: { cutin: { text: "俊足の連撃", color: "wind" }, msg: "目にも止まらぬ連続攻撃！" }, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 0.7, count: 2 }] },
+                        { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                    ]},
+                    { name: "屍を貪る竜", img: "assets/2-3.png", weak: 17, hp: 310, atk: 9, ai: [
+                        { name: "死肉の渇望", weight: 3, visual: { cutin: { text: "死肉の渇望", color: "fire" }, msg: "噛みつきHPを吸収した！" }, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0, drain: true }] },
+                        { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                    ]},
+                    { name: "二頭を持つキング・レックス", img: "assets/2-4.png", weak: 20, hp: 340, atk: 10, ai: [
+                        { name: "狂暴化", weight: 5, cond: { src: "e_state", tag: "atk_mult", val: 0 }, visual: { cutin: { text: "狂暴化", color: "fire" }, msg: "怒りで攻撃力が倍増した！" }, actions: [{ type: "STATE", target: "ENEMY", kind: "e_atk_buff", val: 1.0, turn: 10, visual: { se: "se-buff" } }] },
+                        { weight: 5, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                    ]},
+                    { name: "剣竜", img: "assets/2-5.png", weak: 19, hp: 540, atk: 12, ai: [
+                        { name: "恐竜剣・兜割り", weight: 3, visual: { cutin: { text: "恐竜剣・兜割り", color: "earth" }, se: "se-boom", anim: "shake-medium", msg: "強烈な剣撃が襲う！" }, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 2.0 }] },
+                        { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                    ]}
+                ]
+            },
+            {
+                id: "1-3",
+                title: "誘惑の迷宮",
+                sub: "Labyrinth of Temptation",
+                bg: "assets/bg_stage3.png",
+                multiplier: 2.0,
+                type: "NORMAL",
+                rankThresholds: { SSS: 12, S: 16, A: 22, B: 30 },
+                floors: [
+                    { name: "デュナミス・ヴァルキリア", img: "assets/3-1.png", weak: 20, hp: 300, atk: 10, ai: [
+                        { name: "護封剣の加護", preemptive: true, visual: { cutin: { text: "護封剣の加護", color: "gold" }, msg: "光の剣で守りを固めた！" }, actions: [{ type: "STATE", target: "ENEMY", kind: "guard_ratio", val: 0.5, turn: 3 }] },
+                        { weight: 10, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                    ]},
+                    { name: "ハーピィ・レディ", img: "assets/3-2.png", weak: 19, hp: 330, atk: 11, ai: [
+                        { name: "誘惑の風", weight: 3, cond: { src: "p_mp", op: "gt", val: 0 }, visual: { cutin: { text: "誘惑の風", color: "wind" }, msg: "MPを奪い、自らを癒やした！" }, actions: [{ type: "MP_ACTION", target: "PLAYER", val: -1, drain: true },{ type: "HEAL", target: "ENEMY", val: 20, visual: { se: "se-heal" } }] },
+                        { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                    ]},
+                    { name: "ハーピィ・レディ・SB", img: "assets/3-3.png", weak: 18, hp: 360, atk: 12, ai: [
+                        { name: "サイバー・ボンテージ", weight: 8, cond: { src: "p_state", tag: "action_lock", val: false }, visual: { cutin: { text: "サイバー・ボンテージ", color: "purple" }, msg: "鞭で拘束された！(1投制限)" }, actions: [{ type: "STATE", target: "PLAYER", kind: "bind", turn: 1 }, { type: "DAMAGE", target: "PLAYER", mult: 1.0 }] },
+                        { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                    ]},
+                    { name: "ハーピィ・レディ三姉妹", img: "assets/3-4.png", weak: 17, hp: 390, atk: 13, ai: [
+                        { name: "トライアングル・アタック", weight: 3, visual: { cutin: { text: "トライアングル・アタック", color: "wind" }, msg: "三位一体の連携攻撃！" }, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 0.6, count: 3 }] },
+                        { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                    ]},
+                    { name: "ハーピィズペット竜", img: "assets/3-5.png", weak: 20, hp: 550, atk: 15, ai: [
+                        { name: "愛の鞭・ブレス", guaranteed: true, cond: { src: "turn_mod", val: 4 }, visual: { cutin: { text: "愛の鞭・ブレス", color: "fire" }, se: "se-boom", anim: "shake-heavy", msg: "強烈なブレスでMPが消し飛んだ！" }, actions: [{ type: "MP_ACTION", target: "PLAYER", val: -99 }, { type: "DAMAGE", target: "PLAYER", mult: 2.0 }] },
+                        { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                    ]}
+                ]
+            },
+            {
+                id: "1-EX",
+                title: "燃えたぎる火口",
+                sub: "Burning Crater",
+                bg: "assets/bg_extra.png",
+                multiplier: 5.0,
+                type: "EXTRA",
+                warning: true,
+                rankThresholds: { SSS: 25, S: 35, A: 50, B: 70 },
+                floors: [
+                    { name: "真紅眼の黒竜", img: "assets/extra.png", weak: 20, hp: 1500, atk: 25, ai: [
+                        { name: "黒 炎 弾", guaranteed: true, cond: { src: "turn_mod", val: 5 }, visual: { cutin: { text: "黒 炎 弾", color: "fire" }, se: "se-boom", anim: "flash-fire", wait: 2500, msg: "焼き尽くす黒い炎！" }, actions: [{ type: "MP_ACTION", target: "PLAYER", val: -5 }, { type: "DAMAGE", target: "PLAYER", mode: "fixed", val: 50 }] },
+                        { weight: 8, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                    ]}
+                ]
+            }
+        ]
     },
-
-     // Background IDs (String Key)
-    bg: {
-        "010": "assets/bg_stage1.png",
-        "020": "assets/bg_stage2.png",
-        "030": "assets/bg_stage3.png",
-        "041": "assets/bg_stage4_1.png",
-        "042": "assets/bg_stage4_2.png",
-        "050": "assets/bg_extra.png",
-        "060": "assets/bg_stage5_1.png"
+    "AREA_2": {
+        id: "AREA_2",
+        name: "幻想と神の領域",
+        sub: "Realm of Illusions & Gods",
+        stages: [
+            {
+                id: "2-1",
+                title: "幻想の狂宴",
+                sub: "Toon Nightmare",
+                bg: "assets/bg_stage4_1.png",
+                bossBg: "assets/bg_stage4_2.png", // ボス戦で背景切り替え
+                bossFloor: 5, // 5階層目からボスBGM/背景
+                multiplier: 3.0,
+                type: "NORMAL",
+                warning: true,
+                rankThresholds: { SSS: 25, S: 35, A: 50, B: 70 },
+                floors: [
+                    { name: "ダーク・ラビット", img: "assets/4-1.png", weak: 20, hp: 380, atk: 13, ai: [{ name: "トゥーン・ラッシュ", weight: 3, visual: { cutin: { text: "トゥーン・ラッシュ", color: "wind" }, msg: "コミカルな連続攻撃！" }, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 0.7, count: 2 }] }, { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }] },
+                    { name: "デビル・ボックス", img: "assets/4-2.png", weak: 19, hp: 420, atk: 14, ai: [{ name: "死のびっくり箱", guaranteed: true, cond: { src: "turn", op: "eq", val: 5 }, visual: { cutin: { text: "死のびっくり箱", color: "purple" }, se: "se-boom", anim: "flash-purple", msg: "箱から死神が現れた！" }, actions: [{ type: "DAMAGE", target: "PLAYER", mode: "fixed", val: 999 }] }, { weight: 10, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }] },
+                    { name: "トゥーン・デーモン", img: "assets/4-3.png", weak: 18, hp: 460, atk: 15, ai: [{ name: "呪いの視線", weight: 4, visual: { cutin: { text: "呪いの視線", color: "purple" }, msg: "邪悪な視線でMPを削られた！" }, actions: [{ type: "MP_ACTION", target: "PLAYER", val: -2 }, { type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }, { weight: 6, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }] },
+                    { name: "ブルーアイズ・トゥーン・ドラゴン", img: "assets/4-4.png", weak: 17, hp: 500, atk: 18, ai: [{ name: "トゥーン・スキン", preemptive: true, visual: { cutin: { text: "トゥーン・スキン", color: "blue" }, msg: "ダメージを軽減する皮膚！" }, actions: [{ type: "STATE", target: "ENEMY", kind: "guard_fixed", val: 10, turn: 5 }] }, { weight: 5, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }] },
+                    { name: "サクリファイス", img: "assets/4-5.png", weak: 20, hp: 550, atk: 16, ai: [{ name: "幻想の儀式", weight: 3, cond: { src: "turn_mod", val: 3 }, visual: { cutin: { text: "幻想の儀式", color: "purple" }, msg: "幻想の力で体力を吸収された！" }, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.2, drain: true }] }, { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }] },
+                    { name: "サウザンド・アイズ・サクリファイス", img: "assets/4-6.png", weak: 20, hp: 800, atk: 20, ai: [{ name: "結界", preemptive: true, visual: { cutin: { text: "結界", color: "gold" }, msg: "邪教の力でバリアを展開した！" }, actions: [{ type: "STATE", target: "ENEMY", kind: "barrier", val: 10, turn: 999 }] }, { name: "千眼の邪教神", guaranteed: true, cond: { src: "turn_mod", val: 4 }, visual: { cutin: { text: "千眼の邪教神", color: "purple" }, se: "se-boom", msg: "全てを見通す邪眼で吸収！" }, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 2.0, drain: true }] }, { weight: 5, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }] }
+                ]
+            },
+            {
+                id: "2-2",
+                title: "神の試練",
+                sub: "God's Testing Ground",
+                bg: "assets/bg_stage5_1.png",
+                bossBg: "assets/bg_stage5_2.png",
+                type: "NORMAL",
+                warning: true,
+                rankThresholds: { SSS: 25, S: 35, A: 50, B: 70 },
+                floors: [
+                    { name: "ワームドレイク", img: "assets/5-1.png", weak: 19, hp: 400, atk: 20, ai: [{ weight: 1, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }] },
+                    { name: "ヒューマノイド・スライム", img: "assets/5-2.png", weak: 18, hp: 450, atk: 22, ai: [{ weight: 1, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }] },
+                    { name: "リバイバルスライム", img: "assets/5-3.png", weak: 20, hp: 300, atk: 18, ai: [{ name: "再 生", weight: 3, visual: { cutin: { text: "再 生", color: "blue" }, msg: "驚異的な速度で再生した！" }, actions: [{ type: "HEAL", target: "ENEMY", val: 999 }] }, { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }] },
+                    { name: "ヒューマノイド・ドレイク", img: "assets/5-4.png", weak: 17, hp: 600, atk: 25, ai: [{ name: "スライムの粘着", weight: 3, cond: { src: "p_state", tag: "item_lock", val: 0 }, visual: { cutin: { text: "スライムの粘着", color: "green" }, msg: "アイテムの使用を封じられた！" }, actions: [{ type: "STATE", target: "PLAYER", kind: "item_lock", turn: 1 }, { type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }, { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }] },
+                    { name: "オシリスの天空竜", img: "assets/5-5.png", weak: 20, hp: 2000, atk: 35, ai: [{ name: "召雷弾", preemptive: true, visual: { cutin: { text: "召雷弾", color: "gold" }, msg: "神の弾丸で迎撃体勢！" }, actions: [{ type: "STATE", target: "ENEMY", kind: "barrier", val: 15, turn: 999 }] }, { name: "サンダー・フォース", guaranteed: true, cond: { src: "turn_mod", val: 5 }, visual: { cutin: { text: "サンダー・フォース", color: "gold" }, se: "se-boom", anim: "flash-gold", wait: 3000, msg: "神の雷が地上を滅ぼす！" }, actions: [{ type: "DAMAGE", target: "PLAYER", mode: "fixed", val: 80 }] }, { weight: 8, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }] }
+                ]
+            }
+        ]
     }
 };
 
@@ -515,8 +417,8 @@ const CARD_DB = [
 
 // Pack Data
 const PACK_DATA = [
-    { id: "vol1", name: "Vol.1 - Legend", price: 1000, desc: "伝説の始まり。基本魔法カード収録。", unlockStage: 1, img: "assets/packs/vol1.png" },
-    { id: "vol2", name: "Vol.2 - Awakening", price: 1500, desc: "テクニカルな戦略カードが登場。", unlockStage: 3, img: "assets/packs/vol2.png" }
+    { id: "vol1", name: "Vol.1 - Legend", price: 1000, desc: "伝説の始まり。基本魔法カード収録。", unlockStage: "1-1", img: "assets/packs/vol1.png" },
+    { id: "vol2", name: "Vol.2 - Awakening", price: 1500, desc: "テクニカルな戦略カードが登場。", unlockStage: "1-3", img: "assets/packs/vol2.png" }
 ];
 
 // Player Default Stats
@@ -526,28 +428,6 @@ const PLAYER_INITIAL_STATS = {
     mp: 3,
     maxMp: 10,
     items: { potion: 0, ether: 0, seed: 0 }
-};
-
-// Stage & Rank Master
-const STAGE_MASTER = {
-    1: { title: "旅立ちの森", sub: "Forest of Beginnings", displayName: "STAGE 1",
-         floors: 5, img: "assets/bg_stage1.png",
-         multiplier: 1.0, warning: false, thresholds: { SSS: 12, S: 16, A: 22, B: 30 } },
-    2: { title: "荒れ狂う荒野", sub: "Raging Wasteland", displayName: "STAGE 2",
-         floors: 5, img: "assets/bg_stage2.png",
-         multiplier: 1.5, warning: false, thresholds: { SSS: 12, S: 16, A: 22, B: 30 } },
-    3: { title: "誘惑の迷宮", sub: "Labyrinth of Temptation", displayName: "STAGE 3",
-         floors: 5, img: "assets/bg_stage3.png",
-         multiplier: 2.0, warning: false, thresholds: { SSS: 12, S: 16, A: 22, B: 30 } },
-    4: { title: "幻想の狂宴", sub: "Toon Nightmare", displayName: "STAGE 4",
-         floors: 6, bossFloor: 5, img: { default: "assets/bg_stage4_1.png", boss: "assets/bg_stage4_2.png" },
-         multiplier: 3.0, warning: true, thresholds: { SSS: 25, S: 35, A: 50, B: 70 } },
-    5: { title: "燃えたぎる火口", sub: "Burning Crater", displayName: "EXTRA",
-         floors: 1, img: "assets/bg_extra.png",
-         multiplier: 5.0, warning: true, thresholds: { SSS: 25, S: 35, A: 50, B: 70 } },
-    6: { title: "神の試練", sub: "God's Testing Ground", displayName: "STAGE 5",
-         floors: 5, img: { default: "assets/bg_stage5_1.png", boss: "assets/bg_stage5_2.png" },
-         multiplier: 5.0, warning: true, thresholds: { SSS: 25, S: 35, A: 50, B: 70 } }
 };
 
 const RANK_BONUS = {

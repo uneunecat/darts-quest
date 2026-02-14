@@ -203,41 +203,129 @@ function handleBluetoothNotify(event) {
 
 
 // =========================================
-// 8. GAME LOOP START (ゲーム開始・遷移)
+// WORLD MAP HELPERS (v6.0)
 // =========================================
+
+// ステージIDからステージデータを検索・取得
+function getStageData(stageId) {
+    // 数値で来たら文字列に変換 (互換性維持)
+    const idStr = String(stageId);
+    
+    // 旧ID(1,2,3...) を 新ID(1-1, 1-2...) にマッピングする簡易対応 (必要なら)
+    // 今回は直接 WORLD_MAP を探索します
+    for (const areaKey in WORLD_MAP) {
+        const area = WORLD_MAP[areaKey];
+        const stageObj = area.stages.find(s => s.id === idStr);
+        if (stageObj) return stageObj;
+    }
+    // 見つからない場合のフォールバック (1-1を返すなど)
+    return WORLD_MAP["AREA_1"].stages[0];
+}
+
+// Updated: WORLD_MAPを走査して「次の通常ステージID」を見つける (v6.4)
+function getNextStageId(currentId) {
+    // 全エリアの「NORMAL」ステージだけを順番に並べた配列を作る
+    let allNormalStages = [];
+    Object.values(WORLD_MAP).forEach(area => {
+        allNormalStages = allNormalStages.concat(area.stages.filter(s => s.type === "NORMAL"));
+    });
+
+    const currentIndex = allNormalStages.findIndex(s => s.id === currentId);
+    // 次の通常ステージがあればそのIDを返し、なければ null
+    if (currentIndex >= 0 && currentIndex < allNormalStages.length - 1) {
+        return allNormalStages[currentIndex + 1].id;
+    }
+    return null; 
+}
+
 // ステージ表示名を取得 (例: "STAGE 1", "EXTRA", "STAGE 5")
-function getStageDisplayName(stg) {
-    const info = STAGE_MASTER[stg];
-    return info ? info.displayName : `STAGE ${stg}`;
+function getStageDisplayName(stageId) {
+    const data = getStageData(stageId);
+    return data ? data.title : "UNKNOWN";
 }
 
 // ステージの最大フロア数を取得
-function getMaxFloors(stg) {
-    const info = STAGE_MASTER[stg];
-    return info ? info.floors : 5;
+function getMaxFloors(stageId) {
+    const data = getStageData(stageId);
+    return data ? data.floors.length : 1;
 }
 
 // ボスフロアかどうかを判定 (bossFloor未定義時はfloors値を使用)
-function isBossFloor(stg, flr) {
-    const info = STAGE_MASTER[stg];
-    if (!info) return false;
-    return flr >= (info.bossFloor || info.floors);
+function isBossFloor(stageId, flr) {
+    const data = getStageData(stageId);
+    if (!data) return false;
+    // bossFloor定義があればそれ以降、なければ最終階のみ
+    const bossStart = data.bossFloor || data.floors.length;
+    return flr >= bossStart;
 }
 
 // ステージ背景画像のURLを取得
-function getStageBackground(stg, flr) {
-    const info = STAGE_MASTER[stg];
-    if (!info) return "";
-    if (typeof info.img === 'string') return info.img;
-    return isBossFloor(stg, flr) ? info.img.boss : info.img.default;
+function getStageBackground(stageId, flr) {
+    const data = getStageData(stageId);
+    if (!data) return "";
+    // ボスフロアかつボス背景設定があれば切り替え
+    if (isBossFloor(stageId, flr) && data.bossBg) {
+        return data.bossBg;
+    }
+    return data.bg;
 }
 
-// ステージ解放判定 (一元管理)
+// Updated: BGM管理の一元化関数
+function updateStageBGM(stgId, flr) {
+    const sData = getStageData(stgId);
+    if (!sData) return;
+
+    // 1. ボス戦かどうか
+    const isBoss = isBossFloor(stgId, flr);
+
+    // 2. ステージタイプによる判定
+    if (sData.type === "EXTRA") {
+        playBGM("bgm-extra");
+    } else if (isBoss) {
+        playBGM("bgm-boss");
+    } else {
+        // 将来的に data.js に bgm プロパティを持たせればここで分岐可能
+        playBGM("bgm-battle");
+    }
+}
+
+// Updated: ステージ解放判定 (v6.3 - Dynamic Logic)
 function isStageUnlocked(stageId) {
-    if (stageId <= 3) return true;
-    if (stageId === 4) return !!(savedData.unlockedStage4 || (savedData.bestRanks && savedData.bestRanks[3]) || savedData.clearedExtra);
-    if (stageId === 5) return !!savedData.clearedExtra;
-    if (stageId === 6) return !!(savedData.bestRanks && savedData.bestRanks[4]);
+    // 最初のステージ(1-1)は常に解放
+    if (stageId === "1-1") return true;
+
+    // ステージデータ取得
+    const sData = getStageData(stageId);
+    if (!sData) return false;
+
+    // EXTRAステージの特別条件
+    if (sData.type === "EXTRA") {
+        // 例: EXTRA解放済みフラグがある、またはキーとなるステージ(1-3)をクリア済みなど
+        // 今回はシンプルに「EXTRAクリア済みフラグ」または「前のステージ(1-3)クリア」で判定
+        // ※厳密な条件はゲームデザインによりますが、一旦「1-3クリアで解放」とします
+        return !!savedData.bestRanks["1-3"];
+    }
+
+    // 通常ステージ: 「一つ前のステージ」をクリアしているか？
+    // 全ステージリストを取得してインデックスで判定
+    let allStages = [];
+    Object.values(WORLD_MAP).forEach(area => {
+        allStages = allStages.concat(area.stages);
+    });
+    
+    const idx = allStages.findIndex(s => s.id === stageId);
+    if (idx > 0) {
+        const prevStage = allStages[idx - 1];
+        // 前のステージのランク記録があればクリア済みとみなす
+        // ただし、前のステージがEXTRAの場合は、その前(通常ステージ)を見るなどの調整が必要かもだが、
+        // 今回の並び順(1-3 -> 1-EX -> 2-1)だと、1-EXクリアしないと2-1に行けないことになる。
+        // それを避けるため、2-1の解放条件は「1-3クリア」としたい場合、データ構造順序に依存する。
+        // ★暫定対応: 2-1 は 1-3 クリアで解放
+        if (stageId === "2-1") return !!savedData.bestRanks["1-3"];
+        
+        return !!savedData.bestRanks[prevStage.id];
+    }
+
     return false;
 }
 
@@ -253,6 +341,11 @@ function preloadImage(url) {
         img.src = url;
     });
 }
+
+// =========================================
+// GAME FLOW (Refactored for WORLD_MAP)
+// =========================================
+
 function initGameSession(startStage, continueMode = false) {
     if (!continueMode) {
         player = {
@@ -271,41 +364,39 @@ function initGameSession(startStage, continueMode = false) {
 
 // Updated: startTransition (v6.1 - Using ID Helper)
 async function startTransition(sel, continueMode) {
-    const info = STAGE_MASTER[sel] || { title: "UNKNOWN", sub: "Unknown Stage", warning: false };
+    const stageData = getStageData(sel);
     
-    el("chapter-title").innerText = info.title;
-    el("chapter-sub").innerText = info.sub;
+    el("chapter-title").innerText = stageData.title;
+    el("chapter-sub").innerText = stageData.sub;
     const ch = el("chapter-screen");
     
-    if (info.warning) { playSE("se-warning"); ch.classList.add("chapter-extra"); } 
+    // warning プロパティ判定
+    if (stageData.warning) { playSE("se-warning"); ch.classList.add("chapter-extra"); } 
     else { playSE("se-tap"); ch.classList.remove("chapter-extra"); }
 
     el("game-container").style.backgroundImage = "none";
     el("game-container").style.backgroundColor = "#000";
 
-    const isBossStage = [5, 6].includes(sel);
-    playBGM(isBossStage ? "bgm-boss" : "bgm-battle");
+    // ★修正: 共通関数でBGM決定 (フロア1として判定)
+    updateStageBGM(sel, 1);
+    
     el("black-curtain").classList.add("fade-in");
     
     // --- プリロード開始 ---
     const assetsToLoad = [];
 
-    // 背景画像の解決 (STAGE_MASTERから全背景をプリロード)
-    const bgData = info.img;
-    if (typeof bgData === 'string') {
-        assetsToLoad.push(preloadImage(bgData));
-    } else {
-        if (bgData.default) assetsToLoad.push(preloadImage(bgData.default));
-        if (bgData.boss) assetsToLoad.push(preloadImage(bgData.boss));
-    }
+    // 背景画像
+    if (stageData.bg) assetsToLoad.push(preloadImage(stageData.bg));
+    if (stageData.bossBg) assetsToLoad.push(preloadImage(stageData.bossBg));
     
-    // 敵画像の解決
-    const enemyList = GAME_DATA.enemies[sel] || [];
-    enemyList.forEach(e => {
-        if (e && e.img) assetsToLoad.push(preloadImage(e.img));
-    });
+    // 敵画像 (floors配列から取得)
+    if (stageData.floors) {
+        stageData.floors.forEach(enemyDef => {
+            if (enemyDef.img) assetsToLoad.push(preloadImage(enemyDef.img));
+        });
+    }
 
-    const introTime = info.warning ? TIMING.BATTLE_TRANSITION_WARNING : TIMING.BATTLE_TRANSITION;
+    const introTime = stageData.warning ? TIMING.BATTLE_TRANSITION_WARNING : TIMING.BATTLE_TRANSITION;
     const timerPromise = new Promise(resolve => setTimeout(resolve, introTime));
     
     el("title-screen").style.display = "none";
@@ -425,7 +516,6 @@ function spawnEnemy() {
     if (player.hp <= 0) return;
     
     try {        
-        // ★ 修正: 個別のフラグ管理をやめ、states配列を空にする
         enemy.states = []; 
         enemy.actionCount = 0;
         enemy.patternQueue = [];
@@ -440,37 +530,39 @@ function spawnEnemy() {
         el("boss-label").style.display = "none";
         el("chest-img").style.display = "none";
         
-        // ★修正: 出現前に画像を一度消し、不透明度をリセット
         const img = el("enemy-img");
         img.style.display = "none";
         img.src = "";
         img.classList.remove("enemy-appear-anim");
 
+        // ★新ヘルパーで背景取得
         const bgUrl = getStageBackground(stage, floor);
         if (bgUrl) container.style.backgroundImage = `url('${bgUrl}')`;
+        else console.warn("No Background URL found");
 
-        let list = GAME_DATA.enemies[stage] || GAME_DATA.enemies[1];
-        if (stage === 5) list = GAME_DATA.enemies[5];
-        if (stage === 6) list = GAME_DATA.enemies[6];
-        enemy.data = list[(floor - 1) % list.length];
+        // ★新データ構造から敵を取得
+        const stageData = getStageData(stage);
+        const enemyList = stageData.floors;
         
-        // ★重要: 基礎攻撃力を反映
-        enemy.atk = enemy.data.atk || 10; 
+        // フロアが範囲外ならループさせるかエラーにする（ここではループ）
+        const enemyDef = enemyList[(floor - 1) % enemyList.length];
         
-        enemy.maxHp = enemy.data.hp || (100 + (stage - 1) * 50 + (floor - 1) * 30);
-        enemy.name = enemy.data.name;
+        // Enemyオブジェクトへ展開
+        enemy.data = enemyDef; // AI参照用
+        enemy.atk = enemyDef.atk || 10; 
+        enemy.maxHp = enemyDef.hp || 100;
+        enemy.name = enemyDef.name;
         enemy.hp = enemy.maxHp;
         displayEnemyHP = enemy.hp;
 
-        const isBoss = isBossFloor(stage, floor);
-        if (isBoss) playBGM("bgm-boss");
+        // ★修正: 共通関数でBGM決定
+        updateStageBGM(stage, floor);
 
         isProcessing = true;
 
-        // 余韻のあとに画像を表示して開始
         const spawnDelay = (floor === 1) ? TIMING.SPAWN_DELAY_FIRST : TIMING.SPAWN_DELAY;
         setTimeout(() => {
-            img.style.display = "block"; // ここで表示
+            img.style.display = "block";
             triggerEncounterEffects();
         }, spawnDelay);
 
@@ -482,15 +574,14 @@ function spawnEnemy() {
     }
 }
 
+
 // Updated: triggerEncounterEffects (v6.0 - No Animation, Just Display)
 function triggerEncounterEffects() {
     const isBoss = isBossFloor(stage, floor);
+    // ...以下、既存ロジックと同じなので省略せず記述...
     const img = el("enemy-img");
-
-    // 画像パスのセット（即座に反映）
     img.src = enemy.data.img;
     
-    // 文字と音の演出
     if (isBoss) {
         el("game-container").classList.add("boss-mode");
         el("boss-label").style.display = "inline";
@@ -501,8 +592,6 @@ function triggerEncounterEffects() {
         announce(`${enemy.name} APPEARED!`, "normal");
     }
 
-    // 画像の読み込み状況に関わらず、少し待ってから次へ進む
-    // (画像が出なくてもゲームが止まらないようにする)
     setTimeout(handlePreemptiveAI, TIMING.ENCOUNTER_WAIT);
 }
 

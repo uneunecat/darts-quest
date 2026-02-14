@@ -222,31 +222,33 @@ function getCalculatedWait(skill) {
     // 名前がある技のみ、状況確認のため少しだけ(200ms)足す
     return skill.name ? TIMING.SKILL_AFTERGLOW_NAMED : TIMING.SKILL_AFTERGLOW;
 }
-// Updated: ステートの持続時間を進める共通関数 (v5.0)
-// timingFilter: "throw" (1投ごと) または "round" (敵ターン終了ごと)
-function tickStates(obj, timingFilter) {
-    if (!obj.states || obj.states.length === 0) return;
+// Updated: ステート更新ロジック (Caster-Based)
+// turnOwner: "PLAYER" | "ENEMY"
+function tickStates(turnOwner) {
+    // プレイヤーと敵、両方のステートをスキャン
+    [player, enemy].forEach(obj => {
+        if (!obj.states) return;
 
-    // 1. 指定されたタイミングのステートのカウントを減らす
-    obj.states.forEach(s => {
-        const master = STATE_MASTER[s.id];
-        if (master && master.timing === timingFilter) {
-            s.turn--;
-        }
-    });
-
-    // 2. カウントが0になったステートを削除する前に、ログを出す（任意）
-    obj.states.forEach(s => {
-        if (s.turn === 0) {
+        // 1. カウントダウン (このターンの持ち主が付与したものだけ)
+        obj.states.forEach(s => {
             const master = STATE_MASTER[s.id];
-            if (master && master.label) {
-                addLog(`【効果終了】${master.label}`, "log-system");
+            // timing: "round" かつ、casterが一致する場合のみ減らす
+            if (master && master.timing === "round" && s.caster === turnOwner) {
+                s.turn--;
             }
-        }
-    });
+        });
 
-    // 3. 0以下になったものを配列から取り除く
-    obj.states = obj.states.filter(s => s.turn > 0);
+        // 2. ログ出力と削除
+        obj.states.forEach(s => {
+            if (s.turn === 0) {
+                const master = STATE_MASTER[s.id];
+                if (master && master.label) {
+                    addLog(`【終了】${master.label}`, "log-system");
+                }
+            }
+        });
+        obj.states = obj.states.filter(s => s.turn > 0);
+    });
 }
 
 // ヘルパー: 特定のステートを持っているかチェックする
@@ -256,6 +258,10 @@ function hasState(obj, category) {
 
 // Updated: processEnemyTurn (v7.1 - Multi-turn Sequence Support)
 async function processEnemyTurn() {
+
+    // ★追加: 敵がかけたステートを経過させる
+    tickStates("ENEMY");
+
     try {
         if (hasState(enemy, "stun")) { // ★修正: hasStateヘルパーを使用
             addLog(`${enemy.name}はスタン中`, "log-system");
@@ -470,9 +476,17 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
                 }
 
                 updateInfo();
+                // ★修正: 死亡チェック
                 if (targetObj.hp <= 0) {
-                    if (!isPlayerTarget) setTimeout(winBattle, TIMING.WIN_DELAY_SHORT);
-                    return;
+                    isProcessing = true; // 操作をロック
+                    if (isPlayerTarget) {
+                        // プレイヤー敗北
+                        setTimeout(loseGame, TIMING.WIN_DELAY_LONG);
+                    } else {
+                        // 敵撃破
+                        setTimeout(winBattle, TIMING.WIN_DELAY_SHORT);
+                    }
+                    return; // 重要：ループを抜けてその後のアトムを実行させない
                 }
                 if (count > 1) await wait(TIMING.MULTI_HIT_GAP);
             }
@@ -499,15 +513,12 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
             break;
 
         case "STATE":
-            const turn = action.turn || 1;
-            const val = action.val || 0;
-            const stateId = action.kind;
-
-            // エンジンは stateId の意味を知らなくていい。ただ積むだけ。
-            targetObj.states.push({
-                id: stateId,
-                turn: turn,
-                val: val
+            targetObj.states.push({ 
+                id: action.kind, 
+                turn: action.turn || 1, 
+                val: action.val || 0,
+                // ★追加: 誰が付与したかを記録
+                caster: executorIsPlayer ? "PLAYER" : "ENEMY" 
             });
             
             // 演出だけは共通で実行
@@ -546,9 +557,6 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
 // Updated: endEnemyTurn (v4.3 - Universal Ticking)
 function endEnemyTurn() {
 
-    tickStates(enemy, "round");
-    tickStates(player, "round");
-
     updateInfo();
 }
 // Updated: プレイヤーターンの準備（インターバル開始）
@@ -576,6 +584,9 @@ function preparePlayerTurn() {
 // Updated: startPlayerTurn (演出強化版)
 async function startPlayerTurn() {
     if (!isInterval) return;
+
+    // ★追加: プレイヤーがかけたステートを経過させる
+    tickStates("PLAYER");
     
     isInterval = false;
     el("interval-screen").style.display = "none";
@@ -645,24 +656,37 @@ function winBattle() {
     }
 }
 
+// Updated: loseGame (v7.4 - Fixed ReferenceError & Timing)
 function loseGame() {
-    isProcessing = true;
-    playBGM("bgm-lose");
-    
-    const ppr = totalDarts > 0 ? ((totalScore / totalDarts) * 3).toFixed(1) : 0;
-    finishSession("LOSE", parseFloat(ppr), STAGE_MASTER[stage]?.multiplier || 1.0, "", 0);
+    try {
+        isProcessing = true;
+        playBGM("bgm-lose");
+        
+        const ppr = totalDarts > 0 ? ((totalScore / totalDarts) * 3).toFixed(1) : 0;
+        
+        // ★修正: STAGE_MASTER[stage] を getStageData(stage) に変更
+        const stageData = getStageData(stage);
+        const multiplier = stageData ? stageData.multiplier : 1.0;
 
-    showDialog(
-        "YOU DIED", 
-        "力尽きました...", 
-        "warning", 
-        [{ 
-            text: "RETURN TO TITLE", 
-            action: () => {
-                returnToTitle();
-            } 
-        }]
-    );
+        finishSession("LOSE", parseFloat(ppr), multiplier, "", 0);
+
+        // モーダルを表示
+        showDialog(
+            "YOU DIED", 
+            "力尽きました...", 
+            "warning", 
+            [{ 
+                text: "RETURN TO TITLE", 
+                action: () => {
+                    returnToTitle();
+                } 
+            }]
+        );
+    } catch (error) {
+        console.error("Critical error in loseGame:", error);
+        // 万が一エラーが起きてもタイトルに戻れるようにフォールバック
+        returnToTitle();
+    }
 }
 
 
@@ -670,10 +694,15 @@ function loseGame() {
 // 11. ITEM & DROP SYSTEM (ドロップ・進行)
 // =========================================
 function checkDrop() {
-    // 最終ボス(Stage4以上)はドロップなしで次へ
-    if (floor === getMaxFloors(stage) && stage >= 4) { nextStep(); return; }
+    // ★修正: ヘルパー使用
+    if (floor === getMaxFloors(stage) && isBossFloor(stage, floor)) { 
+        // 最終フロアかつボスならドロップなしで次へ（この条件はゲーム性次第で調整可）
+        nextStep(); 
+        return; 
+    }
 
     const isBoss = isBossFloor(stage, floor);
+    // ...以下同じ
     let dropRate = isBoss ? 1.0 : 0.3;
     if (dropGuaranteed) dropRate = 1.0;
     
@@ -715,24 +744,15 @@ function openChest() {
     showDialog("TREASURE!", `<span style="font-size:24px;color:#00ff00;">${item.name}</span> を手に入れた！<br>${item.msg}<br>(アイテムボタンで使用可能)`, "item", [{ text: "OK", action: nextStep }], 2000);
 }
 
+// Updated: nextStep (v6.4 - Fixed Selection Buttons)
 function nextStep() {
     floor++;
-    const ppr = totalDarts > 0 ? ((totalScore / totalDarts) * 3).toFixed(1) : 0;
-    const isStageClear = floor > getMaxFloors(stage);
+    
+    if (floor > getMaxFloors(stage)) {
+        playBGM("bgm-win");
 
-    if (isStageClear) {
-        // ステージクリア処理
         const stageTurns = totalGameTurns - stageStartTurn;
         const [rank, dpBonus] = calculateStageRank(stage, stageTurns);
-        const mult = STAGE_MASTER[stage]?.multiplier || 1.0;
-        
-        // 報酬計算
-        const scoreDP = Math.floor(totalScore * 0.2 * mult);
-        let pendingBonusDP = dpBonus;
-        clearedStagesLog.forEach(log => { pendingBonusDP += log.dp; });
-        let potentialTotalDP = scoreDP + pendingBonusDP;
-        
-        clearedStagesLog.push({ stage: stage, rank: rank, dp: dpBonus });
         
         // ベストランク更新
         const currentBest = savedData.bestRanks[stage];
@@ -740,71 +760,70 @@ function nextStep() {
         if (!currentBest || ranksOrder.indexOf(rank) < ranksOrder.indexOf(currentBest)) {
             savedData.bestRanks[stage] = rank;
         }
+
+        const sData = getStageData(stage);
+        const mult = sData.multiplier || 1.0;
+        const currentPPR = totalDarts > 0 ? ((totalScore / totalDarts) * 3).toFixed(1) : 0;
+
+        clearedStagesLog.push({ stage, rank, dp: dpBonus });
+
+        // 表示用DP（これまでの蓄積）
+        let totalRankDP = 0;
+        clearedStagesLog.forEach(log => { totalRankDP += log.dp; });
+        const scoreDP = Math.floor(totalScore * 0.2 * mult);
+        const potentialTotalDP = scoreDP + totalRankDP;
         
-        playBGM("bgm-win");
-        
-        // エンディング分岐
-        if (stage === 5) {
-            const res = finishSession("EXTRA-WIN", parseFloat(ppr), mult, rank, stageTurns);
-            showDialog("★ TRUE ENDING ★", `<span style="font-size:30px;color:#f0f;">THE LEGEND!!</span><br>最強の黒竜を倒した！<br><br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br>PPR: ${ppr}<br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{ text: "TITLE", action: returnToTitle }]);
-            return;
+        // 次の行き先を判定
+        const nextStageId = getNextStageId(stage);
+
+        // --- 分岐処理 ---
+
+        // A. EXTRAステージをクリアした場合（即帰還）
+        if (sData.type === "EXTRA") {
+             const { gainedDP } = finishSession("WIN", parseFloat(currentPPR), mult, rank, stageTurns);
+             showDialog("EXTRA CLEAR!!", 
+                `<span style="color:#f0f; font-size:24px;">MISSION COMPLETE</span><br>
+                 RANK: <span style="color:${getRankColor(rank)}">${rank}</span><br>
+                 GET DP: <span style="color:#ffd700; font-weight:bold;">+${gainedDP}</span>`, 
+                "clear", 
+                [{ text: "TITLE", action: returnToTitle }]
+             );
+             return; 
         }
-        if (stage === 6) {
-            const res = finishSession("GOD-WIN", parseFloat(ppr), mult, rank, stageTurns);
-            showDialog("GOD DEFEATED!", `<span style="font-size:30px;color:#ffd700;">DIVINE VICTORY!</span><br>神の試練を乗り越えた！<br><br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{ text: "TITLE", action: returnToTitle }]);
-            return;
-        }
+
+        // B. 通常ステージをクリアした場合
+        const btnGroup = [];
         
-        // 通常クリア
-        let title = "STAGE CLEAR";
-        let msg = `STAGE ${stage} COMPLETED!<br>RANK: <span style="font-size:24px;color:${getRankColor(rank)};">${rank}</span><br><br>現在の獲得予定DP: <span style="color:#ffd700; font-weight:bold;">${potentialTotalDP} DP</span><br>(スコア倍率 x${mult.toFixed(1)})`;
-        if (stage === 4) {
-            title = "STAGE 4 CLEAR!";
-            msg = `<span style="font-size:28px;color:#e0b0ff;">NIGHTMARE CONQUERED!</span><br>` + msg;
+        // 次の通常ステージがあるなら NEXT ボタンを追加
+        if (nextStageId) {
+            btnGroup.push({ 
+                text: "⛺ NEXT", 
+                action: () => { 
+                    player.hp = Math.min(player.hp + 30, player.maxHp); 
+                    initGameSession(nextStageId, true); 
+                } 
+            });
         }
-        
-        const btnNext = {
-            text: "⛺ 次へ進む (繰越)",
-            action: () => {
-                player.hp = Math.min(player.hp + 30, player.maxHp);
-                if (stage === 4) initGameSession(6, true);
-                else initGameSession(stage + 1, true);
-            }
-        };
-        const btnReturn = {
-            text: "🏠 帰還する (確定)",
-            action: () => {
-                const res = finishSession("RETURN", parseFloat(ppr), mult, rank, stageTurns);
-                showDialog("MISSION COMPLETE", `帰還しました。<br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{ text: "TITLE", action: returnToTitle }]);
-            }
-        };
-        
-        if (stage === 3) {
-            const btnExtra = {
-                text: "⚠️ EXTRA STAGE",
-                action: () => {
-                    player.hp = Math.min(player.hp + 30, player.maxHp);
-                    initGameSession(5, true);
-                }
-            };
-            if (parseFloat(ppr) >= 70.0 || savedData.clearedExtra) {
-                msg += "<br><br><span style='color:#ff0000;'>強力な反応を感知...挑戦しますか？</span>";
-                showDialog(title, msg, "clear", [btnExtra, btnReturn]);
-            } else {
-                msg += "<br><br>全てのエリアを踏破した！";
-                showDialog(title, msg, "clear", [{
-                    text: "🏠 ALL CLEAR",
-                    action: () => {
-                        const res = finishSession("WIN", parseFloat(ppr), mult, rank, stageTurns);
-                        showDialog("ALL CLEAR!", `おめでとうございます！<br><br><span style="color:#ffd700; font-size:24px; font-weight:bold;">GET DP: +${res.gainedDP}</span>`, "clear", [{ text: "TITLE", action: returnToTitle }]);
-                    }
-                }]);
-            }
-        } else {
-            showDialog(title, msg, "clear", [btnNext, btnReturn]);
-        }
-    } else {
-        spawnEnemy();
+
+        // 常に RETURN ボタンを追加
+        btnGroup.push({ 
+            text: "🏠 RETURN", 
+            action: () => { 
+                const { gainedDP } = finishSession("RETURN", parseFloat(currentPPR), mult, rank, stageTurns); 
+                showDialog("MISSION COMPLETE", `帰還しました。<br>獲得DP: <span style="color:#ffd700;">+${gainedDP}</span>`, "clear", [{ text: "OK", action: returnToTitle }]);
+            } 
+        });
+
+        showDialog("STAGE CLEAR", 
+            `RANK: <span style="font-size:24px; color:${getRankColor(rank)}">${rank}</span><br>
+             獲得予定DP: <span style="color:#ffd700; font-weight:bold;">${potentialTotalDP}</span><br>
+             <span style="font-size:12px; color:#aaa;">(累計PPR: ${currentPPR})</span>`, 
+            "clear", 
+            btnGroup
+        );
+
+    } else { 
+        spawnEnemy(); 
     }
 }
 

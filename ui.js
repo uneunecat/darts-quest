@@ -232,7 +232,12 @@ function openCardShop() {
     if (!savedData.cards) savedData.cards = {};
     
     PACK_DATA.forEach(pack => {
-        const isUnlocked = (savedData.bestRanks && savedData.bestRanks[pack.unlockStage]);
+        // ★修正: 解放条件をチェック (文字列ID対応)
+        // unlockStage が "1-1" なら、savedData.bestRanks["1-1"] があるか確認
+        // 互換性のため数値の1も許容
+        const unlockKey = pack.unlockStage;
+        const isUnlocked = savedData.bestRanks && (savedData.bestRanks[unlockKey] || savedData.bestRanks[String(unlockKey)]);
+        
         if (!isUnlocked) return;
         
         const canBuy = (savedData.dp || 0) >= pack.price;
@@ -698,9 +703,9 @@ function showDialog(title, text, type = "normal", buttons = [{ text: "OK", actio
 }
 
 // Updated: main.js (calculateStageRank)
-function calculateStageRank(stg, turns) {
-    const info = STAGE_MASTER[stg];
-    const th = info.thresholds;
+function calculateStageRank(stageId, turns) {
+    const data = getStageData(stageId);
+    const th = data.rankThresholds || { SSS: 12, S: 16, A: 22, B: 30 }; // デフォルト
     let rank = "C";
 
     if (turns <= th.SSS) rank = "SSS";
@@ -711,49 +716,64 @@ function calculateStageRank(stg, turns) {
     return [rank, RANK_BONUS[rank] || 50];
 }
 
+// Updated: finishSession (文字列ID対応版)
 function finishSession(resultType, ppr, multiplier = 1.0, rank = "", turn = 0) {
     let earnedDP = 0;
     clearedStagesLog.forEach(log => { earnedDP += log.dp; });
-    savedData.dp = (savedData.dp || 0);
     
-    let resultText = resultType; 
+    // スコア分のDP計算 (LOSEなら0)
+    const scoreDP = (resultType === "LOSE") ? 0 : Math.floor(totalScore * 0.2 * multiplier);
+    const totalDP = earnedDP + scoreDP;
+    
+    savedData.dp = (savedData.dp || 0) + totalDP;
 
-    const curVal = stage * 100 + floor;
-    const bestVal = savedData.highScore.stage * 100 + savedData.highScore.floor;
-    let isNewRecord = false;
+    // --- ハイスコア判定 (進行度) ---
+    // 文字列IDのため、単純比較できない。WORLD_MAP内のインデックスで比較する
+    const getStageIndex = (id) => {
+        let idx = 0;
+        let found = -1;
+        Object.values(WORLD_MAP).forEach(area => {
+            area.stages.forEach(s => {
+                if (s.id === id) found = idx;
+                idx++;
+            });
+        });
+        return found;
+    };
+
+    const currentIdx = getStageIndex(stage);
+    const bestIdx = getStageIndex(savedData.highScore.stage);
     
-    if (curVal > bestVal) {
+    let isNewRecord = false;
+
+    // 「より先のステージ」または「同じステージでより奥のフロア」なら更新
+    if (currentIdx > bestIdx || (currentIdx === bestIdx && floor > savedData.highScore.floor)) {
         savedData.highScore.stage = stage;
         savedData.highScore.floor = floor;
         isNewRecord = true;
     }
-    if (ppr > savedData.highScore.avg) {
-        savedData.highScore.avg = ppr;
+    
+    // PPR更新
+    if (parseFloat(ppr) > savedData.highScore.avg) {
+        savedData.highScore.avg = parseFloat(ppr);
         isNewRecord = true;
     }
-    if (resultType === "EXTRA-WIN") savedData.clearedExtra = true;
-
-    const isLose = (resultType === "LOSE");
-    const scoreDP = isLose ? 0 : Math.floor(totalScore * 0.2 * multiplier);
-    let rankDP = 0;
-    if (!isLose) {
-        clearedStagesLog.forEach(log => rankDP += log.dp);
+    
+    // EXTRAクリアフラグ
+    if (getStageData(stage).type === "EXTRA" && resultType === "WIN") {
+        savedData.clearedExtra = true;
     }
-    const gainedDP = scoreDP + rankDP;
-    savedData.dp += gainedDP;
-
+    
+    // 履歴保存
     const now = new Date();
     const dateStr = `${now.getMonth() + 1}/${now.getDate()} ${now.getHours()}:${("0" + now.getMinutes()).slice(-2)}`;
-    let stgName = (stage >= 5) ? getStageDisplayName(stage) : "S" + stage + "-" + floor + "F";
-    
-    if (clearedStagesLog.length > 0 && resultType === "RETURN") {
-        const last = clearedStagesLog[clearedStagesLog.length - 1];
-        resultText = `CLEAR`; 
-    }
+    let stgName = getStageDisplayName(stage) + (resultType === "WIN" ? " CLEAR" : `-${floor}F`);
     
     const historyItem = {
         date: dateStr, stage: stage, floor: floor, stgName: stgName,
-        result: resultText, dp: gainedDP, ppr: isNaN(ppr) ? 0 : parseFloat(ppr),
+        result: resultType === "LOSE" ? "LOSE" : "WIN",
+        dp: totalDP, 
+        ppr: isNaN(ppr) ? 0 : parseFloat(ppr),
         rt: calculateRating(isNaN(ppr) ? 0 : parseFloat(ppr)),
         rank: rank, 
         turn: turn
@@ -765,7 +785,8 @@ function finishSession(resultType, ppr, multiplier = 1.0, rank = "", turn = 0) {
     
     updateTitleScore();
     saveToDrive();
-    return { isNewRecord: isNewRecord, gainedDP: gainedDP };
+    
+    return { isNewRecord: isNewRecord, gainedDP: totalDP };
 }
 
 function showHistory() {
@@ -799,14 +820,14 @@ function showHistory() {
         savedData.history.forEach(h => {
             let isLose = (h.result === "LOSE");
             let resultText = isLose ? "LOSE" : "CLEAR";
-            
             let rankText = (isLose || !h.rank) ? "-" : h.rank;
             let turnText = (isLose || !h.turn) ? "-" : h.turn;
             
-            const master = STAGE_MASTER[h.stage] || { title: "Unknown" };
-            const floorText = (h.stage === 5) ? "FINAL" : `${h.floor}F`;
-            
-            const stageDisplay = `STAGE ${h.stage} ${master.title} ${floorText}`;
+            // ★修正: ヘルパー関数で名前を取得
+            const stgName = h.stgName || getStageDisplayName(h.stage);
+
+            const pprDisp = (h.ppr !== undefined && h.ppr !== null) ? Number(h.ppr).toFixed(1) : "-";
+            const rtDisp = (h.rt !== undefined && h.rt !== null) ? h.rt : "-";
 
             let rankClass = "";
             if (rankText === "SSS") rankClass = "rank-sss";
@@ -815,11 +836,10 @@ function showHistory() {
             
             const div = document.createElement("div");
             div.className = "history-row" + (isLose ? " row-lose" : " row-clear");
-            const dpText = h.dp > 0 ? `+${h.dp}` : `+0`;
-
+            
             div.innerHTML = `
                 <div class="h-col-date">${h.date.split(' ')[0]}</div>
-                <div class="h-col-stage">${stageDisplay}</div>
+                <div class="h-col-stage">${stgName}</div>
                 <div class="h-col-res">${resultText}</div>
                 <div class="h-col-rank ${rankClass}">${rankText}</div>
                 <div class="h-col-turn">${turnText}</div>
@@ -986,38 +1006,62 @@ function closeStageSelect() {
     el("title-screen").style.display = "flex";
 }
 
+// Updated: ステージ選択画面の描画 (v6.3 - WORLD_MAP対応)
 function renderStageSelectScreen() {
     const container = el("stage-list-container");
     container.innerHTML = "";
 
-    Object.entries(STAGE_MASTER).forEach(([id, info]) => {
-        const stageId = parseInt(id);
-        const isLocked = !isStageUnlocked(stageId);
+    // WORLD_MAP の各エリアをループ
+    Object.values(WORLD_MAP).forEach(area => {
+        // エリア見出し (Area Header)
+        const header = document.createElement("div");
+        // CSSファイルで .area-header を定義しても良いが、ここでは直接スタイル指定
+        header.style.width = "100%";
+        header.style.color = "#00d2fc";
+        header.style.borderBottom = "1px solid #444";
+        header.style.marginBottom = "10px";
+        header.style.marginTop = "20px";
+        header.style.paddingBottom = "5px";
+        header.style.fontFamily = "'Cinzel Decorative', serif";
+        header.style.fontSize = "18px";
+        header.innerText = area.name; // 例: "古の森と迷宮"
+        container.appendChild(header);
 
-        const rank = savedData.bestRanks ? savedData.bestRanks[stageId] : null;
-        const rankColor = getRankColor(rank || "");
-        const stageImg = typeof info.img === 'string' ? info.img : info.img.default;
+        // エリア内のステージをループ
+        area.stages.forEach(stageData => {
+            const isLocked = !isStageUnlocked(stageData.id);
+            const rank = savedData.bestRanks ? savedData.bestRanks[stageData.id] : null;
+            const rankColor = getRankColor(rank || "");
+            
+            // 背景画像 (ボス用があればそちらをサムネにするなど調整可。基本はbg)
+            const bgUrl = stageData.bg;
 
-        const div = document.createElement("div");
-        div.className = "stage-card-item";
-        if (isLocked) div.classList.add("locked");
+            const div = document.createElement("div");
+            div.className = "stage-card-item";
+            if (isLocked) div.classList.add("locked");
 
-        div.innerHTML = `
-            <img src="${stageImg}" class="st-img">
-            <div class="st-info">
-                <div class="st-title">${isLocked ? "LOCKED" : info.title}</div>
-                <div class="st-sub">${info.sub}</div>
-            </div>
-            ${rank ? `<div class="st-rank" style="color:${rankColor}">${rank}</div>` : ""}
-            ${isLocked ? `<div class="st-rank" style="font-size:20px;">🔒</div>` : ""}
-        `;
+            // EXTRAステージは枠の色を変えるなどの演出も可能
+            const typeLabel = stageData.type === "EXTRA" ? '<span style="color:#f0f; font-size:10px; border:1px solid #f0f; padding:2px;">EXTRA</span> ' : '';
 
-        if (!isLocked) {
-            div.onclick = () => {
-                el("stage-select-screen").style.display = "none";
-                initGameSession(stageId);
-            };
-        }
-        container.appendChild(div);
+            div.innerHTML = `
+                <img src="${bgUrl}" class="st-img" onerror="this.style.display='none'">
+                <div class="st-info">
+                    <div class="st-title">${typeLabel}${isLocked ? "LOCKED" : stageData.title}</div>
+                    <div class="st-sub">${stageData.sub}</div>
+                </div>
+                ${rank ? `<div class="st-rank" style="color:${rankColor}">${rank}</div>` : ""}
+                ${isLocked ? `<div class="st-rank" style="font-size:20px;">🔒</div>` : ""}
+            `;
+
+            if (!isLocked) {
+                div.onclick = () => {
+                    playSE("se-tap");
+                    el("stage-select-screen").style.display = "none";
+                    // 新ID (例: "1-1") を渡して開始
+                    initGameSession(stageData.id);
+                };
+            }
+            container.appendChild(div);
+        });
     });
 }

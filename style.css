@@ -433,7 +433,6 @@ html, body {
 
 /* Player Stats */
 .p-status-row { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; font-size: 12px; }
-.p-val { font-family: 'Roboto Mono'; font-weight: bold; color: #fff;}
 .hp-bar-bg {
     width: 90%; height: 24px; background: #333;
     margin: 5px auto; border-radius: 12px; overflow: hidden;

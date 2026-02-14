@@ -42,7 +42,7 @@ let enemy = {
 };
 
 // ゲーム進行フラグ
-let stage = 1;
+let stage = "1-1"; // ★数値の1から文字列へ変更
 let floor = 1;
 let totalScore = 0;
 let totalDarts = 0;
