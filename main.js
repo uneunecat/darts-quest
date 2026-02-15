@@ -9,6 +9,38 @@ window.addEventListener('load', () => {
     loadGameData();
     initSlotScreen();
     if (window.innerWidth < 900) document.body.style.overflowY = "auto";
+    if (window.DebugManager) window.DebugManager.init();
+
+    // Debug Auto-Resume
+    const lastSlot = localStorage.getItem("debug_last_slot");
+    if (lastSlot) {
+        localStorage.removeItem("debug_last_slot");
+        selectSlot(parseInt(lastSlot));
+
+        // If jump was requested (implicitly via savedData override, or explicit flag can be added)
+        // Since we modify savedData directly in debug.js, we can just check if we are in a "jump" context?
+        // Actually, jumpToStage modifies savedData.highScore.stage.
+        // If we want to AUTO START, we need a flag.
+
+        // For now, just selecting the slot is a huge win.
+        // But the user pressed "Jump to Stage", so they expect to be IN game.
+        // Let's check a specific flag for jump.
+        const jumpFlag = localStorage.getItem("debug_jump_flag");
+        if (jumpFlag) {
+            localStorage.removeItem("debug_jump_flag");
+            // We need to wait for selectSlot to finish? It's synchronous mostly.
+            // stageId is in savedData.highScore.stage
+            if (savedData && savedData.highScore && savedData.highScore.stage) {
+                // Determine if we should start immediately
+                // UI.js: initGameSession(stageId)
+                if (window.initGameSession) {
+                    // Pass floor if available
+                    const startFloor = savedData.highScore.floor || 1;
+                    initGameSession(savedData.highScore.stage, false, startFloor);
+                }
+            }
+        }
+    }
 });
 
 function loadGameData() {
@@ -212,7 +244,7 @@ function handleBluetoothNotify(event) {
 // 4. GAME FLOW & SESSION (ゲーム進行・セッション)
 // =========================================
 
-function initGameSession(startStage, continueMode = false) {
+function initGameSession(startStage, continueMode = false, startFloor = 1) {
     if (!continueMode) {
         player = {
             ...JSON.parse(JSON.stringify(PLAYER_INITIAL_STATS)), // ディープコピー
@@ -225,11 +257,11 @@ function initGameSession(startStage, continueMode = false) {
         totalDarts = 0;
         clearedStagesLog = [];
     }
-    startTransition(startStage, continueMode);
+    startTransition(startStage, continueMode, startFloor);
 }
 
 // Updated: startTransition (v6.1 - Using ID Helper)
-async function startTransition(sel, continueMode) {
+async function startTransition(sel, continueMode, startFloor = 1) {
     const stageData = getStageData(sel);
 
     el("chapter-title").innerText = stageData.title;
@@ -277,7 +309,7 @@ async function startTransition(sel, continueMode) {
     setTimeout(() => {
         ch.style.display = "none";
         el("black-curtain").classList.remove("fade-in");
-        setupStage(sel, continueMode);
+        setupStage(sel, continueMode, startFloor);
     }, TIMING.FADE_OUT);
 }
 

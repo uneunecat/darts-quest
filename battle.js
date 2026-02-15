@@ -2,9 +2,9 @@
 // 1. BATTLE LIFECYCLE (戦闘ライフサイクル)
 // =========================================
 
-function setupStage(sel, continueMode) {
+function setupStage(sel, continueMode, startFloor = 1) {
     stage = sel;
-    floor = 1;
+    floor = startFloor;
     isProcessing = false;
     extraBossTurnCount = 0;
     currentTurn = 1;
@@ -781,6 +781,19 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
 
         if (action.cond && !checkCondition(action.cond)) return;
 
+        // 汎用スケーリング解決 (v7.5)
+        let scaledVal = action.val;
+        if (action.scale) {
+            const factor = action.scale.factor || 1.0;
+            switch (action.scale.source) {
+                case "hand": scaledVal = player.hand.length * factor; break;
+                case "mp": scaledVal = player.mp * factor; break;
+                case "enemy_atk": scaledVal = enemy.atk * factor; break;
+                case "player_hp_loss": scaledVal = (player.maxHp - player.hp) * factor; break;
+                case "current_hp_percent": scaledVal = Math.floor(targetObj.hp * (factor / 100)); break;
+            }
+        }
+
         switch (action.type) {
             case "DAMAGE":
                 const count = action.count || 1;
@@ -790,6 +803,15 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
                     let dmg = 0;
                     if (action.mode === "fixed") {
                         dmg = action.val;
+                    } else if (action.mode === "loss_hp") {
+                        // 痛み分け: 減少HP分
+                        dmg = (executorIsPlayer ? player.maxHp - player.hp : enemy.maxHp - enemy.hp);
+                    } else if (action.mode === "current_hp_percent") {
+                        // フォース: 現在HPの割合
+                        dmg = Math.floor(targetObj.hp * (action.val / 100));
+                    } else if (action.scale) {
+                        // スケーリング（破壊輪など）: 固定ダメージ扱い
+                        dmg = scaledVal;
                     } else {
                         const source = isPlayerTarget ? enemy : player;
                         const baseAtk = isPlayerTarget ? enemy.atk : 10;
@@ -807,16 +829,26 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
                     if (dmg > 0) {
                         targetObj.hp = Math.max(0, targetObj.hp - dmg);
 
-                        const isBossUlt = (action.mode === "fixed" && dmg > 50);
-                        if (isBossUlt) {
-                            playSE("se-boom");
+                        // 1. フラッシュ演出 (flash-xxx)
+                        const animClass = visual.anim;
+                        if (animClass && animClass.startsWith("flash-")) {
+                            const flashEl = el("flash-overlay");
+                            flashEl.className = animClass;
+                            setTimeout(() => flashEl.className = "", TIMING.FLASH_DURATION || 300);
+                        } else if (action.mode === "fixed" && dmg > 50) {
+                            // ボス必殺技の標準フラッシュ
                             el("flash-overlay").className = "flash-fire";
                             setTimeout(() => el("flash-overlay").className = "", 600);
-                        } else {
-                            // 決定した演出データからSEを再生
-                            playSE(effectiveVisual.se || (isPlayerTarget ? "se-hit" : "se-attack"));
                         }
 
+                        // 2. 画面振動演出 (shake-xxx)
+                        if (animClass && animClass.startsWith("shake-")) {
+                            const container = el("game-container");
+                            container.classList.add(animClass);
+                            setTimeout(() => container.classList.remove(animClass), TIMING.SHAKE_DURATION || 500);
+                        }
+
+                        playSE(effectiveVisual.se || (isPlayerTarget ? "se-hit" : "se-attack"));
                         triggerEffect(el("game-screen"), dmg, isPlayerTarget);
 
                         if (action.drain) {
@@ -850,12 +882,10 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
 
             case "MP_ACTION":
                 if (targetObj === player) {
-                    const changeVal = action.val || 0;
+                    const changeVal = scaledVal || action.val || 0; // scaledVal優先
                     if (changeVal < 0) {
-                        // ★ 減少演出を待機実行
                         await animateMPLoss(changeVal);
                     } else if (changeVal > 0) {
-                        // ★ 増加演出（以前作ったものを流用）
                         await animateMPGain(changeVal);
                     }
                 }
@@ -863,19 +893,35 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
 
             case "HEAL":
                 playSE(effectiveVisual.se || "se-heal");
-                const hVal = (action.val === "FULL" || action.val > 500) ? (targetObj.maxHp - targetObj.hp) : action.val;
+                const hVal = (action.val === "FULL" || action.val > 500) ? (targetObj.maxHp - targetObj.hp) : (scaledVal || action.val);
                 targetObj.hp = Math.min(targetObj.maxHp, targetObj.hp + hVal);
                 triggerEffect(el("game-screen"), hVal, isPlayerTarget, true);
                 break;
 
             case "STATE":
-                targetObj.states.push({
-                    id: action.kind,
-                    turn: action.turn || 1,
-                    val: action.val || 0,
-                    // ★追加: 誰が付与したかを記録
-                    caster: executorIsPlayer ? "PLAYER" : "ENEMY"
-                });
+                const stateVal = (action.scale) ? scaledVal : (action.val || 0);
+                const stateTurn = (action.turn !== undefined) ? action.turn : 1;
+
+                // ★修正: ユニークステート管理 (上書き / turn:0 で削除)
+                if (stateTurn === 0) {
+                    // 削除 (Dispel)
+                    targetObj.states = targetObj.states.filter(s => s.id !== action.kind);
+                } else {
+                    // 上書き or 追加
+                    const existingIdx = targetObj.states.findIndex(s => s.id === action.kind);
+                    const newState = {
+                        id: action.kind,
+                        turn: stateTurn,
+                        val: stateVal,
+                        caster: executorIsPlayer ? "PLAYER" : "ENEMY"
+                    };
+
+                    if (existingIdx >= 0) {
+                        targetObj.states[existingIdx] = newState;
+                    } else {
+                        targetObj.states.push(newState);
+                    }
+                }
 
                 // 演出だけは共通で実行
                 playSE(effectiveVisual.se || "se-buff");
@@ -883,7 +929,8 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
                 break;
 
             case "DRAW":
-                for (let j = 0; j < action.val; j++) {
+                const drawCount = scaledVal || action.val; // scaledVal優先
+                for (let j = 0; j < drawCount; j++) {
                     executeDrawWithAnim();
                     await wait(TIMING.CARD_DRAW_INTERVAL);
                 }

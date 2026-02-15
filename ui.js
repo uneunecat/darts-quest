@@ -459,12 +459,18 @@ function closeZoomCard() {
 // =========================================
 // 4. CARD SHOP & PACK OPENING (カードショップ)
 // =========================================
+// =========================================
+// 4. CARD SHOP & PACK OPENING (カードショップ - v2.0 Carousel)
+// =========================================
+
+let currentPackIndex = 0; // Pack Carousel State
+
 function openCardShop() {
     playSE("se-tap");
 
     // Create Cyber Shop Modal Structure dynamically
     const modalOverlay = el("card-shop-modal");
-    modalOverlay.innerHTML = ""; // Clear existing static structure
+    modalOverlay.innerHTML = "";
     modalOverlay.style.display = "flex";
 
     const shopContainer = document.createElement("div");
@@ -482,46 +488,103 @@ function openCardShop() {
     `;
     shopContainer.appendChild(header);
 
-    // 2. Pack Grid
-    const grid = document.createElement("div");
-    grid.className = "cyber-pack-grid";
+    // 2. Carousel Container
+    const carousel = document.createElement("div");
+    carousel.className = "shop-carousel-container";
+    carousel.innerHTML = `
+        <div class="shop-arrow left" onclick="moveShopCarousel(-1)">❮</div>
+        <div class="shop-arrow right" onclick="moveShopCarousel(1)">❯</div>
+    `;
 
-    if (!savedData.cards) savedData.cards = {};
-
-    let hasPacks = false;
-    PACK_DATA.forEach(pack => {
-        // Check unlock condition
+    // Filter unlocked packs
+    const unlockedPacks = PACK_DATA.filter(pack => {
         const unlockKey = pack.unlockStage;
-        const isUnlocked = savedData.bestRanks && (savedData.bestRanks[unlockKey] || savedData.bestRanks[String(unlockKey)]);
-
-        if (!isUnlocked) return;
-        hasPacks = true;
-
-        const canBuy = (savedData.dp || 0) >= pack.price;
-
-        const cardItem = document.createElement("div");
-        cardItem.className = "pack-card-cyber";
-        cardItem.innerHTML = `
-            <div class="pack-visual-cyber">
-                <img src="${pack.img}" onerror="this.style.display='none'">
-            </div>
-            <div class="pack-info-cyber">
-                <div class="pack-name-cyber">${pack.name}</div>
-                <div class="pack-desc-cyber">${pack.desc}</div>
-                <button class="buy-btn-cyber" ${canBuy ? "" : "disabled"} onclick="buyPack('${pack.id}')">
-                    ${canBuy ? `BUY [${pack.price} DP]` : "INSUFFICIENT DP"}
-                </button>
-            </div>
-        `;
-        grid.appendChild(cardItem);
+        return savedData.bestRanks && (savedData.bestRanks[unlockKey] || savedData.bestRanks[String(unlockKey)]);
     });
 
-    if (!hasPacks) {
-        grid.innerHTML = "<div style='color:#666; width:100%; text-align:center; padding-top:20px; font-family:Orbitron;'>STAGE 1 CLEAR REQUIRED TO UNLOCK SHOP</div>";
+    if (unlockedPacks.length === 0) {
+        carousel.innerHTML = "<div style='color:#666; width:100%; text-align:center; font-family:Orbitron;'>STAGE 1 CLEAR REQUIRED TO UNLOCK SHOP</div>";
+    } else {
+        unlockedPacks.forEach((pack, index) => {
+            const cardItem = document.createElement("div");
+            cardItem.className = `pack-card-carousel pack-item-${index}`;
+            cardItem.onclick = (e) => {
+                // Click side pack to navigate
+                if (index !== currentPackIndex) {
+                    const diff = index - currentPackIndex;
+                    if (Math.abs(diff) === 1) moveShopCarousel(diff);
+                }
+            };
+
+            const canBuy = (savedData.dp || 0) >= pack.price;
+
+            cardItem.innerHTML = `
+                <div class="pack-visual-carousel">
+                    <img src="${pack.img}" onerror="this.style.display='none'">
+                </div>
+                <div class="pack-info-carousel">
+                    <div class="pack-name-carousel">${pack.name}</div>
+                    <div class="pack-desc-carousel">${pack.desc}</div>
+                    <button class="buy-btn-carousel" ${canBuy ? "" : "disabled"} onclick="buyPack('${pack.id}')">
+                        ${canBuy ? `BUY [${pack.price} DP]` : "INSUFFICIENT DP"}
+                    </button>
+                </div>
+            `;
+            carousel.appendChild(cardItem);
+        });
     }
 
-    shopContainer.appendChild(grid);
+    shopContainer.appendChild(carousel);
     modalOverlay.appendChild(shopContainer);
+
+    // Initialize logic
+    window.currentShopPacks = unlockedPacks;
+    if (currentPackIndex >= unlockedPacks.length) currentPackIndex = 0;
+    updateCarousel();
+}
+
+function moveShopCarousel(dir) {
+    if (!window.currentShopPacks || window.currentShopPacks.length === 0) return;
+
+    currentPackIndex += dir;
+    // Loop navigation
+    if (currentPackIndex < 0) currentPackIndex = window.currentShopPacks.length - 1;
+    if (currentPackIndex >= window.currentShopPacks.length) currentPackIndex = 0;
+
+    playSE("se-tap");
+    updateCarousel();
+}
+
+function updateCarousel() {
+    const packs = window.currentShopPacks;
+    if (!packs) return;
+
+    packs.forEach((pack, index) => {
+        const el = document.querySelector(`.pack-item-${index}`);
+        if (!el) return;
+
+        el.className = `pack-card-carousel pack-item-${index}`; // Reset
+
+        if (index === currentPackIndex) {
+            el.classList.add("center");
+        } else {
+            // Determine relative position handling loops
+            let diff = index - currentPackIndex;
+            // Shortest path logic for loop (optional, but good for UX if many packs)
+            // For now, simple loop logic:
+            if (diff === 1 || diff === -(packs.length - 1)) {
+                el.classList.add("right");
+            } else if (diff === -1 || diff === (packs.length - 1)) {
+                el.classList.add("left");
+            } else {
+                el.classList.add("hidden");
+            }
+        }
+    });
+
+    // Update DP Display just in case
+    const dpDisp = document.getElementById("shop-dp-display");
+    if (dpDisp) dpDisp.innerText = savedData.dp || 0;
 }
 
 function buyPack(packId) {
@@ -534,7 +597,9 @@ function buyPack(packId) {
     }
     savedData.dp -= pack.price;
     saveToDrive();
-    if (el("shop-dp-display")) el("shop-dp-display").innerText = savedData.dp;
+    if (document.getElementById("shop-dp-display")) document.getElementById("shop-dp-display").innerText = savedData.dp;
+
+    // Re-render button state (if DP dropped below price)
     openCardShop();
     startPackOpening(packId);
 }

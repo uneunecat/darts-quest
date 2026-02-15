@@ -3442,7 +3442,7 @@ body {
 }
 
 /* =========================================
-   9. CYBER SHOP UI (v1.0)
+   9. CYBER SHOP UI (v2.0 Carousel)
    ========================================= */
 
 /* Modal Container Override */
@@ -3457,7 +3457,6 @@ body {
     display: flex;
     flex-direction: column;
     padding: 2px;
-    /* For potential inner border */
     position: relative;
     overflow: hidden;
     backdrop-filter: blur(10px);
@@ -3471,6 +3470,7 @@ body {
     padding: 20px 30px;
     background: linear-gradient(90deg, rgba(233, 69, 96, 0.1) 0%, transparent 100%);
     border-bottom: 1px solid #333;
+    z-index: 20;
 }
 
 .shop-title-cyber {
@@ -3532,103 +3532,176 @@ body {
     transform: rotate(90deg);
 }
 
-/* Grid Layout */
-.cyber-pack-grid {
+/* --- Carousel Container --- */
+.shop-carousel-container {
     flex: 1;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 30px;
-    padding: 40px;
-    overflow-y: auto;
-    align-content: start;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    perspective: 1000px;
+    /* 3D effect */
+    background: radial-gradient(circle at center, rgba(30, 30, 50, 0.5) 0%, transparent 70%);
 }
 
-/* Pack Item Card */
-.pack-card-cyber {
+.shop-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 60px;
+    color: #00d2fc;
+    background: rgba(0, 0, 0, 0.5);
+    width: 80px;
+    height: 80px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    z-index: 100;
+    border-radius: 50%;
+    border: 2px solid #00d2fc;
+    transition: all 0.3s;
+    user-select: none;
+}
+
+.shop-arrow:hover {
+    background: #00d2fc;
+    color: #000;
+    box-shadow: 0 0 30px #00d2fc;
+}
+
+.shop-arrow.left {
+    left: 40px;
+}
+
+.shop-arrow.right {
+    right: 40px;
+}
+
+/* --- Pack Item (Carousel) --- */
+.pack-card-carousel {
+    position: absolute;
+    width: 320px;
     background: linear-gradient(135deg, #1a1a2e, #16213e);
     border: 1px solid #444;
     border-radius: 12px;
-    overflow: hidden;
-    position: relative;
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     display: flex;
     flex-direction: column;
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+    opacity: 0;
+    pointer-events: none;
+    transform-style: preserve-3d;
+    overflow: hidden;
+    /* Fixes border-radius glitch */
 }
 
-.pack-card-cyber:hover {
-    transform: translateY(-10px) scale(1.02);
+/* Carousel States */
+.pack-card-carousel.center {
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 10;
+    transform: translateX(0) scale(1.1) translateZ(0);
     border-color: #00d2fc;
-    box-shadow: 0 10px 30px rgba(0, 210, 252, 0.3);
+    box-shadow: 0 20px 50px rgba(0, 210, 252, 0.4);
 }
 
-.pack-visual-cyber {
-    height: 200px;
+.pack-card-carousel.center:hover {
+    transform: translateX(0) scale(1.15) translateZ(20px);
+}
+
+.pack-card-carousel.left {
+    opacity: 0.6;
+    z-index: 5;
+    transform: translateX(-350px) scale(0.8) translateZ(-100px) rotateY(15deg);
+    filter: brightness(0.6);
+    cursor: pointer;
+    pointer-events: auto;
+    /* Allow clicking to nav */
+}
+
+.pack-card-carousel.right {
+    opacity: 0.6;
+    z-index: 5;
+    transform: translateX(350px) scale(0.8) translateZ(-100px) rotateY(-15deg);
+    filter: brightness(0.6);
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.pack-card-carousel.hidden {
+    opacity: 0;
+    transform: translateX(0) scale(0.5);
+    z-index: 0;
+}
+
+/* Inner Layout matches Grid but adjusted */
+.pack-visual-carousel {
+    height: 240px;
     background: #000;
     position: relative;
     overflow: hidden;
     display: flex;
     justify-content: center;
     align-items: center;
+    border-bottom: 1px solid #333;
 }
 
-.pack-visual-cyber img {
+.pack-visual-carousel img {
     height: 90%;
     object-fit: contain;
     filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.1));
     transition: transform 0.4s;
+    will-change: transform;
 }
 
-.pack-card-cyber:hover .pack-visual-cyber img {
+.pack-card-carousel.center:hover .pack-visual-carousel img {
     transform: scale(1.1) rotate(2deg);
-    filter: drop-shadow(0 0 20px rgba(0, 210, 252, 0.6));
+    filter: drop-shadow(0 0 30px rgba(0, 210, 252, 0.6));
 }
 
-.pack-info-cyber {
+.pack-info-carousel {
     padding: 20px;
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: rgba(0, 0, 0, 0.2);
-    border-top: 1px solid #333;
+    background: rgba(0, 0, 0, 0.3);
 }
 
-.pack-name-cyber {
+.pack-name-carousel {
     font-family: 'Cinzel Decorative', serif;
-    font-size: 20px;
+    font-size: 24px;
     color: #fff;
-    margin-bottom: 8px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    margin-bottom: 10px;
+    text-align: center;
 }
 
-.pack-desc-cyber {
-    font-size: 12px;
-    color: #888;
-    line-height: 1.4;
-    margin-bottom: 15px;
-    height: 34px;
-    /* 2 lines */
-    overflow: hidden;
+.pack-desc-carousel {
+    font-size: 13px;
+    color: #aaa;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    text-align: center;
+    height: 40px;
 }
 
-/* Buy Button */
-.buy-btn-cyber {
+.buy-btn-carousel {
     background: transparent;
     border: 1px solid #00d2fc;
     color: #00d2fc;
     font-family: 'Orbitron', sans-serif;
-    font-size: 14px;
-    padding: 10px;
+    font-size: 16px;
+    padding: 12px;
     cursor: pointer;
     transition: all 0.3s;
     position: relative;
     overflow: hidden;
     margin-top: auto;
+    width: 100%;
 }
 
-.buy-btn-cyber::before {
+.buy-btn-carousel::before {
     content: "";
     position: absolute;
     top: 0;
@@ -3640,25 +3713,21 @@ body {
     z-index: -1;
 }
 
-.buy-btn-cyber:hover {
+.buy-btn-carousel:hover {
     color: #000;
-    box-shadow: 0 0 15px #00d2fc;
+    box-shadow: 0 0 20px #00d2fc;
 }
 
-.buy-btn-cyber:hover::before {
+.buy-btn-carousel:hover::before {
     left: 0;
 }
 
-.buy-btn-cyber:disabled {
+.buy-btn-carousel:disabled {
     border-color: #444;
     color: #444;
     cursor: not-allowed;
     background: #222;
     box-shadow: none;
-}
-
-.buy-btn-cyber:disabled::before {
-    display: none;
 }
 
 /* =========================================
@@ -3691,7 +3760,8 @@ body {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 30px;
-    padding-top: 30px; /* ★ バッジがヘッダーにぶつからないよう隙間を確保 */
+    padding-top: 30px;
+    /* ★ バッジがヘッダーにぶつからないよう隙間を確保 */
     padding-bottom: 20px;
     overflow-y: auto;
     align-content: start;
@@ -3754,6 +3824,7 @@ body {
     color: #fff;
     background: rgba(255, 255, 255, 0.1);
 }
+
 /* =========================================
    10. BATTLE EFFECTS (Hit Impact & Round Bonus)
    ========================================= */
@@ -3776,21 +3847,44 @@ body {
 }
 
 @keyframes flash-anim {
-    0% { opacity: 0.8; }
-    100% { opacity: 0; }
+    0% {
+        opacity: 0.8;
+    }
+
+    100% {
+        opacity: 0;
+    }
 }
 
 /* 10.2 Shatter Effect (Glass Break) */
 @keyframes shatter-shake {
-    0% { transform: translate(0, 0) rotate(0deg); filter: none; }
-    25% { transform: translate(-5px, 5px) rotate(-2deg); filter: hue-rotate(90deg); }
-    50% { transform: translate(5px, -5px) rotate(2deg); filter: invert(0.2); }
-    75% { transform: translate(-5px, -5px) rotate(-1deg); }
-    100% { transform: translate(0, 0) rotate(0deg); filter: none; }
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+        filter: none;
+    }
+
+    25% {
+        transform: translate(-5px, 5px) rotate(-2deg);
+        filter: hue-rotate(90deg);
+    }
+
+    50% {
+        transform: translate(5px, -5px) rotate(2deg);
+        filter: invert(0.2);
+    }
+
+    75% {
+        transform: translate(-5px, -5px) rotate(-1deg);
+    }
+
+    100% {
+        transform: translate(0, 0) rotate(0deg);
+        filter: none;
+    }
 }
 
 .anim-shatter {
-    animation: shatter-shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+    animation: shatter-shake 0.3s cubic-bezier(.36, .07, .19, .97) both;
 }
 
 /* 10.3 Round Result Bonus Cut-in */
@@ -3800,7 +3894,8 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    display: none; /* Flex when active */
+    display: none;
+    /* Flex when active */
     justify-content: center;
     align-items: center;
     z-index: 1600;
@@ -3824,21 +3919,25 @@ body {
     text-shadow: 0 0 10px #00d2fc, 0 0 20px #fff;
     animation: bonus-pop-in 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
+
 .style-low-ton {
-    background: radial-gradient(circle, rgba(0, 210, 252, 0.2) 0%, rgba(0,0,0,0) 70%);
+    background: radial-gradient(circle, rgba(0, 210, 252, 0.2) 0%, rgba(0, 0, 0, 0) 70%);
 }
 
 /* HAT TRICK: Gold/Simple */
 .style-hat-trick .bonus-text {
     color: #ffd700;
-    font-family: 'Inter', sans-serif; /* Clean Sans */
+    font-family: 'Inter', sans-serif;
+    /* Clean Sans */
     letter-spacing: 10px;
     text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
     animation: bonus-hattrick 2.5s cubic-bezier(0.19, 1, 0.22, 1) forwards;
 }
+
 .style-hat-trick {
     background: rgba(0, 0, 0, 0.7);
 }
+
 .style-hat-trick::before {
     content: "";
     position: absolute;
@@ -3860,33 +3959,84 @@ body {
     filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.5));
     animation: bonus-float-up 3s ease-out forwards;
 }
+
 .style-high-ton {
-    background: linear-gradient(135deg, rgba(50,0,50,0.5) 0%, rgba(0,0,50,0.5) 100%);
+    background: linear-gradient(135deg, rgba(50, 0, 50, 0.5) 0%, rgba(0, 0, 50, 0.5) 100%);
     backdrop-filter: blur(5px);
 }
 
 /* Animations */
 @keyframes bonus-pop-in {
-    0% { opacity: 0; transform: scale(0.5) translateY(50px); }
-    20% { opacity: 1; transform: scale(1.1) translateY(0); }
-    100% { opacity: 0; transform: scale(1.2) translateY(-20px); }
+    0% {
+        opacity: 0;
+        transform: scale(0.5) translateY(50px);
+    }
+
+    20% {
+        opacity: 1;
+        transform: scale(1.1) translateY(0);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(1.2) translateY(-20px);
+    }
 }
 
 @keyframes bonus-hattrick {
-    0% { opacity: 0; transform: scale(3); filter: blur(10px); }
-    15% { opacity: 1; transform: scale(1); filter: blur(0); }
-    80% { opacity: 1; transform: scale(1.05); filter: brightness(1.5); }
-    100% { opacity: 0; transform: scale(1.1); filter: brightness(2); }
+    0% {
+        opacity: 0;
+        transform: scale(3);
+        filter: blur(10px);
+    }
+
+    15% {
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
+    }
+
+    80% {
+        opacity: 1;
+        transform: scale(1.05);
+        filter: brightness(1.5);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(1.1);
+        filter: brightness(2);
+    }
 }
 
 @keyframes bonus-float-up {
-    0% { opacity: 0; transform: translateY(20px) scale(0.9); }
-    30% { opacity: 1; transform: translateY(0) scale(1); }
-    80% { opacity: 1; transform: translateY(-10px) scale(1.05); }
-    100% { opacity: 0; transform: translateY(-50px) scale(1.1); }
+    0% {
+        opacity: 0;
+        transform: translateY(20px) scale(0.9);
+    }
+
+    30% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    80% {
+        opacity: 1;
+        transform: translateY(-10px) scale(1.05);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-50px) scale(1.1);
+    }
 }
 
 @keyframes line-expand {
-    0% { transform: scaleX(0); }
-    100% { transform: scaleX(1); }
+    0% {
+        transform: scaleX(0);
+    }
+
+    100% {
+        transform: scaleX(1);
+    }
 }

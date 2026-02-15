@@ -230,6 +230,7 @@ const WORLD_MAP = {
                 sub: "God's Testing Ground",
                 bg: "assets/bg_stage5_1.png",
                 bossBg: "assets/bg_stage5_2.png",
+                multiplier: 4.0,
                 type: "NORMAL",
                 warning: true,
                 rankThresholds: { SSS: 25, S: 35, A: 50, B: 70 },
@@ -239,6 +240,57 @@ const WORLD_MAP = {
                     { name: "リバイバルスライム", img: "assets/5-3.png", weak: 20, hp: 300, atk: 18, ai: [{ name: "再 生", weight: 3, visual: { cutin: { text: "再 生", color: "blue" }, msg: "驚異的な速度で再生した！" }, actions: [{ type: "HEAL", target: "ENEMY", val: 999 }] }, { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }] },
                     { name: "ヒューマノイド・ドレイク", img: "assets/5-4.png", weak: 17, hp: 600, atk: 25, ai: [{ name: "スライムの粘着", weight: 3, cond: { src: "p_state", tag: "item_lock", val: 0 }, visual: { cutin: { text: "スライムの粘着", color: "green" }, msg: "アイテムの使用を封じられた！" }, actions: [{ type: "STATE", target: "PLAYER", kind: "item_lock", turn: 1 }, { type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }, { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }] },
                     { name: "オシリスの天空竜", img: "assets/5-5.png", weak: 20, hp: 2000, atk: 35, ai: [{ name: "召雷弾", preemptive: true, visual: { cutin: { text: "召雷弾", color: "gold" }, msg: "神の弾丸で迎撃体勢！" }, actions: [{ type: "STATE", target: "ENEMY", kind: "barrier", val: 15, turn: 999 }] }, { name: "サンダー・フォース", guaranteed: true, cond: { src: "turn_mod", val: 5 }, visual: { cutin: { text: "サンダー・フォース", color: "gold" }, se: "se-boom", anim: "flash-gold", wait: 3000, msg: "神の雷が地上を滅ぼす！" }, actions: [{ type: "DAMAGE", target: "PLAYER", mode: "fixed", val: 80 }] }, { weight: 8, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }] }
+                ]
+            },
+            {
+                id: "2-3",
+                title: "誇り高き決闘者の領域",
+                sub: "Realm of the Proud Duelist",
+                bg: "assets/bg_stage_kaiba.png",
+                bossBg: "assets/bg_stage_kaiba_god.png",
+                bossFloor: 5,
+                multiplier: 5.0,
+                type: "NORMAL",
+                warning: true,
+                rankThresholds: { SSS: 25, S: 35, A: 50, B: 70 },
+                floors: [
+                    { 
+                        name: "ミノタウルス", img: "assets/2-3-1.png", weak: 20, hp: 600, atk: 15, ai: [
+                            { name: "斧の連撃", weight: 4, visual: { cutin: { text: "斧の連撃", color: "earth" }, msg: "巨大な斧が何度も襲いかかる！" }, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 0.6, count: 3 }] },
+                            { weight: 6, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                        ]
+                    },
+                    { 
+                        name: "闇・道化師のサギー", img: "assets/2-3-2.png", weak: 19, hp: 550, atk: 12, ai: [
+                            { name: "死のデッキ破壊ウイルス", weight: 5, visual: { cutin: { text: "死のデッキ破壊ウイルス", color: "purple" }, msg: "ウイルスがカードを腐敗させる！" }, actions: [{ type: "DISCARD_SELECT", count: 1 }, { type: "DAMAGE", target: "PLAYER", mult: 0.5 }] },
+                            { weight: 5, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                        ]
+                    },
+                    { 
+                        name: "ブラッド・ヴォルス", img: "assets/2-3-3.png", weak: 18, hp: 750, atk: 18, ai: [
+                            { name: "狂暴な突進", weight: 4, visual: { cutin: { text: "狂暴な突進", color: "fire" }, msg: "凄まじい勢いで突進してきた！" }, actions: [{ type: "STATE", target: "ENEMY", kind: "e_atk_buff", val: 0.5, turn: 2, visual: { se: "se-buff" } }, { type: "DAMAGE", target: "PLAYER", mult: 1.2, visual: { anim: "shake-medium" } }] },
+                            { weight: 6, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                        ]
+                    },
+                    { 
+                        name: "青眼の白龍", img: "assets/2-3-4.png", weak: 20, hp: 1600, atk: 25, ai: [
+                            { name: "圧倒的な威圧感", preemptive: true, visual: { cutin: { text: "圧倒的な威圧感", color: "blue" }, msg: "伝説の龍の咆哮に体がすくむ！" }, actions: [{ type: "STATE", target: "PLAYER", kind: "p_atk_buff", val: -0.5, turn: 3 }] },
+                            { name: "滅びの爆裂疾風弾", weight: 3, visual: { cutin: { text: "滅びの爆裂疾風弾", color: "blue" }, se: "se-boom", anim: "flash-blue", msg: "全てを焼き払う閃光が放たれた！" }, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 2.5, visual: { anim: "shake-heavy" } }] },
+                            { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                        ]
+                    },
+                    { 
+                        name: "オベリスクの巨神兵", img: "assets/2-3-5.png", weak: 20, hp: 3500, atk: 40, ai: [
+                            { name: "神の耐性", preemptive: true, visual: { cutin: { text: "神の耐性", color: "gold" }, msg: "神に対して中途半端な攻撃は通じない！" }, actions: [{ type: "STATE", target: "ENEMY", kind: "barrier", val: 15, turn: 999 }] },
+                            { 
+                                weight: 5, sequence: [
+                                    { name: "ソウルエナジーMAX", visual: { msg: "敵が生け贄を捧げ、神の力が膨れ上がる！" }, actions: [{ type: "STATE", target: "ENEMY", kind: "charge", turn: 2, visual: { se: "se-warning" } }, { type: "STATE", target: "ENEMY", kind: "e_atk_buff", val: 2.0, turn: 2 }] },
+                                    { name: "ゴッド・ハンド・クラッシャー", visual: { cutin: { text: "ゴッド・ハンド・クラッシャー", color: "gold" }, se: "se-boom", anim: "flash-gold", msg: "神の拳が全てを砕く！" }, actions: [{ type: "DAMAGE", target: "PLAYER", mode: "fixed", val: 80, visual: { anim: "shake-ultimate" } }, { type: "MP_ACTION", target: "PLAYER", val: -99 }] }
+                                ]
+                            },
+                            { weight: 5, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                        ]
+                    }
                 ]
             }
         ]
@@ -440,13 +492,147 @@ const CARD_DB = [
             { type: "DAMAGE", target: "PLAYER", mode: "fixed", val: 50 }
         ],
         packs: ["vol2"]
+    },
+    // --- Vol.3 Cards (123-137) ---
+    {
+        id: 123, name: "ハーピィの羽根帚", rarity: "UR", type: "MAGIC", cost: 4, desc: "敵の全てのバフ・壁を解除",
+        visual: { se: "se-wind", msg: "敵の守りを吹き飛ばした！" },
+        actions: [
+            { type: "STATE", target: "ENEMY", kind: "e_atk_buff", turn: 0 },
+            { type: "STATE", target: "ENEMY", kind: "guard_ratio", turn: 0 },
+            { type: "STATE", target: "ENEMY", kind: "guard_fixed", turn: 0 },
+            { type: "STATE", target: "ENEMY", kind: "barrier", turn: 0 },
+            { type: "STATE", target: "ENEMY", kind: "charge", turn: 0 }
+        ],
+        packs: ["vol3"]
+    },
+    {
+        id: 124, name: "洗脳-ブレインコントロール", rarity: "UR", type: "MAGIC", cost: 5, desc: "敵が混乱して自傷＋スタン",
+        visual: { se: "se-hit", msg: "敵は混乱して自分を攻撃した！" },
+        actions: [
+            { type: "DAMAGE", target: "ENEMY", scale: { source: "enemy_atk", factor: 1.0 } },
+            { type: "STATE", target: "ENEMY", kind: "stun", turn: 1 }
+        ],
+        packs: ["vol3"]
+    },
+    {
+        id: 125, name: "激流葬", rarity: "SR", type: "TRAP", cost: 3, desc: "敵出現時に全体激流ダメージ",
+        visual: { se: "se-water" },
+        trap: {
+            trigger: "summon",
+            actions: [
+                { type: "DAMAGE", target: "ENEMY", mode: "fixed", val: 100 },
+                { type: "DAMAGE", target: "PLAYER", mode: "fixed", val: 30 }
+            ]
+        },
+        packs: ["vol3"]
+    },
+    {
+        id: 126, name: "破壊輪", rarity: "SR", type: "TRAP", cost: 3, desc: "攻撃無効＋敵攻撃力分ダメージ",
+        visual: { se: "se-boom" },
+        trap: {
+            trigger: "attack",
+            actions: [
+                { type: "NEGATE" },
+                { type: "DAMAGE", target: "ENEMY", scale: { source: "enemy_atk", factor: 1.0 } }
+            ]
+        },
+        packs: ["vol3"]
+    },
+    {
+        id: 127, name: "フォース", rarity: "SR", type: "MAGIC", cost: 4, desc: "敵HPを半減させる",
+        visual: { se: "se-dark" },
+        actions: [{ type: "DAMAGE", target: "ENEMY", mode: "current_hp_percent", val: 50 }],
+        packs: ["vol3"]
+    },
+    {
+        id: 128, name: "スケープ・ゴート", rarity: "R", type: "MAGIC", cost: 3, desc: "4回のダメージを無効化(アーマー)",
+        visual: { se: "se-buff", msg: "羊トークンが盾になる！" },
+        actions: [{ type: "STATE", target: "PLAYER", kind: "guard_fixed", val: 999, turn: 4 }],
+        packs: ["vol3"]
+    },
+    {
+        id: 129, name: "団結の力", rarity: "R", type: "MAGIC", cost: 3, desc: "手札×10の攻撃力UP(1投)",
+        visual: { se: "se-buff" },
+        actions: [{ type: "STATE", target: "PLAYER", kind: "p_atk_flat", val: 0, scale: { source: "hand", factor: 10 }, turn: 1 }],
+        packs: ["vol3"]
+    },
+    {
+        id: 130, name: "魔導師の力", rarity: "R", type: "MAGIC", cost: 3, desc: "現在MP×10の攻撃力UP(1投)",
+        visual: { se: "se-buff" },
+        actions: [{ type: "STATE", target: "PLAYER", kind: "p_atk_flat", val: 0, scale: { source: "mp", factor: 10 }, turn: 1 }],
+        packs: ["vol3"]
+    },
+    {
+        id: 131, name: "停戦協定", rarity: "R", type: "TRAP", cost: 2, desc: "敵出現時に50ダメ＋1Tスタン",
+        visual: { se: "se-bell" },
+        trap: {
+            trigger: "summon",
+            actions: [
+                { type: "DAMAGE", target: "ENEMY", mode: "fixed", val: 50 },
+                { type: "STATE", target: "ENEMY", kind: "stun", turn: 1 }
+            ]
+        },
+        packs: ["vol3"]
+    },
+    {
+        id: 132, name: "成金ゴブリン", rarity: "N", type: "MAGIC", cost: 1, desc: "2枚ドロー＋敵HP100回復",
+        visual: { se: "se-coin" },
+        actions: [
+            { type: "DRAW", val: 2 },
+            { type: "HEAL", target: "ENEMY", val: 100 }
+        ],
+        packs: ["vol3"]
+    },
+    {
+        id: 133, name: "和睦の使者", rarity: "N", type: "TRAP", cost: 2, desc: "このターンのダメージを0にする",
+        visual: { se: "se-guard" },
+        trap: {
+            trigger: "attack",
+            actions: [{ type: "NEGATE" }]
+        },
+        packs: ["vol3"]
+    },
+    {
+        id: 134, name: "鎖付きブーメラン", rarity: "N", type: "TRAP", cost: 2, desc: "攻撃無効＋次の一撃攻撃力UP",
+        visual: { se: "se-chain" },
+        trap: {
+            trigger: "attack",
+            actions: [
+                { type: "NEGATE" },
+                { type: "STATE", target: "PLAYER", kind: "p_atk_buff", val: 0.5, turn: 1 }
+            ]
+        },
+        packs: ["vol3"]
+    },
+    {
+        id: 135, name: "強欲な瓶", rarity: "N", type: "TRAP", cost: 1, desc: "攻撃された時に1枚ドロー",
+        visual: { se: "se-draw" },
+        trap: {
+            trigger: "attack",
+            actions: [{ type: "DRAW", val: 1 }]
+        },
+        packs: ["vol3"]
+    },
+    {
+        id: 136, name: "魔法除去", rarity: "N", type: "MAGIC", cost: 1, desc: "敵の結界(バリア)を破壊",
+        visual: { se: "se-break" },
+        actions: [{ type: "STATE", target: "ENEMY", kind: "barrier", turn: 0 }],
+        packs: ["vol3"]
+    },
+    {
+        id: 137, name: "痛み分け", rarity: "N", type: "MAGIC", cost: 2, desc: "減少HP分のダメージを与える",
+        visual: { se: "se-dark" },
+        actions: [{ type: "DAMAGE", target: "ENEMY", mode: "loss_hp" }],
+        packs: ["vol3"]
     }
 ];
 
 // Pack Data
 const PACK_DATA = [
     { id: "vol1", name: "Vol.1 - Legend", price: 1000, desc: "伝説の始まり。基本魔法カード収録。", unlockStage: "1-1", img: "assets/packs/vol1.png" },
-    { id: "vol2", name: "Vol.2 - Awakening", price: 1500, desc: "テクニカルな戦略カードが登場。", unlockStage: "1-3", img: "assets/packs/vol2.png" }
+    { id: "vol2", name: "Vol.2 - Awakening", price: 1500, desc: "テクニカルな戦略カードが登場。", unlockStage: "1-3", img: "assets/packs/vol2.png" },
+    { id: "vol3", name: "Vol.3 - Rulers", price: 2000, desc: "運命を操作する強力な魔法・罠。", unlockStage: "2-1", img: "assets/packs/vol3.png" }
 ];
 
 // Player Default Stats
