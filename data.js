@@ -495,7 +495,7 @@ const CARD_DB = [
     },
     // --- Vol.3 Cards (123-137) ---
     {
-        id: 123, name: "ハーピィの羽根帚", rarity: "UR", type: "MAGIC", cost: 4, desc: "敵の全てのバフ・壁を解除",
+        id: 123, name: "ハーピィの羽根帚", rarity: "UR", type: "MAGIC", cost: 2, desc: "敵の全てのバフ・壁を解除",
         visual: { se: "se-wind", msg: "敵の守りを吹き飛ばした！" },
         actions: [
             { type: "STATE", target: "ENEMY", kind: "e_atk_buff", turn: 0 },
@@ -507,7 +507,7 @@ const CARD_DB = [
         packs: ["vol3"]
     },
     {
-        id: 124, name: "洗脳-ブレインコントロール", rarity: "UR", type: "MAGIC", cost: 5, desc: "敵が混乱して自傷＋スタン",
+        id: 124, name: "洗脳-ブレインコントロール", rarity: "UR", type: "MAGIC", cost: 3, desc: "敵が混乱して自傷＋スタン",
         visual: { se: "se-hit", msg: "敵は混乱して自分を攻撃した！" },
         actions: [
             { type: "DAMAGE", target: "ENEMY", scale: { source: "enemy_atk", factor: 1.0 } },
@@ -516,13 +516,13 @@ const CARD_DB = [
         packs: ["vol3"]
     },
     {
-        id: 125, name: "激流葬", rarity: "SR", type: "TRAP", cost: 3, desc: "敵出現時に全体激流ダメージ",
+        id: 125, name: "激流葬", rarity: "SR", type: "TRAP", cost: 3, desc: "敵出現時に激流ダメージ",
         visual: { se: "se-water" },
         trap: {
             trigger: "summon",
             actions: [
                 { type: "DAMAGE", target: "ENEMY", mode: "fixed", val: 100 },
-                { type: "DAMAGE", target: "PLAYER", mode: "fixed", val: 30 }
+                { type: "DAMAGE", target: "PLAYER", mode: "fixed", val: 20 }
             ]
         },
         packs: ["vol3"]
@@ -540,38 +540,35 @@ const CARD_DB = [
         packs: ["vol3"]
     },
     {
-        id: 127, name: "フォース", rarity: "SR", type: "MAGIC", cost: 4, desc: "敵HPを半減させる",
+        id: 127, name: "フォース", rarity: "SR", type: "MAGIC", cost: 10, desc: "敵HPを3割減らす",
         visual: { se: "se-dark" },
-        actions: [{ type: "DAMAGE", target: "ENEMY", mode: "current_hp_percent", val: 50 }],
+        actions: [{ type: "DAMAGE", target: "ENEMY", mode: "current_hp_percent", val: 30 }],
         packs: ["vol3"]
     },
     {
-        id: 128, name: "スケープ・ゴート", rarity: "R", type: "MAGIC", cost: 3, desc: "4回のダメージを無効化(アーマー)",
+        id: 128, name: "スケープ・ゴート", rarity: "R", type: "MAGIC", cost: 4, desc: "4Tダメージを10カット",
         visual: { se: "se-buff", msg: "羊トークンが盾になる！" },
-        actions: [{ type: "STATE", target: "PLAYER", kind: "guard_fixed", val: 999, turn: 4 }],
+        actions: [{ type: "STATE", target: "PLAYER", kind: "guard_fixed", val: 10, turn: 4 }],
         packs: ["vol3"]
     },
     {
-        id: 129, name: "団結の力", rarity: "R", type: "MAGIC", cost: 3, desc: "手札×10の攻撃力UP(1投)",
+        id: 129, name: "団結の力", rarity: "R", type: "MAGIC", cost: 3, desc: "手札毎水×20の攻撃力UP(1投)",
         visual: { se: "se-buff" },
-        actions: [{ type: "STATE", target: "PLAYER", kind: "p_atk_flat", val: 0, scale: { source: "hand", factor: 10 }, turn: 1 }],
+        actions: [{ type: "STATE", target: "PLAYER", kind: "p_atk_flat", val: 0, scale: { source: "hand", factor: 20 }, turn: 1 }],
         packs: ["vol3"]
     },
     {
-        id: 130, name: "魔導師の力", rarity: "R", type: "MAGIC", cost: 3, desc: "現在MP×10の攻撃力UP(1投)",
+        id: 130, name: "魔導師の力", rarity: "R", type: "MAGIC", cost: 4, desc: "現在MP×20の攻撃力UP(1投)",
         visual: { se: "se-buff" },
-        actions: [{ type: "STATE", target: "PLAYER", kind: "p_atk_flat", val: 0, scale: { source: "mp", factor: 10 }, turn: 1 }],
+        actions: [{ type: "STATE", target: "PLAYER", kind: "p_atk_flat", val: 0, scale: { source: "mp", factor: 20 }, turn: 1 }],
         packs: ["vol3"]
     },
     {
-        id: 131, name: "停戦協定", rarity: "R", type: "TRAP", cost: 2, desc: "敵出現時に50ダメ＋1Tスタン",
+        id: 131, name: "停戦協定", rarity: "R", type: "TRAP", cost: 2, desc: "敵出現時に1Tスタン",
         visual: { se: "se-bell" },
         trap: {
             trigger: "summon",
-            actions: [
-                { type: "DAMAGE", target: "ENEMY", mode: "fixed", val: 50 },
-                { type: "STATE", target: "ENEMY", kind: "stun", turn: 1 }
-            ]
+            actions: [{ type: "STATE", target: "ENEMY", kind: "stun", turn: 1 }]
         },
         packs: ["vol3"]
     },
@@ -585,7 +582,7 @@ const CARD_DB = [
         packs: ["vol3"]
     },
     {
-        id: 133, name: "和睦の使者", rarity: "N", type: "TRAP", cost: 2, desc: "このターンのダメージを0にする",
+        id: 133, name: "和睦の使者", rarity: "N", type: "TRAP", cost: 3, desc: "このターンのダメージを0にする",
         visual: { se: "se-guard" },
         trap: {
             trigger: "attack",
@@ -594,7 +591,7 @@ const CARD_DB = [
         packs: ["vol3"]
     },
     {
-        id: 134, name: "鎖付きブーメラン", rarity: "N", type: "TRAP", cost: 2, desc: "攻撃無効＋次の一撃攻撃力UP",
+        id: 134, name: "鎖付きブーメラン", rarity: "N", type: "TRAP", cost: 4, desc: "攻撃無効＋次の一撃攻撃力1.5倍",
         visual: { se: "se-chain" },
         trap: {
             trigger: "attack",
@@ -621,7 +618,7 @@ const CARD_DB = [
         packs: ["vol3"]
     },
     {
-        id: 137, name: "痛み分け", rarity: "N", type: "MAGIC", cost: 2, desc: "減少HP分のダメージを与える",
+        id: 137, name: "痛み分け", rarity: "N", type: "MAGIC", cost: 2, desc: "自身の減少HP分のダメージを敵に与える",
         visual: { se: "se-dark" },
         actions: [{ type: "DAMAGE", target: "ENEMY", mode: "loss_hp" }],
         packs: ["vol3"]
@@ -631,8 +628,8 @@ const CARD_DB = [
 // Pack Data
 const PACK_DATA = [
     { id: "vol1", name: "Vol.1 - Legend", price: 1000, desc: "伝説の始まり。基本魔法カード収録。", unlockStage: "1-1", img: "assets/packs/vol1.png" },
-    { id: "vol2", name: "Vol.2 - Awakening", price: 1500, desc: "テクニカルな戦略カードが登場。", unlockStage: "1-3", img: "assets/packs/vol2.png" },
-    { id: "vol3", name: "Vol.3 - Rulers", price: 2000, desc: "運命を操作する強力な魔法・罠。", unlockStage: "2-1", img: "assets/packs/vol3.png" }
+    { id: "vol2", name: "Vol.2 - Awakening", price: 1000, desc: "テクニカルな戦略カードが登場。", unlockStage: "1-3", img: "assets/packs/vol2.png" },
+    { id: "vol3", name: "Vol.3 - Rulers", price: 1000, desc: "運命を操作する強力な魔法・罠。", unlockStage: "2-1", img: "assets/packs/vol3.png" }
 ];
 
 // Player Default Stats

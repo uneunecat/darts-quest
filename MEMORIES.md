@@ -2,6 +2,30 @@
 
 ## 履歴 (最新が上)
 
+### 2026-02-15: Bug Fix - Missing Battle Effects
+- **事象**: 敵攻撃時のダメージ演出（SE、ポップアップ）が消失。
+- **原因**: `battle.js` の `resolveAction` 内で `visual.anim` を参照していたが、正しくは `effectiveVisual.anim` であったため ReferenceError が発生し処理が中断されていた。
+- **対処**: 変数名を修正し、正常に演出が再生されることを確認（ユーザー検証済み）。
+- **教訓**: リファクタリング時（特に変数名変更やオブジェクトの統合時）は、影響範囲の変数参照を徹底的に確認する。
+
+### 2026-02-15: Debug Features Implementation
+- **意図**: 開発効率向上とテストの容易化。
+- **変更内容**:
+  - `debug.js`: デバッグマネージャー (`DebugManager`) を実装。
+  - **GUIメニュー**: 画面右下の「DEBUG」ボタンから、全ステージ解放、全カード入手、DP追加、セーブデータ削除などをワンクリックで実行可能に。
+  - **Stage Jump**: 任意のステージ・フロアへ即時遷移する機能 (`jumpToStage`) を実装。
+  - **Auto-Resume**: デバッグ操作（リロードを伴うもの）の後、自動的に元のスロットを選択し、ジャンプ時は即座にゲームを開始するロジックを `main.js` に追加。
+- **教訓**:
+  - `location.reload()` はメモリ上のステートを全て消去するため、`localStorage` を用いた一時的なフラグ (`debug_last_slot`, `debug_jump_flag`) の受け渡しが不可欠。
+  - `debug.js` の読み込み順序を `main.js` より前にすることで、`main.js` 初期化時に `DebugManager` が確実に利用可能になる。
+
+### 2026-02-15: Vol.3 & Shop Carousel Update
+- **意図**: 新パック "Rulers of Fate" の追加と、ショップ画面の視認性・演出強化。
+- **変更内容**:
+  - **Vol.3 実装**: ID 123-137 の15枚を追加。「敵攻撃力利用 (`scale`)」「状態解除 (`turn:0`)」などの新メカニクスを導入。
+  - **Shop UI 刷新**: 縦スクロールリストから、3Dカルーセル (`transform-style: preserve-3d`) による横スクロール表示に変更。選択中のパックを中央に大きく表示し、没入感を向上。
+  - **UI調整**: `.shop-carousel-container` を新設し、`pointer-events` の制御で中央のパックのみ購入可能にするなどUXを調整。
+
 ### 2026-02-15: Battle Effects (Exhilaration Update)
 - **意図**: ダーツ命中時とラウンド終了時の演出を強化し、爽快感を高める。
 - **変更内容**:

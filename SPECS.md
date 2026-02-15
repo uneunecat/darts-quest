@@ -436,6 +436,7 @@ case "e_state":
 | `"1-EX"` | 燃えたぎる火口 | Burning Crater (EXTRA) | EXTRA | x5.0 | 1F | あり | 1-3クリア |
 | `"2-1"` | 幻想の狂宴 | Toon Nightmare | NORMAL | x3.0 | 6F | あり | 1-3クリア |
 | `"2-2"` | 神の試練 | God's Testing Ground (GOD) | NORMAL | x5.0 | 5F | あり | 2-1クリア |
+| `"2-3"` | 誇り高き決闘者の領域 | Realm of the Proud Duelist | NORMAL | x5.0 | 5F | あり | 2-2クリア |
 
 ### 8.2 Rank Thresholds (ターン数ベース)
 
@@ -520,6 +521,16 @@ gainedDP = scoreDP + rankDP
 | 4F | ヒューマノイド・ドレイク | 600 | 25 | 17 | **スライムの粘着** (ロック未適用時, w3): アイテム封印2T + 攻撃 |
 | 5F (BOSS) | オシリスの天空竜 | 2000 | 35 | 20 | **召雷弾** (先制): バリア(15未満無効) / **サンダー・フォース** (5T毎確定): 80固定ダメージ |
 
+### Stage 2-3: 誇り高き決闘者の領域 (海馬系)
+
+| Floor | 名前 | HP | ATK | WEAK | 特殊能力 |
+|-------|------|----|-----|------|---------|
+| 1F | ミノタウルス | 600 | 15 | 20 | **斧の連撃** (w4): 0.6倍 × 3連撃 |
+| 2F | 闇・道化師のサギー | 550 | 12 | 19 | **死のデッキ破壊ウイルス** (w5): 手札1枚破棄 + 0.5倍攻撃 |
+| 3F | ブラッド・ヴォルス | 750 | 18 | 18 | **狂暴な突進** (w4): ATK+0.5バフ(2T) + 1.2倍攻撃 |
+| 4F | 青眼の白龍 | 1600 | 25 | 20 | **圧倒的な威圧感** (先制): プレイヤーATKダウン(2T) / **滅びの爆裂疾風弾** (w3): 2.5倍大ダメージ |
+| 5F (BOSS) | オベリスクの巨神兵 | 3500 | 40 | 20 | **神の耐性** (先制): バリア(15未満無効) / **ゴッド・ハンド・クラッシャー** (シーケンス): チャージ・ATK2倍 → 80固定ダメ+MP全消去 |
+
 ---
 
 ## 10. Card System
@@ -561,6 +572,16 @@ gainedDP = scoreDP + rankDP
 | `NEGATE` | 攻撃無効化 | - (罠用) |
 | `REFLECT` | ダメージ反射 | `mult` (罠用: 元ダメージ × mult を敵に反射) |
 | `SPECIAL_SALVAGE` | 墓地回収 | 墓地のMAGICカードをランダム1枚回収 |
+
+**拡張パラメータ (v9.0)**:
+- `scale`: 動的な値を参照して `val` を決定する。
+  - `{ source: "enemy_atk", factor: 1.0 }`: 敵の攻撃力 × 1.0
+  - `{ source: "hand", factor: 10 }`: 現在の手札枚数 × 10
+  - `{ source: "mp", factor: 10 }`: 現在のMP × 10
+- `mode`: ダメージ計算モード指定
+  - `"fixed"`: 固定ダメージ
+  - `"current_hp_percent"`: 現在HPに対する割合ダメージ (val: 50 = 50%)
+  - `"loss_hp"`: 減少HP分 (MaxHP - CurrentHP) のダメージ
 
 **STATE kind 一覧** (v5.0 - STATE_MASTERに準拠):
 | kind | 効果 | category | timing | 対象 |
@@ -614,6 +635,26 @@ gainedDP = scoreDP + rankDP
 | 120 | 援軍 | N | MAGIC | 2 | HP+30回復 + 次の一撃+20 |
 | 121 | 闇の仮面 | N | MAGIC | 4 | 墓地のMAGICをランダム1枚回収 |
 | 122 | 最終戦争 | N | MAGIC | 5 | 自傷50 + 敵に150ダメ |
+
+### Vol.3 - Rulers of Fate (15枚, 解放: Stage2-1クリア, 1000DP)
+
+| ID | 名前 | レア | Type | Cost | 効果 |
+|-----|------|------|------|------|------|
+| 123 | ハーピィの羽根帚 | UR | MAGIC | 2 | 敵の全バフ・防御状態を解除 |
+| 124 | 洗脳-ブレインコントロール | UR | MAGIC | 3 | 敵ATK分自傷 + スタン(1T) |
+| 125 | 激流葬 | SR | TRAP | 3 | [召喚時] 敵100ダメ + 自分20ダメ |
+| 126 | 破壊輪 | SR | TRAP | 3 | [被攻撃時] 攻撃無効 + 敵ATK分ダメ |
+| 127 | フォース | SR | MAGIC | 10 | 敵HPを減少させる (現在HPの3割) |
+| 128 | スケープ・ゴート | R | MAGIC | 3 | 4回のダメージを無効化 (アーマー999x4T) |
+| 129 | 団結の力 | R | MAGIC | 3 | 手札枚数×10 攻撃力UP (1投) |
+| 130 | 魔導師の力 | R | MAGIC | 3 | 現在MP×10 攻撃力UP (1投) |
+| 131 | 停戦協定 | R | TRAP | 2 | [召喚時] 50ダメ + スタン(1T) |
+| 132 | 成金ゴブリン | N | MAGIC | 1 | 2枚ドロー + 敵HP100回復 |
+| 133 | 和睦の使者 | N | TRAP | 2 | [被攻撃時] ダメージ0にする |
+| 134 | 鎖付きブーメラン | N | TRAP | 2 | [被攻撃時] 無効 + 次の一撃攻撃力1.5倍 |
+| 135 | 強欲な瓶 | N | TRAP | 1 | [被攻撃時] 1枚ドロー |
+| 136 | 魔法除去 | N | MAGIC | 1 | 敵の結界(バリア)を破壊 |
+| 137 | 痛み分け | N | MAGIC | 2 | 減少HP分(Max-Cur)のダメージを与える |
 
 ---
 
@@ -698,7 +739,7 @@ PPR (Points Per Round) = `(totalScore / totalDarts) * 3` から算出。
 | インターバル | `interval-screen` | 2500 | display |
 | 汎用ダイアログ | `game-modal` | 2000 | display |
 | 履歴モーダル | `history-modal` | (default) | display |
-| カードショップ | `card-shop-modal` | (default) | display |
+| カードショップ | `card-shop-modal` | (default) | **3D Carousel (v9.0)**: 横スクロール・立体視UI |
 | パック開封 | `pack-result-modal` | 3000 | display |
 | デッキ編集 | `collection-modal` | (default) | display |
 | カード選択 | `card-selector-modal` | 4000 | display |
@@ -746,6 +787,34 @@ window.DJ = function(stage, floor) {
 
 **チートコード**:
 - タイトル画面で `1111` を4回入力 → DP +5000
+
+**GUIデバッグメニュー (v9.0)**:
+- 画面右下の「DEBUG」ボタンで開閉。
+- **Unlock All Stages**: 全ステージ・パック解放
+- **Gain All Cards**: 全カード x3 入手
+- **Reset Cards**: 所持カード初期化
+- **Jump to Stage**: ステージIDとフロアを指定して即時開始 (Auto-Resume機能付き)
+
+---
+
+## 18. Visual & Audio Effects (v8.5 Exhilaration Update)
+
+### 18.1 Battle Impacts
+- **Shatter Effect**: 弱点攻撃 (WEAK HIT) 時に敵画像が粉砕されるアニメーション (`anim-shatter`) ＋ 画面激震 (`shake-heavy`)。
+- **Screen Flash**: 強い衝撃や効果発動時に画面全体が発光 (`flash-purple` 等)。
+- **Damage Popups**: ダメージ数値を物理演算風にポップアップ。プレイヤー側と敵側で出現位置を分離。
+
+### 18.2 Round Result Bonus
+ラウンド終了時のスコアに応じてカットイン演出が発生。
+| 条件 | 表示名 | スタイル | SE |
+|------|-------|----------|----|
+| 100-150点 | LOW TON | 青系 (Solid Cool) | `se-item` |
+| 150点 (Bul x3) | HAT TRICK | 金系 (Stylish Simple) | `se-boom` x3 |
+| 151点以上 | HIGH TON | 虹色 (Elegant Rainbow) | `se-item` |
+
+### 18.3 MP Animation
+- **Charge**: ターン開始時、MPドットが1つずつ光りながら回復 (`charging` クラス)。SE: `se-tap`。
+- **Loss**: MP消費時、ドットが点滅して消失 (`losing` クラス)。SE: `se-debuff`。
 
 ### 17.5 未使用変数 (軽微)
 - `battle.js` `oldHp` (useItem内で宣言されるが参照なし)

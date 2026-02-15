@@ -830,7 +830,7 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
                         targetObj.hp = Math.max(0, targetObj.hp - dmg);
 
                         // 1. フラッシュ演出 (flash-xxx)
-                        const animClass = visual.anim;
+                        const animClass = effectiveVisual.anim;
                         if (animClass && animClass.startsWith("flash-")) {
                             const flashEl = el("flash-overlay");
                             flashEl.className = animClass;
