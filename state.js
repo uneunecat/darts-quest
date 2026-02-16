@@ -69,13 +69,20 @@ let clearedStagesLog = [];
 let isInterval = false;
 
 // セーブデータ構造
-let allSaveData = { "slot1": null, "slot2": null, "slot3": null, "lastPlayed": 1 };
-let currentSlot = "slot1";
 let savedData = {
     highScore: { stage: 1, floor: 1, avg: 0.0 },
-    history: [], clearedExtra: false, dp: 0,
-    bestRanks: {}, unlockedStage4: false,
-    deck: [], cards: {}
+    history: [],
+    clearedExtra: false,
+    dp: 0,
+    souls: 0,              // ★ 新規: 所持ソウル
+    unlockedReliefs: [],   // ★ 新規: 所持しているレリーフIDリスト
+    equippedReliefs: [null, null, null], // ★ 新規: 装備中のレリーフ (3枠)
+    bestRanks: {},
+    stageStats: {},
+    unlockedStage4: false,
+    deck: [],
+    cards: {},
+    collection: {}
 };
 
 // パック開封処理用

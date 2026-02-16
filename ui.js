@@ -1126,9 +1126,8 @@ function createStageCard(stageData, stats, rank, isLocked) {
         // DP Multiplier Badge
         const dpMult = document.createElement("div");
         dpMult.className = "card-dp-mult";
-        // data.js に multiplier 定義があれば使うが、なければ type から推定
-        let mult = 1.0;
-        if (stageData.type === "EXTRA") mult = 1.5;
+        // data.js の multiplier 定義を参照 (未定義なら 1.0)
+        let mult = stageData.multiplier || 1.0;
         dpMult.innerText = `DP x${mult.toFixed(1)}`;
         art.appendChild(dpMult);
 

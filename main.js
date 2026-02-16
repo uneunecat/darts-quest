@@ -98,6 +98,7 @@ function selectSlot(n) {
         allSaveData[currentSlot] = {
             highScore: { stage: 1, floor: 1, avg: 0.0 },
             history: [], clearedExtra: false, dp: 0,
+            souls: 0, unlockedReliefs: [], equippedReliefs: [null, null, null],
             bestRanks: {}, unlockedStage4: false, deck: [], cards: {},
             stageStats: {} // 新規: ステージ戦績
         };
@@ -109,6 +110,9 @@ function selectSlot(n) {
     if (!savedData.deck) savedData.deck = [];
     if (!savedData.cards) savedData.cards = {};
     if (!savedData.stageStats) savedData.stageStats = {}; // 既存データ対応
+    if (savedData.souls === undefined) savedData.souls = 0;
+    if (!savedData.unlockedReliefs) savedData.unlockedReliefs = [];
+    if (!savedData.equippedReliefs) savedData.equippedReliefs = [null, null, null];
     allSaveData[currentSlot] = savedData;
 
     updateTitleScore();
