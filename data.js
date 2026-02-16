@@ -273,22 +273,22 @@ const WORLD_MAP = {
                         ]
                     },
                     { 
-                        name: "青眼の白龍", img: "assets/2-3-4.png", weak: 20, hp: 1600, atk: 25, ai: [
+                        name: "青眼の白龍", img: "assets/2-3-4.png", weak: 20, hp: 1000, atk: 25, ai: [
                             { name: "圧倒的な威圧感", preemptive: true, visual: { cutin: { text: "圧倒的な威圧感", color: "blue" }, msg: "伝説の龍の咆哮に体がすくむ！" }, actions: [{ type: "STATE", target: "PLAYER", kind: "p_atk_buff", val: -0.5, turn: 3 }] },
                             { name: "滅びの爆裂疾風弾", weight: 3, visual: { cutin: { text: "滅びの爆裂疾風弾", color: "blue" }, se: "se-boom", anim: "flash-blue", msg: "全てを焼き払う閃光が放たれた！" }, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 2.5, visual: { anim: "shake-heavy" } }] },
                             { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
                         ]
                     },
                     { 
-                        name: "オベリスクの巨神兵", img: "assets/2-3-5.png", weak: 20, hp: 3500, atk: 40, ai: [
+                        name: "オベリスクの巨神兵", img: "assets/2-3-5.png", weak: 20, hp: 2500, atk: 40, ai: [
                             { name: "神の耐性", preemptive: true, visual: { cutin: { text: "神の耐性", color: "gold" }, msg: "神に対して中途半端な攻撃は通じない！" }, actions: [{ type: "STATE", target: "ENEMY", kind: "barrier", val: 15, turn: 999 }] },
                             { 
-                                weight: 5, sequence: [
+                                weight: 3, sequence: [
                                     { name: "ソウルエナジーMAX", visual: { msg: "敵が生け贄を捧げ、神の力が膨れ上がる！" }, actions: [{ type: "STATE", target: "ENEMY", kind: "charge", turn: 2, visual: { se: "se-warning" } }, { type: "STATE", target: "ENEMY", kind: "e_atk_buff", val: 2.0, turn: 2 }] },
                                     { name: "ゴッド・ハンド・クラッシャー", visual: { cutin: { text: "ゴッド・ハンド・クラッシャー", color: "gold" }, se: "se-boom", anim: "flash-gold", msg: "神の拳が全てを砕く！" }, actions: [{ type: "DAMAGE", target: "PLAYER", mode: "fixed", val: 80, visual: { anim: "shake-ultimate" } }, { type: "MP_ACTION", target: "PLAYER", val: -99 }] }
                                 ]
                             },
-                            { weight: 5, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                            { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
                         ]
                     }
                 ]

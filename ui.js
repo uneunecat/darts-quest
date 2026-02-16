@@ -1128,7 +1128,8 @@ function createStageCard(stageData, stats, rank, isLocked) {
         const art = document.createElement("div");
         art.className = "card-art-tcg";
         const img = document.createElement("img");
-        img.src = stageData.bg;
+        // ★修正: bossBgがあればそちらを優先 (2-1, 2-2, 2-3対策)
+        img.src = stageData.bossBg || stageData.bg;
         img.onerror = () => { img.style.display = "none"; };
         art.appendChild(img);
 
