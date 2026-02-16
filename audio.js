@@ -49,11 +49,31 @@ function updateCurrentBgmVolume() {
     }
 }
 
+const SE_FALLBACK_MAP = {
+    "se-water": "se-boom",
+    "se-wind": "se-attack",
+    "se-dark": "se-boom",
+    "se-bell": "se-item",
+    "se-coin": "se-item",
+    "se-guard": "se-buff",
+    "se-debuff": "se-warning",
+    "se-draw": "se-item",
+    "se-chain": "se-warning",
+    "se-break": "se-boom"
+};
+
 function playSE(id) {
-    const audioEl = document.getElementById(id);
+    let audioEl = document.getElementById(id);
+
+    // フォールバック処理: 指定したIDがない場合、マッピングから代替を探す
+    if (!audioEl && SE_FALLBACK_MAP[id]) {
+        audioEl = document.getElementById(SE_FALLBACK_MAP[id]);
+    }
+
     if (audioEl) {
         audioEl.currentTime = 0;
-        if (AUDIO_ASSETS.SE_ATTACK.includes(id)) {
+        // AUDIO_ASSETS.SE_ATTACK に含まれるか、音色的に攻撃系なら攻撃ボリュームを適用
+        if (AUDIO_ASSETS.SE_ATTACK.includes(id) || id.includes("attack") || id.includes("boom") || id.includes("hit")) {
             audioEl.volume = gameConfig.atkVolume;
         } else {
             audioEl.volume = gameConfig.sysVolume;

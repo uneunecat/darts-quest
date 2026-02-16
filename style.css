@@ -1147,47 +1147,7 @@ body {
 }
 
 /* Items */
-.item-row {
-    display: flex;
-    gap: 5px;
-    margin-top: 10px;
-}
-
-.item-btn {
-    width: 32%;
-    padding: 8px 0;
-    font-size: 12px;
-    font-weight: bold;
-    color: #555;
-    background-color: rgba(34, 34, 34, 0.9);
-    border: 1px solid #444;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-}
-
-.item-btn.disabled {
-    opacity: 0.4;
-    cursor: default;
-    background: #222;
-    color: #666;
-}
-
-.item-btn.has-item {
-    background-color: #663399;
-    color: white;
-    border-color: #c080ff;
-    box-shadow: 0 0 5px #8a2be2;
-}
-
-.item-btn.has-item:hover {
-    background-color: #8a2be2;
-}
+/* item styles deleted */
 
 .home-btn-side {
     margin-top: auto;
@@ -1242,16 +1202,7 @@ body {
     display: block;
 }
 
-#chest-img {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 200px;
-    z-index: 10;
-    cursor: pointer;
-    filter: drop-shadow(0 0 15px gold);
-}
+/* chest styles deleted */
 
 .enemy-hp-container {
     position: absolute;

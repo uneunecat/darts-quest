@@ -527,11 +527,7 @@ window.addEventListener("keydown", function (e) {
         return;
     }
 
-    // Chest Interaction
-    if (waitingForChest) {
-        if (e.key === 'Enter') { e.preventDefault(); openChest(); }
-        return;
-    }
+    // Chest Interaction removed
 
     // Battle Input (Debug)
     if (el("game-screen").style.display !== "none" && !isProcessing) {

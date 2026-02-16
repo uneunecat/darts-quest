@@ -190,17 +190,7 @@ function updateInfo() {
     if (player.mp >= player.maxMp) el("player-mp-dots").classList.add("mp-max-glow");
     else el("player-mp-dots").classList.remove("mp-max-glow");
 
-    const updateItemBtn = (btnId, count, icon) => {
-        const b = el(btnId); if (!b) return;
-        b.innerHTML = `${icon}x${count}`;
-        b.className = "item-btn";
-        const isLocked = hasState(player, "item_lock") || turnInputs.length > 0 || isInterval;
-        if (isLocked || count <= 0) b.classList.add("disabled");
-        else b.classList.add("has-item");
-    };
-    updateItemBtn("btn-potion", player.items.potion, "💊");
-    updateItemBtn("btn-ether", player.items.ether, "⚗️");
-    updateItemBtn("btn-seed", player.items.seed, "🌱");
+    /* updateItemBtn deleted */
 
     const trapContainer = el("trap-slot-container");
     if (trapContainer) {
@@ -1002,7 +992,7 @@ function showHistory() {
                 <div class="h-col-res">${resultText}</div>
                 <div class="h-col-rank ${rankClass}">${rankText}</div>
                 <div class="h-col-turn">${turnText}</div>
-                <div class="h-col-ppr">${h.ppr.toFixed(1)} (Rt${h.rt})</div>
+                <div class="h-col-ppr">${pprDisp} (Rt${rtDisp})</div>
                 <div class="h-col-dp">+${h.dp}</div>
             `;
             list.appendChild(div);

@@ -54,7 +54,7 @@ function spawnEnemy() {
         enemy.actionCount = 0;
         enemy.patternQueue = [];
         enemy.preemptiveTriggered = false;
-        currentTurn = 0; turnInputs = []; currentInput = ""; isJustFinish = false; waitingForChest = false; dropGuaranteed = false; weakHitCount = 0;
+        currentTurn = 0; turnInputs = []; currentInput = ""; isJustFinish = false; weakHitCount = 0;
 
         updateScoreDisplay();
 
@@ -62,7 +62,6 @@ function spawnEnemy() {
         const container = el("game-container");
         container.classList.remove("shake-heavy", "shake-medium", "shake-small", "boss-mode");
         el("boss-label").style.display = "none";
-        el("chest-img").style.display = "none";
 
         const img = el("enemy-img");
         img.style.display = "none";
@@ -156,13 +155,10 @@ async function handlePreemptiveAI() {
     }
 }
 
-// Updated: winBattle (v7.1 - Clear image)
 function winBattle() {
     if (player.hp <= 0) return;
 
     addLog(`${enemy.name} を倒した`, "system");
-
-    // ★追加: 敵の画像を消す
     el("enemy-img").style.display = "none";
 
     if (isJustFinish) {
@@ -172,11 +168,15 @@ function winBattle() {
         addLog(`★JUST FINISH! MaxHP+10 & HP+10`, "heal");
         updateInfo();
         setTimeout(() => {
-            showDialog("JUST FINISH BONUS!!", `見事！ピッタリで倒した！<br>最大HPが ${player.maxHp} にアップ！<br>HPも10回復した。`, "clear", [{ text: "OK", action: checkDrop }], 3000);
+            showDialog("JUST FINISH BONUS!!", `見事！ピッタリで倒した！<br>最大HPが ${player.maxHp} にアップ！<br>HPも10回復した。`, "clear", [{ text: "OK", action: nextFloorDecision }], 3000);
         }, 800);
     } else {
-        setTimeout(checkDrop, 800);
+        setTimeout(nextFloorDecision, 800);
     }
+}
+
+function nextFloorDecision() {
+    nextStep();
 }
 
 // Updated: loseGame (v7.4 - Fixed ReferenceError & Timing)
@@ -295,56 +295,11 @@ function nextStep() {
     }
 }
 
-function checkDrop() {
-    // ★修正: ヘルパー使用
-    if (floor === getMaxFloors(stage) && isBossFloor(stage, floor)) {
-        // 最終フロアかつボスならドロップなしで次へ（この条件はゲーム性次第で調整可）
-        nextStep();
-        return;
-    }
+// checkDrop, openChest, addInventory deleted
 
-    const isBoss = isBossFloor(stage, floor);
-    // ...以下同じ
-    let dropRate = isBoss ? 1.0 : 0.3;
-    if (dropGuaranteed) dropRate = 1.0;
+// checkDrop, openChest, addInventory deleted
 
-    if (Math.random() < dropRate) {
-        waitingForChest = true;
-        el("enemy-img").style.display = "none";
-        el("chest-img").style.display = "block";
-        el("chest-img").classList.add("chest-shine");
-        playSE("se-chest");
-        addLog("宝箱を見つけた！", "log-item");
-        setTimeout(() => { if (waitingForChest) openChest(); }, TIMING.CHEST_AUTO_OPEN);
-    } else {
-        nextStep();
-    }
-}
 
-function openChest() {
-    if (!waitingForChest) return;
-    waitingForChest = false;
-    playSE("se-item");
-
-    const conf = CHEST_DROP_CONFIG;
-    let seedRate = conf.seed_rates.base;
-    if (weakHitCount >= 3) seedRate = conf.seed_rates.weak3;
-    else if (weakHitCount >= 2) seedRate = conf.seed_rates.weak2;
-
-    const rand = Math.random();
-    let itemKey = "";
-
-    if (rand < seedRate) itemKey = "seed";
-    else if (Math.random() < 0.6) itemKey = "potion";
-    else itemKey = "ether";
-
-    const item = ITEM_EFFECTS[itemKey];
-    player.items[itemKey]++;
-
-    updateInfo();
-    addLog(`宝箱: ${item.name} (${item.msg}) を手に入れた`, "log-item");
-    showDialog("TREASURE!", `<span style="font-size:24px;color:#00ff00;">${item.name}</span> を手に入れた！<br>${item.msg}<br>(アイテムボタンで使用可能)`, "item", [{ text: "OK", action: nextStep }], 2000);
-}
 
 // =========================================
 // 2. TURN FLOW (ターン進行)
@@ -518,8 +473,12 @@ async function processOneThrow(score) {
         // 1. 投擲開始時の拘束状態を記録
         const isBound = hasState(player, "action_lock");
 
-        // 既に1投投げているのに、拘束フラグがある場合はガード（通常ここには来ない）
+        // 既に1投投げているのに、拘束フラグがある場合はガード
         if (isBound && turnInputs.length > 0) return;
+
+        // ★履歴に追加 & UI更新 (BT/Debug共通)
+        turnInputs.push(score);
+        updateScoreDisplay();
 
         // 2. 攻撃計算とステートの進行
         let singleDmg = applyOffenseLogic(score, player, false);
@@ -536,21 +495,20 @@ async function processOneThrow(score) {
             isJustFinish = true;
         }
 
-        enemy.hp = Math.max(0, enemy.hp - singleDmg);
-        totalScore += score;
-        totalDarts++;
-        turnInputs.push(score);
-        updateScoreDisplay();
-
-        // 弱点判定
+        // --- Weak Point Redesign (v4.0) ---
         let weakHit = false;
         if (score >= 51 && enemy.data.weak && (score % enemy.data.weak === 0)) {
-            dropGuaranteed = true;
+            weakHit = true;
             weakHitCount++;
-            addLog(`WEAK HIT!!`, "log-weak");
+            singleDmg *= 2; // Damage doubled!
+            addLog(`WEAK HIT!! Damage x2!`, "log-weak");
             playSE("se-weak");
             triggerShatterEffect();
         }
+
+        enemy.hp = Math.max(0, enemy.hp - singleDmg);
+        totalScore += score;
+        totalDarts++; // Correctly increment total darts
 
         // 演出
         triggerEffect(el("game-screen"), singleDmg, false);
@@ -572,14 +530,16 @@ async function processOneThrow(score) {
             updateInfo();
 
             // 1投目だが拘束中だったので、即座にターン終了へ
+            isProcessing = true; // ★修正: 連投防止
             setTimeout(finishPlayerTurn, TIMING.TURN_END_DELAY);
         } else if (turnInputs.length >= 3) {
             // 通常の3投終了
+            isProcessing = true; // ★修正: 連投防止
             setTimeout(finishPlayerTurn, TIMING.TURN_END_DELAY);
         }
     } catch (error) {
         console.error("Battle Error (processOneThrow):", error);
-        addLog(">> エラーが発生しました", "log-system");
+        addLog(">> エラーが発生しました: " + error.message, "log-system");
         isProcessing = false;
         turnInputs = [];
         currentInput = "";
@@ -960,50 +920,21 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
 // =========================================
 // 4. CARD & ITEM (カード・アイテム)
 // =========================================
-function useItem(type) {
-    if (isProcessing || waitingForChest) return;
-    if (turnInputs.length > 0) {
-        addLog(">> 投擲中はアイテムを使えません！", "log-system");
-        return;
-    }
-    // ★修正: hasStateを使用してアイテム封印を判定
-    if (hasState(player, "item_lock")) {
-        playSE("se-warning");
-        addLog(`>> アイテム封印中！`, "log-system");
-        return;
-    }
-
-    const item = ITEM_EFFECTS[type];
-    if (item && player.items[type] > 0) {
-        player.items[type]--;
-        playSE(item.type === "hp" || item.type === "mp" ? "se-heal" : "se-buff");
-
-        const oldHp = player.hp;
-        if (item.type === "hp") player.hp = Math.min(player.hp + item.value, player.maxHp);
-        if (item.type === "mp") player.mp = Math.min(player.mp + item.value, player.maxMp);
-        if (item.type === "maxHp") {
-            player.maxHp += item.value;
-            player.hp = Math.min(player.hp + item.value, player.maxHp);
-        }
-
-        addLog(`アイテム: ${item.name}使用`, "log-item");
-        updateInfo();
-    }
-}
+// useItem deleted
 
 
 
 // Updated: カード使用ロジック (v4.0 Async化)
 async function playHandCard(index) {
     try {
-        if (isProcessing || waitingForChest || isInterval) return;
+        if (isProcessing || isInterval) return;
         if (turnInputs.length > 0) {
             addLog(">> 投擲中はカードを使えません！", "log-system");
             return;
         }
         if (hasState(player, "item_lock")) {
             playSE("se-warning");
-            addLog(`>> アイテム封印中！`, "log-system");
+            addLog(`>> カード封印中！`, "log-system");
             return;
         }
 
@@ -1097,6 +1028,7 @@ function handleEnter() {
             else if (val >= 51) playSE("se-triple");
             else playSE("se-hit");
 
+            // turnInputs.push(val); // processOneThrow内で追加するように変更 (v5.9.1)
             processOneThrow(val);
             currentInput = "";
             updateScoreDisplay();

@@ -2,6 +2,25 @@
 
 ## 履歴 (最新が上)
 
+### 2026-02-17: Bug Fix - Throw Restriction Logic (Definitive)
+- **事象**: 「投擲制限（Bind）」ステート適用中、1投目から「既に投げた」と判定され入力が拒否される、または Bluetooth 接続時に投擲履歴が記録されない可能性があった。
+- **原因**:
+  - デバッグ入力 (`handleEnter`) において、`processOneThrow` を呼ぶ前に `turnInputs.push(val)` を行っていたため、`processOneThrow` 内の「投擲済みチェック (`turnInputs.length > 0`)」が1投目から `true` になり、即座に return されていた。
+  - 一方、Bluetooth入力 (`handleBluetoothNotify`) では `turnInputs.push` を行っていなかったため、履歴や表示が更新されない不整合があった。
+- **対処**:
+  - `handleEnter` 内の `turnInputs.push` を削除。
+  - `processOneThrow` 内（ガード句の直後）に `turnInputs.push(score)` と `updateScoreDisplay()` を移動。これにより、入力経路に関わらず「履歴追加・UI更新・制限判定」が正しく一元管理されるようになった。
+
+
+### 2026-02-17: Critical Bug Fix - State Engine Crash
+- **事象**: 「投擲制限（Bind）」などのステートが付与された状態で投擲すると、ダメージが入らず、かつ制限も機能せず無限に投げられる（前回の修正後も継続）。
+- **原因 (精密解析)**: `main.js` の `initGameSession` において、`player` オブジェクトの初期化に使用される `PLAYER_INITIAL_STATS` (data.js) に `states` プロパティが含まれておらず、`player.states` が `undefined` のままとなっていた。
+  - これにより、`processOneThrow` 冒頭の `hasState` 呼び出し時に `obj.states.some` で `TypeError` が発生し、処理がクラッシュしていた（`STATE_MASTER` の参照エラー説は否定された）。
+  - クラッシュにより後続のダメージ処理がスキップされ、かつ `catch` ブロックで `isProcessing` がリセットされるため、無限に入力可能な状態に陥っていた。
+- **対処**:
+  - `main.js`: `initGameSession` 内で `player.states = []` を明示的に初期化するように修正済み。
+  - `state.js`: `hasState` および `tickStates` 内で `!obj || !obj.states` のチェックを追加し、万が一の初期化漏れでもクラッシュしないよう堅牢化した。また、`STATE_MASTER` の存在チェックも念のため残している。
+
 ### 2026-02-15: Bug Fix - Missing Battle Effects
 - **事象**: 敵攻撃時のダメージ演出（SE、ポップアップ）が消失。
 - **原因**: `battle.js` の `resolveAction` 内で `visual.anim` を参照していたが、正しくは `effectiveVisual.anim` であったため ReferenceError が発生し処理が中断されていた。
@@ -65,6 +84,11 @@
     - **HAT TRICK (150)**: 金色の「Stylish Simple」。
     - **HIGH TON (151+)**: 虹色の「Elegant Rainbow」。
 - **成果物**: `battle_effect_spec.md` を作成。
+
+### 2026-02-16: Vol.3 Card Pack Specification (Codebase Aligned)
+- **現状確認**: `data.js` に既に実装されている「Vol.3 (ID:123-137)」の仕様を正として採用。
+- **仕様確定**: `vol3_pack_spec.md` をコードの実装値（例：フォースは30%割合ダメ、スケープゴートは4T-10軽減）に合わせて更新済み。
+- **新ステージ**: Area 2（トゥーン、神、海馬、マリク）の実装も確認。
 
 ### 2026-02-14: Vol.3 Card Pack Planning (Brainstorming)
 - **意図**: 新しいカードパック「Vol.3 - Rulers of Fate」のコンセプトとラインナップを策定し、戦略の幅を広げる。

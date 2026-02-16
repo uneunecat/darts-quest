@@ -37,8 +37,7 @@ let bluetoothServer = null;
 // プレイヤー状態
 let player = {
     hp: 100, maxHp: 100, mp: 3, maxMp: 10,
-    items: { potion: 0, ether: 0, seed: 0 },
-    states: [], // ★ここがステートの保管庫。個別の変数はすべて削除
+    states: [],
     deck: [], hand: [], discard: [], deckLocked: false, setCard: null
 };
 
@@ -59,12 +58,10 @@ let displayPlayerHP = 100;
 let displayEnemyHP = 100;
 let isProcessing = false;
 let currentTurn = 1;
-let dropGuaranteed = false;
 let weakHitCount = 0;
 let turnInputs = [];
 let currentInput = "";
 let isJustFinish = false;
-let waitingForChest = false;
 let cheatBuffer = "";
 let stageStartTurn = 0;
 let totalGameTurns = 0;
@@ -108,6 +105,7 @@ function tickStates(turnOwner, timing) {
 
         // 1. カウントダウン
         obj.states.forEach(s => {
+            if (typeof STATE_MASTER === 'undefined') return;
             const master = STATE_MASTER[s.id];
             if (!master || master.timing !== timing) return;
 
@@ -128,9 +126,11 @@ function tickStates(turnOwner, timing) {
         // 2. ログ出力と削除
         obj.states.forEach(s => {
             if (s.turn === 0) {
-                const master = STATE_MASTER[s.id];
-                if (master && master.label) {
-                    addLog(`【終了】${master.label}`, "log-system");
+                if (typeof STATE_MASTER !== 'undefined') {
+                    const master = STATE_MASTER[s.id];
+                    if (master && master.label) {
+                        addLog(`【終了】${master.label}`, "log-system");
+                    }
                 }
             }
         });
@@ -138,9 +138,18 @@ function tickStates(turnOwner, timing) {
     });
 }
 
-// ヘルパー: 特定のステートを持っているかチェックする
+// ヘルパー: 特定のステートを持っているかチェックする (Robust Version)
 function hasState(obj, category) {
-    return obj.states.some(s => STATE_MASTER[s.id]?.category === category);
+    if (!obj || !obj.states) return false;
+    // START_MASTER undefined check added to prevent crash
+    if (typeof STATE_MASTER === 'undefined') {
+        console.warn("STATE_MASTER is undefined");
+        return false;
+    }
+    return obj.states.some(s => {
+        const master = STATE_MASTER[s.id];
+        return master && master.category === category;
+    });
 }
 
 // 余韻時間の算出

@@ -44,7 +44,7 @@ const STATE_MASTER = {
     "barrier": { label: "結界", icon: "💠", category: "barrier", timing: "round", class: "chip-barrier" },
     "charge": { label: "溜め", icon: "⚡", category: "charge", timing: "round", class: "chip-charge" },
     "stun": { label: "スタン", icon: "😵", category: "stun", timing: "round", class: "chip-stun" },
-    "item_lock": { label: "アイテム封印", icon: "🔒", category: "item_lock", timing: "round", class: "chip-lock" },
+    "item_lock": { label: "カード封印", icon: "🔒", category: "item_lock", timing: "round", class: "chip-lock" },
     "bind": { label: "拘束", icon: "⛓️", category: "action_lock", timing: "throw", class: "chip-stun" }
 };
 
@@ -254,41 +254,99 @@ const WORLD_MAP = {
                 warning: true,
                 rankThresholds: { SSS: 25, S: 35, A: 50, B: 70 },
                 floors: [
-                    { 
+                    {
                         name: "ミノタウルス", img: "assets/2-3-1.png", weak: 20, hp: 600, atk: 15, ai: [
                             { name: "斧の連撃", weight: 4, visual: { cutin: { text: "斧の連撃", color: "earth" }, msg: "巨大な斧が何度も襲いかかる！" }, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 0.6, count: 3 }] },
                             { weight: 6, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
                         ]
                     },
-                    { 
+                    {
                         name: "闇・道化師のサギー", img: "assets/2-3-2.png", weak: 19, hp: 550, atk: 12, ai: [
                             { name: "死のデッキ破壊ウイルス", weight: 5, visual: { cutin: { text: "死のデッキ破壊ウイルス", color: "purple" }, msg: "ウイルスがカードを腐敗させる！" }, actions: [{ type: "DISCARD_SELECT", count: 1 }, { type: "DAMAGE", target: "PLAYER", mult: 0.5 }] },
                             { weight: 5, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
                         ]
                     },
-                    { 
+                    {
                         name: "ブラッド・ヴォルス", img: "assets/2-3-3.png", weak: 18, hp: 750, atk: 18, ai: [
                             { name: "狂暴な突進", weight: 4, visual: { cutin: { text: "狂暴な突進", color: "fire" }, msg: "凄まじい勢いで突進してきた！" }, actions: [{ type: "STATE", target: "ENEMY", kind: "e_atk_buff", val: 0.5, turn: 2, visual: { se: "se-buff" } }, { type: "DAMAGE", target: "PLAYER", mult: 1.2, visual: { anim: "shake-medium" } }] },
                             { weight: 6, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
                         ]
                     },
-                    { 
+                    {
                         name: "青眼の白龍", img: "assets/2-3-4.png", weak: 20, hp: 1000, atk: 25, ai: [
                             { name: "圧倒的な威圧感", preemptive: true, visual: { cutin: { text: "圧倒的な威圧感", color: "blue" }, msg: "伝説の龍の咆哮に体がすくむ！" }, actions: [{ type: "STATE", target: "PLAYER", kind: "p_atk_buff", val: -0.5, turn: 3 }] },
                             { name: "滅びの爆裂疾風弾", weight: 3, visual: { cutin: { text: "滅びの爆裂疾風弾", color: "blue" }, se: "se-boom", anim: "flash-blue", msg: "全てを焼き払う閃光が放たれた！" }, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 2.5, visual: { anim: "shake-heavy" } }] },
                             { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
                         ]
                     },
-                    { 
+                    {
                         name: "オベリスクの巨神兵", img: "assets/2-3-5.png", weak: 20, hp: 2500, atk: 40, ai: [
                             { name: "神の耐性", preemptive: true, visual: { cutin: { text: "神の耐性", color: "gold" }, msg: "神に対して中途半端な攻撃は通じない！" }, actions: [{ type: "STATE", target: "ENEMY", kind: "barrier", val: 15, turn: 999 }] },
-                            { 
+                            {
                                 weight: 3, sequence: [
                                     { name: "ソウルエナジーMAX", visual: { msg: "敵が生け贄を捧げ、神の力が膨れ上がる！" }, actions: [{ type: "STATE", target: "ENEMY", kind: "charge", turn: 2, visual: { se: "se-warning" } }, { type: "STATE", target: "ENEMY", kind: "e_atk_buff", val: 2.0, turn: 2 }] },
                                     { name: "ゴッド・ハンド・クラッシャー", visual: { cutin: { text: "ゴッド・ハンド・クラッシャー", color: "gold" }, se: "se-boom", anim: "flash-gold", msg: "神の拳が全てを砕く！" }, actions: [{ type: "DAMAGE", target: "PLAYER", mode: "fixed", val: 80, visual: { anim: "shake-ultimate" } }, { type: "MP_ACTION", target: "PLAYER", val: -99 }] }
                                 ]
                             },
                             { weight: 7, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: "2-EX",
+                title: "死の闇の闘技場",
+                sub: "Colosseum of Dark Despair",
+                bg: "assets/bg_stage_marik.png",     // 紫色の霧が漂う不気味な神殿
+                bossBg: "assets/bg_stage_marik_god.png", // 黄金のオーラに包まれた空
+                bossFloor: 5,
+                multiplier: 6.0, // 超高難易度
+                type: "EXTRA",
+                warning: true,
+                rankThresholds: { SSS: 25, S: 35, A: 50, B: 70 },
+                floors: [
+                    {
+                        name: "ギル・ガース", img: "assets/2-ex-1.png", weak: 18, hp: 800, atk: 20, ai: [
+                            { name: "ギロチン・アタック", weight: 5, visual: { cutin: { text: "ギロチン・アタック", color: "earth" } }, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.5 }] },
+                            { weight: 5, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                        ]
+                    },
+                    {
+                        name: "地獄詩人ヘルポエマー", img: "assets/2-ex-2.png", weak: 17, hp: 850, atk: 18, ai: [
+                            { name: "冥界からの呼び声", weight: 4, visual: { cutin: { text: "冥界からの呼び声", color: "purple" }, msg: "カードと魔力が吸い取られる！" }, actions: [{ type: "DISCARD_SELECT", count: 1 }, { type: "MP_ACTION", target: "PLAYER", val: -2 }] },
+                            { weight: 6, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                        ]
+                    },
+                    {
+                        name: "バイサー・デス", img: "assets/2-ex-3.png", weak: 20, hp: 900, atk: 22, ai: [
+                            { name: "痛恨の拘束", weight: 6, visual: { cutin: { text: "痛恨の拘束", color: "purple" }, msg: "拷問器具が動きを封じる！" }, actions: [{ type: "STATE", target: "PLAYER", kind: "bind", turn: 1 }, { type: "DAMAGE", target: "PLAYER", mult: 0.8 }] },
+                            { weight: 4, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                        ]
+                    },
+                    {
+                        name: "溶岩魔神ラヴァ・ゴーレム", img: "assets/2-ex-4.png", weak: 19, hp: 1200, atk: 25, ai: [
+                            { name: "黒曜石の檻", preemptive: true, visual: { cutin: { text: "黒曜石の檻", color: "fire" }, msg: "溶岩の檻が防御力を焼き尽くす！" }, actions: [{ type: "STATE", target: "PLAYER", kind: "guard_fixed", val: -15, turn: 5 }] },
+                            { name: "ボルケーノ・エンチャント", weight: 4, visual: { cutin: { text: "ボルケーノ・エンチャント", color: "fire" }, se: "se-boom" }, actions: [{ type: "DAMAGE", target: "PLAYER", mode: "fixed", val: 40 }] },
+                            { weight: 6, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                        ]
+                    },
+                    {
+                        name: "ラーの翼神竜", img: "assets/2-ex-5.png", weak: 20, hp: 3000, atk: 45, ai: [
+                            { name: "スフィア・モード", preemptive: true, visual: { cutin: { text: "スフィア・モード", color: "gold" }, msg: "神はあらゆる下等な術を跳ね返す！" }, actions: [{ type: "STATE", target: "ENEMY", kind: "barrier", val: 20, turn: 999 }] },
+                            {
+                                name: "ゴッド・フェニックス", weight: 3, cond: { src: "turn_mod", val: 3 }, visual: { cutin: { text: "ゴッド・フェニックス", color: "fire" }, se: "se-boom", msg: "不死鳥の炎が全てを無に帰す！" }, actions: [{ type: "DAMAGE", target: "PLAYER", mode: "fixed", val: 60 },
+                                { type: "STATE", target: "PLAYER", kind: "p_atk_buff", turn: 0 },
+                                { type: "STATE", target: "PLAYER", kind: "guard_ratio", turn: 0 },
+                                { type: "STATE", target: "PLAYER", kind: "guard_fixed", turn: 0 },
+                                { type: "STATE", target: "PLAYER", kind: "barrier", turn: 0 },]
+                            },
+                            {
+                                weight: 3, sequence: [
+                                    { name: "古代神の唱文", visual: { msg: "呪文を唱える！神の力が解放される！" }, actions: [{ type: "STATE", target: "ENEMY", kind: "charge", turn: 2, visual: { se: "se-warning" } }] },
+                                    { name: "黄金の輝き", visual: { cutin: { text: "黄金の輝き", color: "gold" }, anim: "flash-gold" }, actions: [{ type: "STATE", target: "ENEMY", kind: "e_atk_buff", val: 3.0, turn: 1 }, { type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
+                                ]
+                            },
+                            { weight: 4, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
                         ]
                     }
                 ]
@@ -516,7 +574,7 @@ const CARD_DB = [
         packs: ["vol3"]
     },
     {
-        id: 125, name: "激流葬", rarity: "SR", type: "TRAP", cost: 3, desc: "敵出現時に激流ダメージ",
+        id: 125, name: "激流葬", rarity: "SR", type: "TRAP", cost: 3, desc: "敵出現時に100ダメージ",
         visual: { se: "se-water" },
         trap: {
             trigger: "summon",
@@ -552,7 +610,7 @@ const CARD_DB = [
         packs: ["vol3"]
     },
     {
-        id: 129, name: "団結の力", rarity: "R", type: "MAGIC", cost: 3, desc: "手札毎水×20の攻撃力UP(1投)",
+        id: 129, name: "団結の力", rarity: "R", type: "MAGIC", cost: 3, desc: "手札枚数×20の攻撃力UP(1投)",
         visual: { se: "se-buff" },
         actions: [{ type: "STATE", target: "PLAYER", kind: "p_atk_flat", val: 0, scale: { source: "hand", factor: 20 }, turn: 1 }],
         packs: ["vol3"]
@@ -637,8 +695,7 @@ const PLAYER_INITIAL_STATS = {
     hp: 100,
     maxHp: 100,
     mp: 3,
-    maxMp: 10,
-    items: { potion: 0, ether: 0, seed: 0 }
+    maxMp: 10
 };
 
 const RANK_BONUS = {
@@ -661,24 +718,6 @@ const RATING_TABLE = [
     { ppr: 55, rt: 5 }, { ppr: 50, rt: 4 }, { ppr: 45, rt: 3 },
     { ppr: 40, rt: 2 }, { ppr: 30, rt: 1 }
 ];
-
-// アイテム効果の定義
-const ITEM_EFFECTS = {
-    potion: { name: "薬草", type: "hp", value: 50, msg: "HP 50 回復", icon: "💊" },
-    ether: { name: "魔法の聖水", type: "mp", value: 3, msg: "MP 3 回復", icon: "⚗️" },
-    seed: { name: "命の種", type: "maxHp", value: 10, msg: "MaxHP +10", icon: "🌱" }
-};
-
-// 宝箱のドロップ率設定
-const CHEST_DROP_CONFIG = {
-    default_rate: 0.3,
-    boss_rate: 1.0,
-    seed_rates: {
-        base: 0.15,
-        weak2: 0.50,
-        weak3: 1.0
-    }
-};
 
 // =========================================
 // TIMING CONSTANTS (演出タイミング定数)

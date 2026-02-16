@@ -1,19 +1,23 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DARTS QUEST</title>
     <link rel="icon" href="assets/icon.png" type="image/png">
-    
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Playfair+Display:ital,wght@1,600&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
-    
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Playfair+Display:ital,wght@1,600&family=Roboto+Mono:wght@500&display=swap"
+        rel="stylesheet">
+
     <!-- Styles -->
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
     <!-- =========================================
@@ -26,7 +30,7 @@
     <audio id="bgm-extra" loop src="assets/bgm_extra.mp3"></audio>
     <audio id="bgm-win" src="assets/bgm_win.mp3"></audio>
     <audio id="bgm-lose" src="assets/bgm_lose.mp3"></audio>
-    
+
     <!-- SE (System) -->
     <audio id="se-tap" src="assets/se_tap.mp3"></audio>
     <audio id="se-heal" src="assets/se_heal.mp3"></audio>
@@ -34,7 +38,7 @@
     <audio id="se-warning" src="assets/se_warning.mp3"></audio>
     <audio id="se-chest" src="assets/se_chest.mp3"></audio>
     <audio id="se-item" src="assets/se_item.mp3"></audio>
-    
+
     <!-- SE (Battle/Attack) -->
     <audio id="se-attack" src="assets/se_attack.mp3"></audio>
     <audio id="se-hit" src="assets/se_hit.mp3"></audio>
@@ -46,24 +50,30 @@
     <audio id="se-boom" src="assets/se_boom.mp3"></audio>
     <audio id="se-weak" src="assets/se_weak.mp3"></audio>
 
+    <!-- Fallback SE (Missing Files) -->
+    <audio id="se-water" src="assets/se_boom.mp3"></audio>
+    <audio id="se-wind" src="assets/se_attack.mp3"></audio>
+    <audio id="se-dark" src="assets/se_boom.mp3"></audio>
+    <audio id="se-draw" src="assets/se_item.mp3"></audio>
+
 
     <!-- =========================================
          2. GAME WRAPPER (スケーリング用)
          ========================================= -->
     <div id="game-scaler">
         <div class="container" id="game-container">
-            
+
             <!-- Global Overlays -->
             <div id="bg-overlay" class="bg-overlay"></div>
             <div id="flash-overlay"></div>
             <div id="black-curtain"></div>
-            
+
             <!-- Chapter Transition Screen -->
             <div id="chapter-screen">
                 <div class="chapter-title" id="chapter-title">STAGE 1</div>
                 <div class="chapter-sub" id="chapter-sub">Title</div>
             </div>
-            
+
             <!-- Skill Cut-in Overlay -->
             <div id="skill-cutin">
                 <div class="cutin-bg"></div>
@@ -72,7 +82,9 @@
 
             <!-- Save Slot Selection Screen -->
             <div id="slot-screen">
-                <div style="font-family:'Cinzel Decorative',serif; font-size:40px; color:#fff; margin-bottom:20px; text-shadow:0 0 10px #00d2fc;">SELECT DATA</div>
+                <div
+                    style="font-family:'Cinzel Decorative',serif; font-size:40px; color:#fff; margin-bottom:20px; text-shadow:0 0 10px #00d2fc;">
+                    SELECT DATA</div>
                 <div class="slot-container">
                     <div class="slot-card" onclick="selectSlot(1)" id="card-1">
                         <div class="slot-header">SLOT 1</div>
@@ -88,7 +100,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- =========================================
                 Interval Overlay (新設: ダーツ抜き＆ドロー待機)
                 ========================================= -->
@@ -98,12 +110,12 @@
                     <div class="interval-sub" id="interval-sub">TAP TO DRAW</div>
                     <div class="interval-btn">NEXT ROUND</div>
                 </div>
-            </div>           
+            </div>
 
             <!-- =========================================
                  3. MODALS (ポップアップ類)
                  ========================================= -->
-            
+
             <!-- Generic Dialog Modal -->
             <div class="modal-overlay" id="game-modal">
                 <div class="modal-box" id="modal-box-inner">
@@ -114,12 +126,17 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- History Modal -->
             <div class="modal-overlay" id="history-modal" style="display:none;">
                 <div class="modal-box history-box">
                     <div class="modal-title" style="color:#00d2fc;">PLAY HISTORY</div>
-                    <div class="h-header"><div>DATE</div><div>STAGE</div><div>RESULT</div><div>DP/PPR</div></div>
+                    <div class="h-header">
+                        <div>DATE</div>
+                        <div>STAGE</div>
+                        <div>RESULT</div>
+                        <div>DP/PPR</div>
+                    </div>
                     <div class="history-list" id="history-list"></div>
                     <button class="modal-btn" onclick="closeHistory()">CLOSE</button>
                 </div>
@@ -128,11 +145,13 @@
             <!-- Card Shop Modal -->
             <div class="modal-overlay" id="card-shop-modal" style="display:none;">
                 <div class="modal-box shop-box">
-                    <div style="display:flex; justify-content:space-between; align-items:center; width:100%; padding:0 20px; box-sizing:border-box; flex-shrink:0; margin-bottom:10px;">
+                    <div
+                        style="display:flex; justify-content:space-between; align-items:center; width:100%; padding:0 20px; box-sizing:border-box; flex-shrink:0; margin-bottom:10px;">
                         <div class="modal-title" style="color:#e94560; margin:0; padding:0;">CARD SHOP</div>
                         <button class="header-close-btn" onclick="closeCardShop()">×</button>
                     </div>
-                    <div style="color:#aaa; margin-bottom:10px; padding:0 20px; text-align:left; width:100%; box-sizing:border-box;">
+                    <div
+                        style="color:#aaa; margin-bottom:10px; padding:0 20px; text-align:left; width:100%; box-sizing:border-box;">
                         所持DP: <span id="shop-dp-display" style="color:#ffd700; font-weight:bold;">0</span>
                     </div>
                     <div class="pack-list" id="pack-list"></div>
@@ -146,8 +165,10 @@
 
             <!-- Deck Editor / Collection Modal -->
             <div class="modal-overlay" id="collection-modal" style="display:none;">
-                <div class="modal-box shop-box" style="max-width:900px; height:90vh; display:flex; flex-direction:column;">
-                    <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <div class="modal-box shop-box"
+                    style="max-width:900px; height:90vh; display:flex; flex-direction:column;">
+                    <div class="modal-header"
+                        style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                         <div class="modal-title" style="color:#00d2fc; margin:0;">DECK EDIT</div>
                         <div style="display:flex; align-items:center; gap:15px;">
                             <div style="font-size:14px; color:#aaa;">所持率: <span id="collection-rate">0%</span></div>
@@ -156,14 +177,17 @@
                     </div>
                     <div class="modal-body-split">
                         <div class="deck-column">
-                            <div class="column-header">▼ YOUR DECK (<span id="deck-count" style="color:#ffd700;">0</span>/20)</div>
+                            <div class="column-header">▼ YOUR DECK (<span id="deck-count"
+                                    style="color:#ffd700;">0</span>/20)</div>
                             <div class="deck-grid" id="deck-grid"></div>
                             <div id="deck-card-detail" class="deck-card-detail">
-                                <div style="color:#aaa; font-size:12px; text-align:center; padding-top:20px;">Hover card to see details</div>
+                                <div style="color:#aaa; font-size:12px; text-align:center; padding-top:20px;">Hover card
+                                    to see details</div>
                             </div>
                         </div>
                         <div class="list-column">
-                            <div class="column-header">▼ CARD LIST <span style="font-size:10px; color:#aaa;">(Click to Add)</span></div>
+                            <div class="column-header">▼ CARD LIST <span style="font-size:10px; color:#aaa;">(Click to
+                                    Add)</span></div>
                             <div class="card-grid" id="card-grid"></div>
                         </div>
                     </div>
@@ -185,9 +209,9 @@
                  ========================================= -->
             <div class="title-screen" id="title-screen" style="display:none;">
                 <div class="title-logo">DARTS<br>QUEST</div>
-                
+
                 <button id="bt-connect-btn" class="connect-btn" onclick="connectToBoard()">📡 CONNECT BOARD</button>
-                
+
                 <div class="highscore-box">
                     <div class="dp-display" id="dp-display">DP: 0</div>
                     <div class="hs-row">
@@ -203,20 +227,24 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="main-actions" style="margin-top:20px; display:flex; flex-direction:column; gap:10px; align-items:center;">
-                        <button class="stage-btn btn-gold" onclick="openStageSelect()" style="width:200px; height:60px; font-size:22px;">GAME START</button>
+
+                    <div class="main-actions"
+                        style="margin-top:20px; display:flex; flex-direction:column; gap:10px; align-items:center;">
+                        <button class="stage-btn btn-gold" onclick="openStageSelect()"
+                            style="width:200px; height:60px; font-size:22px;">GAME START</button>
                     </div>
-                    
+
                     <div class="title-buttons" style="margin-top:15px;">
-                        <button class="sub-btn" style="color:#e94560; border-color:#e94560;" onclick="openCardShop()">🎴 SHOP</button>
-                        <button class="sub-btn" style="color:#00d2fc; border-color:#00d2fc;" onclick="openCollection()">📂 DECK</button>
+                        <button class="sub-btn" style="color:#e94560; border-color:#e94560;" onclick="openCardShop()">🎴
+                            SHOP</button>
+                        <button class="sub-btn" style="color:#00d2fc; border-color:#00d2fc;"
+                            onclick="openCollection()">📂 DECK</button>
                         <button class="sub-btn" onclick="showHistory()">📜 HISTORY</button>
                         <button class="sub-btn" onclick="backToSlots()">↩️ SLOTS</button>
                     </div>
-                    
+
                     <div style="font-size:10px; color:#555; margin-top:10px;">
-                        <span onclick="exportSave()" style="cursor:pointer;">[EXPORT]</span> 
+                        <span onclick="exportSave()" style="cursor:pointer;">[EXPORT]</span>
                         <span onclick="importSave()" style="cursor:pointer;">[IMPORT]</span>
                         <span onclick="resetSaveData()" style="cursor:pointer; color:#522;">[RESET]</span>
                     </div>
@@ -224,7 +252,8 @@
             </div>
 
             <!-- Stage Selection Screen -->
-            <div id="stage-select-screen" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10; flex-direction:column; padding:20px; box-sizing:border-box;">
+            <div id="stage-select-screen"
+                style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10; flex-direction:column; padding:20px; box-sizing:border-box;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                     <button class="sub-btn" onclick="closeStageSelect()">↩️ BACK</button>
                     <div style="color:#fff; font-family:'Cinzel Decorative'; font-size:24px;">SELECT STAGE</div>
@@ -239,15 +268,15 @@
                  ========================================= -->
             <div class="game-screen" id="game-screen" style="display:none;">
                 <div class="battle-container-wrapper">
-                    
+
                     <!-- Left Column: Info & Player Stats -->
                     <div class="battle-side-info">
                         <!-- Stage Info -->
                         <div class="battle-header-info">
                             <div class="stg-info-row">
-                                <span id="stage-display">STAGE 1</span> 
-                                <span style="display:inline-block; width:20px;"></span> 
-                                <span id="floor-display">1F</span> 
+                                <span id="stage-display">STAGE 1</span>
+                                <span style="display:inline-block; width:20px;"></span>
+                                <span id="floor-display">1F</span>
                                 <span class="boss-label" id="boss-label">BOSS</span>
                             </div>
                             <div class="turn-info-row" id="turn-display">TURN 1</div>
@@ -263,12 +292,22 @@
                         <!-- Score Display Block -->
                         <div class="side-block score-block-fixed">
                             <div class="darts-horizontal-box">
-                                <div class="score-cell"><div class="score-label">1</div><div class="score-val" id="slot-1-side">--</div></div>
-                                <div class="score-cell"><div class="score-label">2</div><div class="score-val" id="slot-2-side">--</div></div>
-                                <div class="score-cell"><div class="score-label">3</div><div class="score-val" id="slot-3-side">--</div></div>
+                                <div class="score-cell">
+                                    <div class="score-label">1</div>
+                                    <div class="score-val" id="slot-1-side">--</div>
+                                </div>
+                                <div class="score-cell">
+                                    <div class="score-label">2</div>
+                                    <div class="score-val" id="slot-2-side">--</div>
+                                </div>
+                                <div class="score-cell">
+                                    <div class="score-label">3</div>
+                                    <div class="score-val" id="slot-3-side">--</div>
+                                </div>
                             </div>
                             <div class="darts-indicator">
-                                <span id="d-dot-1" class="d-dot">●</span><span id="d-dot-2" class="d-dot">●</span><span id="d-dot-3" class="d-dot">●</span>
+                                <span id="d-dot-1" class="d-dot">●</span><span id="d-dot-2" class="d-dot">●</span><span
+                                    id="d-dot-3" class="d-dot">●</span>
                             </div>
                         </div>
 
@@ -284,27 +323,24 @@
                                 <span class="p-label-text">MP</span>
                                 <div id="player-mp-dots" class="mp-dots-container"></div>
                             </div>
-                            <div class="avg-row">Avg: <span id="avg-display">0.0</span> <span id="rt-display">(Rt -)</span></div>
-                            
+                            <div class="avg-row">Avg: <span id="avg-display">0.0</span> <span id="rt-display">(Rt
+                                    -)</span></div>
+
                             <div id="player-states-side" class="state-chips-container"></div>
 
-                            <div class="item-row">
-                                <button class="item-btn" id="btn-potion" onclick="useItem('potion')">💊x0</button>
-                                <button class="item-btn" id="btn-ether" onclick="useItem('ether')">⚗️x0</button>
-                                <button class="item-btn" id="btn-seed" onclick="useItem('seed')">🌱x0</button>
-                            </div>
+                            <!-- item-row deleted -->
                         </div>
-                        
+
                         <button class="home-btn-side" onclick="returnToTitle()">🏠 EXIT GAME</button>
                     </div>
 
                     <!-- Right Column: Visual Stage -->
                     <div class="battle-main-stage" id="enemy-panel">
-                        
+
                         <div class="enemy-visual-area">
                             <img id="enemy-img" src="" alt="Enemy">
-                            <img id="chest-img" src="assets/img_chest.png" alt="Chest" onclick="openChest()">
-                            
+                            <!-- chest-img deleted -->
+
                             <div class="enemy-hp-container">
                                 <div id="enemy-hp-value" class="hp-mega-text">100</div>
                                 <div id="enemy-name" style="display:none;"></div>
@@ -312,8 +348,9 @@
                         </div>
 
                         <div class="hand-overlay-container">
-                            <div class="deck-info">DECK: <span id="battle-deck-count">0</span> | HAND: <span id="hand-count-display">0</span></div>
-                            
+                            <div class="deck-info">DECK: <span id="battle-deck-count">0</span> | HAND: <span
+                                    id="hand-count-display">0</span></div>
+
                             <div class="hand-wrapper">
                                 <!-- Trap Slot -->
                                 <div id="trap-slot-container" class="trap-slot-container">
@@ -324,7 +361,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div id="battle-log"></div>
                 </div>
             </div>
@@ -340,4 +377,5 @@
     <script src="debug.js"></script>
     <script src="main.js"></script>
 </body>
+
 </html>
