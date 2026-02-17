@@ -700,12 +700,12 @@ function startPackOpening(packId) {
             savedData.collection[card.id] = (savedData.collection[card.id] || 0) + 1;
         }
 
-        packResults.push({ 
-            ...card, 
-            isNew: isNew, 
-            isRecycled: isRecycled, 
-            gainedSoul: gainedSoul, 
-            ownCount: savedData.cards[card.id] 
+        packResults.push({
+            ...card,
+            isNew: isNew,
+            isRecycled: isRecycled,
+            gainedSoul: gainedSoul,
+            ownCount: savedData.cards[card.id]
         });
     }
 
@@ -1271,16 +1271,14 @@ function createStageCard(stageData, stats, rank, isLocked) {
 }
 
 // --- タブ切り替えロジック ---
-// --- タブ切り替えロジック ---
-// --- ui.js ---
 
 // Updated: タブ切り替えロジック (v8.4 - Class-based Toggle)
 function switchCollectionTab(tab) {
     const isDeck = tab === 'deck';
-    
+
     const deckContent = el("deck-tab-content");
     const reliefContent = el("relief-tab-content");
-    
+
     if (deckContent && reliefContent) {
         if (isDeck) {
             deckContent.classList.remove("tab-content-hidden");
@@ -1294,13 +1292,13 @@ function switchCollectionTab(tab) {
             reliefContent.classList.add("tab-content-visible");
         }
     }
-    
+
     el("tab-deck").classList.toggle("active", isDeck);
     el("tab-relief").classList.toggle("active", !isDeck);
-    
+
     el("collection-stat-label").style.display = isDeck ? "block" : "none";
     el("soul-display-label").style.display = isDeck ? "none" : "block";
-    
+
     if (isDeck) renderDeckEditor();
     else renderReliefEditor();
 }
@@ -1310,13 +1308,13 @@ function renderReliefEditor() {
     const shopGrid = el("relief-shop-grid");
     const equipGrid = el("equipped-relief-grid");
     const detailArea = el("relief-detail");
-    
+
     if (!shopGrid || !equipGrid) return;
 
     el("soul-count").innerText = savedData.souls || 0;
     shopGrid.innerHTML = "";
     equipGrid.innerHTML = "";
-    
+
     // 詳細エリアの初期化
     if (detailArea) {
         detailArea.innerHTML = `<div style="color:#aaa; font-size:12px; text-align:center; padding-top:20px;">Hover a slab to see details</div>`;
@@ -1327,11 +1325,11 @@ function renderReliefEditor() {
         const rId = savedData.equippedReliefs[i];
         const slot = document.createElement("div");
         slot.className = "relief-slot-box"; // CSSでホバー効果とクリックポインター付与済み
-        
+
         if (rId && RELIEF_DB[rId]) {
             const data = RELIEF_DB[rId];
             const imgPath = getReliefImgPath(rId);
-            
+
             // ★修正: 画像サイズを 40px -> 54px に拡大
             slot.innerHTML = `
                 <div class="relief-slab owned equipped" style="width:54px; height:54px; flex-shrink:0;">
@@ -1342,11 +1340,11 @@ function renderReliefEditor() {
                     <div class="relief-slot-desc">${data.desc}</div>
                 </div>
             `;
-            
+
             slot.onclick = () => { toggleRelief(rId); };
         } else {
             // 空きスロットも高さを合わせる
-            slot.innerHTML = `<div style="color:#555; font-size:10px; width:100%; text-align:center; letter-spacing:1px;">-- EMPTY SLOT ${i+1} --</div>`;
+            slot.innerHTML = `<div style="color:#555; font-size:10px; width:100%; text-align:center; letter-spacing:1px;">-- EMPTY SLOT ${i + 1} --</div>`;
         }
         equipGrid.appendChild(slot);
     }
@@ -1372,21 +1370,21 @@ function renderReliefEditor() {
         sortedReliefs.forEach(([id, data]) => {
             const isUnlocked = savedData.unlockedReliefs.includes(id);
             const isEquipped = savedData.equippedReliefs.includes(id);
-            
+
             // 討伐判定: IDの前半(StageID)を使って stageStats を確認
-            const stageKey = id.split('-').slice(0,2).join('-');
+            const stageKey = id.split('-').slice(0, 2).join('-');
             const hasDefeated = savedData.stageStats[stageKey] && savedData.stageStats[stageKey].clears > 0;
 
             const slab = document.createElement("div");
             slab.className = `relief-slab ${!hasDefeated ? 'locked' : isUnlocked ? 'owned' : 'unlocked'}`;
             if (isEquipped) slab.classList.add("equipped");
-            
+
             slab.innerHTML = `
                 <img src="${getReliefImgPath(id)}" class="slab-monster-img">
                 ${(!isUnlocked && hasDefeated) ? `<div class="slab-price">💎 ${data.souls}</div>` : ''}
                 ${isEquipped ? `<div class="slab-price" style="background:#00ff00; color:#000;">EQUIPPED</div>` : ''}
             `;
-            
+
             slab.onclick = () => {
                 if (!hasDefeated) { announce("未発見の魔物です", "log-enemy"); return; }
                 if (!isUnlocked) buyRelief(id);
@@ -1396,7 +1394,7 @@ function renderReliefEditor() {
             // ホバー時の詳細表示
             slab.onmouseenter = () => {
                 if (!detailArea) return;
-                
+
                 if (!hasDefeated) {
                     detailArea.innerHTML = `
                         <div class="detail-name">？？？？</div>

@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v2.18.6)");
+console.log("★ main.js is loaded! (v2.18.7)");
 
 // =========================================
 // 1. INITIALIZATION & DATA (初期化・データ)

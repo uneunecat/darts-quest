@@ -126,7 +126,7 @@ const WORLD_MAP = {
                     },
                     {
                         name: "二頭を持つキング・レックス", img: "assets/2-4.png", weak: 20, hp: 340, atk: 10, ai: [
-                            { name: "狂暴化", weight: 5, cond: { src: "e_state", tag: "atk_mult", val: 0 }, visual: { cutin: { text: "狂暴化", color: "fire" }, msg: "怒りで攻撃力が倍増した！" }, actions: [{ type: "STATE", target: "ENEMY", kind: "e_atk_buff", val: 1.0, turn: 10, visual: { se: "se-buff" } }] },
+                            { name: "狂暴化", weight: 5, cond: { src: "e_state", tag: "atk_mult", op: "eq", val: 0 }, visual: { cutin: { text: "狂暴化", color: "fire" }, msg: "怒りで攻撃力が倍増した！" }, actions: [{ type: "STATE", target: "ENEMY", kind: "e_atk_buff", val: 1.0, turn: 10, visual: { se: "se-buff" } }] },
                             { weight: 5, actions: [{ type: "DAMAGE", target: "PLAYER", mult: 1.0 }] }
                         ]
                     },
@@ -374,7 +374,7 @@ const CARD_DB = [
         visual: { se: "se-boom" },
         actions: [
             { type: "DAMAGE", target: "ENEMY", mode: "fixed", val: 100 },
-            { type: "STATE", target: "ENEMY", kind: "stun", turn: 1 }
+            { type: "STATE", target: "ENEMY", kind: "stun", turn: 2 }
         ],
         packs: ["vol1"]
     },
@@ -397,7 +397,7 @@ const CARD_DB = [
             trigger: "summon",
             actions: [
                 { type: "DAMAGE", target: "ENEMY", mode: "fixed", val: 50 },
-                { type: "STATE", target: "ENEMY", kind: "stun", turn: 1 }
+                { type: "STATE", target: "ENEMY", kind: "stun", turn: 2 }
             ]
         },
         packs: ["vol1"]
@@ -509,7 +509,7 @@ const CARD_DB = [
         trap: {
             trigger: "attack",
             actions: [
-                { type: "STATE", target: "ENEMY", kind: "stun", turn: 1 },
+                { type: "STATE", target: "ENEMY", kind: "stun", turn: 2 },
                 { type: "DAMAGE_MULT", val: 0.5 }
             ]
         },
@@ -569,7 +569,7 @@ const CARD_DB = [
         visual: { se: "se-hit", msg: "敵は混乱して自分を攻撃した！" },
         actions: [
             { type: "DAMAGE", target: "ENEMY", scale: { source: "enemy_atk", factor: 1.0 } },
-            { type: "STATE", target: "ENEMY", kind: "stun", turn: 1 }
+            { type: "STATE", target: "ENEMY", kind: "stun", turn: 2 }
         ],
         packs: ["vol3"]
     },
@@ -626,7 +626,7 @@ const CARD_DB = [
         visual: { se: "se-bell" },
         trap: {
             trigger: "summon",
-            actions: [{ type: "STATE", target: "ENEMY", kind: "stun", turn: 1 }]
+            actions: [{ type: "STATE", target: "ENEMY", kind: "stun", turn: 2 }]
         },
         packs: ["vol3"]
     },
@@ -800,15 +800,15 @@ const RELIEF_DB = {
     "1-1-1": { name: "幼生の石版", monsterName: "プチモス", souls: 300, img: "assets/1-1.png", desc: "未熟な生命力。最大HP+30。", passives: [{ type: "STATIC", category: "hp_max", val: 30 }] },
     "1-1-2": { name: "成長の石版", monsterName: "ラーバモス", souls: 400, img: "assets/1-2.png", desc: "進化の予兆。ターン開始時、20%の確率でMPが1回復する。", passives: [{ trigger: "onTurnStart", chance: 0.2, actions: [{ type: "MP_ACTION", target: "PLAYER", val: 1 }] }] },
     "1-1-3": { name: "潜伏の石版", monsterName: "進化の繭", souls: 600, img: "assets/1-3.png", desc: "鉄壁の守護。被ダメージ-5。さらにターン開始時、20%の確率でHP20回復。", passives: [{ type: "STATIC", category: "dmg_sub", val: 5 }, { trigger: "onTurnStart", chance: 0.2, actions: [{ type: "HEAL", target: "PLAYER", val: 20 }] }] },
-    "1-1-4": { name: "猛毒の石版", monsterName: "グレート・モス", souls: 1000, img: "assets/1-4.png", desc: "毒の鱗粉。攻撃命中時、5%の確率で敵を1Tスタンさせる。", passives: [{ trigger: "onAttackHit", chance: 0.05, actions: [{ type: "STATE", target: "ENEMY", kind: "stun", turn: 1 }] }] },
+    "1-1-4": { name: "猛毒の石版", monsterName: "グレート・モス", souls: 1000, img: "assets/1-4.png", desc: "毒の鱗粉。攻撃命中時、5%の確率で敵を1Tスタンさせる。", passives: [{ trigger: "onAttackHit", chance: 0.05, actions: [{ type: "STATE", target: "ENEMY", kind: "stun", turn: 2 }] }] },
     "1-1-5": { name: "森神の石版", monsterName: "究極完全態・グレート・モス", souls: 2000, img: "assets/1-5.png", desc: "究極の生命力。被ダメージ-5。最大HP+50。", passives: [{ type: "STATIC", category: "dmg_sub", val: 5 }, { type: "STATIC", category: "hp_max", val: 50 }] },
-    
+
     "1-2-1": { name: "原始の石版", monsterName: "トラコドン", souls: 800, img: "assets/2-1.png", desc: "原始の力。各ターンの1投目のダメージを+20加算する。", passives: [{ type: "STATIC", category: "atk_add_first", val: 20 }] },
     "1-2-2": { name: "俊足の石版", monsterName: "ワイルド・ラプター", souls: 1000, img: "assets/2-2.png", desc: "俊足の狩人。常に与ダメージ+10。", passives: [{ type: "STATIC", category: "atk_add", val: 10 }] },
     "1-2-3": { name: "腐敗の石版", monsterName: "屍を貪る竜", souls: 1500, img: "assets/2-3.png", desc: "死肉の渇望。敵を撃破した瞬間にHPを50回復する。", passives: [{ trigger: "onEnemyKill", actions: [{ type: "HEAL", target: "PLAYER", val: 50 }] }] },
     "1-2-4": { name: "王者の石版", monsterName: "二頭を持つキング・レックス", souls: 2000, img: "assets/2-4.png", desc: "王者の威圧。自分のHPが50%以下の時、与ダメージ+20。", passives: [{ type: "STATIC", category: "atk_add_low_hp", val: 20 }] },
     "1-2-5": { name: "鋭牙の石版", monsterName: "剣竜", souls: 1800, img: "assets/2-5.png", desc: "鎧通しの牙。常に敵の固定軽減（アーマー）を無視して攻撃する。", passives: [{ type: "STATIC", category: "pierce_fixed", val: 999 }] },
-    
+
     "1-3-1": { name: "守護天使の石版", monsterName: "デュナミス・ヴァルキリア", souls: 1200, img: "assets/3-1.png", desc: "天使の盾。常に被ダメージ-8。", passives: [{ type: "STATIC", category: "dmg_sub", val: 8 }] },
     "1-3-2": { name: "狩場の石版", monsterName: "ハーピィ・レディ", souls: 1000, img: "assets/3-2.png", desc: "風まとう狩人。ターン開始時、10%の確率でドローする。", passives: [{ trigger: "onTurnStart", chance: 0.1, actions: [{ type: "DRAW", val: 1 }] }] },
     "1-3-3": { name: "魅惑の石版", monsterName: "ハーピィ・レディ・SB", souls: 1200, img: "assets/3-3.png", desc: "華麗なる束縛。攻撃命中時、5%の確率で敵を拘束しダメージを与える。", passives: [{ trigger: "onAttackHit", chance: 0.05, actions: [{ type: "DAMAGE", target: "ENEMY", mult: 0.5 }] }] },
@@ -840,7 +840,7 @@ const RELIEF_DB = {
     // --- AREA 2-EX: 死の闇の闘技場 ---
     "2-EX-1": { name: "拷問の石版", monsterName: "ギル・ガース", souls: 2500, img: "assets/2-ex-1.png", desc: "魔力の代償。現在MPが 1 につき、ダメージを+2加算する。", passives: [{ type: "STATIC", category: "atk_add_per_mp", val: 2 }] },
     "2-EX-2": { name: "奈落の石版", monsterName: "地獄詩人ヘルポエマー", souls: 2500, img: "assets/2-ex-2.png", desc: "冥界の衰弱。敵の基礎攻撃力（ATK）を常に -5 低下させる。", passives: [{ type: "STATIC", category: "enemy_atk_flat", val: -5 }] },
-    "2-EX-3": { name: "万力の石版", monsterName: "バイサー・デス", souls: 3000, img: "assets/2-ex-3.png", desc: "拘束の反動。ターン開始時、15%の確率で敵を1Tスタンさせる。", passives: [{ trigger: "onTurnStart", chance: 0.15, actions: [{ type: "STATE", target: "ENEMY", kind: "stun", turn: 1 }] }] },
+    "2-EX-3": { name: "万力の石版", monsterName: "バイサー・デス", souls: 3000, img: "assets/2-ex-3.png", desc: "拘束の反動。ターン開始時、15%の確率で敵を1Tスタンさせる。", passives: [{ trigger: "onTurnStart", chance: 0.15, actions: [{ type: "STATE", target: "ENEMY", kind: "stun", turn: 2 }] }] },
     "2-EX-4": { name: "溶岩の石版", monsterName: "溶岩魔神ラヴァ・ゴーレム", souls: 3500, img: "assets/2-ex-4.png", desc: "自動燃焼。ターン終了時、敵に 50 の固定ダメージを与える。", passives: [{ trigger: "onRoundEnd", actions: [{ type: "DAMAGE", target: "ENEMY", mode: "fixed", val: 50 }] }] },
     "2-EX-5": { name: "太陽神の石版", monsterName: "ラーの翼神竜", souls: 5000, img: "assets/2-ex-5.png", desc: "大いなる再生。あらゆるHP回復効果を2倍にする。", passives: [{ type: "STATIC", category: "heal_multiplier", val: 2.0 }] }
 };
