@@ -2295,16 +2295,21 @@ stg-info-row {
 }
 
 .deck-card-detail {
-    margin-top: 10px;
-    padding: 10px;
-    background: rgba(0, 0, 0, 0.5);
-    border: 1px solid #444;
-    border-radius: 5px;
-    min-height: 80px;
-    font-size: 12px;
-    color: #fff;
-    line-height: 1.4;
-    white-space: pre-wrap;
+    margin-top: auto; /* 下部に押し付け */
+    padding: 15px; 
+    background: rgba(0,0,0,0.6);
+    border: 1px solid #444; 
+    border-radius: 5px; 
+    min-height: 80px; /* 固定高さ */
+    height: 100px;
+    font-size: 12px; 
+    color: #fff; 
+    line-height: 1.4; 
+    white-space: normal; /* 折り返し許可 */
+    overflow-y: auto;    /* 長文対応 */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start; /* 上詰め */
 }
 
 .detail-name {
@@ -4144,12 +4149,65 @@ stg-info-row {
 }
 
 .relief-slots-vertical {
-    display: flex; flex-direction: column; gap: 15px; padding: 15px;
+    display: flex; 
+    flex-direction: column; 
+    gap: 6px;       /* 15px -> 6px に圧縮 */
+    padding: 10px;  /* 15px -> 10px に圧縮 */
+    flex-shrink: 0; /* サイズ固定 */
 }
 .relief-slot-box {
-    height: 80px; background: rgba(0,0,0,0.4);
-    border: 2px dashed #444; border-radius: 8px;
-    display: flex; align-items: center; padding: 0 15px; gap: 15px;
+    height: auto;
+    min-height: 68px; /* 55px -> 68px に拡大 */
+    background: rgba(0,0,0,0.4);
+    border: 1px dashed #555;
+    border-radius: 6px;
+    display: flex; 
+    align-items: center; 
+    padding: 4px 8px;
+    gap: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.relief-slot-box:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: #888;
+}
+.relief-slot-info {
+    flex: 1; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 1px; /* 行間を詰める */
+    overflow: hidden;
+}
+
+.relief-slot-name { 
+    font-size: 11px; /* 13px -> 11px */
+    color: #fff; 
+    font-weight: bold; 
+    border-bottom: 1px solid #333; 
+    padding-bottom: 1px; 
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.relief-slot-desc { 
+    font-size: 9px; /* 10px -> 9px */
+    color: #aaa; 
+    line-height: 1.1; 
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* 最大2行まで */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+#relief-detail {
+    margin-top: auto; /* 上が空いたら上に詰めるのではなく、下に配置 */
+    margin-bottom: 10px;
+    flex-shrink: 1;   /* 必要なら縮む */
+    min-height: 0;    /* フレックスボックス内でのはみ出し防止 */
+    overflow-y: auto; /* 内容が多い場合はスクロール */
+    border-color: #00d2fc; /* 枠線を青にして強調 */
 }
 
 .relief-slab .slab-monster-img {
@@ -4218,3 +4276,31 @@ stg-info-row {
     height: 2px;
     background: rgba(255,255,255,0.05); /* うっすら線を引くだけにする */
 }
+
+/* 1. ソウル変換バッジの強化 */
+.soul-recycle-badge {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(0, 210, 252, 0.95), rgba(0, 0, 50, 0.9));
+    color: #fff;
+    padding: 15px 5px; /* 少し大きく */
+    border-radius: 50%; 
+    width: 80px; height: 80px; /* 正円にする */
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    font-size: 10px; font-weight: bold; letter-spacing: 1px;
+    box-shadow: 0 0 20px #00d2fc, 0 0 10px #fff inset;
+    z-index: 100; pointer-events: none; border: 2px solid #fff;
+    animation: soul-pulse 1.5s infinite alternate;
+}
+.soul-val-text { font-size: 18px; color: #ffd700; font-family: 'Roboto Mono'; }
+
+@keyframes soul-pulse {
+    from { box-shadow: 0 0 15px #00d2fc; transform: translate(-50%, -50%) scale(1); }
+    to { box-shadow: 0 0 30px #00d2fc; transform: translate(-50%, -50%) scale(1.05); }
+}
+
+/* 2. リザルト画面のソウルカウンター */
+.result-header-soul {
+    position: absolute; right: 20px; top: 20px;
+    font-size: 16px; color: #aaa;
+}
+.result-soul-val { color: #ffd700; font-family: 'Roboto Mono'; font-weight: bold; font-size: 20px; }

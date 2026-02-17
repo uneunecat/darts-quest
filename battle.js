@@ -9,6 +9,7 @@ function setupStage(sel, continueMode, startFloor = 1) {
     extraBossTurnCount = 0;
     currentTurn = 1;
     stageStartTurn = totalGameTurns;
+    player.reliefResurrectUsed = false; // ★リセット
 
     if (!continueMode) totalDarts = 0;
     if (el("avg-display")) el("avg-display").innerText = "0.0";
@@ -41,6 +42,11 @@ function setupStage(sel, continueMode, startFloor = 1) {
     } else {
         addLog(">> 前ステージの状態を引き継ぎました", "log-system");
     }
+
+    // ★追加: 石版のMaxHP加算を適用
+    const hpBonus = getReliefStaticValue("hp_max");
+    player.maxHp = PLAYER_INITIAL_STATS.maxHp + hpBonus;
+    player.hp = Math.min(player.hp, player.maxHp); 
 
     spawnEnemy();
     resizeGame();
@@ -333,10 +339,10 @@ async function startPlayerTurn() {
     // ★追加: プレイヤーがかけた「round」ステートを経過させる
     tickStates("PLAYER", "round");
 
-    // ★ ターン開始時に「onTurnStart」トリガーをチェック
+    // ★追加: ターン開始時トリガー
     await checkReliefTriggers("onTurnStart");
-
     isInterval = false;
+
     el("interval-screen").style.display = "none";
 
     // 1. MPチャージ演出 (非同期で1つずつ増やす)
@@ -576,6 +582,14 @@ async function finishPlayerTurn() {
     }
     // --------------------------------
 
+    // ★追加: ラウンド終了時トリガー (ワームドレイク、ラヴァゴーレムなど)
+    await checkReliefTriggers("onRoundEnd");
+    // トリガー効果で敵が死んだ場合、敵ターンには行かない
+    if (enemy.hp <= 0) {
+        setTimeout(winBattle, 500);
+        return;
+    }
+
     totalGameTurns++;
     turnInputs = [];
     currentInput = "";
@@ -684,12 +698,39 @@ function applyOffenseLogic(basePower, sourceObj, applyRandom = true) {
     let multBonus = sourceObj.states.filter(s => STATE_MASTER[s.id]?.category === "atk_mult").reduce((sum, s) => sum + s.val, 0);
     let addBonus = sourceObj.states.filter(s => STATE_MASTER[s.id]?.category === "atk_add").reduce((sum, s) => sum + s.val, 0);
 
-    // ★ プレイヤーの攻撃時のみレリーフの効果を上乗せ
+    // プレイヤーの攻撃時のみレリーフ補正を計算
     if (sourceObj === player) {
+        // 1. 基本加算
         addBonus += getReliefStaticValue("atk_add");
-        // 条件付き（1投目限定など）もここで加算可能
-        if (turnInputs.length === 0) addBonus += getReliefStaticValue("atk_add_first");
-        if (turnInputs.length === 0 && currentInput === "") addBonus += getReliefStaticValue("atk_add_single"); // 厳密な1投目判定
+
+        // 2. 条件付き加算
+        if (turnInputs.length === 0) addBonus += getReliefStaticValue("atk_add_first"); // 1投目
+        if (turnInputs.length === 1) addBonus += getReliefStaticValue("atk_add_second"); // 2投目
+        
+        // シングルヒット判定 (1-20点の時)
+        if (basePower > 0 && basePower <= 20) addBonus += getReliefStaticValue("atk_add_single");
+
+        // 三姉妹: 3投目かつ1,2投目とスコアが同じなら
+        if (turnInputs.length === 2 && turnInputs[0] === turnInputs[1] && turnInputs[1] === basePower) {
+            addBonus += getReliefStaticValue("atk_add_triple_same");
+        }
+
+        // オシリス: 手札1枚につき
+        addBonus += (player.hand.length * getReliefStaticValue("atk_add_per_hand"));
+
+        // ギルガース: MP1につき
+        addBonus += (player.mp * getReliefStaticValue("atk_add_per_mp"));
+
+        // ヒューマノイドドレイク: 自身にバフがある場合
+        if (hasState(player, "atk_mult") || hasState(player, "atk_add")) {
+            addBonus += getReliefStaticValue("atk_add_if_buffed");
+        }
+
+        // 3. 倍率補正
+        // キングレックス: HP50%以下なら
+        if ((player.hp / player.maxHp) <= 0.5) {
+            multBonus += getReliefStaticValue("atk_mult_low_hp");
+        }
     }
 
     let finalDmg = (basePower + addBonus) * (1.0 + multBonus);
@@ -697,31 +738,47 @@ function applyOffenseLogic(basePower, sourceObj, applyRandom = true) {
     return Math.floor(finalDmg);
 }
 
-// Updated: 防御ロジック (レリーフ補正を追加)
+// Updated: 防御ロジック (v9.0 - Relief Full Support)
 function applyDefenseLogic(dmg, targetObj, isDarts = false) {
     if (!targetObj || !targetObj.states) return dmg;
     let finalDmg = dmg;
 
-    // 1. 結界 (レリーフの結界とステートの結界を比較して高い方を採用)
-    let barrierVal = targetObj.states.filter(s => STATE_MASTER[s.id]?.category === "barrier").reduce((max, s) => Math.max(max, s.val), 0);
-    if (targetObj === player) {
-        barrierVal = Math.max(barrierVal, getReliefStaticValue("barrier"));
+    // 攻撃者（プレイヤー）のレリーフによる貫通性能をチェック
+    let barrierIgnore = 0;
+    let armorIgnore = 0;
+    if (!isDarts) { // 敵がダメージを受ける時 (executorはplayer)
+        barrierIgnore = getReliefStaticValue("pierce_barrier");
+        armorIgnore = getReliefStaticValue("pierce_fixed");
     }
+
+    // 1. 結界 (Barrier)
+    let barrierVal = targetObj.states.filter(s => STATE_MASTER[s.id]?.category === "barrier").reduce((max, s) => Math.max(max, s.val), 0);
+    if (targetObj === player) barrierVal = Math.max(barrierVal, getReliefStaticValue("barrier"));
+    
+    // 貫通を適用
+    barrierVal = Math.max(0, barrierVal - barrierIgnore);
 
     if (barrierVal > 0 && finalDmg < barrierVal) {
         if (!isDarts) addLog("結界が攻撃を遮断！", "log-enemy");
         return 0;
     }
 
-    // 2. 防御倍率
+    // 2. 倍率防御
     let dmgMult = targetObj.states.filter(s => STATE_MASTER[s.id]?.category === "dmg_mult").reduce((prod, s) => prod * s.val, 1.0);
     if (targetObj === player) dmgMult *= (getReliefStaticValue("dmg_mult") || 1.0);
-
+    
     finalDmg *= dmgMult;
 
     // 3. 固定減算
     let dmgSub = targetObj.states.filter(s => STATE_MASTER[s.id]?.category === "dmg_sub").reduce((sum, s) => sum + s.val, 0);
-    if (targetObj === player) dmgSub += getReliefStaticValue("dmg_sub");
+    if (targetObj === player) {
+        dmgSub += getReliefStaticValue("dmg_sub");
+        // ヘルポエマー: 敵のATKを直接下げる（プレイヤーの被ダメを減らす）
+        dmgSub += Math.abs(getReliefStaticValue("enemy_atk_flat"));
+    }
+
+    // アーマー貫通を適用
+    dmgSub = Math.max(0, dmgSub - armorIgnore);
 
     return Math.max(0, Math.floor(finalDmg - dmgSub));
 }
@@ -849,8 +906,12 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
                 break;
 
             case "HEAL":
-                playSE(effectiveVisual.se || "se-heal");
-                const hVal = (action.val === "FULL" || action.val > 500) ? (targetObj.maxHp - targetObj.hp) : (scaledVal || action.val);
+                let hVal = (action.val === "FULL" || action.val > 500) ? (targetObj.maxHp - targetObj.hp) : action.val;
+                // ★ ラーの翼神竜: 回復量2倍
+                if (targetObj === player) {
+                    const healMult = getReliefStaticValue("heal_multiplier") || 1.0;
+                    hVal = Math.floor(hVal * healMult);
+                }
                 targetObj.hp = Math.min(targetObj.maxHp, targetObj.hp + hVal);
                 triggerEffect(el("game-screen"), hVal, isPlayerTarget, true);
                 break;
@@ -953,6 +1014,18 @@ async function playHandCard(index) {
         const cardId = player.hand[index];
         const card = CARD_DB.find(c => c.id === cardId);
         let cost = (card.cost !== undefined) ? card.cost : 99;
+
+        // ★追加: サギーの石版 (マジックカードのコスト軽減)
+        if (card.type === "MAGIC") {
+            const reduction = getReliefStaticValue("cost_down_magic"); // 最低1
+            const reductionZero = getReliefStaticValue("cost_down_magic_zero"); // 最低0
+            
+            if (reductionZero > 0) {
+                cost = Math.max(0, cost - reductionZero);
+            } else if (reduction > 0) {
+                cost = Math.max(1, cost - reduction);
+            }
+        }
 
         if (player.mp < cost) {
             addLog(`MP不足！(必要: ${cost})`, "log-system");
@@ -1066,18 +1139,26 @@ function getReliefStaticValue(category) {
     }, 0);
 }
 
+// Updated: レリーフのトリガーアクションを実行する共通関数 (v9.0)
 async function checkReliefTriggers(triggerType) {
-    // 安全ガード
     if (!player.equippedReliefs) return;
 
     for (let i = 0; i < 3; i++) {
         const rId = player.equippedReliefs[i];
-        if (!rId || !RELIEF_DB[rId]) continue; // 空き枠は無視
+        if (!rId || !RELIEF_DB[rId]) continue;
         
         const passive = RELIEF_DB[rId].passives.find(p => p.trigger === triggerType);
         if (passive) {
+            // 条件判定 (condition属性がある場合)
+            if (passive.condition === "score_lte_60") {
+                const roundTotal = turnInputs.reduce((a, b) => a + b, 0);
+                if (roundTotal > 60) continue;
+            }
+
+            // 確率判定
             if (passive.chance && Math.random() > passive.chance) continue;
 
+            // 視覚演出: スロットを発光させる
             const slotEl = el(`relief-slot-${i}`);
             if (slotEl) {
                 slotEl.classList.remove("trigger-glow");
@@ -1086,6 +1167,8 @@ async function checkReliefTriggers(triggerType) {
             }
 
             addLog(`【石版発動】${RELIEF_DB[rId].name}`, "log-skill");
+            
+            // アトミック・エンジンを利用して効果を実行
             for (const action of passive.actions) {
                 await resolveAction(action, true, { se: "se-buff" });
             }

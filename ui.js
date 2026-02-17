@@ -3,27 +3,27 @@
 // =========================================
 
 /**
- * レリーフIDから正しい画像パスを生成する共通関数 (v8.6)
- * ID例: "1-1-1" -> "assets/1-1.png", "2-1-1" -> "assets/4-1.png"
+ * レリーフIDから画像パスを取得する (v8.7 Data-Driven)
  */
 function getReliefImgPath(id) {
-    if (!id) return "";
-    const parts = id.split('-'); // ["1", "1", "1"] など
-    const area = parts[0];
-    const stg = parts[1];
-    const floorNum = parts[2];
-    
-    if (area === "1") {
-        if (stg === "EX") return "assets/extra.png";
-        // Stage 1-1, 1-2, 1-3 -> assets/1-x, 2-x, 3-x
-        return `assets/${stg}-${floorNum}.png`;
-    } else if (area === "2") {
-        if (stg === "1") return `assets/4-${floorNum}.png`; // AREA 2-1 -> assets/4-x
-        if (stg === "2") return `assets/5-${floorNum}.png`; // AREA 2-2 -> assets/5-x
-        if (stg === "3") return `assets/2-3-${floorNum}.png`; // AREA 2-3 -> assets/2-3-x
-        if (stg === "EX") return `assets/2-ex-${floorNum}.png`; // AREA 2-EX -> assets/2-ex-x
-    }
-    return `assets/1-1.png`; // フォールバック
+    if (!id || !RELIEF_DB[id]) return "";
+    // データ側に定義されたパスを返すだけ（究極のシンプル化）
+    return RELIEF_DB[id].img;
+}
+
+// 数値カウントアップ用ヘルパー
+function animateNumber(elementId, start, end, duration) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const range = end - start;
+    const startTime = new Date().getTime();
+    const timer = setInterval(() => {
+        const now = new Date().getTime();
+        const progress = Math.min(1, (now - startTime) / duration);
+        const current = Math.floor(start + (range * progress));
+        el.innerText = current;
+        if (progress >= 1) clearInterval(timer);
+    }, 20);
 }
 
 // =========================================
@@ -789,30 +789,45 @@ function showPackResult() {
     const modal = document.createElement("div");
     modal.className = "result-modal-cyber";
 
+    // ★修正: ヘッダーに現在のソウル総数を表示
+    // まず獲得ソウル合計を計算
+    let totalGainedSoul = 0;
+    packResults.forEach(c => { if (c.isRecycled) totalGainedSoul += c.gainedSoul; });
+    const currentTotalSoul = savedData.souls || 0; // 既に加算済みの値
+    const startSoul = currentTotalSoul - totalGainedSoul; // 加算前の値
+
     // Header
     const header = document.createElement("div");
     header.className = "cyber-shop-header";
-    header.innerHTML = `<div class="shop-title-cyber">UNBOXING RESULT</div>`;
+    header.style.position = "relative"; // 子要素の絶対配置用
+    header.innerHTML = `
+        <div class="shop-title-cyber">UNBOXING RESULT</div>
+        <div class="result-header-soul">
+            SOUL: <span id="result-soul-anim" class="result-soul-val">${startSoul}</span>
+        </div>
+    `;
     modal.appendChild(header);
 
-    // Grid
     const grid = document.createElement("div");
     grid.className = "result-card-grid";
 
     packResults.forEach((card, i) => {
-        // Wrapper for animation
         const wrapper = document.createElement("div");
         wrapper.className = "result-card-cyber-wrapper";
         wrapper.style.animationDelay = `${i * 0.1}s`;
 
-        // Card Element (Standard)
-        const cardDiv = createCardElement(card, "standard", card.ownCount, card.ownCount);
-
-        // ★ 修正: 見切れ防止用のクラスを追加
+        const displayCount = card.isRecycled ? 0 : card.ownCount;
+        const cardDiv = createCardElement(card, "standard", displayCount, displayCount);
         cardDiv.classList.add("result-card");
 
-        // New Badge
-        if (card.isNew) {
+        if (card.isRecycled) {
+            // ★修正: バッジのデザイン適用
+            const soulBadge = document.createElement("div");
+            soulBadge.className = "soul-recycle-badge";
+            soulBadge.innerHTML = `RECYCLED<br><span class="soul-val-text">+${card.gainedSoul}</span>`;
+            cardDiv.appendChild(soulBadge);
+            cardDiv.style.filter = "grayscale(0.8) brightness(0.5)";
+        } else if (card.isNew) {
             const badge = document.createElement("div");
             badge.className = "new-badge";
             badge.innerText = "NEW!";
@@ -820,7 +835,6 @@ function showPackResult() {
         }
 
         setupLongPress(cardDiv, card);
-
         wrapper.appendChild(cardDiv);
         grid.appendChild(wrapper);
     });
@@ -843,6 +857,14 @@ function showPackResult() {
     modal.appendChild(btnArea);
 
     container.appendChild(modal);
+
+    // ★追加: ソウルのカウントアップ演出 (少し遅延させて実行)
+    if (totalGainedSoul > 0) {
+        setTimeout(() => {
+            playSE("se-heal"); // 増加音
+            animateNumber("result-soul-anim", startSoul, currentTotalSoul, 1000);
+        }, 600);
+    }
 }
 
 function skipUnboxing() {
@@ -1283,87 +1305,75 @@ function switchCollectionTab(tab) {
     else renderReliefEditor();
 }
 
-// Updated: レリーフエディタの描画 (v8.4 - Correct Image Mapping)
-// Updated: レリーフエディタの描画 (v8.5 - Logic Order Sorting)
+// Updated: レリーフエディタの描画 (v9.4 Full - UI Improvement & Sort Fix)
 function renderReliefEditor() {
     const shopGrid = el("relief-shop-grid");
     const equipGrid = el("equipped-relief-grid");
     const detailArea = el("relief-detail");
     
-    if (!shopGrid || !equipGrid || !detailArea) return;
+    if (!shopGrid || !equipGrid) return;
 
     el("soul-count").innerText = savedData.souls || 0;
     shopGrid.innerHTML = "";
     equipGrid.innerHTML = "";
-    detailArea.innerHTML = `<div style="color:#aaa; font-size:12px; text-align:center; padding-top:20px;">Hover a slab to see power</div>`;
+    
+    // 詳細エリアの初期化
+    if (detailArea) {
+        detailArea.innerHTML = `<div style="color:#aaa; font-size:12px; text-align:center; padding-top:20px;">Hover a slab to see details</div>`;
+    }
 
-    // 画像パス決定ヘルパー
-    const getReliefImgPath = (id) => {
-        const parts = id.split('-');
-        const area = parts[0];
-        const stg = parts[1];
-        const floorNum = parts[2];
-        
-        if (area === "1") {
-            if (stg === "EX") return "assets/extra.png";
-            return `assets/${stg}-${floorNum}.png`;
-        } else if (area === "2") {
-            if (stg === "1") return `assets/4-${floorNum}.png`;
-            if (stg === "2") return `assets/5-${floorNum}.png`;
-            if (stg === "3") return `assets/2-3-${floorNum}.png`;
-            if (stg === "EX") return `assets/2-ex-${floorNum}.png`;
-        }
-        return `assets/1-1.png`;
-    };
-
-    // 1. 装備スロットの描画
+    // 1. 装備スロットの描画 (ボタン廃止・説明文表示)
     for (let i = 0; i < 3; i++) {
         const rId = savedData.equippedReliefs[i];
         const slot = document.createElement("div");
-        slot.className = "relief-slot-box";
+        slot.className = "relief-slot-box"; // CSSでホバー効果とクリックポインター付与済み
+        
         if (rId && RELIEF_DB[rId]) {
             const data = RELIEF_DB[rId];
-            // ★修正: 共通関数を使用
             const imgPath = getReliefImgPath(rId);
+            
+            // ★修正: 画像サイズを 40px -> 54px に拡大
             slot.innerHTML = `
-                <div class="relief-slab owned equipped" style="width:50px; height:50px;">
+                <div class="relief-slab owned equipped" style="width:54px; height:54px; flex-shrink:0;">
                     <img src="${imgPath}" class="slab-monster-img">
                 </div>
-                <div style="flex:1; margin-left:15px; text-align:left;">
-                    <div style="font-size:12px; color:#fff; font-weight:bold;">${data.name}</div>
-                    <div style="font-size:10px; color:#00d2fc;">PASSIVE ACTIVE</div>
+                <div class="relief-slot-info">
+                    <div class="relief-slot-name">${data.name}</div>
+                    <div class="relief-slot-desc">${data.desc}</div>
                 </div>
-                <button class="sub-btn" style="padding:2px 8px; font-size:10px;" onclick="toggleRelief('${rId}')">REMOVE</button>
             `;
+            
+            slot.onclick = () => { toggleRelief(rId); };
         } else {
-            slot.innerHTML = `<div style="color:#555; font-size:11px; width:100%; text-align:center;">-- EMPTY SLOT ${i+1} --</div>`;
+            // 空きスロットも高さを合わせる
+            slot.innerHTML = `<div style="color:#555; font-size:10px; width:100%; text-align:center; letter-spacing:1px;">-- EMPTY SLOT ${i+1} --</div>`;
         }
         equipGrid.appendChild(slot);
     }
 
-    // 2. ショップ一覧の描画 (ソート処理を追加)
+    // 2. ショップ一覧の描画 (ソート済み)
     if (typeof RELIEF_DB !== 'undefined') {
-        // エントリを配列化してソート
         const sortedReliefs = Object.entries(RELIEF_DB).sort((a, b) => {
-            const partsA = a[0].split('-'); // ["1", "1", "1"]
+            const partsA = a[0].split('-');
             const partsB = b[0].split('-');
 
-            // ① エリア比較 (1, 2...)
+            // ① エリア比較
             if (partsA[0] !== partsB[0]) return partsA[0] - partsB[0];
 
-            // ② ステージ比較 (1, 2, 3, EX)
-            // EX を数値の 99 として扱い、常にエリアの最後にくるようにする
+            // ② ステージ比較 (EXは末尾の99として扱う)
             const stgA = partsA[1] === "EX" ? 99 : parseInt(partsA[1]);
             const stgB = partsB[1] === "EX" ? 99 : parseInt(partsB[1]);
             if (stgA !== stgB) return stgA - stgB;
 
-            // ③ フロア比較 (1, 2, 3...)
+            // ③ フロア比較
             return partsA[2] - partsB[2];
         });
 
         sortedReliefs.forEach(([id, data]) => {
             const isUnlocked = savedData.unlockedReliefs.includes(id);
             const isEquipped = savedData.equippedReliefs.includes(id);
+            
+            // 討伐判定: IDの前半(StageID)を使って stageStats を確認
             const stageKey = id.split('-').slice(0,2).join('-');
             const hasDefeated = savedData.stageStats[stageKey] && savedData.stageStats[stageKey].clears > 0;
 
@@ -1383,15 +1393,21 @@ function renderReliefEditor() {
                 else toggleRelief(id);
             };
 
+            // ホバー時の詳細表示
             slab.onmouseenter = () => {
+                if (!detailArea) return;
+                
                 if (!hasDefeated) {
-                    detailArea.innerHTML = `<div class="detail-name">？？？？</div>未だ見ぬ魔物の石版。討伐することで解放される。`;
+                    detailArea.innerHTML = `
+                        <div class="detail-name">？？？？</div>
+                        <div style="font-size:11px; color:#666;">未だ見ぬ魔物の石版。討伐することで解放される。</div>
+                    `;
                 } else {
-                    const passiveDesc = data.passives.map(p => {
-                        if (p.type === "STATIC") return `・常時: ${p.category} ${p.val > 0 ? '+'+p.val : p.val}`;
-                        return `・特殊: ${p.trigger} (${Math.round((p.chance||1)*100)}%)`;
-                    }).join("<br>");
-                    detailArea.innerHTML = `<div class="detail-name">${data.name}</div>${passiveDesc}`;
+                    detailArea.innerHTML = `
+                        <div class="detail-name">${data.name}</div>
+                        <div style="font-size:11px; color:#eee; line-height:1.4;">${data.desc}</div>
+                        <div style="font-size:9px; color:#00d2fc; margin-top:8px; font-family:monospace;">ORIGIN: ${data.monsterName}</div>
+                    `;
                 }
             };
             shopGrid.appendChild(slab);
