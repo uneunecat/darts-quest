@@ -792,44 +792,138 @@ const SOUL_RECYCLE_RATES = {
     "UR": 1000
 };
 
-// モンスターレリーフ・データベース
-// passives: 計算エンジンが参照する効果
-// type: "ATK_ADD"(固定ダメージ加算), "DEF_ADJUST"(被ダメ軽減), "HP_MAX"(最大HP増加), 
-//       "START_TURN_HEAL"(確率回復), "START_TURN_MP"(確率MP回復), "CHANCE_STUN"(攻撃時スタン),
-//       "CHANCE_DRAW"(ターン開始ドロー), "DMG_BONUS_SPEC"(特定条件下ダメージUP)
+// =========================================
+// RELIEF DATABASE (v1.2 Complete Atomic)
+// =========================================
 const RELIEF_DB = {
-    // AREA 1
-    "1-1-1": { name: "プチモスの石版", monsterName: "プチモス", souls: 300, passives: [{ type: "HP_MAX", val: 20 }] },
-    "1-1-2": { name: "ラーバモスの石版", monsterName: "ラーバモス", souls: 400, passives: [{ type: "START_TURN_MP", val: 1, chance: 0.05 }] },
-    "1-1-3": { name: "進化の繭の石版", monsterName: "進化の繭", souls: 600, passives: [{ type: "DEF_ADJUST", val: -2 }, { type: "START_TURN_HEAL", val: 10, chance: 0.1 }] },
-    "1-1-4": { name: "グレート・モスの石版", monsterName: "グレート・モス", souls: 1000, passives: [{ type: "CHANCE_STUN", chance: 0.05 }] },
-    "1-1-5": { name: "究極完全態の石版", monsterName: "究極完全態・グレート・モス", souls: 2000, passives: [{ type: "BARRIER_VAL", val: 5 }, { type: "HP_MAX", val: 50 }] },
-    "1-3-1": { name: "守護天使の石版", monsterName: "デュナミス・ヴァルキリア", souls: 1200, passives: [{ type: "DEF_MULT", val: 0.9 }] },
-    "1-3-2": { name: "狩場の石版", monsterName: "ハーピィ・レディ", souls: 1000, passives: [{ type: "CHANCE_DRAW", chance: 0.1 }] },
-    "1-3-4": { name: "三姉妹の石版", monsterName: "ハーピィ・レディ三姉妹", souls: 1800, passives: [{ type: "DMG_BONUS_SPEC", condition: "multi_hit", val: 10 }] },
-    "1-3-5": { name: "寵愛の石版", monsterName: "ハーピィズペット竜", souls: 1500, passives: [{ type: "ATK_ADD", val: 8 }] },
-    "2-1-5": { name: "儀式の石版", monsterName: "サクリファイス", souls: 2500, passives: [{ type: "DRAIN_PASSIVE", val: 0.05 }] },
-    "2-1-6": { name: "千眼の石版", monsterName: "サウザンド・アイズ・サクリファイス", souls: 3500, passives: [{ type: "CHANCE_EVADE", chance: 0.05 }] },
+    // --- AREA 1 ---
+    "1-1-1": { 
+        name: "幼生の石版", monsterName: "プチモス", souls: 300,
+        passives: [{ type: "STATIC", category: "hp_max", val: 20 }] 
+    },
+    "1-1-2": { 
+        name: "成長の石版", monsterName: "ラーバモス", souls: 400,
+        passives: [{ trigger: "onTurnStart", chance: 0.05, actions: [{ type: "MP_ACTION", target: "PLAYER", val: 1 }] }] 
+    },
+    "1-1-3": { 
+        name: "潜伏の石版", monsterName: "進化の繭", souls: 600,
+        passives: [
+            { type: "STATIC", category: "dmg_sub", val: 2 },
+            { trigger: "onTurnStart", chance: 0.1, actions: [{ type: "HEAL", target: "PLAYER", val: 10 }] }
+        ] 
+    },
+    "1-1-4": { 
+        name: "猛毒の石版", monsterName: "グレート・モス", souls: 1000,
+        passives: [{ trigger: "onAttackHit", chance: 0.05, actions: [{ type: "STATE", target: "ENEMY", kind: "stun", turn: 1 }] }] 
+    },
+    "1-1-5": { 
+        name: "森神の石版", monsterName: "究極完全態・グレート・モス", souls: 2000,
+        passives: [
+            { type: "STATIC", category: "barrier", val: 5 },
+            { type: "STATIC", category: "hp_max", val: 50 }
+        ] 
+    },
+    "1-3-1": { 
+        name: "守護天使の石版", monsterName: "デュナミス・ヴァルキリア", souls: 1200,
+        passives: [{ type: "STATIC", category: "dmg_mult", val: 0.9 }] 
+    },
+    "1-3-2": { 
+        name: "狩場の石版", monsterName: "ハーピィ・レディ", souls: 1000,
+        passives: [{ trigger: "onTurnStart", chance: 0.1, actions: [{ type: "DRAW", val: 1 }] }] 
+    },
+    "1-3-4": { 
+        name: "三姉妹の石版", monsterName: "ハーピィ・レディ三姉妹", souls: 1800,
+        passives: [{ type: "STATIC", category: "atk_add_multihit", val: 10 }] 
+    },
+    "1-3-5": { 
+        name: "寵愛の石版", monsterName: "ハーピィズペット竜", souls: 1500,
+        passives: [{ type: "STATIC", category: "atk_add", val: 8 }] 
+    },
+    "2-1-5": { 
+        name: "儀式の石版", monsterName: "サクリファイス", souls: 2500,
+        passives: [{ type: "STATIC", category: "drain_global", val: 0.05 }] 
+    },
+    "2-1-6": { 
+        name: "千眼の石版", monsterName: "サウザンド・アイズ・サクリファイス", souls: 3500,
+        passives: [{ trigger: "onDefense", chance: 0.05, actions: [{ type: "NEGATE" }] }] 
+    },
 
-    // AREA 2
-    "1-2-1": { name: "原始の石版", monsterName: "トラコドン", souls: 800, passives: [{ type: "DMG_BONUS_SPEC", condition: "first_throw", val: 10 }] },
-    "1-2-2": { name: "俊足の石版", monsterName: "ワイルド・ラプター", souls: 1000, passives: [{ type: "ATK_ADD", val: 5 }] },
-    "1-2-3": { name: "腐敗の石版", monsterName: "屍を貪る竜", souls: 1500, passives: [{ type: "HEAL_ON_KILL", val: 50 }] },
-    "1-2-4": { name: "王者の石版", monsterName: "二頭を持つキング・レックス", souls: 2000, passives: [{ type: "LOW_HP_BOOST", val: 1.2 }] },
-    "1-2-5": { name: "鋭牙の石版", monsterName: "剣竜", souls: 1800, passives: [{ type: "PIERCE_ARMOR", val: 10 }] },
-    "2-2-1": { name: "寄生の石版", monsterName: "ワームドレイク", souls: 1200, passives: [{ type: "MISS_RECOVER_MP", chance: 0.1 }] },
-    "2-2-3": { name: "不死の石版", monsterName: "リバイバルスライム", souls: 2500, passives: [{ type: "LAST_STAND", val: 1 }] },
-    "2-2-5": { name: "雷神の石版", monsterName: "オシリスの天空竜", souls: 5000, passives: [{ type: "DMG_PER_HAND", val: 3 }] },
-    "2-3-1": { name: "重斧の石版", monsterName: "ミノタウルス", souls: 2000, passives: [{ type: "PIERCE_BARRIER", val: 10 }] },
-    "2-3-2": { name: "道化の石版", monsterName: "闇・道化師のサギー", souls: 1500, passives: [{ type: "MAGIC_COST_DOWN", val: 1 }] },
-    "2-3-3": { name: "伏兵の石版", monsterName: "ブラッド・ヴォルス", souls: 1800, passives: [{ type: "DMG_BONUS_SPEC", condition: "single_first", val: 15 }] },
-    "2-3-4": { name: "滅びの石版", monsterName: "青眼の白龍", souls: 4000, passives: [{ type: "ATK_ADD", val: 20 }, { type: "DEF_ADJUST", val: 5 }] },
-    "2-3-5": { name: "破壊神の石版", monsterName: "オベリスクの巨神兵", souls: 5000, passives: [{ type: "BARRIER_VAL", val: 10 }] },
+    // --- AREA 2 ---
+    "1-2-1": { 
+        name: "原始の石版", monsterName: "トラコドン", souls: 800,
+        passives: [{ type: "STATIC", category: "atk_add_first", val: 10 }] 
+    },
+    "1-2-2": { 
+        name: "俊足の石版", monsterName: "ワイルド・ラプター", souls: 1000,
+        passives: [{ type: "STATIC", category: "atk_add", val: 5 }] 
+    },
+    "1-2-3": { 
+        name: "腐敗の石版", monsterName: "屍を貪る竜", souls: 1500,
+        passives: [{ trigger: "onEnemyKill", actions: [{ type: "HEAL", target: "PLAYER", val: 50 }] }] 
+    },
+    "1-2-4": { 
+        name: "王者の石版", monsterName: "二頭を持つキング・レックス", souls: 2000,
+        passives: [{ type: "STATIC", category: "atk_mult_low_hp", val: 0.2 }] 
+    },
+    "1-2-5": { 
+        name: "鋭牙の石版", monsterName: "剣竜", souls: 1800,
+        passives: [{ type: "STATIC", category: "pierce_fixed", val: 10 }] 
+    },
+    "2-2-1": { 
+        name: "寄生の石版", monsterName: "ワームドレイク", souls: 1200,
+        passives: [{ trigger: "onAttackMiss", chance: 0.2, actions: [{ type: "MP_ACTION", target: "PLAYER", val: 1 }] }] 
+    },
+    "2-2-3": { 
+        name: "不死の石版", monsterName: "リバイバルスライム", souls: 2500,
+        passives: [{ trigger: "onDeath", actions: [{ type: "RESURRECT", val: 1 }] }] 
+    },
+    "2-2-5": { 
+        name: "雷神の石版", monsterName: "オシリスの天空竜", souls: 5000,
+        passives: [{ type: "STATIC", category: "atk_add_per_hand", val: 3 }] 
+    },
+    "2-3-1": { 
+        name: "重斧の石版", monsterName: "ミノタウルス", souls: 2000,
+        passives: [{ type: "STATIC", category: "pierce_barrier", val: 10 }] 
+    },
+    "2-3-2": { 
+        name: "道化の石版", monsterName: "闇・道化師のサギー", souls: 1500,
+        passives: [{ type: "STATIC", category: "cost_down_magic", val: 1 }] 
+    },
+    "2-3-3": { 
+        name: "伏兵の石版", monsterName: "ブラッド・ヴォルス", souls: 1800,
+        passives: [{ type: "STATIC", category: "atk_add_single", val: 15 }] 
+    },
+    "2-3-4": { 
+        name: "滅びの石版", monsterName: "青眼の白龍", souls: 4000,
+        passives: [
+            { type: "STATIC", category: "atk_add", val: 20 },
+            { type: "STATIC", category: "dmg_sub", val: -5 }
+        ] 
+    },
+    "2-3-5": { 
+        name: "破壊神の石版", monsterName: "オベリスクの巨神兵", souls: 5000,
+        passives: [{ type: "STATIC", category: "barrier", val: 10 }] 
+    },
 
-    // AREA 2-EX
-    "2-EX-1": { name: "拷問の石版", monsterName: "ギル・ガース", souls: 2500, passives: [{ type: "DMG_PER_DEBUFF", val: 10 }] },
-    "2-EX-2": { name: "奈落の石版", monsterName: "地獄詩人ヘルポエマー", souls: 2500, passives: [{ type: "ENEMY_ATK_DOWN", val: 5 }] },
-    "2-EX-3": { name: "万力の石版", monsterName: "バイサー・デス", souls: 3000, passives: [{ type: "CHANCE_FREE_THROW", chance: 0.1 }] },
-    "2-EX-4": { name: "溶岩の石版", monsterName: "溶岩魔神ラヴァ・ゴーレム", souls: 3500, passives: [{ type: "END_TURN_BURN", val: 30 }] },
-    "2-EX-5": { name: "太陽神の石版", monsterName: "ラーの翼神竜", souls: 5000, passives: [{ type: "HEAL_DOUBLE", val: 2.0 }] }
+    // --- AREA 2-EX ---
+    "2-EX-1": { 
+        name: "拷問の石版", monsterName: "ギル・ガース", souls: 2500,
+        passives: [{ type: "STATIC", category: "atk_add_per_debuff", val: 10 }] 
+    },
+    "2-EX-2": { 
+        name: "奈落の石版", monsterName: "地獄詩人ヘルポエマー", souls: 2500,
+        passives: [{ type: "STATIC", category: "enemy_atk_flat", val: -5 }] 
+    },
+    "2-EX-3": { 
+        name: "万力の石版", monsterName: "バイサー・デス", souls: 3000,
+        passives: [{ trigger: "onAttackHit", chance: 0.1, actions: [{ type: "FREE_THROW" }] }] 
+    },
+    "2-EX-4": { 
+        name: "溶岩の石版", monsterName: "溶岩魔神ラヴァ・ゴーレム", souls: 3500,
+        passives: [{ trigger: "onTurnEnd", actions: [{ type: "DAMAGE", target: "ENEMY", mode: "fixed", val: 30 }] }] 
+    },
+    "2-EX-5": { 
+        name: "太陽神の石版", monsterName: "ラーの翼神竜", souls: 5000,
+        passives: [{ type: "STATIC", category: "heal_multiplier", val: 2.0 }] 
+    }
 };

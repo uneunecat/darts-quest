@@ -819,45 +819,98 @@ body {
     overflow: hidden;
 }
 
+.exit-icon-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 36px;
+    height: 36px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid #444;
+    color: #fff;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-size: 18px;
+}
+.exit-icon-btn:hover {
+    background: #e94560;
+    border-color: #fff;
+    transform: scale(1.1);
+}
+
 /* Left Side Panel */
 .battle-side-info {
-    flex: 0 0 280px;
-    background: rgba(0, 0, 0, 0.85);
-    border-right: 2px solid #444;
+    flex: 0 0 260px; /* 少し幅を狭めてスマートに */
+    background: rgba(10, 15, 28, 0.95);
+    border-right: 1px solid #0f3460;
+    padding: 15px 12px;
     display: flex;
     flex-direction: column;
-    padding: 15px;
-    box-sizing: border-box;
-    gap: 15px;
+    gap: 10px;
     z-index: 20;
 }
 
 .battle-header-info {
-    border-bottom: 1px solid #555;
-    padding-bottom: 10px;
-    margin-bottom: 5px;
+    border-bottom: 2px solid #0f3460;
+    padding-bottom: 5px;
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
-.stg-info-row {
-    font-size: 18px;
-    color: #f9a826;
-    font-weight: bold;
-    font-family: 'Cinzel Decorative';
+stg-info-row {
+    display: flex;
+    align-items: center; /* 縦方向を中央に */
+    flex-wrap: nowrap;
+    width: 100%;
 }
-
-.turn-info-row {
-    font-size: 14px;
-    color: #ccc;
-}
+.turn-info-row { font-size: 12px; color: #888; margin-top: 4px; }
 
 .boss-label {
-    color: #ff0000;
+    display: none; /* JSでblockに切り替え */
+    color: #ff3333;
+    font-size: 12px;
     font-weight: bold;
-    margin-left: 10px;
-    display: none;
-    text-shadow: 0 0 5px red;
-    animation: blink 1s infinite;
+    margin-left: 8px;
+    padding: 1px 4px;
+    border: 1px solid #ff3333;
+    text-shadow: 0 0 5px #ff0000;
+    flex-shrink: 0; /* BOSSの文字は絶対に削らない */
 }
+
+#enemy-name-side {
+    font-size: 17px; /* 20pxから18pxへ。Cinzelは大きいため */
+    color: #fff;
+    font-family: 'Cinzel Decorative';
+    line-height: 1.3; /* 行間を広げて見切れを防ぐ */
+    margin-bottom: 2px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: visible; /* 文字のヒゲ（ascender）を見せる */
+}
+#stage-display {
+    font-size: 18px;
+    font-weight: bold;
+    font-family: 'Cinzel Decorative';
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px; /* ステージ名が長くても150pxでカット */
+    display: block;
+}
+#floor-display {
+    font-size: 18px;
+    margin-left: 8px;
+    flex-shrink: 0; /* 階数は絶対に削らない */
+}
+
 
 @keyframes blink {
     from {
@@ -891,20 +944,54 @@ body {
     min-height: 140px;
 }
 
-.side-val-lg {
-    font-size: 18px;
-    color: #fff;
-    font-weight: bold;
-    text-shadow: 0 0 5px #000;
-    margin-bottom: 8px;
+.enemy-info-block {
+    height: 95px; /* 100pxから少し余裕を持たせる */
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.score-info-block {
+    height: 95px;            /* 高さを固定 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 5px;
+}
+.player-info-block {
+    flex: 1;                  /* 残りのスペースを埋める */
+    height: 150px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    gap: 5px;
+}
+.relief-info-block {
+    height: 80px; /* 少し高さを出す */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 10px;
+}
+
+.side-val-lg { font-size: 22px; color: #fff; font-family: 'Cinzel Decorative'; margin-bottom: 4px; }
+.weak-display {
+    font-size: 11px;
+    color: #00d2fc;
+    font-family: 'Roboto Mono';
+    margin-bottom: 2px;
+}
+
+.hp-section {
+    margin-bottom: 5px;
 }
 
 /* Status Chips */
 .state-chips-container {
     display: flex;
-    gap: 5px;
+    gap: 3px;
     flex-wrap: wrap;
-    margin-top: 8px;
+    margin-top: 2px;
     min-height: 20px;
 }
 
@@ -955,38 +1042,18 @@ body {
 }
 
 /* Darts Score */
-.darts-horizontal-box {
-    display: flex;
-    justify-content: space-between;
-    gap: 5px;
-    margin-bottom: 5px;
-}
+.darts-horizontal-box { display: flex; gap: 8px; justify-content: center; }
 
 .score-cell {
-    flex: 1;
+    width: 55px; height: 45px;
     background: rgba(0, 0, 0, 0.3);
-    border: 1px solid #444;
+    border: 1px solid #333;
     border-radius: 4px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 5px 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
 
-.score-label {
-    font-size: 10px;
-    color: #888;
-    margin-bottom: 2px;
-}
-
-.score-val {
-    font-family: 'Roboto Mono', monospace;
-    font-size: 24px;
-    font-weight: bold;
-    color: #555;
-    height: 30px;
-    line-height: 30px;
-}
+.score-label { font-size: 9px; color: #555; }
+.score-val { font-size: 20px; font-family: 'Roboto Mono'; font-weight: bold; }
 
 .score-val.filled {
     color: #00d2fc;
@@ -1034,14 +1101,11 @@ body {
 }
 
 .hp-bar-bg {
-    width: 90%;
-    height: 24px;
-    background: #333;
-    margin: 5px auto;
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid #555;
-    position: relative;
+    width: 100%; height: 22px;
+    background: #1a1a1a;
+    border-radius: 13px;
+    border: 1px solid #333;
+    position: relative; overflow: hidden;
 }
 
 .hp-text-overlay {
@@ -1082,6 +1146,8 @@ body {
     color: #ffd700 !important;
     box-shadow: 0 0 10px #ffd700 !important;
 }
+
+.avg-section { margin-top: 2px; font-size: 13px; font-family: 'Roboto Mono'; font-weight: bold; }
 
 /* MP Dots */
 .mp-dots-container {
@@ -2873,6 +2939,7 @@ body {
         border-bottom: 2px solid #444;
         gap: 10px;
         padding: 10px;
+        overflow: hidden !important;
     }
 
     .battle-side-info .side-block {
@@ -2880,10 +2947,12 @@ body {
     }
 
     .battle-header-info {
-        order: 1;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+    border-bottom: 2px solid #0f3460;
+    padding-bottom: 8px;
+    margin-bottom: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
     }
 
     .home-btn-side {
@@ -3990,4 +4059,162 @@ body {
     100% {
         transform: scaleX(1);
     }
+}
+
+/* --- Collection Tabs --- */
+.modal-header-tabs {
+    padding: 10px 15px;
+    background: rgba(0,0,0,0.3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #444;
+}
+.tab-group { display: flex; gap: 5px; }
+.tab-btn {
+    background: #222; color: #666; border: 1px solid #444;
+    padding: 8px 20px; cursor: pointer; font-family: 'Cinzel Decorative';
+    border-radius: 5px 5px 0 0; transition: all 0.2s;
+}
+.tab-btn.active {
+    background: #0f3460; color: #fff; border-color: #00d2fc;
+    border-bottom-color: transparent; box-shadow: 0 -4px 10px rgba(0,210,252,0.2);
+}
+
+/* --- Relief Slab Design --- */
+.relief-slab {
+    width: 100%;
+    aspect-ratio: 1/1; /* 正方形を維持 */
+    background: #2a2a2a;
+    border: 2px solid #444;
+    border-radius: 4px;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    /* 石のような質感を出すための影 */
+    box-shadow: 
+        inset 2px 2px 5px rgba(255,255,255,0.05),
+        inset -2px -2px 5px rgba(0,0,0,0.5),
+        0 4px 8px rgba(0,0,0,0.5);
+}
+.relief-slab:hover {
+    transform: translateY(-3px);
+    border-color: #888;
+    background: #333;
+}
+.relief-slab.locked { filter: grayscale(1) brightness(0.3); cursor: default; }
+.relief-slab.locked::after {
+    content: "?";
+    position: absolute;
+    font-size: 30px;
+    color: rgba(255,255,255,0.1);
+    font-family: 'Cinzel Decorative';
+}
+.relief-slab.unlocked { border-color: #555; background: linear-gradient(135deg, #222, #111); }
+.relief-slab.owned { border-color: #997733; box-shadow: 0 0 10px rgba(255,215,0,0.2); background: linear-gradient(135deg, #333, #1a1a1a);}
+.relief-slab.equipped { 
+    border-color: #00ff00; 
+    box-shadow: 0 0 15px rgba(0,255,0,0.4); 
+    animation: slab-glow 2s infinite alternate;
+}
+@keyframes slab-glow { from { opacity: 0.8; } to { opacity: 1; border-color: #00ff00; } }
+
+.relief-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 15px; padding: 15px; overflow-y: auto; height: 100%; align-content: start;
+}
+.slab-monster-img { width: 70%; height: 70%; object-fit: contain; opacity: 0.8; }
+.slab-price {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    color: #ffd700;
+    font-size: 10px;
+    font-weight: bold;
+    text-align: center;
+    padding: 2px 0;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+    z-index: 10;
+}
+
+.relief-slots-vertical {
+    display: flex; flex-direction: column; gap: 15px; padding: 15px;
+}
+.relief-slot-box {
+    height: 80px; background: rgba(0,0,0,0.4);
+    border: 2px dashed #444; border-radius: 8px;
+    display: flex; align-items: center; padding: 0 15px; gap: 15px;
+}
+
+.relief-slab .slab-monster-img {
+    width: 85%;
+    height: 85%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 5px rgba(0,0,0,0.8));
+    z-index: 5;
+}
+#relief-tab-content .list-column {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* 子要素のgridでスクロールさせるため */
+}
+
+.tab-content-hidden {
+    display: none !important;
+}
+
+.tab-content-visible {
+    display: flex !important;
+}
+
+/* Relief Slots in Battle */
+.relief-battle-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    justify-content: space-between;
+}
+.relief-slot-mini {
+    width: 60px; /* サイズを明示的に固定 */
+    height: 60px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid #333;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.relief-slot-mini.equipped {
+    border-color: #997733;
+    background: radial-gradient(circle, #2a2a2a, #111);
+}
+
+.relief-slot-mini img {
+    width: 80%;
+    height: 80%;
+    object-fit: contain;
+    opacity: 0.7;
+}
+
+/* 効果発動時の発光演出 */
+.relief-slot-mini.trigger-glow {
+    animation: relief-flash 0.8s ease-out;
+}
+
+@keyframes relief-flash {
+    0% { border-color: #fff; box-shadow: 0 0 20px #00d2fc; transform: scale(1.1); }
+    100% { border-color: #997733; box-shadow: 0 0 0px transparent; transform: scale(1); }
+}
+
+.relief-slot-mini.empty::before {
+    content: ""; /* 文字を消す */
+    width: 15px;
+    height: 2px;
+    background: rgba(255,255,255,0.05); /* うっすら線を引くだけにする */
 }

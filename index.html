@@ -165,30 +165,48 @@
 
             <!-- Deck Editor / Collection Modal -->
             <div class="modal-overlay" id="collection-modal" style="display:none;">
-                <div class="modal-box shop-box"
-                    style="max-width:900px; height:90vh; display:flex; flex-direction:column;">
-                    <div class="modal-header"
-                        style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <div class="modal-title" style="color:#00d2fc; margin:0;">DECK EDIT</div>
+                <div class="modal-box shop-box" style="max-width:900px; height:90vh; display:flex; flex-direction:column;">
+                    <div class="modal-header-tabs">
+                        <div class="tab-group">
+                            <button class="tab-btn active" id="tab-deck" onclick="switchCollectionTab('deck')">📂 DECK EDIT</button>
+                            <button class="tab-btn" id="tab-relief" onclick="switchCollectionTab('relief')">🗿 MONSTER RELIEF</button>
+                        </div>
                         <div style="display:flex; align-items:center; gap:15px;">
-                            <div style="font-size:14px; color:#aaa;">所持率: <span id="collection-rate">0%</span></div>
+                            <div id="collection-stat-label" style="font-size:14px; color:#aaa;">所持率: <span id="collection-rate">0%</span></div>
+                            <div id="soul-display-label" style="font-size:14px; color:#ffd700; display:none;">SOUL: <span id="soul-count">0</span></div>
                             <button class="header-close-btn" onclick="closeCollection()">×</button>
                         </div>
                     </div>
-                    <div class="modal-body-split">
+
+                    <!-- デッキ編集タブの内容 -->
+                    <div id="deck-tab-content" class="modal-body-split">
                         <div class="deck-column">
-                            <div class="column-header">▼ YOUR DECK (<span id="deck-count"
-                                    style="color:#ffd700;">0</span>/20)</div>
+                            <div class="column-header">▼ YOUR DECK (<span id="deck-count" style="color:#ffd700;">0</span>/20)</div>
                             <div class="deck-grid" id="deck-grid"></div>
                             <div id="deck-card-detail" class="deck-card-detail">
-                                <div style="color:#aaa; font-size:12px; text-align:center; padding-top:20px;">Hover card
-                                    to see details</div>
+                                <div style="color:#aaa; font-size:12px; text-align:center; padding-top:20px;">Hover card to see details</div>
                             </div>
                         </div>
                         <div class="list-column">
-                            <div class="column-header">▼ CARD LIST <span style="font-size:10px; color:#aaa;">(Click to
-                                    Add)</span></div>
+                            <div class="column-header">▼ CARD LIST <span style="font-size:10px; color:#aaa;">(Click to Add)</span></div>
                             <div class="card-grid" id="card-grid"></div>
+                        </div>
+                    </div>
+
+                    <!-- レリーフタブの内容 (初期は非表示) -->
+                    <div id="relief-tab-content" class="modal-body-split" style="display:none;">
+                        <div class="deck-column">
+                            <div class="column-header">▼ EQUIPPED RELIEFS (石版装備)</div>
+                            <div class="relief-slots-vertical" id="equipped-relief-grid">
+                                <!-- 3つのスロット -->
+                            </div>
+                            <div id="relief-detail" class="deck-card-detail">
+                                <div style="color:#aaa; font-size:12px; text-align:center; padding-top:20px;">Select a relief to see power</div>
+                            </div>
+                        </div>
+                        <div class="list-column">
+                            <div class="column-header">▼ RELIEF SHOP (倒した魔物の記録)</div>
+                            <div class="relief-grid" id="relief-shop-grid"></div>
                         </div>
                     </div>
                 </div>
@@ -267,102 +285,86 @@
                  5. BATTLE INTERFACE (戦闘画面)
                  ========================================= -->
             <div class="game-screen" id="game-screen" style="display:none;">
-                <div class="battle-container-wrapper">
+                <!-- 右上のコンパクトなEXITボタン -->
+                <button class="exit-icon-btn" onclick="returnToTitle()" title="EXIT GAME">🏠</button>
 
+                <div class="battle-container-wrapper">
+                    
                     <!-- Left Column: Info & Player Stats -->
                     <div class="battle-side-info">
                         <!-- Stage Info -->
                         <div class="battle-header-info">
                             <div class="stg-info-row">
-                                <span id="stage-display">STAGE 1</span>
-                                <span style="display:inline-block; width:20px;"></span>
-                                <span id="floor-display">1F</span>
+                                <span id="stage-display" style="color: #ffd700;">STAGE 1</span> 
+                                <span id="floor-display" style="margin-left:10px; color: #fff; font-family: 'Cinzel Decorative';">1F</span> 
                                 <span class="boss-label" id="boss-label">BOSS</span>
                             </div>
                             <div class="turn-info-row" id="turn-display">TURN 1</div>
                         </div>
 
-                        <!-- Enemy Status Block -->
-                        <div class="side-block enemy-block-fixed">
+                        <!-- Enemy Status -->
+                        <div class="side-block enemy-info-block">
                             <div id="enemy-name-side" class="side-val-lg">Enemy Name</div>
-                            <div class="weak-display" id="weak-display">WEAK: 20+ CHANCE!</div>
+                            <div class="weak-display" id="weak-display">WEAK: 20+</div>
                             <div id="enemy-states-side" class="state-chips-container"></div>
                         </div>
 
-                        <!-- Score Display Block -->
-                        <div class="side-block score-block-fixed">
+                        <!-- Score Display -->
+                        <div class="side-block score-info-block">
                             <div class="darts-horizontal-box">
-                                <div class="score-cell">
-                                    <div class="score-label">1</div>
-                                    <div class="score-val" id="slot-1-side">--</div>
-                                </div>
-                                <div class="score-cell">
-                                    <div class="score-label">2</div>
-                                    <div class="score-val" id="slot-2-side">--</div>
-                                </div>
-                                <div class="score-cell">
-                                    <div class="score-label">3</div>
-                                    <div class="score-val" id="slot-3-side">--</div>
-                                </div>
+                                <div class="score-cell"><div class="score-label">1</div><div class="score-val" id="slot-1-side">--</div></div>
+                                <div class="score-cell"><div class="score-label">2</div><div class="score-val" id="slot-2-side">--</div></div>
+                                <div class="score-cell"><div class="score-label">3</div><div class="score-val" id="slot-3-side">--</div></div>
                             </div>
                             <div class="darts-indicator">
-                                <span id="d-dot-1" class="d-dot">●</span><span id="d-dot-2" class="d-dot">●</span><span
-                                    id="d-dot-3" class="d-dot">●</span>
+                                <span id="d-dot-1" class="d-dot">●</span><span id="d-dot-2" class="d-dot">●</span><span id="d-dot-3" class="d-dot">●</span>
                             </div>
                         </div>
 
-                        <!-- Player Status Block -->
-                        <div class="side-block player-block-fixed" id="player-panel">
-                            <div class="p-status-row">
-                                <span class="p-label-text">HP</span>
-                                <div class="hp-bar-bg small-bar">
+                        <!-- Player Status -->
+                        <div class="side-block player-info-block">
+                            <div class="hp-section">
+                                <div class="hp-bar-bg">
                                     <div class="hp-bar-fill player-fill" id="player-hp-bar"></div>
+                                    <div class="hp-text-overlay">100 / 100</div>
                                 </div>
                             </div>
-                            <div class="p-status-row">
-                                <span class="p-label-text">MP</span>
+                            <div class="mp-section">
                                 <div id="player-mp-dots" class="mp-dots-container"></div>
                             </div>
-                            <div class="avg-row">Avg: <span id="avg-display">0.0</span> <span id="rt-display">(Rt
-                                    -)</span></div>
-
+                            <div class="avg-section">
+                                Avg: <span id="avg-display" style="color:#00d2fc;">0.0</span> <span id="rt-display" style="font-size:0.8em; color:#aaa;">(Rt 1)</span>
+                            </div>
                             <div id="player-states-side" class="state-chips-container"></div>
-
-                            <!-- item-row deleted -->
                         </div>
 
-                        <button class="home-btn-side" onclick="returnToTitle()">🏠 EXIT GAME</button>
+                        <!-- Relief Slots -->
+                        <div class="side-block relief-info-block">
+                            <div class="relief-battle-row" id="relief-battle-slots">
+                                <!-- JSで描画 -->
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Right Column: Visual Stage -->
+                    <!-- Right Column: Visual Stage (変更なし) -->
                     <div class="battle-main-stage" id="enemy-panel">
-
                         <div class="enemy-visual-area">
                             <img id="enemy-img" src="" alt="Enemy">
-                            <!-- chest-img deleted -->
-
                             <div class="enemy-hp-container">
                                 <div id="enemy-hp-value" class="hp-mega-text">100</div>
                                 <div id="enemy-name" style="display:none;"></div>
                             </div>
                         </div>
-
                         <div class="hand-overlay-container">
-                            <div class="deck-info">DECK: <span id="battle-deck-count">0</span> | HAND: <span
-                                    id="hand-count-display">0</span></div>
-
+                            <div class="deck-info">DECK: <span id="battle-deck-count">0</span> | HAND: <span id="hand-count-display">0</span></div>
                             <div class="hand-wrapper">
-                                <!-- Trap Slot -->
-                                <div id="trap-slot-container" class="trap-slot-container">
-                                    <div id="trap-slot" class="trap-slot empty">SET<br>TRAP</div>
-                                </div>
-                                <!-- Hand Cards -->
+                                <div id="trap-slot-container" class="trap-slot-container"></div>
                                 <div class="hand-area" id="hand-area"></div>
                             </div>
                         </div>
+                        
                     </div>
-
-                    <div id="battle-log"></div>
+                    <div id="battle-log" style="display:none;"></div>
                 </div>
             </div>
         </div>

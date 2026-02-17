@@ -1,4 +1,32 @@
 // =========================================
+// UI UTILITIES (ui.js)
+// =========================================
+
+/**
+ * レリーフIDから正しい画像パスを生成する共通関数 (v8.6)
+ * ID例: "1-1-1" -> "assets/1-1.png", "2-1-1" -> "assets/4-1.png"
+ */
+function getReliefImgPath(id) {
+    if (!id) return "";
+    const parts = id.split('-'); // ["1", "1", "1"] など
+    const area = parts[0];
+    const stg = parts[1];
+    const floorNum = parts[2];
+    
+    if (area === "1") {
+        if (stg === "EX") return "assets/extra.png";
+        // Stage 1-1, 1-2, 1-3 -> assets/1-x, 2-x, 3-x
+        return `assets/${stg}-${floorNum}.png`;
+    } else if (area === "2") {
+        if (stg === "1") return `assets/4-${floorNum}.png`; // AREA 2-1 -> assets/4-x
+        if (stg === "2") return `assets/5-${floorNum}.png`; // AREA 2-2 -> assets/5-x
+        if (stg === "3") return `assets/2-3-${floorNum}.png`; // AREA 2-3 -> assets/2-3-x
+        if (stg === "EX") return `assets/2-ex-${floorNum}.png`; // AREA 2-EX -> assets/2-ex-x
+    }
+    return `assets/1-1.png`; // フォールバック
+}
+
+// =========================================
 // 1. SYSTEM UI & CONFIG (システムUI・設定)
 // =========================================
 
@@ -133,9 +161,9 @@ function updateInfo() {
     const setHTML = (id, html) => { const e = el(id); if (e) e.innerHTML = html; };
 
     let stgDisp = getStageDisplayName(stage);
-    setText("stage-display", stgDisp);
+    setText("stage-display", getStageDisplayName(stage));
     setText("floor-display", getMaxFloors(stage) === 1 ? "FINAL" : `${floor}F`);
-    setHTML("turn-display", `TURN ${currentTurn} <span style="font-size:12px; color:#888;">(Total ${(totalGameTurns - stageStartTurn) + 1})</span>`);
+    setHTML("turn-display", `TURN ${currentTurn} <span style="opacity:0.5; font-size:10px;">(TOTAL ${totalGameTurns})</span>`);
 
     setText("enemy-name-side", enemy.name);
     const eHpEl = el("enemy-hp-value");
@@ -148,7 +176,7 @@ function updateInfo() {
 
     let weakText = `WEAK: ${enemy.data.weak}+`;
     if (weakHitCount > 0) weakText += " <span style='color:#f0f;'>CHANCE!</span>";
-    setHTML("weak-display", weakText);
+    setHTML("weak-display", `WEAK: ${enemy.data.weak}+`);
 
     const renderChips = (obj) => {
         if (!obj || !obj.states) return "";
@@ -212,6 +240,29 @@ function updateInfo() {
     if (avgDisp) avgDisp.innerText = ppr.toFixed(1);
     const rtDisp = el("rt-display");
     if (rtDisp) rtDisp.innerText = `(Rt ${calculateRating(ppr)})`;
+
+    // Relief Slots
+    const reliefRow = el("relief-battle-slots");
+    if (reliefRow) {
+        reliefRow.innerHTML = "";
+        const reliefs = player.equippedReliefs || [null, null, null];
+        for (let i = 0; i < 3; i++) {
+            const rId = reliefs[i];
+            const slot = document.createElement("div");
+            slot.id = `relief-slot-${i}`;
+            if (rId && RELIEF_DB[rId]) {
+                // ★修正: 共通関数を使用して正しい画像パスを取得
+                const imgPath = getReliefImgPath(rId);
+                slot.className = "relief-slot-mini equipped";
+                slot.innerHTML = `<img src="${imgPath}" style="width:80%; height:80%; object-fit:contain;">`;
+                slot.title = RELIEF_DB[rId].name;
+            } else {
+                slot.className = "relief-slot-mini empty";
+            }
+            reliefRow.appendChild(slot);
+        }
+    }
+
 
     renderHand();
 }
@@ -630,15 +681,32 @@ function startPackOpening(packId) {
         }
 
         if (!card) card = targetCards[Math.floor(Math.random() * targetCards.length)];
-        if (!savedData.collection) savedData.collection = {};
-        if (!savedData.cards) savedData.cards = {};
 
-        const currentCount = savedData.cards[card.id] || 0;
-        const isNew = (currentCount === 0);
-        savedData.collection[card.id] = (savedData.collection[card.id] || 0) + 1;
-        savedData.cards[card.id] = (savedData.cards[card.id] || 0) + 1;
+        // --- ★ リサイクル判定ロジック ---
+        const currentOwned = savedData.cards[card.id] || 0;
+        const isNew = (currentOwned === 0);
+        let isRecycled = false;
+        let gainedSoul = 0;
 
-        packResults.push({ ...card, isNew: isNew, ownCount: savedData.cards[card.id] });
+        if (currentOwned >= 3) {
+            // 4枚目以降なのでソウルに変換
+            isRecycled = true;
+            gainedSoul = SOUL_RECYCLE_RATES[card.rarity] || 10;
+            savedData.souls = (savedData.souls || 0) + gainedSoul;
+        } else {
+            // 通常入手
+            savedData.cards[card.id] = currentOwned + 1;
+            if (!savedData.collection) savedData.collection = {};
+            savedData.collection[card.id] = (savedData.collection[card.id] || 0) + 1;
+        }
+
+        packResults.push({ 
+            ...card, 
+            isNew: isNew, 
+            isRecycled: isRecycled, 
+            gainedSoul: gainedSoul, 
+            ownCount: savedData.cards[card.id] 
+        });
     }
 
     saveToDrive();
@@ -806,7 +874,7 @@ function closeCardShop() {
 
 function openCollection() {
     playSE("se-tap");
-    renderDeckEditor();
+    switchCollectionTab('deck');
     el("collection-modal").style.display = "flex";
 }
 
@@ -1178,4 +1246,192 @@ function createStageCard(stageData, stats, rank, isLocked) {
     }
 
     return card;
+}
+
+// --- タブ切り替えロジック ---
+// --- タブ切り替えロジック ---
+// --- ui.js ---
+
+// Updated: タブ切り替えロジック (v8.4 - Class-based Toggle)
+function switchCollectionTab(tab) {
+    const isDeck = tab === 'deck';
+    
+    const deckContent = el("deck-tab-content");
+    const reliefContent = el("relief-tab-content");
+    
+    if (deckContent && reliefContent) {
+        if (isDeck) {
+            deckContent.classList.remove("tab-content-hidden");
+            deckContent.classList.add("tab-content-visible");
+            reliefContent.classList.remove("tab-content-visible");
+            reliefContent.classList.add("tab-content-hidden");
+        } else {
+            deckContent.classList.remove("tab-content-visible");
+            deckContent.classList.add("tab-content-hidden");
+            reliefContent.classList.remove("tab-content-hidden");
+            reliefContent.classList.add("tab-content-visible");
+        }
+    }
+    
+    el("tab-deck").classList.toggle("active", isDeck);
+    el("tab-relief").classList.toggle("active", !isDeck);
+    
+    el("collection-stat-label").style.display = isDeck ? "block" : "none";
+    el("soul-display-label").style.display = isDeck ? "none" : "block";
+    
+    if (isDeck) renderDeckEditor();
+    else renderReliefEditor();
+}
+
+// Updated: レリーフエディタの描画 (v8.4 - Correct Image Mapping)
+// Updated: レリーフエディタの描画 (v8.5 - Logic Order Sorting)
+function renderReliefEditor() {
+    const shopGrid = el("relief-shop-grid");
+    const equipGrid = el("equipped-relief-grid");
+    const detailArea = el("relief-detail");
+    
+    if (!shopGrid || !equipGrid || !detailArea) return;
+
+    el("soul-count").innerText = savedData.souls || 0;
+    shopGrid.innerHTML = "";
+    equipGrid.innerHTML = "";
+    detailArea.innerHTML = `<div style="color:#aaa; font-size:12px; text-align:center; padding-top:20px;">Hover a slab to see power</div>`;
+
+    // 画像パス決定ヘルパー
+    const getReliefImgPath = (id) => {
+        const parts = id.split('-');
+        const area = parts[0];
+        const stg = parts[1];
+        const floorNum = parts[2];
+        
+        if (area === "1") {
+            if (stg === "EX") return "assets/extra.png";
+            return `assets/${stg}-${floorNum}.png`;
+        } else if (area === "2") {
+            if (stg === "1") return `assets/4-${floorNum}.png`;
+            if (stg === "2") return `assets/5-${floorNum}.png`;
+            if (stg === "3") return `assets/2-3-${floorNum}.png`;
+            if (stg === "EX") return `assets/2-ex-${floorNum}.png`;
+        }
+        return `assets/1-1.png`;
+    };
+
+    // 1. 装備スロットの描画
+    for (let i = 0; i < 3; i++) {
+        const rId = savedData.equippedReliefs[i];
+        const slot = document.createElement("div");
+        slot.className = "relief-slot-box";
+        if (rId && RELIEF_DB[rId]) {
+            const data = RELIEF_DB[rId];
+            // ★修正: 共通関数を使用
+            const imgPath = getReliefImgPath(rId);
+            slot.innerHTML = `
+                <div class="relief-slab owned equipped" style="width:50px; height:50px;">
+                    <img src="${imgPath}" class="slab-monster-img">
+                </div>
+                <div style="flex:1; margin-left:15px; text-align:left;">
+                    <div style="font-size:12px; color:#fff; font-weight:bold;">${data.name}</div>
+                    <div style="font-size:10px; color:#00d2fc;">PASSIVE ACTIVE</div>
+                </div>
+                <button class="sub-btn" style="padding:2px 8px; font-size:10px;" onclick="toggleRelief('${rId}')">REMOVE</button>
+            `;
+        } else {
+            slot.innerHTML = `<div style="color:#555; font-size:11px; width:100%; text-align:center;">-- EMPTY SLOT ${i+1} --</div>`;
+        }
+        equipGrid.appendChild(slot);
+    }
+
+    // 2. ショップ一覧の描画 (ソート処理を追加)
+    if (typeof RELIEF_DB !== 'undefined') {
+        // エントリを配列化してソート
+        const sortedReliefs = Object.entries(RELIEF_DB).sort((a, b) => {
+            const partsA = a[0].split('-'); // ["1", "1", "1"]
+            const partsB = b[0].split('-');
+
+            // ① エリア比較 (1, 2...)
+            if (partsA[0] !== partsB[0]) return partsA[0] - partsB[0];
+
+            // ② ステージ比較 (1, 2, 3, EX)
+            // EX を数値の 99 として扱い、常にエリアの最後にくるようにする
+            const stgA = partsA[1] === "EX" ? 99 : parseInt(partsA[1]);
+            const stgB = partsB[1] === "EX" ? 99 : parseInt(partsB[1]);
+            if (stgA !== stgB) return stgA - stgB;
+
+            // ③ フロア比較 (1, 2, 3...)
+            return partsA[2] - partsB[2];
+        });
+
+        sortedReliefs.forEach(([id, data]) => {
+            const isUnlocked = savedData.unlockedReliefs.includes(id);
+            const isEquipped = savedData.equippedReliefs.includes(id);
+            const stageKey = id.split('-').slice(0,2).join('-');
+            const hasDefeated = savedData.stageStats[stageKey] && savedData.stageStats[stageKey].clears > 0;
+
+            const slab = document.createElement("div");
+            slab.className = `relief-slab ${!hasDefeated ? 'locked' : isUnlocked ? 'owned' : 'unlocked'}`;
+            if (isEquipped) slab.classList.add("equipped");
+            
+            slab.innerHTML = `
+                <img src="${getReliefImgPath(id)}" class="slab-monster-img">
+                ${(!isUnlocked && hasDefeated) ? `<div class="slab-price">💎 ${data.souls}</div>` : ''}
+                ${isEquipped ? `<div class="slab-price" style="background:#00ff00; color:#000;">EQUIPPED</div>` : ''}
+            `;
+            
+            slab.onclick = () => {
+                if (!hasDefeated) { announce("未発見の魔物です", "log-enemy"); return; }
+                if (!isUnlocked) buyRelief(id);
+                else toggleRelief(id);
+            };
+
+            slab.onmouseenter = () => {
+                if (!hasDefeated) {
+                    detailArea.innerHTML = `<div class="detail-name">？？？？</div>未だ見ぬ魔物の石版。討伐することで解放される。`;
+                } else {
+                    const passiveDesc = data.passives.map(p => {
+                        if (p.type === "STATIC") return `・常時: ${p.category} ${p.val > 0 ? '+'+p.val : p.val}`;
+                        return `・特殊: ${p.trigger} (${Math.round((p.chance||1)*100)}%)`;
+                    }).join("<br>");
+                    detailArea.innerHTML = `<div class="detail-name">${data.name}</div>${passiveDesc}`;
+                }
+            };
+            shopGrid.appendChild(slab);
+        });
+    }
+}
+
+async function buyRelief(id) {
+    const data = RELIEF_DB[id];
+    if (savedData.souls < data.souls) {
+        playSE("se-warning");
+        alert("ソウルが足りません");
+        return;
+    }
+    if (confirm(`${data.name}を作成しますか？ (${data.souls} SOUL)`)) {
+        savedData.souls -= data.souls;
+        savedData.unlockedReliefs.push(id);
+        saveToDrive();
+        playSE("se-buff");
+        renderReliefEditor();
+    }
+}
+
+function toggleRelief(id) {
+    const index = savedData.equippedReliefs.indexOf(id);
+    if (index >= 0) {
+        // 解除
+        savedData.equippedReliefs[index] = null;
+        playSE("se-tap");
+    } else {
+        // 装備（空き枠を探す）
+        const emptyIdx = savedData.equippedReliefs.indexOf(null);
+        if (emptyIdx >= 0) {
+            savedData.equippedReliefs[emptyIdx] = id;
+            playSE("se-buff");
+        } else {
+            alert("装備枠がいっぱいです。どれかを外してください。");
+            return;
+        }
+    }
+    saveToDrive();
+    renderReliefEditor();
 }

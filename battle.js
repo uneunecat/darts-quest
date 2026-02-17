@@ -54,6 +54,7 @@ function spawnEnemy() {
         enemy.actionCount = 0;
         enemy.patternQueue = [];
         enemy.preemptiveTriggered = false;
+        if (!player.equippedReliefs) {player.equippedReliefs = savedData.equippedReliefs ? [...savedData.equippedReliefs] : [null, null, null];}
         currentTurn = 0; turnInputs = []; currentInput = ""; isJustFinish = false; weakHitCount = 0;
 
         updateScoreDisplay();
@@ -331,6 +332,9 @@ async function startPlayerTurn() {
 
     // ★追加: プレイヤーがかけた「round」ステートを経過させる
     tickStates("PLAYER", "round");
+
+    // ★ ターン開始時に「onTurnStart」トリガーをチェック
+    await checkReliefTriggers("onTurnStart");
 
     isInterval = false;
     el("interval-screen").style.display = "none";
@@ -675,58 +679,51 @@ async function executeSkill(skill, isPreemptive = false, isCard = false) {
     }
 }
 
-// Updated: 攻撃ロジック (v5.0 ステート・スキャナー方式)
+// Updated: 攻撃ロジック (レリーフ補正を追加)
 function applyOffenseLogic(basePower, sourceObj, applyRandom = true) {
-    // 1. カテゴリが "atk_mult" (倍率) のステート値を合計する
-    const multBonus = sourceObj.states
-        .filter(s => STATE_MASTER[s.id]?.category === "atk_mult")
-        .reduce((sum, s) => sum + s.val, 0);
+    let multBonus = sourceObj.states.filter(s => STATE_MASTER[s.id]?.category === "atk_mult").reduce((sum, s) => sum + s.val, 0);
+    let addBonus = sourceObj.states.filter(s => STATE_MASTER[s.id]?.category === "atk_add").reduce((sum, s) => sum + s.val, 0);
 
-    // 2. カテゴリが "atk_add" (加算) のステート値を合計する
-    const addBonus = sourceObj.states
-        .filter(s => STATE_MASTER[s.id]?.category === "atk_add")
-        .reduce((sum, s) => sum + s.val, 0);
-
-    // 3. 計算実行: (威力 + 加算) * (1.0 + 倍率)
-    let finalDmg = (basePower + addBonus) * (1.0 + multBonus);
-
-    if (applyRandom) {
-        const rand = 0.9 + (Math.random() * 0.2);
-        finalDmg *= rand;
+    // ★ プレイヤーの攻撃時のみレリーフの効果を上乗せ
+    if (sourceObj === player) {
+        addBonus += getReliefStaticValue("atk_add");
+        // 条件付き（1投目限定など）もここで加算可能
+        if (turnInputs.length === 0) addBonus += getReliefStaticValue("atk_add_first");
+        if (turnInputs.length === 0 && currentInput === "") addBonus += getReliefStaticValue("atk_add_single"); // 厳密な1投目判定
     }
 
+    let finalDmg = (basePower + addBonus) * (1.0 + multBonus);
+    if (applyRandom) finalDmg *= (0.9 + Math.random() * 0.2);
     return Math.floor(finalDmg);
 }
 
-// Updated: 防御ロジック (v5.0 ステート・スキャナー方式)
+// Updated: 防御ロジック (レリーフ補正を追加)
 function applyDefenseLogic(dmg, targetObj, isDarts = false) {
+    if (!targetObj || !targetObj.states) return dmg;
     let finalDmg = dmg;
 
-    // 1. 結界 (barrier) チェック
-    const maxBarrier = targetObj.states
-        .filter(s => STATE_MASTER[s.id]?.category === "barrier")
-        .reduce((max, s) => Math.max(max, s.val), 0);
+    // 1. 結界 (レリーフの結界とステートの結界を比較して高い方を採用)
+    let barrierVal = targetObj.states.filter(s => STATE_MASTER[s.id]?.category === "barrier").reduce((max, s) => Math.max(max, s.val), 0);
+    if (targetObj === player) {
+        barrierVal = Math.max(barrierVal, getReliefStaticValue("barrier"));
+    }
 
-    if (maxBarrier > 0 && finalDmg < maxBarrier) {
+    if (barrierVal > 0 && finalDmg < barrierVal) {
         if (!isDarts) addLog("結界が攻撃を遮断！", "log-enemy");
         return 0;
     }
 
-    // 2. 倍率防御 (dmg_mult) チェック
-    const dmgMult = targetObj.states
-        .filter(s => STATE_MASTER[s.id]?.category === "dmg_mult")
-        .reduce((prod, s) => prod * s.val, 1.0); // 0.5が2つあれば0.25倍になる
+    // 2. 防御倍率
+    let dmgMult = targetObj.states.filter(s => STATE_MASTER[s.id]?.category === "dmg_mult").reduce((prod, s) => prod * s.val, 1.0);
+    if (targetObj === player) dmgMult *= (getReliefStaticValue("dmg_mult") || 1.0);
 
     finalDmg *= dmgMult;
 
-    // 3. 固定防御 (dmg_sub) チェック
-    const dmgSub = targetObj.states
-        .filter(s => STATE_MASTER[s.id]?.category === "dmg_sub")
-        .reduce((sum, s) => sum + s.val, 0);
+    // 3. 固定減算
+    let dmgSub = targetObj.states.filter(s => STATE_MASTER[s.id]?.category === "dmg_sub").reduce((sum, s) => sum + s.val, 0);
+    if (targetObj === player) dmgSub += getReliefStaticValue("dmg_sub");
 
-    finalDmg = Math.max(0, finalDmg - dmgSub);
-
-    return Math.floor(finalDmg);
+    return Math.max(0, Math.floor(finalDmg - dmgSub));
 }
 
 // Updated: resolveAction (v4.9.1 - Fixed Reference Error)
@@ -908,6 +905,21 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
                 const msg = executeSalvageMagic();
                 addLog(msg, "log-skill");
                 break;
+
+            case "FREE_THROW":
+                // スロー回数を1回分「なかったこと」にする
+                if (turnInputs.length > 0) {
+                    turnInputs.pop();
+                    totalDarts--; // 統計も戻す
+                    addLog("スロー回数が回復した！", "log-item");
+                }
+                break;
+
+            case "RESURRECT":
+                // 死に際にHPを1にする（本実装は死亡判定箇所で行うが、アトムとしても定義）
+                player.hp = action.val;
+                addLog("石版の力で踏みとどまった！", "log-heal");
+                break;
         }
         updateInfo();
     } catch (error) {
@@ -1036,3 +1048,48 @@ function handleEnter() {
     }
 }
 
+// =========================================
+// 6. RELIEF SYSTEM (レリーフシステム)
+// =========================================
+
+// --- 装備中のレリーフから特定のSTATIC効果の合計値を取得するヘルパー ---
+function getReliefStaticValue(category) {
+    // player.equippedReliefs が未定義なら 0 を返す
+    if (!player.equippedReliefs) return 0;
+    
+    return player.equippedReliefs.reduce((sum, rId) => {
+        // rId が null (空き枠) または DBに存在しない場合はスキップ
+        if (!rId || !RELIEF_DB[rId]) return sum;
+        
+        const passive = RELIEF_DB[rId].passives.find(p => p.type === "STATIC" && p.category === category);
+        return sum + (passive ? passive.val : 0);
+    }, 0);
+}
+
+async function checkReliefTriggers(triggerType) {
+    // 安全ガード
+    if (!player.equippedReliefs) return;
+
+    for (let i = 0; i < 3; i++) {
+        const rId = player.equippedReliefs[i];
+        if (!rId || !RELIEF_DB[rId]) continue; // 空き枠は無視
+        
+        const passive = RELIEF_DB[rId].passives.find(p => p.trigger === triggerType);
+        if (passive) {
+            if (passive.chance && Math.random() > passive.chance) continue;
+
+            const slotEl = el(`relief-slot-${i}`);
+            if (slotEl) {
+                slotEl.classList.remove("trigger-glow");
+                void slotEl.offsetWidth;
+                slotEl.classList.add("trigger-glow");
+            }
+
+            addLog(`【石版発動】${RELIEF_DB[rId].name}`, "log-skill");
+            for (const action of passive.actions) {
+                await resolveAction(action, true, { se: "se-buff" });
+            }
+            await wait(400);
+        }
+    }
+}

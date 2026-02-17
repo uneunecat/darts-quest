@@ -1,6 +1,6 @@
 
 // =========================================
-// DEBUG MANAGER
+// DEBUG MANAGER (v5.1 - Relief & Soul Support)
 // =========================================
 const DebugManager = {
     init: function () {
@@ -37,12 +37,14 @@ const DebugManager = {
         menu.style.flexDirection = "column";
         menu.style.gap = "5px";
 
+        // Updated: ボタンリストに新規デバッグ機能を追加
         const actions = [
             { label: "Unlock All Stages", action: () => this.unlockAllStages() },
-            { label: "Unlock All Packs", action: () => this.unlockAllPacks() }, // Actually just unlocks stages which unlocks packs
+            { label: "Unlock All Packs", action: () => this.unlockAllPacks() },
             { label: "Gain All Cards (x3)", action: () => this.gainAllCards() },
-            { label: "Reset Cards", action: () => this.resetCards() },
+            { label: "Unlock All Reliefs", action: () => this.unlockAllReliefs() }, // ★新規
             { label: "Add 10,000 DP", action: () => this.addDP() },
+            { label: "Add 10,000 SOULS", action: () => this.addSouls() },       // ★新規
             { label: "Jump to Stage", action: () => this.jumpToStage() },
             { label: "Reset Save Data", action: () => this.resetSave() },
             { label: "Close", action: () => this.toggleMenu() }
@@ -76,6 +78,43 @@ const DebugManager = {
         }
     },
 
+    // --- 新規機能: 全レリーフ解放 ---
+    unlockAllReliefs: function() {
+        if (!savedData.unlockedReliefs) savedData.unlockedReliefs = [];
+        
+        // 1. 全てのレリーフIDを所持リストに追加
+        Object.keys(RELIEF_DB).forEach(id => {
+            if (!savedData.unlockedReliefs.includes(id)) {
+                savedData.unlockedReliefs.push(id);
+            }
+        });
+
+        // 2. ショップに表示させるため、全モンスターを討伐済みにする
+        Object.values(WORLD_MAP).forEach(area => {
+            area.stages.forEach(stage => {
+                if (!savedData.stageStats[stage.id]) {
+                    savedData.stageStats[stage.id] = { attempts: 1, clears: 1, maxDP: 0, bestTurns: 10 };
+                } else {
+                    savedData.stageStats[stage.id].clears = Math.max(savedData.stageStats[stage.id].clears, 1);
+                }
+            });
+        });
+
+        alert("All Monster Reliefs Unlocked & Monsters Defeated!");
+        this.saveAndReload();
+    },
+
+    // --- 新規機能: ソウル増加 ---
+    addSouls: function() {
+        savedData.souls = (savedData.souls || 0) + 10000;
+        saveToDrive();
+        // UIが表示されていればリアルタイム更新
+        if (document.getElementById("soul-count")) {
+            document.getElementById("soul-count").innerText = savedData.souls;
+        }
+        alert("Added 10,000 Souls!");
+    },
+
     jumpToStage: function () {
         const stageId = prompt("Enter Stage ID (e.g., 1-1, 2-EX):", savedData.highScore ? savedData.highScore.stage : "1-1");
         if (!stageId) return;
@@ -84,13 +123,10 @@ const DebugManager = {
         if (!floorStr) return;
         const floor = parseInt(floorStr);
 
-        // Validate Stage ID loosely (check if it exists in any area)
         let isValid = false;
-        // WORLD_MAP is an object
         for (const areaId in WORLD_MAP) {
             const area = WORLD_MAP[areaId];
-            const stages = area.stages || area.chapters;
-            if (stages && stages.find(s => s.id === stageId)) {
+            if (area.stages && area.stages.find(s => s.id === stageId)) {
                 isValid = true;
                 break;
             }
@@ -110,29 +146,20 @@ const DebugManager = {
     },
 
     saveAndReload: function () {
-        // Save current slot index to auto-resume
         if (typeof currentSlot !== "undefined") {
             const slotNum = currentSlot.replace("slot", "");
             localStorage.setItem("debug_last_slot", slotNum);
         }
-
         saveToDrive();
         setTimeout(() => location.reload(), 500);
     },
 
     unlockAllStages: function () {
         if (!savedData.bestRanks) savedData.bestRanks = {};
-        // WORLD_MAP is an object, not array
         for (const areaId in WORLD_MAP) {
             const area = WORLD_MAP[areaId];
             if (area.stages) {
-                // Legacy structure check
                 area.stages.forEach(stage => {
-                    savedData.bestRanks[stage.id] = "S";
-                });
-            } else if (area.chapters) {
-                // New structure check
-                area.chapters.forEach(stage => {
                     savedData.bestRanks[stage.id] = "S";
                 });
             }
@@ -142,42 +169,18 @@ const DebugManager = {
     },
 
     unlockAllPacks: function () {
-        // Unlocking all stages effectively unlocks all packs based on current logic
         this.unlockAllStages();
     },
 
     gainAllCards: function () {
         if (!savedData.cards) savedData.cards = {};
-
-        // Use CARD_DB from data.js
         if (typeof CARD_DB !== "undefined") {
             CARD_DB.forEach(card => {
                 savedData.cards[card.id] = 3;
             });
             alert("All cards obtained (x3)!");
             this.saveAndReload();
-        } else {
-            alert("Error: CARD_DB not found.");
         }
-    },
-
-    resetCards: function () {
-        savedData.cards = {};
-        // INITIAL_DECK definitions need to be checked. Assuming it's in data.js or main.js
-        // If INITIAL_DECK is just IDs
-        if (typeof INITIAL_DECK !== "undefined") {
-            INITIAL_DECK.forEach(id => {
-                savedData.cards[id] = (savedData.cards[id] || 0) + 1;
-            });
-            player.deck = [...INITIAL_DECK]; // Reset current deck too
-        } else {
-            // Fallback if INITIAL_DECK is missing
-            console.warn("INITIAL_DECK not found, clearing cards only.");
-            player.deck = [];
-        }
-
-        alert("Cards reset to initial state.");
-        this.saveAndReload();
     },
 
     addDP: function () {
@@ -191,11 +194,10 @@ const DebugManager = {
 
     resetSave: function () {
         if (confirm("Are you sure you want to delete all save data?")) {
-            localStorage.removeItem(SAVE_KEY); // SAVE_KEY from data.js
+            localStorage.removeItem(SAVE_KEY);
             setTimeout(() => location.reload(), 500);
         }
     }
 };
 
-// Expose to window
 window.DebugManager = DebugManager;

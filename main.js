@@ -253,6 +253,7 @@ function initGameSession(startStage, continueMode = false, startFloor = 1) {
         player = {
             ...JSON.parse(JSON.stringify(PLAYER_INITIAL_STATS)), // ディープコピー
             states: [], // ★ 修正: 配列で初期化
+            equippedReliefs: savedData.equippedReliefs ? [...savedData.equippedReliefs] : [null, null, null],
             setCard: null,
             deck: [], hand: [], discard: [], deckLocked: false
         };
@@ -260,6 +261,12 @@ function initGameSession(startStage, continueMode = false, startFloor = 1) {
         totalScore = 0;
         totalDarts = 0;
         clearedStagesLog = [];
+    } else {
+        // --- ステージ継続時 ---
+        // すでに player オブジェクトが存在するが、念のため石版情報がなければ同期する
+        if (!player.equippedReliefs) {
+            player.equippedReliefs = savedData.equippedReliefs ? [...savedData.equippedReliefs] : [null, null, null];
+        }
     }
     startTransition(startStage, continueMode, startFloor);
 }
