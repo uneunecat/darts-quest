@@ -256,6 +256,24 @@ function updateInfo() {
                 slot.className = "relief-slot-mini equipped";
                 slot.innerHTML = `<img src="${imgPath}" style="width:80%; height:80%; object-fit:contain;">`;
                 slot.title = RELIEF_DB[rId].name;
+
+                // 長押しプレビュー (500ms)
+                const data = RELIEF_DB[rId];
+                const reliefId = rId;
+                let pressTimer = null;
+                slot.addEventListener("pointerdown", () => {
+                    pressTimer = setTimeout(() => {
+                        pressTimer = null;
+                        openReliefPreview(reliefId, data);
+                    }, 500);
+                });
+                slot.addEventListener("pointerup", () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
+                slot.addEventListener("pointerleave", () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
+                slot.addEventListener("pointermove", (e) => {
+                    if (pressTimer && (Math.abs(e.movementX) > 3 || Math.abs(e.movementY) > 3)) {
+                        clearTimeout(pressTimer); pressTimer = null;
+                    }
+                });
             } else {
                 slot.className = "relief-slot-mini empty";
             }
@@ -1386,10 +1404,30 @@ function renderReliefEditor() {
             `;
 
             slab.onclick = () => {
+                if (slab._longPressFired) { slab._longPressFired = false; return; }
                 if (!hasDefeated) { announce("未発見の魔物です", "log-enemy"); return; }
                 if (!isUnlocked) buyRelief(id);
                 else toggleRelief(id);
             };
+
+            // 長押しプレビュー (500ms)
+            let pressTimer = null;
+            slab.addEventListener("pointerdown", (e) => {
+                if (!hasDefeated) return;
+                slab._longPressFired = false;
+                pressTimer = setTimeout(() => {
+                    pressTimer = null;
+                    slab._longPressFired = true;
+                    openReliefPreview(id, data);
+                }, 500);
+            });
+            slab.addEventListener("pointerup", () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
+            slab.addEventListener("pointerleave", () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
+            slab.addEventListener("pointermove", (e) => {
+                if (pressTimer && (Math.abs(e.movementX) > 3 || Math.abs(e.movementY) > 3)) {
+                    clearTimeout(pressTimer); pressTimer = null;
+                }
+            });
 
             // ホバー時の詳細表示
             slab.onmouseenter = () => {
@@ -1411,6 +1449,24 @@ function renderReliefEditor() {
             shopGrid.appendChild(slab);
         });
     }
+}
+
+// --- レリーフプレビュー (長押し) ---
+function openReliefPreview(id, data) {
+    if (navigator.vibrate) navigator.vibrate(20);
+    const overlay = el("relief-preview-overlay");
+    el("relief-preview-img").src = getReliefImgPath(id);
+    el("relief-preview-name").innerText = data.name;
+    el("relief-preview-desc").innerText = data.desc;
+    el("relief-preview-origin").innerText = `ORIGIN: ${data.monsterName}`;
+    overlay.style.display = "flex";
+    requestAnimationFrame(() => overlay.classList.add("active"));
+}
+
+function closeReliefPreview() {
+    const overlay = el("relief-preview-overlay");
+    overlay.classList.remove("active");
+    setTimeout(() => { overlay.style.display = "none"; }, 200);
 }
 
 async function buyRelief(id) {
