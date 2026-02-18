@@ -806,14 +806,14 @@ const RELIEF_DB = {
     "1-2-1": { name: "原始の石版", monsterName: "トラコドン", souls: 800, img: "assets/2-1.png", desc: "原始の力。各ターンの1投目のダメージを+20加算する。", passives: [{ type: "STATIC", category: "atk_add_first", val: 20 }] },
     "1-2-2": { name: "俊足の石版", monsterName: "ワイルド・ラプター", souls: 1000, img: "assets/2-2.png", desc: "俊足の狩人。常に与ダメージ+10。", passives: [{ type: "STATIC", category: "atk_add", val: 10 }] },
     "1-2-3": { name: "腐敗の石版", monsterName: "屍を貪る竜", souls: 1500, img: "assets/2-3.png", desc: "死肉の渇望。敵を撃破した瞬間にHPを50回復する。", passives: [{ trigger: "onEnemyKill", actions: [{ type: "HEAL", target: "PLAYER", val: 50 }] }] },
-    "1-2-4": { name: "王者の石版", monsterName: "二頭を持つキング・レックス", souls: 2000, img: "assets/2-4.png", desc: "王者の威圧。自分のHPが50%以下の時、与ダメージ+20。", passives: [{ type: "STATIC", category: "atk_add_low_hp", val: 20 }] },
-    "1-2-5": { name: "鋭牙の石版", monsterName: "剣竜", souls: 1800, img: "assets/2-5.png", desc: "鎧通しの牙。常に敵の固定軽減（アーマー）を無視して攻撃する。", passives: [{ type: "STATIC", category: "pierce_fixed", val: 999 }] },
+    "1-2-4": { name: "王者の石版", monsterName: "二頭を持つキング・レックス", souls: 1800, img: "assets/2-4.png", desc: "王者の威圧。自分のHPが50%以下の時、与ダメージ+20。", passives: [{ type: "STATIC", category: "atk_add_low_hp", val: 20 }] },
+    "1-2-5": { name: "鋭牙の石版", monsterName: "剣竜", souls: 2000, img: "assets/2-5.png", desc: "鎧通しの牙。常に敵の固定軽減（アーマー）を無視して攻撃する。", passives: [{ type: "STATIC", category: "pierce_fixed", val: 999 }] },
 
     "1-3-1": { name: "守護天使の石版", monsterName: "デュナミス・ヴァルキリア", souls: 1200, img: "assets/3-1.png", desc: "天使の盾。常に被ダメージ-8。", passives: [{ type: "STATIC", category: "dmg_sub", val: 8 }] },
     "1-3-2": { name: "狩場の石版", monsterName: "ハーピィ・レディ", souls: 1000, img: "assets/3-2.png", desc: "風まとう狩人。ターン開始時、10%の確率でドローする。", passives: [{ trigger: "onTurnStart", chance: 0.1, actions: [{ type: "DRAW", val: 1 }] }] },
     "1-3-3": { name: "魅惑の石版", monsterName: "ハーピィ・レディ・SB", souls: 1200, img: "assets/3-3.png", desc: "華麗なる束縛。攻撃命中時、5%の確率で敵を拘束しダメージを与える。", passives: [{ trigger: "onAttackHit", chance: 0.05, actions: [{ type: "DAMAGE", target: "ENEMY", mult: 0.5 }] }] },
     "1-3-4": { name: "三姉妹の石版", monsterName: "ハーピィ・レディ三姉妹", souls: 1800, img: "assets/3-4.png", desc: "華麗なる三位一体。1～3投目が全て同じスコアなら、3投目に+30ダメージ。", passives: [{ type: "STATIC", category: "atk_add_triple_same", val: 30 }] },
-    "1-3-5": { name: "寵愛の石版", monsterName: "ハーピィズペット竜", souls: 1500, img: "assets/3-5.png", desc: "竜の愛。常に与ダメージ+15。", passives: [{ type: "STATIC", category: "atk_add", val: 15 }] },
+    "1-3-5": { name: "寵愛の石版", monsterName: "ハーピィズペット竜", souls: 2000, img: "assets/3-5.png", desc: "竜の愛。常に与ダメージ+15。", passives: [{ type: "STATIC", category: "atk_add", val: 15 }] },
 
     "1-EX-1": { name: "黒竜の石版", monsterName: "真紅眼の黒竜", souls: 2000, img: "assets/extra.png", desc: "可能性の咆哮。常に与ダメージ+15。さらにWeak時ダメージUP。", passives: [{ type: "STATIC", category: "atk_add", val: 15 }] },
 
