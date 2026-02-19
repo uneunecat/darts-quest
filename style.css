@@ -978,11 +978,69 @@ stg-info-row {
 
 .player-info-block {
     flex: 1;
-    height: 130px;
+    height: 105px;
     display: flex;
     flex-direction: column;
     justify-content: space-around;
     gap: 3px;
+}
+
+/* Damage Breakdown Display */
+.dmg-breakdown-block {
+    padding: 2px 6px;
+    border-top: 1px solid #1a2a44;
+    border-bottom: 1px solid #1a2a44;
+    font-family: 'Orbitron', 'Roboto Mono', monospace;
+    font-size: 10px;
+    min-height: 48px;
+}
+
+.dmg-row {
+    height: 15px;
+    line-height: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    color: #444;
+}
+
+.dmg-row.active {
+    color: #aaa;
+}
+
+.dmg-idx {
+    color: #555;
+    margin-right: 2px;
+    font-size: 9px;
+}
+
+.dmg-base {
+    color: #ddd;
+}
+
+.dmg-buff {
+    color: #4fc3f7;
+}
+
+.dmg-relief {
+    color: #ce93d8;
+}
+
+.dmg-mult {
+    color: #4fc3f7;
+}
+
+.dmg-def {
+    color: #888;
+}
+
+.dmg-weak {
+    color: #ff4444;
+    font-weight: bold;
+}
+
+.dmg-result {
+    color: #ffd700;
+    font-weight: bold;
 }
 
 .relief-info-block {

@@ -6,6 +6,9 @@
 let reliefGlowTimers = [0, 0, 0];
 const RELIEF_GLOW_DURATION = 1200; // ms (CSSアニメーションと同期)
 
+// ★ダメージ計算式ブレークダウン (投擲ごとの内訳を記録)
+let throwBreakdowns = [];
+
 function setReliefGlow(slotIndex) {
     reliefGlowTimers[slotIndex] = Date.now();
     // 即座にDOMにも反映（updateInfoを待たない場合のため）
@@ -516,18 +519,26 @@ async function processOneThrow(score) {
         if (isBound && turnInputs.length > 0) return;
 
         // ★履歴に追加 & UI更新 (BT/Debug共通)
+        // 最初の投擲時に前ターンのブレークダウンをクリア
+        if (turnInputs.length === 0) {
+            throwBreakdowns = [];
+        }
         turnInputs.push(score);
         updateScoreDisplay();
 
         // 2. 攻撃計算とステートの進行
-        let singleDmg = applyOffenseLogic(score, player, false);
+        const offResult = applyOffenseLogic(score, player, false);
+        let singleDmg = offResult.dmg;
+        const offBreakdown = offResult.breakdown; // { base, buffAdd, reliefAdd, buffMult }
 
         // 投げた瞬間に「投数(throw)」タイミングのステートを減らす (atk_buffなど)
         tickStates("PLAYER", "throw");
         tickStates("ENEMY", "throw");
 
         // 防御計算
-        singleDmg = await applyDefenseLogic(singleDmg, enemy, true);
+        const defResult = applyDefenseLogic(singleDmg, enemy, true);
+        singleDmg = defResult.dmg;
+        const defSub = defResult.defSub || 0;
 
         // 3. 判定と適用
         if (singleDmg === enemy.hp && enemy.hp > 0) {
@@ -544,6 +555,17 @@ async function processOneThrow(score) {
             playSE("se-weak");
             triggerShatterEffect();
         }
+
+        // ★ブレークダウン記録
+        throwBreakdowns.push({
+            base: offBreakdown.base,
+            buffAdd: offBreakdown.buffAdd,
+            reliefAdd: offBreakdown.reliefAdd,
+            buffMult: offBreakdown.buffMult,
+            defSub: defSub,
+            weak: weakHit,
+            finalDmg: singleDmg
+        });
 
         enemy.hp = Math.max(0, enemy.hp - singleDmg);
         totalScore += score;
@@ -747,54 +769,59 @@ async function executeSkill(skill, isPreemptive = false, isCard = false) {
     }
 }
 
-// Updated: 攻撃ロジック (レリーフ補正を追加)
+// Updated: 攻撃ロジック (レリーフ補正を追加 + ブレークダウン返却)
 function applyOffenseLogic(basePower, sourceObj, applyRandom = true) {
-    let multBonus = sourceObj.states.filter(s => STATE_MASTER[s.id]?.category === "atk_mult").reduce((sum, s) => sum + s.val, 0);
-    let addBonus = sourceObj.states.filter(s => STATE_MASTER[s.id]?.category === "atk_add").reduce((sum, s) => sum + s.val, 0);
+    let buffAdd = sourceObj.states.filter(s => STATE_MASTER[s.id]?.category === "atk_add").reduce((sum, s) => sum + s.val, 0);
+    let buffMult = sourceObj.states.filter(s => STATE_MASTER[s.id]?.category === "atk_mult").reduce((sum, s) => sum + s.val, 0);
+    let reliefAdd = 0;
 
     // プレイヤーの攻撃時のみレリーフ補正を計算
     if (sourceObj === player) {
         // 1. 基本加算
-        addBonus += getReliefStaticValue("atk_add");
+        reliefAdd += getReliefStaticValue("atk_add");
 
         // 2. 条件付き加算
-        if (turnInputs.length === 1) addBonus += getReliefStaticValue("atk_add_first"); // 1投目
-        if (turnInputs.length === 2) addBonus += getReliefStaticValue("atk_add_second"); // 2投目
+        if (turnInputs.length === 1) reliefAdd += getReliefStaticValue("atk_add_first"); // 1投目
+        if (turnInputs.length === 2) reliefAdd += getReliefStaticValue("atk_add_second"); // 2投目
 
         // シングルヒット判定 (1-20点の時)
-        if (basePower > 0 && basePower <= 20) addBonus += getReliefStaticValue("atk_add_single");
+        if (basePower > 0 && basePower <= 20) reliefAdd += getReliefStaticValue("atk_add_single");
 
         // 三姉妹: 3投目かつ1,2投目とスコアが同じなら
         if (turnInputs.length === 3 && turnInputs[0] === turnInputs[1] && turnInputs[1] === basePower) {
-            addBonus += getReliefStaticValue("atk_add_triple_same");
+            reliefAdd += getReliefStaticValue("atk_add_triple_same");
         }
 
         // オシリス: 手札1枚につき
-        addBonus += (player.hand.length * getReliefStaticValue("atk_add_per_hand"));
+        reliefAdd += (player.hand.length * getReliefStaticValue("atk_add_per_hand"));
 
         // ギルガース: MP1につき
-        addBonus += (player.mp * getReliefStaticValue("atk_add_per_mp"));
+        reliefAdd += (player.mp * getReliefStaticValue("atk_add_per_mp"));
 
         // ヒューマノイドドレイク: 自身にバフがある場合
         if (hasState(player, "atk_mult") || hasState(player, "atk_add")) {
-            addBonus += getReliefStaticValue("atk_add_if_buffed");
+            reliefAdd += getReliefStaticValue("atk_add_if_buffed");
         }
 
         // 3. 条件付き加算(HP) 
         // キングレックス: HP50%以下なら与ダメ+20
         if ((player.hp / player.maxHp) <= 0.5) {
-            addBonus += getReliefStaticValue("atk_add_low_hp");
+            reliefAdd += getReliefStaticValue("atk_add_low_hp");
         }
     }
 
-    let finalDmg = (basePower + addBonus) * (1.0 + multBonus);
+    const totalAdd = buffAdd + reliefAdd;
+    let finalDmg = (basePower + totalAdd) * (1.0 + buffMult);
     if (applyRandom) finalDmg *= (0.9 + Math.random() * 0.2);
-    return Math.floor(finalDmg);
+    return {
+        dmg: Math.floor(finalDmg),
+        breakdown: { base: basePower, buffAdd, reliefAdd, buffMult }
+    };
 }
 
-// Updated: 防御ロジック (v9.0 - Relief Full Support)
+// Updated: 防御ロジック (v9.1 - ブレークダウン対応)
 function applyDefenseLogic(dmg, targetObj, isDarts = false) {
-    if (!targetObj || !targetObj.states) return dmg;
+    if (!targetObj || !targetObj.states) return isDarts ? { dmg, defSub: 0 } : dmg;
     let finalDmg = dmg;
 
     // 攻撃者（プレイヤー）のレリーフによる貫通性能をチェック
@@ -814,7 +841,7 @@ function applyDefenseLogic(dmg, targetObj, isDarts = false) {
 
     if (barrierVal > 0 && finalDmg < barrierVal) {
         if (!isDarts) addLog("結界が攻撃を遮断！", "log-enemy");
-        return 0;
+        return isDarts ? { dmg: 0, defSub: 0 } : 0;
     }
 
     // 2. 倍率防御
@@ -834,7 +861,8 @@ function applyDefenseLogic(dmg, targetObj, isDarts = false) {
     // アーマー貫通を適用
     dmgSub = Math.max(0, dmgSub - armorIgnore);
 
-    return Math.max(0, Math.floor(finalDmg - dmgSub));
+    const result = Math.max(0, Math.floor(finalDmg - dmgSub));
+    return isDarts ? { dmg: result, defSub: dmgSub } : result;
 }
 
 // Updated: resolveAction (v4.9.1 - Fixed Reference Error)
@@ -884,7 +912,7 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
                         const source = isPlayerTarget ? enemy : player;
                         const baseAtk = isPlayerTarget ? enemy.atk : 10;
                         const mult = action.mult || action.val || 1.0;
-                        dmg = applyOffenseLogic(baseAtk * mult, source, !executorIsPlayer);
+                        dmg = applyOffenseLogic(baseAtk * mult, source, !executorIsPlayer).dmg;
                     }
 
                     dmg = applyDefenseLogic(dmg, targetObj, false);

@@ -81,6 +81,61 @@ function updateScoreDisplay() {
             else if (i - 1 === turnInputs.length) dot.classList.add("active");
         }
     });
+
+    // ★ダメージ計算式ブレークダウン表示
+    for (let i = 0; i < 3; i++) {
+        const row = el(`dmg-row-${i + 1}`);
+        if (!row) continue;
+        if (typeof throwBreakdowns !== "undefined" && i < throwBreakdowns.length) {
+            row.className = "dmg-row active";
+            row.innerHTML = buildFormulaHTML(i + 1, throwBreakdowns[i]);
+        } else {
+            row.className = "dmg-row";
+            row.innerHTML = `<span class="dmg-idx">${i + 1}▸</span> --`;
+        }
+    }
+}
+
+// ★ダメージ計算式のHTML生成ヘルパー
+function buildFormulaHTML(idx, b) {
+    let parts = [];
+    parts.push(`<span class="dmg-idx">${idx}▸</span>`);
+
+    // 素点
+    parts.push(`<span class="dmg-base">${b.base}</span>`);
+
+    // バフ加算
+    if (b.buffAdd > 0) {
+        parts.push(`<span class="dmg-buff">+${b.buffAdd}</span>`);
+    }
+
+    // レリーフ加算
+    if (b.reliefAdd > 0) {
+        parts.push(`<span class="dmg-relief">+${b.reliefAdd}</span>`);
+    }
+
+    // バフ倍率 (0でなければ = 1.0以上の倍率がかかっている)
+    if (b.buffMult > 0) {
+        parts.push(`<span class="dmg-mult">×${(1.0 + b.buffMult).toFixed(1)}</span>`);
+    }
+
+    // 防御減算
+    if (b.defSub > 0) {
+        parts.push(`<span class="dmg-def">-${b.defSub}</span>`);
+    }
+
+    // WEAK
+    if (b.weak) {
+        parts.push(`<span class="dmg-weak">×2</span>`);
+    }
+
+    // 最終ダメージ (補正がある場合のみ矢印で表示)
+    const hasModifiers = b.buffAdd > 0 || b.reliefAdd > 0 || b.buffMult > 0 || b.defSub > 0 || b.weak;
+    if (hasModifiers) {
+        parts.push(`<span class="dmg-result">→${b.finalDmg}</span>`);
+    }
+
+    return parts.join(" ");
 }
 
 function openConfigModal() {
