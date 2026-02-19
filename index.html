@@ -276,8 +276,12 @@
 
                     <div class="main-actions"
                         style="margin-top:20px; display:flex; flex-direction:column; gap:10px; align-items:center;">
-                        <button class="stage-btn btn-gold" onclick="openStageSelect()"
-                            style="width:200px; height:60px; font-size:22px;">GAME START</button>
+                        <div style="display:flex; gap:15px;">
+                            <button class="stage-btn btn-gold" onclick="playSE('se-tap'); openStageSelect()"
+                                style="width:160px; height:60px; font-size:18px;">QUEST MODE</button>
+                            <button class="stage-btn btn-legacy" onclick="playSE('se-tap'); openLegacyMenu()"
+                                style="width:160px; height:60px; font-size:18px;">LEGACY MODE</button>
+                        </div>
                     </div>
 
                     <div class="title-buttons" style="margin-top:15px;">
@@ -286,8 +290,7 @@
                         <button class="sub-btn" style="color:#00d2fc; border-color:#00d2fc;"
                             onclick="openCollection()">📂 DECK</button>
                         <button class="sub-btn" onclick="showHistory()">📜 HISTORY</button>
-                        <button class="sub-btn" style="color:#76ff03; border-color:#76ff03;"
-                            onclick="openLegacyMenu()">🎯 LEGACY</button>
+                        <!-- LEGACY button moved to main actions -->
                         <button class="sub-btn" onclick="backToSlots()">↩️ SLOTS</button>
                         <button class="sub-btn" id="fullscreen-btn" onclick="toggleFullscreen()">🔲 FULL</button>
                     </div>
@@ -340,12 +343,22 @@
                     <!-- 右エリア -->
                     <div class="cu-main-area">
                         <div class="cu-round-result" id="cu-round-result" style="display:none;"></div>
-                        <div class="cu-big-total-label">TOTAL</div>
+                        <!-- TOTAL label removed -->
                         <div class="cu-big-total" id="cu-big-total">0</div>
-                        <div class="cu-input-hint">キーボードでスコアを入力<br>またはダーツボードから投擲</div>
-                        <!-- 最終ラウンドアナウンス -->
+                        <!-- Input hint removed -->
                         <div class="cu-final-round-overlay" id="cu-final-round-overlay" style="display:none;">
                             <div class="cu-final-round-text">FINAL ROUND</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Legacy用インターバルオーバーレイ -->
+                <div id="cu-interval-screen" class="interval-overlay" onclick="startCountUpNextRound()"
+                    style="display:none;">
+                    <div class="interval-content">
+                        <div class="interval-msg">NEXT ROUND</div>
+                        <div class="interval-sub">TAP TO START</div>
+                        <div class="interval-btn" style="background:#00d2fc; color:#000; font-weight:bold;">START ROUND
                         </div>
                     </div>
                 </div>

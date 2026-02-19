@@ -11,6 +11,7 @@ let cuRoundScores = [];         // 全ラウンドのスコア配列 [[r1t1,r1t2
 let cuCurrentThrows = [];       // 現ラウンドの投擲スコア
 let cuTotalScore = 0;           // 合計スコア
 let cuProcessing = false;       // 処理中フラグ
+let cuInterval = false;         // インターバル中フラグ
 
 // --- Entry Point ---
 function openLegacyMenu() {
@@ -27,6 +28,7 @@ function startCountUp() {
     cuCurrentThrows = [];
     cuTotalScore = 0;
     cuProcessing = false;
+    cuInterval = false;
 
     // 画面切替
     el("title-screen").style.display = "none";
@@ -36,11 +38,14 @@ function startCountUp() {
     updateCountUpUI();
     updateCountUpDPDisplay();
     currentInput = "";  // キーボード入力バッファのクリア
+
+    // BGM変更 (戦闘曲)
+    playBGM("bgm-battle");
 }
 
 // --- Core: 1投ごとの処理 ---
 function processLegacyThrow(score) {
-    if (cuProcessing) return;
+    if (cuProcessing || cuInterval) return;
     if (cuRound >= CU_MAX_ROUNDS) return;
 
     cuProcessing = true;
@@ -53,6 +58,9 @@ function processLegacyThrow(score) {
     // UI更新
     updateCountUpUI();
     updateCountUpBigTotal();
+
+    // エフェクトトリガー
+    triggerCountUpScoreEffect(score);
 
     // ラウンド完了判定 (3投)
     if (cuThrow >= 3) {
@@ -94,25 +102,53 @@ function showCountUpRoundResult(roundTotal) {
         showCommonCutin(effectText, effectType);
     }
 
-    // 次ラウンドへ
+    // 次ラウンドへ & インターバル
     setTimeout(() => {
-        cuRound++;
-        cuThrow = 0;
-        cuCurrentThrows = [];
-
-        if (cuRound >= CU_MAX_ROUNDS) {
+        if (cuRound >= CU_MAX_ROUNDS - 1) {
+            // 最終ラウンド終了時はリザルトへ直行
             finishCountUp();
         } else {
-            updateCountUpUI();
-            updateCountUpBigTotal();
-            // 最終ラウンドアナウンス
-            if (cuRound === CU_MAX_ROUNDS - 1) {
-                showFinalRoundAnnounce();
-            } else {
-                cuProcessing = false;
-            }
+            // インターバル画面を表示して待機
+            startCountUpInterval();
         }
     }, (effectText ? 2000 : 700));
+}
+
+// --- インターバル開始 ---
+function startCountUpInterval() {
+    cuInterval = true;
+    cuProcessing = false; // インターバル中は入力無効だがProcessingは解除しておく（ボタン用）
+
+    // インターバル画面表示
+    const overlay = el("cu-interval-screen");
+    if (overlay) {
+        overlay.style.display = "flex";
+        // メッセージ更新などの余地あり
+    }
+}
+
+// --- 次ラウンド開始 (画面タップ) ---
+function startCountUpNextRound() {
+    if (!cuInterval) return;
+
+    const overlay = el("cu-interval-screen");
+    if (overlay) overlay.style.display = "none";
+
+    cuInterval = false;
+    cuRound++;
+    cuThrow = 0;
+    cuCurrentThrows = [];
+
+    // UI更新
+    updateCountUpUI();
+    // ここではアニメーションさせずに数値を整理
+    const bigTotal = el("cu-big-total");
+    if (bigTotal) bigTotal.innerText = cuTotalScore;
+
+    // 最終ラウンドアナウンス (R8開始時)
+    if (cuRound === CU_MAX_ROUNDS - 1) {
+        showFinalRoundAnnounce();
+    }
 }
 
 // --- 共通カットイン使用 (Legacy独自関数は削除) ---
@@ -238,10 +274,16 @@ function retryCountUp() {
 function exitLegacy() {
     legacyMode = false;
     cuProcessing = false;
+    cuProcessing = false;
+    cuInterval = false;
     el("cu-result-overlay").style.display = "none";
+    el("cu-interval-screen").style.display = "none"; // インターバルリセット
     el("legacy-screen").style.display = "none";
     el("title-screen").style.display = "flex";
     updateTitleScore();
+
+    // BGM戻す (タイトル)
+    playBGM("bgm-title");
 }
 
 // --- DP表示更新 ---
@@ -251,9 +293,38 @@ function updateCountUpDPDisplay() {
 }
 
 // --- 右側巨大TOTAL更新 ---
+// --- 右側巨大TOTAL更新 (アニメーション付き) ---
 function updateCountUpBigTotal() {
     const bigTotal = el("cu-big-total");
-    if (bigTotal) bigTotal.innerText = cuTotalScore;
+    if (!bigTotal) return;
+
+    // 現在の表示値を取得
+    const currentVal = parseInt(bigTotal.innerText.replace(/,/g, "")) || 0;
+    const targetVal = cuTotalScore;
+
+    if (currentVal !== targetVal) {
+        // カウントアップアニメーション
+        animateNumber(bigTotal.id, currentVal, targetVal, 500);
+
+        // バンプエフェクト (CSSクラス付与)
+        bigTotal.classList.remove("bump");
+        void bigTotal.offsetWidth; // リフロー
+        bigTotal.classList.add("bump");
+    }
+}
+
+// --- スコアエフェクト (数値ポップ) ---
+function triggerCountUpScoreEffect(score) {
+    const totalEl = el("cu-big-total");
+    if (!totalEl) return;
+
+    const effect = document.createElement("div");
+    effect.className = "cu-score-effect";
+    effect.innerText = "+" + score;
+    // totalEl の中に追加して相対配置にする
+    totalEl.appendChild(effect);
+
+    setTimeout(() => effect.remove(), 800);
 }
 
 // --- 最終ラウンドアナウンス ---

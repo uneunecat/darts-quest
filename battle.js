@@ -84,6 +84,7 @@ function spawnEnemy() {
         enemy.preemptiveTriggered = false;
         if (!player.equippedReliefs) { player.equippedReliefs = savedData.equippedReliefs ? [...savedData.equippedReliefs] : [null, null, null]; }
         currentTurn = 0; turnInputs = []; currentInput = ""; isJustFinish = false; weakHitCount = 0;
+        battleEnded = false; // ★リセット
 
         updateScoreDisplay();
 
@@ -184,8 +185,11 @@ async function handlePreemptiveAI() {
     }
 }
 
+let battleEnded = false; // 重複ガード
+
 async function winBattle() {
-    if (player.hp <= 0) return;
+    if (player.hp <= 0 || battleEnded) return;
+    battleEnded = true;
 
     addLog(`${enemy.name} を倒した`, "system");
     el("enemy-img").style.display = "none";
@@ -935,6 +939,11 @@ async function resolveAction(action, executorIsPlayer = false, skillVisual = {})
                     }
 
                     if (dmg > 0) {
+                        // ★ジャストフィニッシュ判定 (敵へのダメージのみ)
+                        if (!isPlayerTarget && targetObj.hp - dmg === 0) {
+                            isJustFinish = true;
+                        }
+
                         targetObj.hp = Math.max(0, targetObj.hp - dmg);
 
                         // 1. フラッシュ演出 (flash-xxx)
