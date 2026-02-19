@@ -283,6 +283,7 @@
                             onclick="openCollection()">📂 DECK</button>
                         <button class="sub-btn" onclick="showHistory()">📜 HISTORY</button>
                         <button class="sub-btn" onclick="backToSlots()">↩️ SLOTS</button>
+                        <button class="sub-btn" id="fullscreen-btn" onclick="toggleFullscreen()">🔲 FULL</button>
                     </div>
 
                     <div style="font-size:10px; color:#555; margin-top:10px;">
@@ -311,6 +312,7 @@
             <div class="game-screen" id="game-screen" style="display:none;">
                 <!-- 右上のコンパクトなEXITボタン -->
                 <button class="exit-icon-btn" onclick="returnToTitle()" title="EXIT GAME">🏠</button>
+                <button class="fullscreen-icon-btn" onclick="toggleFullscreen()" title="FULLSCREEN">🔲</button>
 
                 <div class="battle-container-wrapper">
 

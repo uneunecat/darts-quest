@@ -35,7 +35,9 @@ function resizeGame() {
     if (!scaler) return;
 
     if (window.innerWidth >= 900) {
-        const scale = Math.min(window.innerWidth / 900, window.innerHeight / 620) * 0.95;
+        const isFS = !!document.fullscreenElement;
+        const margin = isFS ? 1.0 : 0.95;
+        const scale = Math.min(window.innerWidth / 900, window.innerHeight / 620) * margin;
         scaler.style.transform = `scale(${scale})`;
         scaler.style.width = "900px";
         scaler.style.height = "620px";
@@ -48,6 +50,23 @@ function resizeGame() {
         document.body.style.overflowY = "auto";
     }
 }
+
+// 全画面表示トグル
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(e => console.log("Fullscreen Error:", e));
+    } else {
+        document.exitFullscreen();
+    }
+}
+
+// 全画面変更時にリサイズ再計算
+document.addEventListener("fullscreenchange", () => {
+    resizeGame();
+    // ボタンアイコン更新
+    const btn = el("fullscreen-btn");
+    if (btn) btn.innerText = document.fullscreenElement ? "⛶" : "🔲";
+});
 
 function updateScoreDisplay() {
     [1, 2, 3].forEach((i) => {
