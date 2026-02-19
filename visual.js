@@ -151,7 +151,7 @@ async function animateMPLoss(amount) {
 
 // 10.1 Shatter Effect (弱点破壊)
 function triggerShatterEffect() {
-    
+
     // 1. 画面フラッシュ (Purple for Weak Hit)
     flashScreen("flash-purple"); // Added class arg
     playSE("se-hit"); // Fallback for glass-break
@@ -192,56 +192,26 @@ function flashScreen(className = "") { // Added className param
 }
 
 // 10.3 Round Result Bonus (Low Ton / Hat Trick / High Ton)
-function showRoundBonus(type) {
-    return new Promise(resolve => {
-        let overlay = el("round-bonus-cutin");
-        if (!overlay) {
-            overlay = document.createElement("div");
-            overlay.id = "round-bonus-cutin";
-            document.body.appendChild(overlay);
-        }
 
-        // Reset classes
-        overlay.className = "";
-        overlay.innerHTML = "";
+// --- 共通カットイン演出 (Battle / Legacy) ---
+function showCommonCutin(text, type) {
+    const overlay = el("common-cutin-overlay");
+    const textEl = el("common-cutin-text");
+    if (!overlay || !textEl) return;
 
-        // Determine style and text
-        let text = "";
-        let styleClass = "";
+    textEl.innerText = text;
+    overlay.className = "common-cutin-overlay " + type; // type別背景用クラス
+    overlay.style.display = "flex";
 
-        if (type === "LOW_TON") {
-            text = "LOW TON";
-            styleClass = "style-low-ton";
-            // Request: Draw sound
-            playSE("se-item");
-        } else if (type === "HAT_TRICK") {
-            text = "HAT TRICK";
-            styleClass = "style-hat-trick";
-            // Request: Thunderbolt applied fierce sound
-            // Using se-boom (explosion) + se-flash (if avail) or se-warning
-            playSE("se-boom");
-            setTimeout(() => playSE("se-boom"), 150);
-            setTimeout(() => playSE("se-boom"), 300);
-        } else if (type === "HIGH_TON") {
-            text = "HIGH TON";
-            styleClass = "style-high-ton";
-            // Request: Same as Low Ton (Draw sound)
-            playSE("se-item");
-        } else {
-            resolve();
-            return;
-        }
+    // SE再生
+    if (type === "hattrick") {
+        playSE("se-boom");      // 重厚な爆発音（サンダーボルト代替）
+        setTimeout(() => playSE("se-warning"), 100); // 警告音重ねがけ
+    } else {
+        playSE("se-item");
+    }
 
-        overlay.classList.add(styleClass);
-        overlay.innerHTML = `<div class="bonus-text">${text}</div>`;
-        overlay.style.display = "flex";
-
-        // Wait for animation to finish
-        // Request: Shorten duration
-        setTimeout(() => {
-            overlay.style.display = "none";
-            overlay.className = "";
-            resolve();
-        }, 1800); // Reduced from 2500 -> 1800 (matches longest CSS anim time approx)
-    });
+    setTimeout(() => {
+        overlay.style.display = "none";
+    }, 1800);
 }

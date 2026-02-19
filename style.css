@@ -5127,19 +5127,25 @@ stg-info-row {
     transform: scale(1.05);
 }
 
-/* DP表示バッジ (右上) */
+/* DP表示バッジ (右上) - アイコンボタンと高さを合わせる */
 .cu-dp-badge {
     position: absolute;
-    top: 8px;
-    right: 130px;
+    top: 15px;
+    /* ボタンのtop: 10~15px程度に合わせる */
+    right: 120px;
+    /* 全画面ボタンの左 */
+    height: 30px;
+    display: flex;
+    align-items: center;
     font-family: 'Courier New', monospace;
-    font-size: 13px;
+    font-size: 14px;
     color: #76ff03;
     background: rgba(0, 0, 0, 0.6);
     border: 1px solid rgba(118, 255, 3, 0.3);
-    border-radius: 12px;
-    padding: 4px 12px;
+    border-radius: 15px;
+    padding: 0 15px;
     z-index: 100;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
 /* ハットトリック演出 */
@@ -5227,5 +5233,93 @@ stg-info-row {
     100% {
         transform: scale(1.0);
         opacity: 1;
+    }
+}
+
+/* 共通カットイン (派手) */
+.common-cutin-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    /* 最前面 */
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.4);
+    /* 背景暗く */
+    pointer-events: none;
+    /* クリック透過 */
+}
+
+/* タイプ別背景エフェクト */
+.common-cutin-overlay.hattrick {
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.4) 0%, rgba(0, 0, 0, 0.8) 80%);
+}
+
+.common-cutin-overlay.highton {
+    background: radial-gradient(circle, rgba(192, 192, 192, 0.4) 0%, rgba(0, 0, 0, 0.8) 80%);
+}
+
+.common-cutin-overlay.lowton {
+    background: radial-gradient(circle, rgba(0, 210, 252, 0.3) 0%, rgba(0, 0, 0, 0.8) 80%);
+}
+
+.common-cutin-text {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 80px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+    transform: scale(0);
+    animation: common-cutin-anim 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    white-space: nowrap;
+    position: relative;
+}
+
+/* 文字装飾 */
+.hattrick .common-cutin-text {
+    color: #ffd700;
+    text-shadow: 0 0 10px #ff0, 0 0 30px #f80, 0 0 60px #f00;
+    border-bottom: 5px solid #ffd700;
+}
+
+.highton .common-cutin-text {
+    color: #e0e0e0;
+    text-shadow: 0 0 10px #fff, 0 0 30px #0ff;
+    border-bottom: 5px solid #e0e0e0;
+}
+
+.lowton .common-cutin-text {
+    color: #00d2fc;
+    text-shadow: 0 0 10px #0ff, 0 0 30px #00f;
+}
+
+@keyframes common-cutin-anim {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+        letter-spacing: -20px;
+    }
+
+    20% {
+        transform: scale(1.2);
+        opacity: 1;
+        letter-spacing: 5px;
+    }
+
+    40% {
+        transform: scale(1.0);
+        letter-spacing: 10px;
+    }
+
+    80% {
+        transform: scale(1.05);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
     }
 }

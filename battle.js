@@ -621,7 +621,31 @@ async function processOneThrow(score) {
         } else if (turnInputs.length >= 3) {
             // 通常の3投終了
             isProcessing = true; // ★修正: 連投防止
-            setTimeout(finishPlayerTurn, TIMING.TURN_END_DELAY);
+
+            // ★追加: カットイン演出判定 (HAT TRICK / TON)
+            let delay = TIMING.TURN_END_DELAY;
+            const total = turnInputs.reduce((a, b) => a + b, 0);
+            let cutinText = "";
+            let cutinType = "";
+
+            // HAT TRICK: 50, 50, 50 only
+            if (turnInputs[0] === 50 && turnInputs[1] === 50 && turnInputs[2] === 50) {
+                cutinText = "HAT TRICK!";
+                cutinType = "hattrick";
+            } else if (total >= 151) {
+                cutinText = "HIGH TON!";
+                cutinType = "highton";
+            } else if (total >= 100) {
+                cutinText = "LOW TON!";
+                cutinType = "lowton";
+            }
+
+            if (cutinText) {
+                showCommonCutin(cutinText, cutinType);
+                delay = 2000; // 演出時間分ウェイト (標準1800msアニメーション)
+            }
+
+            setTimeout(finishPlayerTurn, delay);
         }
     } catch (error) {
         console.error("Battle Error (processOneThrow):", error);
@@ -637,25 +661,7 @@ async function processOneThrow(score) {
 // プレイヤーターン終了処理
 async function finishPlayerTurn() {
     // --- Round Result Bonus Check ---
-    const totalRoundScore = turnInputs.reduce((a, b) => a + b, 0);
-    const isHatTrick = turnInputs.length === 3 && turnInputs.every(s => s === 50);
-
-    let bonusType = null;
-    if (isHatTrick) {
-        bonusType = "HAT_TRICK";
-        // Log removed as per request
-    } else if (totalRoundScore >= 151) {
-        bonusType = "HIGH_TON";
-        // Log removed as per request
-    } else if (totalRoundScore >= 100) {
-        bonusType = "LOW_TON";
-        // Log removed as per request
-    }
-
-    if (bonusType) {
-        // Wait for the cut-in effect to finish
-        await showRoundBonus(bonusType);
-    }
+    // (Removed: moved to processOneThrow for better timing)
     // --------------------------------
 
     // ★追加: ラウンド終了時トリガー (ワームドレイク、ラヴァゴーレムなど)

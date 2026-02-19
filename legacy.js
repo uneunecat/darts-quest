@@ -78,27 +78,20 @@ function showCountUpRoundResult(roundTotal) {
 
     // 演出判定
     let effectText = "";
-    let effectClass = "";
+    let effectType = "";
     if (isHatTrick) {
         effectText = "HAT TRICK!";
-        effectClass = "hat-trick";
+        effectType = "hattrick";
     } else if (roundTotal >= 151) {
         effectText = "HIGH TON!";
-        effectClass = "high-ton";
+        effectType = "highton";
     } else if (roundTotal >= 100) {
         effectText = "LOW TON!";
-        effectClass = "low-ton";
+        effectType = "lowton";
     }
 
     if (effectText) {
-        const resultEl = el("cu-round-result");
-        if (resultEl) {
-            resultEl.innerText = effectText;
-            resultEl.className = "cu-round-result " + effectClass;
-            resultEl.style.display = "block";
-            playSE("se-item");
-            setTimeout(() => { resultEl.style.display = "none"; }, 1200);
-        }
+        showCommonCutin(effectText, effectType);
     }
 
     // 次ラウンドへ
@@ -119,8 +112,11 @@ function showCountUpRoundResult(roundTotal) {
                 cuProcessing = false;
             }
         }
-    }, (effectText ? 1500 : 600));
+    }, (effectText ? 2000 : 700));
 }
+
+// --- 共通カットイン使用 (Legacy独自関数は削除) ---
+// function showLegacyCutin(text, type) ... removed
 
 // --- ゲーム終了・リザルト ---
 function finishCountUp() {
