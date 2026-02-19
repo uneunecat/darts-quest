@@ -220,6 +220,27 @@ function onDisconnected(event) {
 }
 
 function handleBluetoothNotify(event) {
+    if (legacyMode) {
+        // レガシーモード: legacy.jsへルーティング
+        if (el("legacy-screen").style.display === "none" || cuProcessing) return;
+        const value = event.target.value;
+        if (value.byteLength > 2) {
+            const areaId = value.getUint8(2);
+            const scoreData = DL_SCORE_MAP[areaId];
+            if (scoreData !== undefined && scoreData !== "CHANGE") {
+                const score = scoreData[0];
+                const type = scoreData[1];
+                if (type === 4) playSE("se-dbull");
+                else if (type === 3) playSE("se-bull");
+                else if (type === 2) playSE("se-triple");
+                else if (type === 1) playSE("se-double");
+                else playSE("se-single");
+                processLegacyThrow(score);
+            }
+        }
+        return;
+    }
+
     if (el("game-screen").style.display === "none" || isProcessing || isInterval) return; // Updated: isInterval を追加
 
     const value = event.target.value;
@@ -540,7 +561,25 @@ window.addEventListener("keydown", function (e) {
 
     // Chest Interaction removed
 
-    // Battle Input (Debug)
+    // Battle / Legacy Input (Debug)
+    if (legacyMode && el("legacy-screen").style.display !== "none" && !cuProcessing) {
+        if (e.key >= '0' && e.key <= '9') {
+            if (currentInput.length < 3) {
+                playSE("se-tap");
+                currentInput += e.key;
+                updateCountUpUI();
+            }
+        }
+        if (e.key === 'Backspace') {
+            if (currentInput.length > 0) {
+                currentInput = currentInput.slice(0, -1);
+                updateCountUpUI();
+            }
+        }
+        if (e.key === 'Enter') handleLegacyEnter();
+        return;
+    }
+
     if (el("game-screen").style.display !== "none" && !isProcessing) {
         if (e.key >= '0' && e.key <= '9') {
             if (currentInput.length < 3) {

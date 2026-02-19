@@ -282,6 +282,8 @@
                         <button class="sub-btn" style="color:#00d2fc; border-color:#00d2fc;"
                             onclick="openCollection()">📂 DECK</button>
                         <button class="sub-btn" onclick="showHistory()">📜 HISTORY</button>
+                        <button class="sub-btn" style="color:#76ff03; border-color:#76ff03;"
+                            onclick="openLegacyMenu()">🎯 LEGACY</button>
                         <button class="sub-btn" onclick="backToSlots()">↩️ SLOTS</button>
                         <button class="sub-btn" id="fullscreen-btn" onclick="toggleFullscreen()">🔲 FULL</button>
                     </div>
@@ -305,6 +307,48 @@
                 <div class="stage-list-container" id="stage-list-container"></div>
             </div>
 
+
+            <!-- =========================================
+                 LEGACY DARTS MODE (レガシーモード画面)
+                 ========================================= -->
+            <div class="legacy-screen" id="legacy-screen" style="display:none;">
+                <div class="cu-dp-badge" id="cu-dp-display">DP: 0</div>
+                <button class="exit-icon-btn" onclick="exitLegacy()" title="BACK TO TITLE">🏠</button>
+                <button class="fullscreen-icon-btn" onclick="toggleFullscreen()" title="FULLSCREEN">🔲</button>
+
+                <div class="cu-layout">
+                    <!-- 左パネル: スコア情報 -->
+                    <div class="cu-side-panel">
+                        <div class="cu-mode-title">COUNT-UP</div>
+                        <div class="cu-round-display" id="cu-round-display">ROUND 1 / 8</div>
+
+                        <div class="cu-throw-slots">
+                            <div class="cu-throw-slot current" id="cu-throw-1">--</div>
+                            <div class="cu-throw-slot" id="cu-throw-2">--</div>
+                            <div class="cu-throw-slot" id="cu-throw-3">--</div>
+                        </div>
+
+                        <div class="cu-ppr-display" id="cu-ppr-display">PPR: -- (Rt --)</div>
+
+                        <div class="cu-round-history" id="cu-round-history"></div>
+                    </div>
+
+                    <!-- 右エリア -->
+                    <div class="cu-main-area">
+                        <div class="cu-round-result" id="cu-round-result" style="display:none;"></div>
+                        <div class="cu-big-total-label">TOTAL</div>
+                        <div class="cu-big-total" id="cu-big-total">0</div>
+                        <div class="cu-input-hint">キーボードでスコアを入力<br>またはダーツボードから投擲</div>
+                        <!-- 最終ラウンドアナウンス -->
+                        <div class="cu-final-round-overlay" id="cu-final-round-overlay" style="display:none;">
+                            <div class="cu-final-round-text">FINAL ROUND</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- リザルトオーバーレイ -->
+                <div class="cu-result-overlay" id="cu-result-overlay" style="display:none;"></div>
+            </div>
 
             <!-- =========================================
                  5. BATTLE INTERFACE (戦闘画面)
@@ -424,6 +468,7 @@
     <script src="audio.js"></script>
     <script src="visual.js"></script>
     <script src="battle.js"></script>
+    <script src="legacy.js"></script>
     <script src="ui.js"></script>
     <script src="debug.js"></script>
     <script src="main.js"></script>

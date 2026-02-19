@@ -240,19 +240,25 @@ WORLD_MAP = {
 **攻撃力計算** (`applyOffenseLogic`):
 ```javascript
 // 1. ステートをスキャンして効果を集計
-const multBonus = sourceObj.states
-    .filter(s => STATE_MASTER[s.id]?.category === "atk_mult")
-    .reduce((sum, s) => sum + s.val, 0);
-
-const addBonus = sourceObj.states
+const buffAdd = sourceObj.states
     .filter(s => STATE_MASTER[s.id]?.category === "atk_add")
     .reduce((sum, s) => sum + s.val, 0);
 
-// 2. 計算式: (威力 + 加算) * (1.0 + 倍率)
-finalDmg = (basePower + addBonus) * (1.0 + multBonus);
+const buffMult = sourceObj.states
+    .filter(s => STATE_MASTER[s.id]?.category === "atk_mult")
+    .reduce((sum, s) => sum + s.val, 0);
+
+let reliefAdd = 0; // レリーフ加算（プレイヤーのみ）
+
+// 2. 計算式: (威力 + buffAdd + reliefAdd) * (1.0 + buffMult)
+finalDmg = (basePower + buffAdd + reliefAdd) * (1.0 + buffMult);
 
 // 3. 敵攻撃のみ乱数適用 (±10%)
 if (applyRandom) finalDmg *= (0.9 + Math.random() * 0.2);
+
+// 4. ★戻り値: ダメージ値 + ブレークダウン情報
+return { dmg: Math.floor(finalDmg), breakdown: { base, buffAdd, reliefAdd, buffMult } };
+// ※ resolveAction等、breakdown不要な呼び出し側では .dmg を参照
 ```
 
 **防御力計算** (`applyDefenseLogic`):
@@ -261,7 +267,7 @@ if (applyRandom) finalDmg *= (0.9 + Math.random() * 0.2);
 const maxBarrier = targetObj.states
     .filter(s => STATE_MASTER[s.id]?.category === "barrier")
     .reduce((max, s) => Math.max(max, s.val), 0);
-if (dmg < maxBarrier) return 0;
+if (dmg < maxBarrier) return isDarts ? { dmg: 0, defSub: 0 } : 0;
 
 // 2. 倍率防御 (dmg_mult) - 複数あれば積算
 const dmgMult = targetObj.states
@@ -274,17 +280,22 @@ const dmgSub = targetObj.states
     .filter(s => STATE_MASTER[s.id]?.category === "dmg_sub")
     .reduce((sum, s) => sum + s.val, 0);
 finalDmg = Math.max(0, finalDmg - dmgSub);
+
+// 4. ★戻り値: isDarts時はdefSubも返却（ブレークダウン表示用）
+return isDarts ? { dmg: result, defSub: dmgSub } : result;
 ```
 
 **実行フロー**:
 ```
 [プレイヤー → 敵]
-  dartScore → applyOffenseLogic(score, player, false)
-           → applyDefenseLogic(dmg, enemy, true)
+  dartScore → applyOffenseLogic(score, player, false) → {dmg, breakdown}
+           → applyDefenseLogic(dmg, enemy, true) → {dmg, defSub}
+           → WEAK判定 → throwBreakdowns[] に記録
+           → updateScoreDisplay() → サイドバーに計算式表示
            → enemy.hp -= finalDmg
 
 [敵 → プレイヤー]
-  action.mult → applyOffenseLogic(enemy.atk * mult, enemy, true)
+  action.mult → applyOffenseLogic(enemy.atk * mult, enemy, true).dmg
               → triggerTrap('attack', dmg) (罠判定)
               → applyDefenseLogic(dmg, player, false)
               → player.hp -= finalDmg
@@ -856,53 +867,74 @@ window.DJ = function(stage, floor) {
 | 1-1-2 | 成長の石版 | ラーバモス | 400 | ターン開始時20%でMP+1 |
 | 1-1-3 | 潜伏の石版 | 進化の繭 | 600 | 被ダメ-5, ターン開始時20%でHP20回復 |
 | 1-1-4 | 猛毒の石版 | グレート・モス | 1000 | 攻撃時5%でスタン(1T) |
-| 1-1-5 | 森神の石版 | 究極完全態 | 2000 | 被ダメ-5, MaxHP+50 |
-| 1-2-1 | 原始の石版 | トラコドン | 800 | 1投目ダメージ+20 |
-| 1-2-2 | 俊足の石版 | Wラプター | 1000 | 与ダメージ+10 |
+| 1-1-5 | 森神の石版 | 究極完全態・グレート・モス | 2000 | 被ダメ-5, MaxHP+50 |
+| 1-2-1 | 原始の石版 | トラコドン | 800 | 1投目ダメージ+10 |
+| 1-2-2 | 俊足の石版 | ワイルド・ラプター | 1000 | 与ダメージ+5 |
 | 1-2-3 | 腐敗の石版 | 屍を貪る竜 | 1500 | 敵撃破時HP50回復 |
-| 1-2-4 | 王者の石版 | キング・レックス | 2000 | HP50%以下で与ダメ+20 |
-| 1-2-5 | 鋭牙の石版 | 剣竜 | 1800 | 固定軽減(アーマー)無視 |
-| 1-3-1 | 守護天使 | Dヴァルキリア | 1200 | 被ダメ-8 |
+| 1-2-4 | 王者の石版 | 二頭を持つキング・レックス | 1800 | HP50%以下で与ダメ+20 |
+| 1-2-5 | 鋭牙の石版 | 剣竜 | 2000 | 固定軽減(アーマー)無視 |
+| 1-3-1 | 守護天使の石版 | デュナミス・ヴァルキリア | 1200 | 被ダメ-8 |
 | 1-3-2 | 狩場の石版 | ハーピィ・レディ | 1000 | ターン開始時10%でドロー |
-| 1-3-3 | 魅惑の石版 | HL・SB | 1200 | 攻撃時5%で拘束+0.5倍ダメ |
-| 1-3-4 | 三姉妹の石版 | HL三姉妹 | 1800 | 3投全て同じスコアなら+30ダメ |
-| 1-3-5 | 寵愛の石版 | ペット竜 | 1500 | 与ダメージ+15 |
-| 1-EX-1 | 黒竜の石版 | 真紅眼の黒竜 | 2000 | 与クリティカル(Weak)ダメUP |
+| 1-3-3 | 魅惑の石版 | ハーピィ・レディ・SB | 1200 | 攻撃時5%で拘束+0.5倍ダメ |
+| 1-3-4 | 三姉妹の石版 | ハーピィ・レディ三姉妹 | 1800 | 3投全て同じスコアなら+30ダメ |
+| 1-3-5 | 寵愛の石版 | ハーピィズペット竜 | 2000 | 与ダメージ+10 |
+| 1-EX-1 | 黒竜の石版 | 真紅眼の黒竜 | 2000 | 与ダメージ+15 |
 
 #### Area 2
 | ID | 名前 | レリーフ名 | ソウル | 効果 |
 |----|------|------------|--------|------|
-| 2-1-1 | 兎の石版 | Dラビット | 1200 | 2投目ダメージ+15 |
+| 2-1-1 | 兎の石版 | ダーク・ラビット | 1200 | 2投目ダメージ+15 |
 | 2-1-2 | 箱の石版 | デビル・ボックス | 1200 | 攻撃時10%で+30ダメ |
 | 2-1-3 | 嘲笑の石版 | トゥーン・デーモン | 1500 | ターン開始時10%でMP+1 |
-| 2-1-4 | 幻影龍 | BE・Toon | 2000 | 与ダメージ+10 |
+| 2-1-4 | 幻影龍の石版 | ブルーアイズ・トゥーン・ドラゴン | 2000 | 与ダメージ+15 |
 | 2-1-5 | 儀式の石版 | サクリファイス | 2500 | 全攻撃5%ドレイン |
-| 2-1-6 | 千眼の石版 | サウザンド・アイズ | 3500 | 被弾時10%で無効化 |
-| 2-2-1 | 寄生の石版 | ワームドレイク | 1200 | Score≤60時50%でMP+1 |
-| 2-2-2 | 粘着の石版 | Hスライム | 1200 | 被ダメ-3, MaxHP+40 |
-| 2-2-3 | 再生の石版 | Rスライム | 2500 | ターン開始時30%でHP50回復 |
-| 2-2-4 | 融合の石版 | Hドレイク | 2000 | バフ中与ダメ+15 |
-| 2-2-5 | 雷神の石版 | オシリス | 5000 | 手札枚数×5ダメ加算 |
+| 2-1-6 | 千眼の石版 | サウザンド・アイズ・サクリファイス | 3500 | 被弾時10%で無効化 |
+| 2-2-1 | 寄生の石版 | ワームドレイク | 1200 | 合計Score≤60時50%でMP+1 |
+| 2-2-2 | 粘着の石版 | ヒューマノイド・スライム | 1200 | 被ダメ-3, MaxHP+60 |
+| 2-2-3 | 再生の石版 | リバイバルスライム | 2500 | ターン開始時30%でHP50回復 |
+| 2-2-4 | 融合の石版 | ヒューマノイド_ドレイク | 2000 | バフ中与ダメ+15 |
+| 2-2-5 | 雷神の石版 | オシリスの天空竜 | 5000 | 手札枚数×6ダメ加算 |
 | 2-3-1 | 重斧の石版 | ミノタウルス | 2000 | バリア貫通10 |
-| 2-3-2 | 道化の石版 | サギー | 1500 | 魔法コスト-1 |
+| 2-3-2 | 道化の石版 | 闇・道化師のサギー | 1500 | 魔法コスト-1 |
 | 2-3-3 | 伏兵の石版 | ブラッド・ヴォルス | 1800 | SINGLE時ダメージ+20 |
 | 2-3-4 | 滅びの石版 | 青眼の白龍 | 4000 | 与ダメ+30 / 被ダメ+10 |
-| 2-3-5 | 破壊神 | オベリスク | 5000 | 被ダメ-20 |
+| 2-3-5 | 破壊神の石版 | オベリスクの巨神兵 | 5000 | 被ダメ-20 |
 
 #### Area 2-EX
 | ID | 名前 | レリーフ名 | ソウル | 効果 |
 |----|------|------------|--------|------|
 | 2-EX-1 | 拷問の石版 | ギル・ガース | 2500 | MP×2ダメ加算 |
-| 2-EX-2 | 奈落の石版 | ヘルポエマー | 2500 | 敵ATK-5 (常時) |
+| 2-EX-2 | 奈落の石版 | 地獄詩人ヘルポエマー | 2500 | 敵ATK-5 (常時) |
 | 2-EX-3 | 万力の石版 | バイサー・デス | 3000 | ターン開始時15%でスタン |
-| 2-EX-4 | 溶岩の石版 | ラヴァ・ゴーレム | 3500 | ターン終了時50ダメ |
-| 2-EX-5 | 太陽神 | ラー | 5000 | ＨＰ回復効果2倍 |
+| 2-EX-4 | 溶岩の石版 | 溶岩魔神ラヴァ・ゴーレム | 3500 | ターン終了時50ダメ |
+| 2-EX-5 | 太陽神の石版 | ラーの翼神竜 | 5000 | ＨＰ回復効果2倍 |
 
 
 ### 18.1 Battle Impacts
 - **Shatter Effect**: 弱点攻撃 (WEAK HIT) 時に敵画像が粉砕されるアニメーション (`anim-shatter`) ＋ 画面激震 (`shake-heavy`)。
 - **Screen Flash**: 強い衝撃や効果発動時に画面全体が発光 (`flash-purple` 等)。
 - **Damage Popups**: ダメージ数値を物理演算風にポップアップ。プレイヤー側と敵側で出現位置を分離。
+
+### 18.1.1 ダメージ計算式ブレークダウン表示
+
+左サイドバーのスコアボックス直下に、3投分のダメージ計算内訳を常駐表示。
+
+**表示形式**: `投番号▸ 素点 +バフ +レリーフ ×倍率 -防御 ×2 WEAK →最終値`
+
+| 要素 | 色 | 条件 |
+|------|------|------|
+| 投番号 `1▸` | グレー `#555` | 常時 |
+| 素点 | 白 `#ddd` | 常時 |
+| バフ加算 | 水色 `#4fc3f7` | buffAdd > 0 |
+| レリーフ加算 | 紫 `#ce93d8` | reliefAdd > 0 |
+| バフ倍率 | 水色 `#4fc3f7` | buffMult > 0 |
+| 防御減算 | グレー `#888` | defSub > 0 |
+| WEAK | 赤 `#ff4444` | WEAK HIT時 |
+| 矢印・最終値 | 金 `#ffd700` | 補正あり時のみ |
+
+**リセットタイミング**: 次ターンの1投目入力時（インターバル中は前ターンの式が残る）
+
+**関連コード**: `throwBreakdowns[]` (battle.js)、`buildFormulaHTML()` (ui.js)、`.dmg-breakdown-block` (style.css)
 
 ### 18.2 Round Result Bonus
 ラウンド終了時のスコアに応じてカットイン演出が発生。
@@ -930,3 +962,21 @@ window.DJ = function(stage, floor) {
 - セッション管理・セーブ管理 → main.js (ui.jsから移動)
 - resizeGame → ui.js (visual.jsから移動)
 - `triggerEncounterEffects()` の重複定義を解消、`checkCondition()` のデッドコードを除去
+
+---
+
+## 20. UI外観
+
+### 20.1 ゲーム画面スタイル
+- **枠線**: なし (`border: none; border-radius: 0`)
+- **ヴィネット効果**: `box-shadow: inset 0 0 80px rgba(0,0,0,0.4)` で画面端を自然に暗く
+- **ボスモード**: `.boss-mode` — 内側赤グロー (`inset 0 0 60px rgba(255,0,0,0.25)`)
+- **EXTRAモード**: `.extra-mode` — より強い赤グロー
+- **背景 (body)**: 放射グラデーション `radial-gradient(ellipse at center, #0a0f1e, #000)`
+
+### 20.2 全画面表示
+- **API**: `document.documentElement.requestFullscreen()` / `document.exitFullscreen()`
+- **トグル**: `toggleFullscreen()` (ui.js)
+- **ボタン**: タイトル画面サブボタン「🔲 FULL」、戦闘画面右上アイコンボタン
+- **スケーリング**: 全画面時 `resizeGame()` の係数が `0.95 → 1.0` に変化
+- **イベント**: `fullscreenchange` でリサイズ再計算 + ボタンアイコン更新
