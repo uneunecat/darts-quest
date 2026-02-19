@@ -257,6 +257,11 @@ function updateInfo() {
                 slot.innerHTML = `<img src="${imgPath}" style="width:80%; height:80%; object-fit:contain;">`;
                 slot.title = RELIEF_DB[rId].name;
 
+                // 発光状態をタイマーから復元
+                if (isReliefGlowing(i)) {
+                    slot.classList.add("trigger-glow");
+                }
+
                 // 長押しプレビュー (500ms)
                 const data = RELIEF_DB[rId];
                 const reliefId = rId;
@@ -281,6 +286,8 @@ function updateInfo() {
         }
     }
 
+    // パッシブサマリ描画
+    renderReliefPassiveSummary("relief-passive-summary", player.equippedReliefs || [null, null, null]);
 
     renderHand();
 }
@@ -1449,6 +1456,88 @@ function renderReliefEditor() {
             shopGrid.appendChild(slab);
         });
     }
+
+    // パッシブサマリ描画 (エディタ)
+    renderReliefPassiveSummary("relief-editor-summary", savedData.equippedReliefs);
+}
+
+// --- レリーフパッシブサマリ描画 ---
+// 装備中レリーフのSTATIC効果をアイコン+数値チップで表示
+function renderReliefPassiveSummary(containerId, equippedReliefs) {
+    const container = el(containerId);
+    if (!container) return;
+
+    // STATIC効果の集計マップ
+    const stats = {};
+    const reliefs = equippedReliefs || [];
+    for (const rId of reliefs) {
+        if (!rId || !RELIEF_DB[rId]) continue;
+        const data = RELIEF_DB[rId];
+        for (const p of data.passives) {
+            if (p.type === "STATIC" && p.category && p.val) {
+                stats[p.category] = (stats[p.category] || 0) + p.val;
+            }
+        }
+    }
+
+    // カテゴリ → 表示チップ定義
+    const chipDefs = [
+        // 攻撃系 (赤)
+        { key: "atk_add", icon: "⚔️", label: "攻撃", fmt: v => `+${v}`, cls: "chip-atk" },
+        { key: "atk_add_first", icon: "1️⃣", label: "1投目", fmt: v => `+${v}`, cls: "chip-atk" },
+        { key: "atk_add_second", icon: "2️⃣", label: "2投目", fmt: v => `+${v}`, cls: "chip-atk" },
+        { key: "atk_add_single", icon: "🎯", label: "SGL", fmt: v => `+${v}`, cls: "chip-atk" },
+        { key: "atk_add_triple_same", icon: "🔱", label: "三連", fmt: v => `+${v}`, cls: "chip-atk" },
+        { key: "atk_add_per_hand", icon: "🃏", label: "手札×", fmt: v => `+${v}`, cls: "chip-atk" },
+        { key: "atk_add_per_mp", icon: "🔮", label: "MP×", fmt: v => `+${v}`, cls: "chip-atk" },
+        { key: "atk_add_if_buffed", icon: "💪", label: "バフ時", fmt: v => `+${v}`, cls: "chip-atk" },
+        { key: "atk_add_low_hp", icon: "🔥", label: "瀕死", fmt: v => `+${v}`, cls: "chip-atk" },
+        // 防御系 (青緑)
+        { key: "dmg_sub", icon: "🛡️", label: "軽減", fmt: v => `-${v}`, cls: "chip-def" },
+        { key: "pierce_fixed", icon: "🗡️", label: "貫通", fmt: v => `ON`, cls: "chip-special" },
+        { key: "pierce_barrier", icon: "💥", label: "結界貫通", fmt: v => `${v}`, cls: "chip-special" },
+        // HP系 (緑)
+        { key: "hp_max", icon: "❤️", label: "HP", fmt: v => `+${v}`, cls: "chip-hp" },
+        // 特殊系
+        { key: "drain_global", icon: "💎", label: "吸収", fmt: v => `${Math.round(v * 100)}%`, cls: "chip-drain" },
+        { key: "cost_down_magic_zero", icon: "📖", label: "コスト減", fmt: v => `-${v}`, cls: "chip-special" },
+    ];
+
+    let html = "";
+    for (const def of chipDefs) {
+        const val = stats[def.key];
+        if (!val) continue;
+        html += `<span class="relief-stat-chip ${def.cls}" title="${def.label}">
+            <span class="chip-icon">${def.icon}</span>
+            <span class="chip-val">${def.fmt(val)}</span>
+        </span>`;
+    }
+
+    // トリガー系レリーフの存在もマークする
+    for (const rId of reliefs) {
+        if (!rId || !RELIEF_DB[rId]) continue;
+        const data = RELIEF_DB[rId];
+        for (const p of data.passives) {
+            if (p.trigger) {
+                const triggerLabels = {
+                    "onAttackHit": { icon: "⚡", label: "命中時" },
+                    "onTurnStart": { icon: "🔄", label: "ターン開始" },
+                    "onEnemyKill": { icon: "💀", label: "撃破時" },
+                    "onDefense": { icon: "🔰", label: "防御時" },
+                };
+                const t = triggerLabels[p.trigger];
+                if (t) {
+                    const chanceText = p.chance ? `${Math.round(p.chance * 100)}%` : "";
+                    html += `<span class="relief-stat-chip chip-special" title="${t.label}">
+                        <span class="chip-icon">${t.icon}</span>
+                        <span class="chip-val">${chanceText || "✓"}</span>
+                    </span>`;
+                }
+            }
+        }
+    }
+
+    container.innerHTML = html || `<span style="color:#555; font-size:9px;">パッシブ効果なし</span>`;
 }
 
 // --- レリーフプレビュー (長押し) ---

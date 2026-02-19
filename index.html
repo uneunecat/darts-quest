@@ -178,7 +178,8 @@
                             <div id="collection-stat-label" style="font-size:14px; color:#aaa;">所持率: <span
                                     id="collection-rate">0%</span></div>
                             <div id="soul-display-label" style="font-size:14px; color:#ffd700; display:none;">SOUL:
-                                <span id="soul-count">0</span></div>
+                                <span id="soul-count">0</span>
+                            </div>
                             <button class="header-close-btn" onclick="closeCollection()">×</button>
                         </div>
                     </div>
@@ -207,6 +208,9 @@
                             <div class="column-header">▼ EQUIPPED RELIEFS (石版装備)</div>
                             <div class="relief-slots-vertical" id="equipped-relief-grid">
                                 <!-- 3つのスロット -->
+                            </div>
+                            <div class="relief-editor-summary" id="relief-editor-summary">
+                                <!-- JSで描画 -->
                             </div>
                             <div id="relief-detail" class="deck-card-detail">
                                 <div style="color:#aaa; font-size:12px; text-align:center; padding-top:20px;">Select a
@@ -373,6 +377,9 @@
                         <!-- Relief Slots -->
                         <div class="side-block relief-info-block">
                             <div class="relief-battle-row" id="relief-battle-slots">
+                                <!-- JSで描画 -->
+                            </div>
+                            <div class="relief-passive-summary" id="relief-passive-summary">
                                 <!-- JSで描画 -->
                             </div>
                         </div>

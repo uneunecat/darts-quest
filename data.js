@@ -374,7 +374,7 @@ const CARD_DB = [
         visual: { se: "se-boom" },
         actions: [
             { type: "DAMAGE", target: "ENEMY", mode: "fixed", val: 100 },
-            { type: "STATE", target: "ENEMY", kind: "stun", turn: 2 }
+            { type: "STATE", target: "ENEMY", kind: "stun", turn: 1 }
         ],
         packs: ["vol1"]
     },
@@ -397,7 +397,7 @@ const CARD_DB = [
             trigger: "summon",
             actions: [
                 { type: "DAMAGE", target: "ENEMY", mode: "fixed", val: 50 },
-                { type: "STATE", target: "ENEMY", kind: "stun", turn: 2 }
+                { type: "STATE", target: "ENEMY", kind: "stun", turn: 1 }
             ]
         },
         packs: ["vol1"]
@@ -509,7 +509,7 @@ const CARD_DB = [
         trap: {
             trigger: "attack",
             actions: [
-                { type: "STATE", target: "ENEMY", kind: "stun", turn: 2 },
+                { type: "STATE", target: "ENEMY", kind: "stun", turn: 1 },
                 { type: "DAMAGE_MULT", val: 0.5 }
             ]
         },
@@ -569,7 +569,7 @@ const CARD_DB = [
         visual: { se: "se-hit", msg: "敵は混乱して自分を攻撃した！" },
         actions: [
             { type: "DAMAGE", target: "ENEMY", scale: { source: "enemy_atk", factor: 1.0 } },
-            { type: "STATE", target: "ENEMY", kind: "stun", turn: 2 }
+            { type: "STATE", target: "ENEMY", kind: "stun", turn: 1 }
         ],
         packs: ["vol3"]
     },
@@ -626,7 +626,7 @@ const CARD_DB = [
         visual: { se: "se-bell" },
         trap: {
             trigger: "summon",
-            actions: [{ type: "STATE", target: "ENEMY", kind: "stun", turn: 2 }]
+            actions: [{ type: "STATE", target: "ENEMY", kind: "stun", turn: 1 }]
         },
         packs: ["vol3"]
     },
@@ -800,7 +800,7 @@ const RELIEF_DB = {
     "1-1-1": { name: "幼生の石版", monsterName: "プチモス", souls: 300, img: "assets/relief/r1-1-1.png", desc: "未熟な生命力。最大HP+30。", passives: [{ type: "STATIC", category: "hp_max", val: 30 }] },
     "1-1-2": { name: "成長の石版", monsterName: "ラーバモス", souls: 400, img: "assets/relief/r1-1-2.png", desc: "進化の予兆。ターン開始時、20%の確率でMPが1回復する。", passives: [{ trigger: "onTurnStart", chance: 0.2, actions: [{ type: "MP_ACTION", target: "PLAYER", val: 1 }] }] },
     "1-1-3": { name: "潜伏の石版", monsterName: "進化の繭", souls: 600, img: "assets/relief/r1-1-3.png", desc: "鉄壁の守護。被ダメージ-5。さらにターン開始時、20%の確率でHP20回復。", passives: [{ type: "STATIC", category: "dmg_sub", val: 5 }, { trigger: "onTurnStart", chance: 0.2, actions: [{ type: "HEAL", target: "PLAYER", val: 20 }] }] },
-    "1-1-4": { name: "猛毒の石版", monsterName: "グレート・モス", souls: 1000, img: "assets/relief/r1-1-4.png", desc: "毒の鱗粉。攻撃命中時、5%の確率で敵を1Tスタンさせる。", passives: [{ trigger: "onAttackHit", chance: 0.05, actions: [{ type: "STATE", target: "ENEMY", kind: "stun", turn: 2 }] }] },
+    "1-1-4": { name: "猛毒の石版", monsterName: "グレート・モス", souls: 1000, img: "assets/relief/r1-1-4.png", desc: "毒の鱗粉。攻撃命中時、5%の確率で敵を1Tスタンさせる。", passives: [{ trigger: "onAttackHit", chance: 0.05, actions: [{ type: "STATE", target: "ENEMY", kind: "stun", turn: 1 }] }] },
     "1-1-5": { name: "森神の石版", monsterName: "究極完全態・グレート・モス", souls: 2000, img: "assets/relief/le-1-1-5.png", desc: "究極の生命力。被ダメージ-5。最大HP+50。", passives: [{ type: "STATIC", category: "dmg_sub", val: 5 }, { type: "STATIC", category: "hp_max", val: 50 }] },
 
     "1-2-1": { name: "原始の石版", monsterName: "トラコドン", souls: 800, img: "assets/relief/r1-2-1.png", desc: "原始の力。各ターンの1投目のダメージを+10加算する。", passives: [{ type: "STATIC", category: "atk_add_first", val: 10 }] },
@@ -840,7 +840,7 @@ const RELIEF_DB = {
     // --- AREA 2-EX: 死の闇の闘技場 ---
     "2-EX-1": { name: "拷問の石版", monsterName: "ギル・ガース", souls: 2500, img: "assets/relief/le-2-ex-1.png", desc: "魔力の代償。現在MPが 1 につき、ダメージを+2加算する。", passives: [{ type: "STATIC", category: "atk_add_per_mp", val: 2 }] },
     "2-EX-2": { name: "奈落の石版", monsterName: "地獄詩人ヘルポエマー", souls: 2500, img: "assets/relief/le-2-ex-2.png", desc: "冥界の衰弱。敵の基礎攻撃力（ATK）を常に -5 低下させる。", passives: [{ type: "STATIC", category: "enemy_atk_flat", val: -5 }] },
-    "2-EX-3": { name: "万力の石版", monsterName: "バイサー・デス", souls: 3000, img: "assets/relief/le-2-ex-3.png", desc: "拘束の反動。ターン開始時、15%の確率で敵を1Tスタンさせる。", passives: [{ trigger: "onTurnStart", chance: 0.15, actions: [{ type: "STATE", target: "ENEMY", kind: "stun", turn: 2 }] }] },
+    "2-EX-3": { name: "万力の石版", monsterName: "バイサー・デス", souls: 3000, img: "assets/relief/le-2-ex-3.png", desc: "拘束の反動。ターン開始時、15%の確率で敵を1Tスタンさせる。", passives: [{ trigger: "onTurnStart", chance: 0.15, actions: [{ type: "STATE", target: "ENEMY", kind: "stun", turn: 1 }] }] },
     "2-EX-4": { name: "溶岩の石版", monsterName: "溶岩魔神ラヴァ・ゴーレム", souls: 3500, img: "assets/relief/le-2-ex-4.png", desc: "自動燃焼。ターン終了時、敵に 50 の固定ダメージを与える。", passives: [{ trigger: "onRoundEnd", actions: [{ type: "DAMAGE", target: "ENEMY", mode: "fixed", val: 50 }] }] },
     "2-EX-5": { name: "太陽神の石版", monsterName: "ラーの翼神竜", souls: 5000, img: "assets/relief/go-2-ex-5.png", desc: "大いなる再生。あらゆるHP回復効果を2倍にする。", passives: [{ type: "STATIC", category: "heal_multiplier", val: 2.0 }] }
 };

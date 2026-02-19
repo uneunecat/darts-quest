@@ -2,6 +2,25 @@
 // 1. BATTLE LIFECYCLE (戦闘ライフサイクル)
 // =========================================
 
+// レリーフ発光タイマー (スロットごとのタイムスタンプ、updateInfo再生成に耐える)
+let reliefGlowTimers = [0, 0, 0];
+const RELIEF_GLOW_DURATION = 1200; // ms (CSSアニメーションと同期)
+
+function setReliefGlow(slotIndex) {
+    reliefGlowTimers[slotIndex] = Date.now();
+    // 即座にDOMにも反映（updateInfoを待たない場合のため）
+    const slotEl = el(`relief-slot-${slotIndex}`);
+    if (slotEl) {
+        slotEl.classList.remove("trigger-glow");
+        void slotEl.offsetWidth;
+        slotEl.classList.add("trigger-glow");
+    }
+}
+
+function isReliefGlowing(slotIndex) {
+    return (Date.now() - reliefGlowTimers[slotIndex]) < RELIEF_GLOW_DURATION;
+}
+
 function setupStage(sel, continueMode, startFloor = 1) {
     stage = sel;
     floor = startFloor;
@@ -342,8 +361,6 @@ async function startPlayerTurn() {
     // ★追加: プレイヤーがかけた「round」ステートを経過させる
     tickStates("PLAYER", "round");
 
-    // ★追加: ターン開始時トリガー
-    await checkReliefTriggers("onTurnStart");
     isInterval = false;
 
     el("interval-screen").style.display = "none";
@@ -354,21 +371,30 @@ async function startPlayerTurn() {
     // 2. ターンの進行
     currentTurn++;
 
-    // 3. ドロー演出
+    // 3. ドロー演出 (await可能にラップ)
     if (floor === 1 && player.hand.length === 0) {
-        let dCount = 0;
-        const drawLoop = setInterval(() => {
-            executeDrawWithAnim();
-            dCount++;
-            if (dCount >= 3) {
-                clearInterval(drawLoop);
-            }
-        }, 250);
+        await new Promise(resolve => {
+            let dCount = 0;
+            const drawLoop = setInterval(() => {
+                executeDrawWithAnim();
+                dCount++;
+                if (dCount >= 3) {
+                    clearInterval(drawLoop);
+                    resolve();
+                }
+            }, 250);
+        });
     } else {
-        setTimeout(() => {
-            executeDrawWithAnim();
-        }, 200);
+        await new Promise(resolve => {
+            setTimeout(() => {
+                executeDrawWithAnim();
+                resolve();
+            }, 200);
+        });
     }
+
+    // 4. ★ターン開始時レリーフトリガー (ドロー完了後に発動)
+    await checkReliefTriggers("onTurnStart");
 }
 
 // Updated: processEnemyTurn (v7.1 - Multi-turn Sequence Support)
@@ -1196,12 +1222,7 @@ async function checkReliefTriggers(triggerType) {
             if (passive.chance && Math.random() > passive.chance) continue;
 
             // 視覚演出: スロットを発光させる
-            const slotEl = el(`relief-slot-${i}`);
-            if (slotEl) {
-                slotEl.classList.remove("trigger-glow");
-                void slotEl.offsetWidth;
-                slotEl.classList.add("trigger-glow");
-            }
+            setReliefGlow(i);
 
             addLog(`【石版発動】${RELIEF_DB[rId].name}`, "log-skill");
 
@@ -1230,12 +1251,7 @@ async function checkReliefDefenseTrigger(incomingDmg) {
         if (passive.chance && Math.random() > passive.chance) continue;
 
         // 視覚演出: スロットを発光させる
-        const slotEl = el(`relief-slot-${i}`);
-        if (slotEl) {
-            slotEl.classList.remove("trigger-glow");
-            void slotEl.offsetWidth;
-            slotEl.classList.add("trigger-glow");
-        }
+        setReliefGlow(i);
 
         addLog(`【石版発動】${RELIEF_DB[rId].name}`, "log-skill");
 

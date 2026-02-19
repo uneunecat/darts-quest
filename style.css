@@ -4392,23 +4392,95 @@ stg-info-row {
     opacity: 0.7;
 }
 
-/* 効果発動時の発光演出 */
+/* 効果発動時の発光演出 (強化版) */
 .relief-slot-mini.trigger-glow {
-    animation: relief-flash 0.8s ease-out;
+    animation: relief-flash-enhanced 1.2s ease-out;
 }
 
-@keyframes relief-flash {
+@keyframes relief-flash-enhanced {
     0% {
-        border-color: #fff;
-        box-shadow: 0 0 20px #00d2fc;
-        transform: scale(1.1);
+        border-color: #00d2fc;
+        box-shadow: 0 0 15px #00d2fc, 0 0 30px rgba(0, 210, 252, 0.4);
+        transform: scale(1.15);
+        filter: brightness(1.8);
+    }
+
+    30% {
+        border-color: #ffd700;
+        box-shadow: 0 0 20px #ffd700, 0 0 40px rgba(255, 215, 0, 0.3);
+        transform: scale(1.05);
+        filter: brightness(1.4);
     }
 
     100% {
         border-color: #997733;
         box-shadow: 0 0 0px transparent;
         transform: scale(1);
+        filter: brightness(1);
     }
+}
+
+/* パッシブサマリパネル (戦闘画面) */
+.relief-passive-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+    min-height: 16px;
+}
+
+.relief-stat-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-family: 'Roboto Mono', monospace;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #aaa;
+    line-height: 1.3;
+}
+
+.relief-stat-chip .chip-icon {
+    font-size: 9px;
+}
+
+.relief-stat-chip .chip-val {
+    color: #00d2fc;
+    font-weight: bold;
+}
+
+.relief-stat-chip.chip-atk .chip-val {
+    color: #ff6b6b;
+}
+
+.relief-stat-chip.chip-def .chip-val {
+    color: #4ecdc4;
+}
+
+.relief-stat-chip.chip-hp .chip-val {
+    color: #66ff66;
+}
+
+.relief-stat-chip.chip-drain .chip-val {
+    color: #da70d6;
+}
+
+.relief-stat-chip.chip-special .chip-val {
+    color: #ffd700;
+}
+
+/* パッシブサマリ (レリーフエディタ内) */
+.relief-editor-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 8px 12px;
+    margin-top: 4px;
+    background: rgba(0, 0, 0, 0.3);
+    border-top: 1px solid #333;
 }
 
 .relief-slot-mini.empty::before {
