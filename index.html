@@ -303,6 +303,51 @@
                 </div>
             </div>
 
+            <!-- =========================================
+                 LEGACY MODE SELECTION SCREEN (New)
+                 ========================================= -->
+            <div id="legacy-select-screen" class="game-screen"
+                style="display:none; flex-direction:column; align-items:center; justify-content:center; background: #000;">
+                <!-- Background Effect -->
+                <div class="matrix-bg"></div>
+
+                <h1 class="legacy-select-title">SELECT GAME MODE</h1>
+
+                <div class="legacy-card-container">
+                    <!-- COUNT-UP -->
+                    <div class="legacy-card card-countup" onclick="startLegacyGame('COUNTUP')">
+                        <div class="card-icon">🎯</div>
+                        <div class="card-name">COUNT-UP</div>
+                        <div class="card-desc">Score high in 8 rounds</div>
+                    </div>
+
+                    <!-- 01 GAMES -->
+                    <div class="legacy-01-section">
+                        <div class="legacy-section-title">01 GAMES</div>
+                        <div class="legacy-card-row">
+                            <div class="legacy-card card-01" onclick="startLegacyGame('301')">
+                                <div class="card-name-large">301</div>
+                                <div class="card-desc">10 Rounds</div>
+                            </div>
+                            <div class="legacy-card card-01" onclick="startLegacyGame('501')">
+                                <div class="card-name-large">501</div>
+                                <div class="card-desc">15 Rounds</div>
+                            </div>
+                            <div class="legacy-card card-01" onclick="startLegacyGame('701')">
+                                <div class="card-name-large">701</div>
+                                <div class="card-desc">20 Rounds</div>
+                            </div>
+                        </div>
+                        <div class="legacy-card-row-small">
+                            <div class="legacy-card-small" onclick="startLegacyGame('901')">901</div>
+                            <div class="legacy-card-small" onclick="startLegacyGame('1501')">1501</div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="legacy-back-btn" onclick="backToTitleFromLegacySelect()">BACK TO TITLE</button>
+            </div>
+
             <!-- Stage Selection Screen -->
             <div id="stage-select-screen"
                 style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10; flex-direction:column; padding:20px; box-sizing:border-box;">
@@ -326,7 +371,7 @@
                 <div class="cu-layout">
                     <!-- 左パネル: スコア情報 -->
                     <div class="cu-side-panel">
-                        <div class="cu-mode-title">COUNT-UP</div>
+                        <div class="cu-mode-title" id="cu-mode-title">COUNT-UP</div>
                         <div class="cu-round-display" id="cu-round-display">ROUND 1 / 8</div>
 
                         <div class="cu-throw-slots">

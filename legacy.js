@@ -4,44 +4,75 @@
 
 // --- State ---
 let legacyMode = false;         // レガシーモードがアクティブか
-const CU_MAX_ROUNDS = 8;       // カウントアップのラウンド数
+let legacyModeType = "COUNTUP"; // COUNTUP, 301, 501, 701, 901, 1501
+let CU_MAX_ROUNDS = 8;          // ラウンド数 (可変)
 let cuRound = 0;                // 現在のラウンド (0-indexed)
 let cuThrow = 0;                // 現在の投擲番号 (0, 1, 2)
-let cuRoundScores = [];         // 全ラウンドのスコア配列 [[r1t1,r1t2,r1t3], ...]
+let cuRoundScores = [];         // 全ラウンドのスコア配列
 let cuCurrentThrows = [];       // 現ラウンドの投擲スコア
 let cuTotalScore = 0;           // 合計スコア
+let legacyStartRoundScore = 0;  // ラウンド開始時スコア（バースト復帰用）
 let cuProcessing = false;       // 処理中フラグ
 let cuInterval = false;         // インターバル中フラグ
 
 // --- Entry Point ---
+// --- Entry Point ---
+// --- Entry Point ---
 function openLegacyMenu() {
-    // 将来: カウントアップ / 01 の選択画面
-    // 今はカウントアップ直接開始
-    startCountUp();
+    el("title-screen").style.display = "none";
+    el("legacy-select-screen").style.display = "flex";
 }
 
-function startCountUp() {
+function backToTitleFromLegacySelect() {
+    el("legacy-select-screen").style.display = "none";
+    el("title-screen").style.display = "flex";
+}
+
+function startLegacyGame(mode) {
     legacyMode = true;
+    legacyModeType = mode;
+    el("legacy-select-screen").style.display = "none";
+
+    // 初期化
     cuRound = 0;
     cuThrow = 0;
     cuRoundScores = [];
     cuCurrentThrows = [];
-    cuTotalScore = 0;
     cuProcessing = false;
     cuInterval = false;
 
-    // 画面切替
-    el("title-screen").style.display = "none";
+    // モード別設定
+    if (mode === "COUNTUP") {
+        cuTotalScore = 0;
+        legacyStartRoundScore = 0;
+        CU_MAX_ROUNDS = 8;
+        el("cu-mode-title").innerText = "COUNT-UP";
+    } else {
+        const startScore = parseInt(mode);
+        cuTotalScore = startScore;
+        legacyStartRoundScore = startScore;
+
+        // 01ラウンド制限設定
+        if (startScore <= 301) CU_MAX_ROUNDS = 10;
+        else if (startScore <= 501) CU_MAX_ROUNDS = 15;
+        else CU_MAX_ROUNDS = 20;
+
+        el("cu-mode-title").innerText = `${mode} GAME`;
+    }
+
+    // 画面切替 (Game Start)
     el("legacy-screen").style.display = "flex";
 
-    // UI初期化
     updateCountUpUI();
     updateCountUpDPDisplay();
-    currentInput = "";  // キーボード入力バッファのクリア
+    updateCountUpBigTotal(); // 初期スコア表示
+    currentInput = "";
 
-    // BGM変更 (戦闘曲)
     playBGM("bgm-battle");
 }
+
+/* startCountUp は廃止（互換性のため残すならラップする） */
+function startCountUp() { startLegacyGame("COUNTUP"); }
 
 // --- Core: 1投ごとの処理 ---
 function processLegacyThrow(score) {
@@ -50,30 +81,145 @@ function processLegacyThrow(score) {
 
     cuProcessing = true;
 
-    // スコア記録
-    cuCurrentThrows.push(score);
-    cuTotalScore += score;
+    // スコア計算・判定
+    let isBust = false;
+    let isGameClear = false;
+
+    if (legacyModeType === "COUNTUP") {
+        cuCurrentThrows.push(score);
+        cuTotalScore += score;
+    } else {
+        // 01 Logic
+        const temp = cuTotalScore - score;
+        if (temp < 0) {
+            // BUST
+            isBust = true;
+            cuCurrentThrows.push(score);
+            // スコアは減算しない（後で戻す処理）
+        } else if (temp === 0) {
+            // Game Clear
+            isGameClear = true;
+            cuCurrentThrows.push(score);
+            cuTotalScore = 0;
+        } else {
+            // Continue
+            cuCurrentThrows.push(score);
+            cuTotalScore = temp;
+        }
+    }
     cuThrow++;
 
     // UI更新
     updateCountUpUI();
     updateCountUpBigTotal();
-
-    // エフェクトトリガー
     triggerCountUpScoreEffect(score);
+
+    // 特殊判定: バースト
+    if (isBust) {
+        handleBurst();
+        return;
+    }
+
+    // 特殊判定: 01クリア
+    if (isGameClear) {
+        finishLegacyRound(true, false); // Clear
+        return;
+    }
 
     // ラウンド完了判定 (3投)
     if (cuThrow >= 3) {
-        const roundTotal = cuCurrentThrows.reduce((a, b) => a + b, 0);
-        cuRoundScores.push([...cuCurrentThrows]);
+        finishLegacyRound(false, false);
+    } else {
+        cuProcessing = false;
+    }
+}
 
-        // ラウンド結果演出
+// --- バースト処理 ---
+function handleBurst() {
+    showCommonCutin("BUST!", "style-warning");
+    playSE("se-warning");
+
+    setTimeout(() => {
+        // スコアをラウンド開始時に戻す
+        cuTotalScore = legacyStartRoundScore;
+        updateCountUpBigTotal();
+
+        // ラウンド強制終了
+        finishLegacyRound(false, true); // isClear=false, isBust=true
+    }, 2000);
+}
+
+// --- ラウンド終了処理共通 ---
+function finishLegacyRound(isClear, isBust) {
+    const roundTotal = cuCurrentThrows.reduce((a, b) => a + b, 0);
+    cuRoundScores.push([...cuCurrentThrows]);
+
+    if (isClear) {
+        // 即座にゲーム終了へ
+        setTimeout(() => {
+            finishLegacyGame(true);
+        }, 1000);
+        return;
+    }
+
+    // アワード表示 (Bust時はスキップ)
+    if (!isBust) {
         setTimeout(() => {
             showCountUpRoundResult(roundTotal);
         }, 300);
     } else {
-        cuProcessing = false;
+        // バースト時はアワードなしで次へ
+        setTimeout(() => {
+            if (cuRound >= CU_MAX_ROUNDS - 1) {
+                finishLegacyGame(false);
+            } else {
+                startCountUpInterval();
+            }
+        }, 500);
     }
+}
+
+// --- バースト処理 ---
+function handleBurst() {
+    showCommonCutin("BUST!", "style-warning");
+    playSE("se-warning");
+
+    setTimeout(() => {
+        // スコアをラウンド開始時に戻す
+        cuTotalScore = legacyStartRoundScore;
+        updateCountUpBigTotal();
+
+        // ラウンド強制終了
+        finishLegacyRound(false);
+    }, 2000);
+}
+
+// --- ラウンド終了処理共通 ---
+function finishLegacyRound(isClear) {
+    const roundTotal = cuCurrentThrows.reduce((a, b) => a + b, 0);
+    cuRoundScores.push([...cuCurrentThrows]);
+
+    if (isClear) {
+        // 即座にゲーム終了へ
+        setTimeout(() => {
+            finishLegacyGame(true);
+        }, 1000);
+        return;
+    }
+
+    // 通常ラウンド終了（アワード表示 -> 次へ）
+    // バースト時もアワードは出ないが、ここを通る
+    // バーストかどうかはスコアで判定してもいいが、
+    // ここではアワード表示後にインターバルへ進む
+
+    // アワード表示 (Count-Up or 01 non-bust)
+    // バースト時は既にBUSTが出ているのでアワードは出さないのが一般的だが、
+    // Hat Trickでバーストした場合どうする？ -> BUST優先
+
+    // 一旦アワード表示
+    setTimeout(() => {
+        showCountUpRoundResult(roundTotal);
+    }, 300);
 }
 
 // --- ラウンド結果表示 ---
@@ -106,7 +252,7 @@ function showCountUpRoundResult(roundTotal) {
     setTimeout(() => {
         if (cuRound >= CU_MAX_ROUNDS - 1) {
             // 最終ラウンド終了時はリザルトへ直行
-            finishCountUp();
+            finishLegacyGame(false);
         } else {
             // インターバル画面を表示して待機
             startCountUpInterval();
@@ -138,6 +284,7 @@ function startCountUpNextRound() {
     cuRound++;
     cuThrow = 0;
     cuCurrentThrows = [];
+    legacyStartRoundScore = cuTotalScore; // ★ラウンド開始時スコア更新
 
     // UI更新
     updateCountUpUI();
@@ -155,119 +302,155 @@ function startCountUpNextRound() {
 // function showLegacyCutin(text, type) ... removed
 
 // --- ゲーム終了・リザルト ---
-function finishCountUp() {
+// --- ゲーム終了・リザルト ---
+function finishLegacyGame(isClear) {
     cuProcessing = true;
-    const totalScore = cuTotalScore;
-    const ppr = (totalScore / CU_MAX_ROUNDS).toFixed(1);
-    const rt = calculateRating(parseFloat(ppr));
 
-    // DP計算
-    let gainedDP = Math.floor(totalScore * 1.0);
-    let bonusDP = 0;
-    let bonusDetails = [];
-
-    // ボーナス: 1ラウンド100点以上
-    cuRoundScores.forEach((throws, i) => {
-        const rTotal = throws.reduce((a, b) => a + b, 0);
-        if (rTotal >= 100) {
-            bonusDP += 10;
-            bonusDetails.push(`R${i + 1} 100+: +10DP`);
-        }
-    });
-
-    // ボーナス: 800点以上
-    if (totalScore >= 800) {
-        bonusDP += 100;
-        bonusDetails.push("800点以上: +100DP");
-    }
-
-    // ハイスコア更新
-    if (!savedData.legacy) {
-        savedData.legacy = { countup: { highScore: 0, gamesPlayed: 0, bestPPR: 0 } };
-    }
-    const cu = savedData.legacy.countup;
-    let isNewHighScore = false;
-    if (totalScore > cu.highScore) {
-        cu.highScore = totalScore;
-        isNewHighScore = true;
-        bonusDP += 50;
-        bonusDetails.push("ハイスコア更新: +50DP");
-    }
-    cu.gamesPlayed++;
-    if (parseFloat(ppr) > cu.bestPPR) cu.bestPPR = parseFloat(ppr);
-
-    // 履歴記録
-    if (!savedData.legacy.countup.history) savedData.legacy.countup.history = [];
-    savedData.legacy.countup.history.unshift({
-        date: new Date().toISOString(),
-        score: totalScore,
-        ppr: parseFloat(ppr),
-        rt: rt,
-        rounds: cuRoundScores.map(r => r.reduce((a, b) => a + b, 0))
-    });
-    if (savedData.legacy.countup.history.length > 30) {
-        savedData.legacy.countup.history = savedData.legacy.countup.history.slice(0, 30);
-    }
-
-    const totalDP = gainedDP + bonusDP;
-    savedData.dp = (savedData.dp || 0) + totalDP;
-    saveToDrive();
+    // BGM変更
+    playBGM("bgm-title");
 
     // リザルト画面表示
-    showCountUpResult(totalScore, ppr, rt, gainedDP, bonusDP, bonusDetails, isNewHighScore);
+    showLegacyResult(isClear);
 }
 
-// --- リザルト画面 ---
-function showCountUpResult(totalScore, ppr, rt, baseDP, bonusDP, bonusDetails, isNewHighScore) {
-    const resultArea = el("cu-result-overlay");
-
-    // 各ラウンドの100点ボーナスをマップに
-    const roundBonusMap = {};
-    cuRoundScores.forEach((throws, i) => {
-        const rTotal = throws.reduce((a, b) => a + b, 0);
-        if (rTotal >= 100) roundBonusMap[i] = true;
-    });
-
-    let roundsHTML = cuRoundScores.map((throws, i) => {
-        const rTotal = throws.reduce((a, b) => a + b, 0);
-        const throwsStr = throws.join("+");
-        const highlight = rTotal >= 100 ? ' cu-result-highlight' : '';
-        const bonusTag = roundBonusMap[i] ? '<span class="cu-inline-bonus">+10</span>' : '';
-        return `<span class="cu-result-round-inline${highlight}">R${i + 1}:${rTotal}${bonusTag}</span>`;
-    }).join("");
-
-    // ボーナスまとめ (ラウンドボーナス以外)
-    let extraBonus = bonusDetails.filter(b => !b.includes("100+")).map(b => `<span>🏆 ${b}</span>`).join("");
-
-    resultArea.innerHTML = `
-        <div class="cu-result-card">
-            <div class="cu-result-title">COUNT-UP RESULT</div>
-            ${isNewHighScore ? '<div class="cu-new-record">★ NEW RECORD ★</div>' : ''}
-            <div class="cu-result-score">${totalScore}</div>
-            <div class="cu-result-stats">
-                <span>PPR: ${ppr}</span>
-                <span>Rt: ${rt}</span>
-            </div>
-            <div class="cu-result-rounds-inline">${roundsHTML}</div>
-            ${extraBonus ? `<div class="cu-result-bonus-line">${extraBonus}</div>` : ''}
-            <div class="cu-result-dp-compact">
-                <span>+${baseDP + bonusDP} DP</span>
-                <span class="cu-result-dp-current">所持: ${savedData.dp || 0}</span>
-            </div>
-            <div class="cu-result-buttons">
-                <button class="cu-result-btn cu-retry-btn" onclick="retryCountUp()">🔄 RETRY</button>
-                <button class="cu-result-btn" onclick="exitLegacy()">🏠 TITLE</button>
-            </div>
-        </div>
-    `;
-    resultArea.style.display = "flex";
+// --- リザルト画面構築 ---
+function showLegacyResult(isClear) {
+    const overlay = el("cu-result-overlay");
+    overlay.innerHTML = "";
+    overlay.style.display = "flex";
     playSE("se-item");
+
+    // 全投擲取得
+    let allThrows = [];
+    cuRoundScores.forEach(r => allThrows = allThrows.concat(r));
+
+    if (legacyModeType === "COUNTUP") {
+        // --- COUNT-UP Logic ---
+        const totalScore = cuTotalScore;
+        const ppr = (totalScore / CU_MAX_ROUNDS).toFixed(1);
+        const rt = calculateRating(parseFloat(ppr));
+
+        // DP計算
+        let gainedDP = Math.floor(totalScore * 1.0);
+        let bonusDP = 0;
+        let bonusDetails = [];
+
+        // ボーナス: 1ラウンド100点以上
+        cuRoundScores.forEach((throws, i) => {
+            const rTotal = throws.reduce((a, b) => a + b, 0);
+            if (rTotal >= 100) { bonusDP += 10; bonusDetails.push(`R${i + 1} 100+: +10DP`); }
+        });
+        if (totalScore >= 800) { bonusDP += 100; bonusDetails.push("800点以上: +100DP"); }
+
+        // ハイスコア更新
+        if (!savedData.legacy) { savedData.legacy = { countup: { highScore: 0, gamesPlayed: 0, bestPPR: 0 } }; }
+        const cu = savedData.legacy.countup;
+        let isNewHighScore = false;
+        if (totalScore > cu.highScore) {
+            cu.highScore = totalScore;
+            isNewHighScore = true;
+            bonusDP += 50;
+            bonusDetails.push("ハイスコア更新: +50DP");
+        }
+        cu.gamesPlayed++;
+        if (parseFloat(ppr) > cu.bestPPR) cu.bestPPR = parseFloat(ppr);
+
+        // 履歴
+        if (!cu.history) cu.history = [];
+        cu.history.unshift({
+            date: new Date().toISOString(),
+            score: totalScore,
+            ppr: parseFloat(ppr),
+            rt: rt,
+            rounds: cuRoundScores.map(r => r.reduce((a, b) => a + b, 0))
+        });
+        if (cu.history.length > 30) cu.history = cu.history.slice(0, 30);
+
+        const totalDP = gainedDP + bonusDP;
+        savedData.dp = (savedData.dp || 0) + totalDP;
+        saveToDrive();
+        updateCountUpDPDisplay();
+
+        // グラフ削除し、HTML生成
+        overlay.innerHTML = `
+            <div class="cu-result-card">
+                <div class="cu-result-title">COUNT-UP RESULT</div>
+                ${isNewHighScore ? '<div class="cu-new-record">★ NEW RECORD ★</div>' : ''}
+                <div class="cu-result-score">${totalScore}</div>
+                <div class="cu-result-stats">
+                    <span>PPR: ${ppr}</span>
+                    <span>Rt: ${rt}</span>
+                </div>
+                
+                <div class="cu-result-dp-compact" style="margin-top:20px;">
+                    <span>+${totalDP} DP</span>
+                    <span class="cu-result-dp-current">所持: ${savedData.dp}</span>
+                </div>
+                <div class="cu-result-buttons">
+                    <button class="cu-result-btn cu-retry-btn" onclick="retryLegacyGame()">🔄 RETRY</button>
+                    <button class="cu-result-btn" onclick="exitLegacy()">🏠 TITLE</button>
+                </div>
+            </div>
+        `;
+
+    } else {
+        // --- 01 GAME Logic ---
+        const startScore = parseInt(legacyModeType);
+        const reducedScore = startScore - cuTotalScore;
+
+        // PPD, PPR, Rt 計算
+        const ppd = allThrows.length > 0 ? (reducedScore / allThrows.length).toFixed(2) : "0.00";
+        const ppr = (parseFloat(ppd) * 3).toFixed(1); // 簡易換算
+        const rt = calculateRating(parseFloat(ppr));
+
+        let headerText = isClear ? "GAME CLEARED!" : "GAME OVER";
+        let headerColor = isClear ? "#ffd700" : "#ff5252";
+
+        // DP計算
+        let gainedDP = Math.floor(reducedScore * 0.5);
+        if (isClear) {
+            const clearBonus = Math.floor(startScore * 0.1); // 10% bonus
+            gainedDP += clearBonus;
+        }
+
+        savedData.dp = (savedData.dp || 0) + gainedDP;
+        saveToDrive();
+        updateCountUpDPDisplay();
+
+        // 01リザルトHTML (PPR/Rt表示)
+        overlay.innerHTML = `
+            <div class="cu-result-card">
+                <div class="cu-result-title" style="color:${headerColor};">${headerText}</div>
+                <div class="cu-result-score" style="font-size:40px; margin:10px 0;">${legacyModeType}</div>
+                
+                <div style="display:flex; flex-direction:column; align-items:center; width:100%; margin:15px 0; gap:10px;">
+                    <div style="text-align:center;">
+                        <div style="font-size:14px; color:#aaa;">ROUNDS</div>
+                        <div style="font-size:24px;">${cuRoundScores.length} / ${CU_MAX_ROUNDS}</div>
+                    </div>
+                     <div class="cu-result-stats">
+                        <span>PPR: ${ppr}</span>
+                        <span>Rt: ${rt}</span>
+                    </div>
+                </div>
+
+                <div class="cu-result-dp-compact">
+                    <span>+${gainedDP} DP</span>
+                    <span class="cu-result-dp-current">所持: ${savedData.dp}</span>
+                </div>
+                <div class="cu-result-buttons">
+                    <button class="cu-result-btn cu-retry-btn" onclick="retryLegacyGame()">🔄 RETRY</button>
+                    <button class="cu-result-btn" onclick="exitLegacy()">🏠 TITLE</button>
+                </div>
+            </div>
+        `;
+    }
 }
 
 // --- リトライ ---
-function retryCountUp() {
+function retryLegacyGame() {
     el("cu-result-overlay").style.display = "none";
-    startCountUp();
+    startLegacyGame(legacyModeType);
 }
 
 // --- レガシーモード終了 ---

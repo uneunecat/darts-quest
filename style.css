@@ -5480,3 +5480,181 @@ stg-info-row {
     box-shadow: 0 0 25px rgba(0, 210, 252, 0.8);
     border-color: #fff;
 }
+/* --- Legacy Mode Selection --- */
+.mode-btn {
+    padding: 15px;
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 18px;
+    font-weight: bold;
+    color: #fff;
+    background: #444;
+    border: 1px solid #76ff03;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-shadow: 0 0 5px #000;
+}
+
+.mode-btn:hover {
+    background: #76ff03;
+    color: #000;
+    box-shadow: 0 0 15px #76ff03;
+}
+
+/* --- Legacy Mode Selection Screen --- */
+#legacy-select-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, #1a1a2e, #000);
+    z-index: 1500;
+}
+
+.legacy-select-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 50px;
+    color: #fff;
+    text-shadow: 0 0 20px #76ff03;
+    margin-bottom: 40px;
+    letter-spacing: 5px;
+}
+
+.legacy-card-container {
+    display: flex;
+    gap: 40px;
+    align-items: flex-start;
+}
+
+/* Card Common */
+.legacy-card {
+    width: 220px;
+    height: 300px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid #555;
+    border-radius: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+
+.legacy-card:hover {
+    transform: translateY(-10px) scale(1.05);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.card-icon {
+    font-size: 60px;
+    margin-bottom: 20px;
+}
+
+.card-name {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.card-desc {
+    font-size: 14px;
+    color: #aaa;
+    text-align: center;
+}
+
+/* Count-Up Specific */
+.card-countup {
+    border-color: #ffd700;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+}
+
+.card-countup:hover {
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
+}
+.card-countup .card-name { color: #ffd700; }
+
+/* 01 Section */
+.legacy-01-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.legacy-section-title {
+    color: #00d2fc;
+    font-size: 24px;
+    text-align: center;
+    font-family: 'Cinzel Decorative', serif;
+    margin-bottom: 10px;
+    text-shadow: 0 0 10px #00d2fc;
+}
+
+.legacy-card-row {
+    display: flex;
+    gap: 15px;
+}
+
+.card-01 {
+    width: 140px;
+    height: 180px; /* Smaller than main card */
+    border-color: #00d2fc;
+    box-shadow: 0 0 10px rgba(0, 210, 252, 0.2);
+}
+
+.card-01:hover {
+    box-shadow: 0 0 30px rgba(0, 210, 252, 0.6);
+}
+
+.card-name-large {
+    font-family: 'Impact', sans-serif;
+    font-size: 40px;
+    color: #00d2fc;
+    letter-spacing: 2px;
+}
+
+/* Small 01 Cards (901/1501) */
+.legacy-card-row-small {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.legacy-card-small {
+    padding: 8px 20px;
+    border: 1px solid #00d2fc;
+    border-radius: 20px;
+    color: #00d2fc;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: rgba(0, 210, 252, 0.1);
+}
+
+.legacy-card-small:hover {
+    background: #00d2fc;
+    color: #000;
+    box-shadow: 0 0 15px #00d2fc;
+}
+
+/* Back Button */
+.legacy-back-btn {
+    margin-top: 50px;
+    padding: 10px 40px;
+    border: 1px solid #555;
+    background: transparent;
+    color: #aaa;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 30px;
+}
+
+.legacy-back-btn:hover {
+    border-color: #fff;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
