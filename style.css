@@ -847,13 +847,12 @@ body {
 /* Left Side Panel */
 .battle-side-info {
     flex: 0 0 260px;
-    /* 少し幅を狭めてスマートに */
     background: rgba(10, 15, 28, 0.95);
     border-right: 1px solid #0f3460;
-    padding: 15px 12px;
+    padding: 10px 12px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 6px;
     z-index: 20;
 }
 
@@ -942,7 +941,7 @@ stg-info-row {
 .side-block {
     background: rgba(255, 255, 255, 0.05);
     border-radius: 8px;
-    padding: 12px;
+    padding: 8px;
     border: 1px solid #333;
     display: flex;
     flex-direction: column;
@@ -962,40 +961,36 @@ stg-info-row {
 }
 
 .enemy-info-block {
-    height: 95px;
-    /* 100pxから少し余裕を持たせる */
-    padding: 8px 10px;
+    height: 80px;
+    padding: 6px 10px;
     display: flex;
     flex-direction: column;
     justify-content: center;
 }
 
 .score-info-block {
-    height: 95px;
-    /* 高さを固定 */
+    height: 80px;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 5px;
+    padding: 4px;
 }
 
 .player-info-block {
     flex: 1;
-    /* 残りのスペースを埋める */
-    height: 150px;
+    height: 130px;
     display: flex;
     flex-direction: column;
     justify-content: space-around;
-    gap: 5px;
+    gap: 3px;
 }
 
 .relief-info-block {
-    height: 80px;
-    /* 少し高さを出す */
+    height: auto;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 5px 10px;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 6px 8px;
 }
 
 .side-val-lg {
@@ -4187,16 +4182,23 @@ stg-info-row {
 }
 
 .relief-slab.locked {
-    filter: grayscale(1) brightness(0.3);
     cursor: default;
+    background: linear-gradient(135deg, #0a0a0a, #1a1a1a);
+    border-color: #222;
+}
+
+.relief-slab.locked img {
+    display: none;
 }
 
 .relief-slab.locked::after {
-    content: "?";
+    content: "UNDISCOVERED";
     position: absolute;
-    font-size: 30px;
-    color: rgba(255, 255, 255, 0.1);
-    font-family: 'Cinzel Decorative';
+    font-size: 7px;
+    letter-spacing: 2px;
+    color: rgba(255, 255, 255, 0.15);
+    font-family: 'Cinzel Decorative', serif;
+    text-transform: uppercase;
 }
 
 .relief-slab.unlocked {
@@ -4369,27 +4371,39 @@ stg-info-row {
 }
 
 .relief-slot-mini {
-    width: 60px;
-    /* サイズを明示的に固定 */
-    height: 60px;
+    width: 70px;
+    height: 70px;
     background: rgba(0, 0, 0, 0.4);
     border: 1px solid #333;
     border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .relief-slot-mini.equipped {
     border-color: #997733;
     background: radial-gradient(circle, #2a2a2a, #111);
+    cursor: pointer;
+}
+
+.relief-slot-mini.equipped:hover {
+    transform: scale(1.1);
+    border-color: #ccaa44;
+    box-shadow: 0 0 12px rgba(204, 170, 68, 0.5), 0 0 4px rgba(255, 215, 0, 0.3);
+}
+
+.relief-slot-mini.equipped:hover img {
+    opacity: 1;
 }
 
 .relief-slot-mini img {
-    width: 80%;
-    height: 80%;
+    width: 85%;
+    height: 85%;
     object-fit: contain;
-    opacity: 0.7;
+    opacity: 0.85;
+    transition: opacity 0.2s ease;
 }
 
 /* 効果発動時の発光演出 (強化版) */

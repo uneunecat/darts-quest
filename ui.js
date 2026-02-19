@@ -254,7 +254,7 @@ function updateInfo() {
                 // ★修正: 共通関数を使用して正しい画像パスを取得
                 const imgPath = getReliefImgPath(rId);
                 slot.className = "relief-slot-mini equipped";
-                slot.innerHTML = `<img src="${imgPath}" style="width:80%; height:80%; object-fit:contain;">`;
+                slot.innerHTML = `<img src="${imgPath}">`;
                 slot.title = RELIEF_DB[rId].name;
 
                 // 発光状態をタイマーから復元
@@ -390,7 +390,9 @@ function executeDiscardAndEffect(discardIndex) {
 function showCardDetail(card) {
     const detailEl = el("deck-card-detail");
     if (!detailEl) return;
-    detailEl.innerHTML = `<span class="detail-name">${card.name}</span>${card.desc}`;
+    const owned = savedData.cards && savedData.cards[card.id] > 0;
+    const desc = owned ? card.desc : `<span style="color:#666; font-style:italic;">未入手のカード</span>`;
+    detailEl.innerHTML = `<span class="detail-name">${card.name}</span>${desc}`;
 }
 
 // =========================================
@@ -421,6 +423,10 @@ function createCardElement(card, mode = "standard", remainingCount = 1, totalCou
     const sheenHTML = (card.rarity === "UR" || card.rarity === "SR") ? '<div class="card-sheen"></div>' : '';
     const countText = (mode === "small" || mode === "battle") ? "" : `x${remainingCount}`;
 
+    // ★ネタバレ防止: 未所持カードは効果テキストを隠す
+    const descText = isOwned ? card.desc : "未入手のカード";
+    const typeText = isOwned ? `[${card.type}]` : "";
+
     div.innerHTML = `
         <div class="std-art">
             <img src="${imgPath}" onerror="this.style.display='none';">
@@ -430,8 +436,8 @@ function createCardElement(card, mode = "standard", remainingCount = 1, totalCou
         </div>
         <div class="std-text-area ${bgClass}">
             <div class="std-name ${textClass}">${card.name}</div>
-            <div class="std-type">[${card.type}]</div>
-            <div class="std-desc">${card.desc}</div>
+            <div class="std-type">${typeText}</div>
+            <div class="std-desc">${descText}</div>
         </div>
     `;
 
@@ -1417,10 +1423,10 @@ function renderReliefEditor() {
                 else toggleRelief(id);
             };
 
-            // 長押しプレビュー (500ms)
+            // 長押しプレビュー (500ms) — 購入済みのみ有効
             let pressTimer = null;
             slab.addEventListener("pointerdown", (e) => {
-                if (!hasDefeated) return;
+                if (!isUnlocked) return; // ★未購入も長押し無効
                 slab._longPressFired = false;
                 pressTimer = setTimeout(() => {
                     pressTimer = null;
