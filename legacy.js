@@ -276,7 +276,7 @@ function finishLegacyRound(isClear, isBust) {
     // SOLO Logic (Legacy)
     if (!isBust) {
         setTimeout(() => {
-            showCountUpRoundResult(roundTotal);
+            showCountUpRoundResult(rTotal);
         }, 300);
     } else {
         setTimeout(() => {
@@ -717,12 +717,18 @@ function showCpuBattleResult(isPlayerWin) {
             <div style="display:flex; justify-content:space-around; width:100%; margin:20px 0; align-items:center;">
                 <div style="text-align:center;">
                     <div style="font-size:16px; color:#aaa;">PLAYER</div>
-                    <div style="font-size:40px; color:#fff;">${cuTotalScore}</div>
+                    <div style="font-size:24px; color:#fff;">
+                        PPR: ${((startScore - cuTotalScore) / (cuRound + 1)).toFixed(1)}<br>
+                        Rt: ${calculateRating(((startScore - cuTotalScore) / (cuRound + 1)).toFixed(1))}
+                    </div>
                 </div>
                 <div style="font-size:30px; color:#888;">VS</div>
                 <div style="text-align:center;">
                     <div style="font-size:16px; color:#aaa;">CPU (Lv.${cpuLevel})</div>
-                    <div style="font-size:40px; color:#fff;">${cpuTotalScore}</div>
+                    <div style="font-size:24px; color:#fff;">
+                        PPR: ${((startScore - cpuTotalScore) / (cuRound + 1)).toFixed(1)}<br>
+                        Rt: ${calculateRating(((startScore - cpuTotalScore) / (cuRound + 1)).toFixed(1))}
+                    </div>
                 </div>
             </div>
 
@@ -807,8 +813,8 @@ const LegacyAI = {
         if (score <= 40 && score % 2 === 0) targets.push({ type: "DOUBLE", value: score, num: score / 2 });
         // Triples (1-20)
         if (score <= 60 && score % 3 === 0) targets.push({ type: "TRIPLE", value: score, num: score / 3 });
-        // S-Bull (25)
-        if (score === 25) targets.push({ type: "S-BULL", value: 25 });
+        // S-Bull (25) -> 50
+        if (score === 50) targets.push({ type: "S-BULL", value: 50 });
         return targets;
     },
 
@@ -827,9 +833,9 @@ const LegacyAI = {
         if (rand < hitRate) {
             // HIT!
             if (target.type === "BULL") {
-                return (Math.random() < lvlData.sBullRatio) ? 25 : 50;
+                return 50; // Use 50 for both Inner/Outer in this rule
             }
-            if (target.type === "S-BULL") return 25;
+            if (target.type === "S-BULL") return 50;
             return target.value;
         } else {
             // MISS
@@ -970,19 +976,19 @@ function updateCountUpUI() {
         }
     }
 
-    // PPR (リアルタイム)
+    // PPR (Turn Update)
     const pprDisp = el("cu-ppr-display");
     if (pprDisp) {
-        if (cuRound > 0 || targetCurrent.length > 0) {
-            const completedRounds = cuRound + (targetCurrent.length >= 3 ? 1 : 0);
+        // Update only on Initial or Round End
+        let shouldUpdate = (cuRound === 0 && targetCurrent.length === 0) || (targetCurrent.length === 3);
 
+        if (shouldUpdate) {
+            const completedRounds = cuRound + (targetCurrent.length >= 3 ? 1 : 0);
             // Calculate Total Points (Hit based)
             let totalPoints = 0;
             if (legacyModeType === "COUNTUP") {
-                // COUNT-UP: Current Score is total hit
                 totalPoints = (isCpuBattle && !isPlayerTurn) ? cpuTotalScore : cuTotalScore;
             } else {
-                // 01: Start - Current
                 const startScore = parseInt(legacyModeType);
                 const current = (isCpuBattle && !isPlayerTurn) ? cpuTotalScore : cuTotalScore;
                 totalPoints = startScore - current;
@@ -991,8 +997,6 @@ function updateCountUpUI() {
             const ppr = completedRounds > 0 ? (totalPoints / completedRounds).toFixed(1) : "0.0";
             const rt = calculateRating(parseFloat(ppr));
             pprDisp.innerText = `PPR: ${ppr} (Rt ${rt})`;
-        } else {
-            pprDisp.innerText = "PPR: -- (Rt --)";
         }
     }
 
