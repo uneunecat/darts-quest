@@ -452,7 +452,8 @@ function showLegacyResult(isClear) {
     if (legacyModeType === "COUNTUP") {
         // --- COUNT-UP Logic ---
         const totalScore = cuTotalScore;
-        const ppr = (totalScore / CU_MAX_ROUNDS).toFixed(1);
+        const ppd = allThrows.length > 0 ? (totalScore / allThrows.length) : 0;
+        const ppr = (ppd * 3).toFixed(1);
         const rt = calculateRating(parseFloat(ppr));
 
         // DP計算
@@ -523,9 +524,9 @@ function showLegacyResult(isClear) {
         const startScore = parseInt(legacyModeType);
         const reducedScore = startScore - cuTotalScore;
 
-        // PPD, PPR, Rt 計算
-        const ppd = allThrows.length > 0 ? (reducedScore / allThrows.length).toFixed(2) : "0.00";
-        const ppr = (parseFloat(ppd) * 3).toFixed(1); // 簡易換算
+        // PPD, PPR, Rt 計算 (Intermediate rounding removed to match UI precisely)
+        const ppd = allThrows.length > 0 ? (reducedScore / allThrows.length) : 0;
+        const ppr = (ppd * 3).toFixed(1); // 簡易換算
         const rt = calculateRating(parseFloat(ppr));
 
         let headerText = isClear ? "GAME CLEARED!" : "GAME OVER";
@@ -625,7 +626,7 @@ function cpuThrowLoop(throwNum) {
             updateCpuUI();
         }
 
-        // History/Logs? (Skipped for now)
+        updateCountUpUI(); // Ensure CPU slots and PPR update immediately
 
         if (isBust) {
             // Restore score
@@ -710,6 +711,18 @@ function showCpuBattleResult(isPlayerWin) {
     saveToDrive();
     updateCountUpDPDisplay();
 
+    const playerTotalThrows = cuRoundScores.reduce((acc, r) => acc + r.length, 0);
+    const cpuTotalThrows = cpuRoundScores.reduce((acc, r) => acc + r.length, 0);
+
+    const playerPoints = startScore - cuTotalScore;
+    const cpuPoints = startScore - cpuTotalScore;
+
+    const playerPPR = playerTotalThrows > 0 ? ((playerPoints / playerTotalThrows) * 3).toFixed(1) : "0.0";
+    const cpuPPR = cpuTotalThrows > 0 ? ((cpuPoints / cpuTotalThrows) * 3).toFixed(1) : "0.0";
+
+    const playerRt = calculateRating(parseFloat(playerPPR));
+    const cpuRt = calculateRating(parseFloat(cpuPPR));
+
     overlay.innerHTML = `
         <div class="cu-result-card" style="border-color:${headerColor}; box-shadow:0 0 30px ${headerColor};">
             <div class="cu-result-title" style="color:${headerColor}; font-size:50px;">${headerText}</div>
@@ -718,16 +731,16 @@ function showCpuBattleResult(isPlayerWin) {
                 <div style="text-align:center;">
                     <div style="font-size:16px; color:#aaa;">PLAYER</div>
                     <div style="font-size:24px; color:#fff;">
-                        PPR: ${((startScore - cuTotalScore) / (cuRound + 1)).toFixed(1)}<br>
-                        Rt: ${calculateRating(((startScore - cuTotalScore) / (cuRound + 1)).toFixed(1))}
+                        PPR: ${playerPPR}<br>
+                        Rt: ${playerRt}
                     </div>
                 </div>
                 <div style="font-size:30px; color:#888;">VS</div>
                 <div style="text-align:center;">
                     <div style="font-size:16px; color:#aaa;">CPU (Lv.${cpuLevel})</div>
                     <div style="font-size:24px; color:#fff;">
-                        PPR: ${((startScore - cpuTotalScore) / (cuRound + 1)).toFixed(1)}<br>
-                        Rt: ${calculateRating(((startScore - cpuTotalScore) / (cuRound + 1)).toFixed(1))}
+                        PPR: ${cpuPPR}<br>
+                        Rt: ${cpuRt}
                     </div>
                 </div>
             </div>
@@ -976,27 +989,39 @@ function updateCountUpUI() {
         }
     }
 
-    // PPR (Turn Update)
+    // PPR (リアルタイム)
     const pprDisp = el("cu-ppr-display");
     if (pprDisp) {
-        // Update only on Initial or Round End
-        let shouldUpdate = (cuRound === 0 && targetCurrent.length === 0) || (targetCurrent.length === 3);
+        const isCpuTurn = isCpuBattle && !isPlayerTurn;
+        const currentTotalScore = isCpuTurn ? cpuTotalScore : cuTotalScore;
+        const targetRoundScores = isCpuTurn ? cpuRoundScores : cuRoundScores;
 
-        if (shouldUpdate) {
-            const completedRounds = cuRound + (targetCurrent.length >= 3 ? 1 : 0);
+        let totalThrows = 0;
+        targetRoundScores.forEach(r => totalThrows += r.length);
+        // ラウンド履歴に現在の投擲がまだ記録されていない（ラウンド進行中）場合のみ、現在の投擲数を加算
+        if (targetRoundScores.length === cuRound) {
+            totalThrows += targetCurrent.length;
+        }
+
+        if (totalThrows > 0) {
             // Calculate Total Points (Hit based)
             let totalPoints = 0;
             if (legacyModeType === "COUNTUP") {
-                totalPoints = (isCpuBattle && !isPlayerTurn) ? cpuTotalScore : cuTotalScore;
+                totalPoints = currentTotalScore;
             } else {
                 const startScore = parseInt(legacyModeType);
-                const current = (isCpuBattle && !isPlayerTurn) ? cpuTotalScore : cuTotalScore;
-                totalPoints = startScore - current;
+                totalPoints = startScore - currentTotalScore;
             }
 
-            const ppr = completedRounds > 0 ? (totalPoints / completedRounds).toFixed(1) : "0.0";
+            const ppd = totalPoints / totalThrows;
+            const ppr = (ppd * 3).toFixed(1);
             const rt = calculateRating(parseFloat(ppr));
-            pprDisp.innerText = `PPR: ${ppr} (Rt ${rt})`;
+
+            const label = isCpuTurn ? "CPU " : "";
+            pprDisp.innerText = `${label}PPR: ${ppr} (Rt ${rt})`;
+        } else {
+            const label = isCpuTurn ? "CPU " : "";
+            pprDisp.innerText = `${label}PPR: 0.0 (Rt 1)`;
         }
     }
 
