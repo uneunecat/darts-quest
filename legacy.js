@@ -792,6 +792,34 @@ const LegacyAI = {
     // Hit Rate Multipliers
     RATES: { SINGLE: 1.5, DOUBLE: 0.8, TRIPLE: 0.6, BULL: 1.0 },
 
+    // DartsHive Single Out Arrange Chart (120 to 1)
+    SINGLE_OUT_ARRANGE: {
+        120: "BULL", 119: "BULL", 118: "BULL", 117: "BULL", 116: "BULL",
+        115: "BULL", 114: "BULL", 113: "BULL", 112: "BULL", 111: "BULL",
+        110: "BULL", 109: "BULL", 108: "BULL", 107: "BULL", 106: "BULL",
+        105: "BULL", 104: "BULL", 103: "BULL", 102: "BULL", 101: "BULL",
+        100: "BULL", 99: "T20", 98: "BULL", 97: "T19", 96: "BULL",
+        95: "BULL", 94: "BULL", 93: "BULL", 92: "BULL", 91: "BULL",
+        90: "BULL", 89: "T19", 88: "BULL", 87: "T17", 86: "BULL",
+        85: "T19", 84: "BULL", 83: "T20", 82: "BULL", 81: "T19",
+        80: "BULL", 79: "T19", 78: "BULL", 77: "BULL", 76: "BULL",
+        75: "T17", 74: "BULL", 73: "T19", 72: "BULL", 71: "T20",
+        70: "BULL", 69: "BULL", 68: "BULL", 67: "BULL", 66: "BULL",
+        65: "BULL", 64: "BULL", 63: "BULL", 62: "BULL", 61: "BULL",
+        60: "S20", 59: "BULL", 58: "BULL", 57: "S19", 56: "BULL",
+        55: "BULL", 54: "S18", 53: "BULL", 52: "BULL", 51: "S17",
+        50: "BULL", 49: "S20", 48: "S20", 47: "S20", 46: "S20",
+        45: "S15", 44: "S20", 43: "S20", 42: "S14", 41: "S20",
+        40: "S20", 39: "S20", 38: "S20", 37: "S20", 36: "S18",
+        35: "S20", 34: "S17", 33: "S20", 32: "S16", 31: "S20",
+        30: "S15", 29: "S20", 28: "S14", 27: "S9", 26: "S13",
+        25: "S20", 24: "S12", 23: "S20", 22: "S11", 21: "S7",
+        20: "S20", 19: "S19", 18: "S18", 17: "S17", 16: "S16",
+        15: "S15", 14: "S14", 13: "S13", 12: "S12", 11: "S11",
+        10: "S10", 9: "S9", 8: "S8", 7: "S7", 6: "S6",
+        5: "S5", 4: "S4", 3: "S3", 2: "S2", 1: "S1"
+    },
+
     // Core Method: Calculate a throw
     throwDart: function (currentScore, level) {
         const lvlData = this.LEVELS[level] || this.LEVELS[1];
@@ -800,21 +828,26 @@ const LegacyAI = {
     },
 
     decideTarget: function (currentScore, lvlData) {
-        // Find optimal target for finishing
-        const validTargets = this.findWinningTargets(currentScore);
-
-        if (validTargets.length === 0) {
-            // Scoring Phase: Aim for BULL
+        // If not 01 Game, just aim for BULL scoring
+        if (legacyModeType === "COUNTUP") {
             return { type: "BULL", value: 50 };
-        } else {
-            // Finishing Phase: Choose best probability
-            validTargets.sort((a, b) => {
-                const rateA = this.getHitRate(a.type, lvlData.bullRate);
-                const rateB = this.getHitRate(b.type, lvlData.bullRate);
-                return rateB - rateA;
-            });
-            return validTargets[0];
         }
+
+        // 01 Game: Arrange logic under 120 points
+        if (currentScore <= 120 && currentScore > 0) {
+            const arrangeCode = this.SINGLE_OUT_ARRANGE[currentScore];
+            if (arrangeCode) {
+                if (arrangeCode === "BULL") return { type: "BULL", value: 50 };
+                const typeChar = arrangeCode.charAt(0);
+                const num = parseInt(arrangeCode.substring(1));
+                if (typeChar === "S") return { type: "SINGLE", value: num, num: num };
+                if (typeChar === "D") return { type: "DOUBLE", value: num * 2, num: num };
+                if (typeChar === "T") return { type: "TRIPLE", value: num * 3, num: num };
+            }
+        }
+
+        // Scoring Phase (>120): Aim for BULL
+        return { type: "BULL", value: 50 };
     },
 
     findWinningTargets: function (score) {
