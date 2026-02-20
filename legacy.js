@@ -195,6 +195,7 @@ function processLegacyThrow(score) {
     // UI更新
     updateCountUpUI();
     updateCountUpBigTotal();
+    if (isCpuBattle) updateLegacyScoreFooter();
     triggerCountUpScoreEffect(score);
 
     // 特殊判定: バースト
