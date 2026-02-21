@@ -24,6 +24,14 @@ let cpuRoundScores = [];
 let cpuCurrentThrows = [];
 let isPlayerTurn = true;        // true: Player, false: CPU
 
+// 80% Stats Lock State
+let playerStatsLocked = false;
+let playerLockedPPR = 0;
+let playerLockedRt = 1;
+let cpuStatsLocked = false;
+let cpuLockedPPR = 0;
+let cpuLockedRt = 1;
+
 // --- Entry Point ---
 // --- Entry Point ---
 // --- Entry Point ---
@@ -113,6 +121,14 @@ function startLegacyGameProcess(mode) {
         cpuCurrentThrows = [];
         isPlayerTurn = true; // Player first
 
+        // Stats Lock Reset
+        playerStatsLocked = false;
+        playerLockedPPR = 0;
+        playerLockedRt = 1;
+        cpuStatsLocked = false;
+        cpuLockedPPR = 0;
+        cpuLockedRt = 1;
+
         // Show Footer
         el("legacy-score-footer").style.display = "flex";
 
@@ -140,6 +156,11 @@ function startLegacyGameProcess(mode) {
         else CU_MAX_ROUNDS = 20;
 
         el("cu-mode-title").innerText = `${mode} GAME`;
+
+        // Solo 01 Stats Lock Reset
+        playerStatsLocked = false;
+        playerLockedPPR = 0;
+        playerLockedRt = 1;
     }
 
     // 画面切替 (Game Start)
@@ -188,6 +209,11 @@ function processLegacyThrow(score) {
             // Continue
             cuCurrentThrows.push(score);
             cuTotalScore = temp;
+        }
+
+        // Check for 80% Stats Lock
+        if (legacyModeType !== "COUNTUP") {
+            check80PercentStatsLock();
         }
     }
     cuThrow++;
@@ -548,6 +574,10 @@ function showLegacyResult(isClear) {
         saveToDrive();
         updateCountUpDPDisplay();
 
+        // Override PPR/Rt for display and record if locked
+        const finalPPR = playerStatsLocked ? playerLockedPPR : parseFloat(ppr);
+        const finalRt = playerStatsLocked ? playerLockedRt : rt;
+
         const record = {
             id: Date.now(),
             date: new Date().toISOString(),
@@ -557,8 +587,8 @@ function showLegacyResult(isClear) {
             result: isClear ? "CLEAR" : "OVER",
             playerScore: reducedScore,
             totalThrows: allThrows.length,
-            ppr: parseFloat(ppr),
-            rt: rt
+            ppr: finalPPR,
+            rt: finalRt
         };
         saveLegacyHistory(record);
 
@@ -574,8 +604,8 @@ function showLegacyResult(isClear) {
                         <div style="font-size:24px;">${cuRoundScores.length} / ${CU_MAX_ROUNDS}</div>
                     </div>
                      <div class="cu-result-stats">
-                        <span>PPR: ${ppr}</span>
-                        <span>Rt: ${rt}</span>
+                        <span>PPR: ${finalPPR.toFixed(1)}</span>
+                        <span>Rt: ${finalRt}</span>
                     </div>
                 </div>
 
@@ -662,6 +692,9 @@ function cpuThrowLoop(throwNum) {
             return;
         }
 
+        // Check for 80% Stats Lock
+        check80PercentStatsLock();
+
         if (throwNum < 3) {
             setTimeout(() => cpuThrowLoop(throwNum + 1), 800); // Next throw
         } else {
@@ -740,7 +773,13 @@ function showCpuBattleResult(isPlayerWin) {
     const cpuPPR = cpuTotalThrows > 0 ? ((cpuPoints / cpuTotalThrows) * 3).toFixed(1) : "0.0";
 
     const playerRt = calculateRating(parseFloat(playerPPR));
-    const cpuRt = calculateRating(parseFloat(cpuPPR));
+    const cpuRt = cpuStatsLocked ? cpuLockedRt : calculateRating(parseFloat(cpuPPR));
+
+    // Override PPR/Rt for display and record if locked
+    const finalPlayerPPR = playerStatsLocked ? playerLockedPPR : parseFloat(playerPPR);
+    const finalPlayerRt = playerStatsLocked ? playerLockedRt : playerRt;
+    const finalCpuPPR = cpuStatsLocked ? cpuLockedPPR : parseFloat(cpuPPR);
+    const finalCpuRt = cpuStatsLocked ? cpuLockedRt : cpuRt;
 
     const record = {
         id: Date.now(),
@@ -751,8 +790,8 @@ function showCpuBattleResult(isPlayerWin) {
         result: isPlayerWin ? "WIN" : "LOSE",
         playerScore: playerPoints,
         totalThrows: playerTotalThrows,
-        ppr: parseFloat(playerPPR),
-        rt: playerRt
+        ppr: finalPlayerPPR,
+        rt: finalPlayerRt
     };
     saveLegacyHistory(record);
 
@@ -764,16 +803,16 @@ function showCpuBattleResult(isPlayerWin) {
                 <div style="text-align:center;">
                     <div style="font-size:16px; color:#aaa;">PLAYER</div>
                     <div style="font-size:24px; color:#fff;">
-                        PPR: ${playerPPR}<br>
-                        Rt: ${playerRt}
+                        PPR: ${finalPlayerPPR.toFixed(1)}<br>
+                        Rt: ${finalPlayerRt}
                     </div>
                 </div>
                 <div style="font-size:30px; color:#888;">VS</div>
                 <div style="text-align:center;">
                     <div style="font-size:16px; color:#aaa;">CPU (Lv.${cpuLevel})</div>
                     <div style="font-size:24px; color:#fff;">
-                        PPR: ${cpuPPR}<br>
-                        Rt: ${cpuRt}
+                        PPR: ${finalCpuPPR.toFixed(1)}<br>
+                        Rt: ${finalCpuRt}
                     </div>
                 </div>
             </div>
@@ -801,6 +840,65 @@ function exitLegacy() {
     playBGM("bgm-title");
 }
 
+
+// --- 80% Stats Logic ---
+function check80PercentStatsLock() {
+    if (legacyModeType === "COUNTUP") return;
+    if (playerStatsLocked && (!isCpuBattle || cpuStatsLocked)) return;
+
+    const startHP = parseInt(legacyModeType);
+    const threshold = startHP * 0.2;
+
+    let reached = false;
+    if (cuTotalScore <= threshold) reached = true;
+    if (isCpuBattle && cpuTotalScore <= threshold) reached = true;
+
+    if (reached) {
+        // Someone reached 80% reductions. Lock current stats.
+
+        // --- Player Stat Locking ---
+        if (!playerStatsLocked) {
+            let ppr = 0;
+            let totalThrows = 0;
+            cuRoundScores.forEach(r => totalThrows += r.length);
+
+            // If it's player's turn, include current throws.
+            if (isPlayerTurn) {
+                totalThrows += cuCurrentThrows.length;
+            }
+
+            if (totalThrows > 0) {
+                const reducedHP = startHP - cuTotalScore;
+                ppr = (reducedHP / totalThrows) * 3;
+            }
+            playerLockedPPR = parseFloat(ppr.toFixed(1));
+            playerLockedRt = calculateRating(playerLockedPPR);
+            playerStatsLocked = true;
+            console.log(`[STATS] Player locked at PPR:${playerLockedPPR}`);
+        }
+
+        // --- CPU Stat Locking ---
+        if (isCpuBattle && !cpuStatsLocked) {
+            let ppr = 0;
+            let totalThrows = 0;
+            cpuRoundScores.forEach(r => totalThrows += r.length);
+
+            // If it's CPU's turn, include current throws.
+            if (!isPlayerTurn) {
+                totalThrows += cpuCurrentThrows.length;
+            }
+
+            if (totalThrows > 0) {
+                const reducedHP = startHP - cpuTotalScore;
+                ppr = (reducedHP / totalThrows) * 3;
+            }
+            cpuLockedPPR = parseFloat(ppr.toFixed(1));
+            cpuLockedRt = calculateRating(cpuLockedPPR);
+            cpuStatsLocked = true;
+            console.log(`[STATS] CPU locked at PPR:${cpuLockedPPR}`);
+        }
+    }
+}
 
 // =========================================
 // AI LOGIC (LegacyAI)
@@ -1176,6 +1274,18 @@ function saveLegacyHistory(record) {
 }
 
 let currentLegacyFilter = "ALL";
+let currentLegacyView = "list";
+
+function switchLegacyView(view) {
+    currentLegacyView = view;
+    // Update view toggle buttons
+    const btnList = el("hist-view-list");
+    const btnGraph = el("hist-view-graph");
+    if (btnList) btnList.classList.toggle("active", view === "list");
+    if (btnGraph) btnGraph.classList.toggle("active", view === "graph");
+
+    renderLegacyHistory();
+}
 
 function filterLegacyHistory(type) {
     currentLegacyFilter = type;
@@ -1203,10 +1313,23 @@ function closeLegacyHistory() {
 
 function renderLegacyHistory() {
     const listEl = el("legacy-history-list");
+    const graphEl = el("legacy-history-graph");
     listEl.innerHTML = "";
+    graphEl.innerHTML = "";
+
+    // Toggle containers
+    if (currentLegacyView === "list") {
+        listEl.style.display = "flex";
+        graphEl.style.display = "none";
+    } else {
+        listEl.style.display = "none";
+        graphEl.style.display = "flex";
+    }
+
+    const targetEl = currentLegacyView === "list" ? listEl : graphEl;
 
     if (!savedData.legacy || !savedData.legacy.history || savedData.legacy.history.length === 0) {
-        listEl.innerHTML = "<div style='text-align:center; color:#888; margin-top:50px;'>No history found.</div>";
+        targetEl.innerHTML = "<div style='text-align:center; color:#888; margin-top:50px;'>No history found.</div>";
         return;
     }
 
@@ -1221,36 +1344,117 @@ function renderLegacyHistory() {
     });
 
     if (filtered.length === 0) {
-        listEl.innerHTML = "<div style='text-align:center; color:#888; margin-top:50px;'>No matching history found.</div>";
+        targetEl.innerHTML = "<div style='text-align:center; color:#888; margin-top:50px;'>No matching history found.</div>";
         return;
     }
 
-    filtered.forEach(h => {
-        const dateObj = new Date(h.date);
-        const dateStr = `${dateObj.getFullYear()}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${String(dateObj.getDate()).padStart(2, '0')} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+    if (currentLegacyView === "list") {
+        filtered.forEach(h => {
+            const dateObj = new Date(h.date);
+            const dateStr = `${dateObj.getFullYear()}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${String(dateObj.getDate()).padStart(2, '0')} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
 
-        let titleMode = h.modeType;
-        if (h.isCpuBattle) {
-            titleMode = `VS CPU Lv.${h.cpuLevel} [${h.modeType}]`;
-        } else if (h.modeType !== "COUNTUP") {
-            titleMode = `SOLO ${h.modeType}`;
-        }
+            let titleMode = h.modeType;
+            if (h.isCpuBattle) {
+                titleMode = `VS CPU Lv.${h.cpuLevel} [${h.modeType}]`;
+            } else if (h.modeType !== "COUNTUP") {
+                titleMode = `SOLO ${h.modeType}`;
+            }
 
-        const resClass = h.result.toLowerCase(); // win, lose, clear, over
-        const scoreLabel = h.modeType === "COUNTUP" ? "Score" : "Dmg";
+            const resClass = h.result.toLowerCase(); // win, lose, clear, over
+            const scoreLabel = h.modeType === "COUNTUP" ? "Score" : "Dmg";
 
-        const html = `
-            <div class="legacy-history-item ${resClass}">
-                <div class="legacy-history-item-left">
-                    <div class="legacy-history-date">${dateStr}</div>
-                    <div class="legacy-history-title">${titleMode}</div>
-                    <div class="legacy-history-stats">${scoreLabel}: ${h.playerScore} &nbsp;|&nbsp; Throws: ${h.totalThrows} &nbsp;|&nbsp; PPR: ${(h.ppr || 0).toFixed(1)} (Rt ${h.rt || 1})</div>
+            const html = `
+                <div class="legacy-history-item ${resClass}">
+                    <div class="legacy-history-item-left">
+                        <div class="legacy-history-date">${dateStr}</div>
+                        <div class="legacy-history-title">${titleMode}</div>
+                        <div class="legacy-history-stats">${scoreLabel}: ${h.playerScore} &nbsp;|&nbsp; Throws: ${h.totalThrows} &nbsp;|&nbsp; PPR: ${(h.ppr || 0).toFixed(1)} (Rt ${h.rt || 1})</div>
+                    </div>
+                    <div class="legacy-history-right">
+                        <div class="legacy-history-result ${resClass}">${h.result}</div>
+                    </div>
                 </div>
-                <div class="legacy-history-right">
-                    <div class="legacy-history-result ${resClass}">${h.result}</div>
-                </div>
-            </div>
-        `;
-        listEl.innerHTML += html;
+            `;
+            listEl.innerHTML += html;
+        });
+    } else {
+        drawLegacyHistoryGraph(filtered, graphEl);
+    }
+}
+
+function drawLegacyHistoryGraph(data, container) {
+    // Take newest up to 30, but reverse array for left->right chronological order
+    let chartData = data.slice(0, 30).reverse();
+
+    let pprs = chartData.map(d => d.ppr || 0);
+    let maxPPR = 180;
+    let minPPR = 0;
+
+    let avgPPR = 0;
+    if (pprs.length > 0) {
+        avgPPR = pprs.reduce((a, b) => a + b, 0) / pprs.length;
+    }
+    let avgRt = calculateRating(avgPPR);
+
+    const width = 600;
+    const height = 300;
+    const padding = 40;
+
+    const innerW = width - padding * 2;
+    const innerH = height - padding * 2;
+
+    let points = "";
+    let stepX = innerW / Math.max(1, chartData.length - 1);
+
+    chartData.forEach((d, i) => {
+        let px = chartData.length === 1 ? width / 2 : padding + i * stepX;
+        let pY = height - padding - ((d.ppr - minPPR) / (maxPPR - minPPR)) * innerH;
+        points += `${px},${pY} `;
     });
+
+    let svg = `<svg width="100%" height="auto" viewBox="0 0 ${width} ${height}" style="background:#1a1a1a; border:1px solid #444; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,0.5);">`;
+
+    // Grid Lines & Labels
+    for (let i = 0; i <= 5; i++) {
+        let val = minPPR + (maxPPR - minPPR) * (i / 5);
+        let y = height - padding - (i / 5) * innerH;
+        svg += `<line x1="${padding}" y1="${y}" x2="${width - padding}" y2="${y}" stroke="#444" stroke-width="1" stroke-dasharray="4,4" />`;
+        svg += `<text x="${padding - 5}" y="${y + 4}" fill="#aaa" font-size="12" text-anchor="end">${val.toFixed(0)}</text>`;
+    }
+
+    // The Line
+    if (chartData.length > 1) {
+        svg += `<polyline points="${points.trim()}" fill="none" stroke="#00d2fc" stroke-width="3" />`;
+    }
+
+    // Data Points
+    chartData.forEach((d, i) => {
+        let px = chartData.length === 1 ? width / 2 : padding + i * stepX;
+        let pY = height - padding - ((d.ppr - minPPR) / (maxPPR - minPPR)) * innerH;
+
+        // Color based on win/lose result
+        let color = "#00d2fc"; // default
+        if (d.result === "WIN" || d.result === "CLEAR") color = "#ffd700";
+        if (d.result === "LOSE" || d.result === "OVER") color = "#ff5252";
+
+        svg += `<circle cx="${px}" cy="${pY}" r="6" fill="${color}" stroke="#fff" stroke-width="1.5" />`;
+        svg += `<text x="${px}" y="${pY - 12}" fill="#fff" font-size="11" font-weight="bold" text-anchor="middle" style="text-shadow:1px 1px 3px #000;">${d.ppr.toFixed(1)}</text>`;
+    });
+
+    svg += `</svg>`;
+
+    container.innerHTML = `
+        <div style="width:100%; text-align:center; color:#e94560; font-family:'Cinzel Decorative'; font-size:22px; margin-bottom:5px; letter-spacing:2px; text-shadow:0 0 5px #e94560;">PPR TRANSITION (LAST ${chartData.length})</div>
+        <div style="width:100%; text-align:center; color:#fff; font-size:16px; margin-bottom:15px; text-shadow:1px 1px 3px #000;">
+            AVERAGE: <span style="color:#00d2fc; font-weight:bold; font-size:20px;">${avgPPR.toFixed(1)}</span> (Rt <span style="color:#ffd700; font-weight:bold; font-size:20px;">${avgRt}</span>)
+        </div>
+        <div style="width:100%; max-width:650px; position:relative; display:flex; justify-content:center;">
+            ${svg}
+        </div>
+        <div style="margin-top:20px; color:#aaa; font-size:13px; display:flex; justify-content:center; gap:25px; background:#222; padding:10px 20px; border-radius:20px;">
+            <div style="display:flex; align-items:center; gap:5px;"><span style="display:inline-block; width:12px; height:12px; background:#ffd700; border-radius:50%; box-shadow:0 0 5px #ffd700;"></span> WIN / CLEAR</div>
+            <div style="display:flex; align-items:center; gap:5px;"><span style="display:inline-block; width:12px; height:12px; background:#ff5252; border-radius:50%; box-shadow:0 0 5px #ff5252;"></span> LOSE / OVER</div>
+            <div style="display:flex; align-items:center; gap:5px;"><span style="display:inline-block; width:20px; height:3px; background:#00d2fc; box-shadow:0 0 5px #00d2fc;"></span> PPR LINE</div>
+        </div>
+    `;
 }
