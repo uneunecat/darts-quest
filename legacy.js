@@ -519,7 +519,7 @@ function showLegacyResult(isClear) {
                 </div>
                 <div class="cu-result-buttons">
                     <button class="cu-result-btn cu-retry-btn" onclick="retryLegacyGame()">🔄 RETRY</button>
-                    <button class="cu-result-btn" onclick="exitLegacy()">🏠 TITLE</button>
+                    <button class="cu-result-btn" onclick="exitLegacy()">↩️ GAME SELECT</button>
                 </div>
             </div>
         `;
@@ -585,7 +585,7 @@ function showLegacyResult(isClear) {
                 </div>
                 <div class="cu-result-buttons">
                     <button class="cu-result-btn cu-retry-btn" onclick="retryLegacyGame()">🔄 RETRY</button>
-                    <button class="cu-result-btn" onclick="exitLegacy()">🏠 TITLE</button>
+                    <button class="cu-result-btn" onclick="exitLegacy()">↩️ GAME SELECT</button>
                 </div>
             </div>
         `;
@@ -785,7 +785,7 @@ function showCpuBattleResult(isPlayerWin) {
             
             <div class="cu-result-buttons">
                 <button class="cu-result-btn cu-retry-btn" onclick="retryLegacyGame()">🔄 REMATCH</button>
-                <button class="cu-result-btn" onclick="exitLegacy()">🏠 TITLE</button>
+                <button class="cu-result-btn" onclick="exitLegacy()">↩️ GAME SELECT</button>
             </div>
         </div>
     `;
@@ -795,7 +795,7 @@ function showCpuBattleResult(isPlayerWin) {
 function exitLegacy() {
     el("cu-result-overlay").style.display = "none";
     el("legacy-screen").style.display = "none";
-    backToTitleFromLegacySelect(); // タイトルへ戻る
+    el("legacy-select-screen").style.display = "flex"; // レガシー選択画面へ戻る
 
     // BGM
     playBGM("bgm-title");
