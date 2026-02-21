@@ -180,7 +180,7 @@ function checkCondition(c) {
         case "p_state":
         case "e_state":
             const obj = (c.src === "p_state") ? player : enemy;
-            const state = obj.states.find(s => STATE_MASTER[s.id]?.category === c.tag);
+            const state = obj.states.find(s => STATE_MASTER[s.id] && STATE_MASTER[s.id].category === c.tag);
             targetVal = state ? state.turn : 0;
             break;
         case "trap": return !!player.setCard === c.val;

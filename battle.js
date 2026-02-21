@@ -752,10 +752,11 @@ async function executeSkill(skill, isPreemptive = false, isCard = false) {
 
         // 1. 演出（カード使用時はカットインなし、SEのみ）
         if (skill.name && !isCard) {
-            showSkillCutin(skill.name, skill.visual?.cutin?.color || "fire");
+            const cutinColor = (skill.visual && skill.visual.cutin) ? skill.visual.cutin.color : "fire";
+            showSkillCutin(skill.name, cutinColor);
             await wait(TIMING.CUTIN_DISPLAY);
         }
-        if (skill.visual?.msg) {
+        if (skill.visual && skill.visual.msg) {
             addLog(skill.visual.msg, "log-enemy");
         }
 
@@ -780,8 +781,8 @@ async function executeSkill(skill, isPreemptive = false, isCard = false) {
 
 // Updated: 攻撃ロジック (レリーフ補正を追加 + ブレークダウン返却)
 function applyOffenseLogic(basePower, sourceObj, applyRandom = true) {
-    let buffAdd = sourceObj.states.filter(s => STATE_MASTER[s.id]?.category === "atk_add").reduce((sum, s) => sum + s.val, 0);
-    let buffMult = sourceObj.states.filter(s => STATE_MASTER[s.id]?.category === "atk_mult").reduce((sum, s) => sum + s.val, 0);
+    let buffAdd = sourceObj.states.filter(s => STATE_MASTER[s.id] && STATE_MASTER[s.id].category === "atk_add").reduce((sum, s) => sum + s.val, 0);
+    let buffMult = sourceObj.states.filter(s => STATE_MASTER[s.id] && STATE_MASTER[s.id].category === "atk_mult").reduce((sum, s) => sum + s.val, 0);
     let reliefAdd = 0;
 
     // プレイヤーの攻撃時のみレリーフ補正を計算
@@ -842,7 +843,7 @@ function applyDefenseLogic(dmg, targetObj, isDarts = false) {
     }
 
     // 1. 結界 (Barrier)
-    let barrierVal = targetObj.states.filter(s => STATE_MASTER[s.id]?.category === "barrier").reduce((max, s) => Math.max(max, s.val), 0);
+    let barrierVal = targetObj.states.filter(s => STATE_MASTER[s.id] && STATE_MASTER[s.id].category === "barrier").reduce((max, s) => Math.max(max, s.val), 0);
     if (targetObj === player) barrierVal = Math.max(barrierVal, getReliefStaticValue("barrier"));
 
     // 貫通を適用
@@ -854,13 +855,13 @@ function applyDefenseLogic(dmg, targetObj, isDarts = false) {
     }
 
     // 2. 倍率防御
-    let dmgMult = targetObj.states.filter(s => STATE_MASTER[s.id]?.category === "dmg_mult").reduce((prod, s) => prod * s.val, 1.0);
+    let dmgMult = targetObj.states.filter(s => STATE_MASTER[s.id] && STATE_MASTER[s.id].category === "dmg_mult").reduce((prod, s) => prod * s.val, 1.0);
     if (targetObj === player) dmgMult *= (getReliefStaticValue("dmg_mult") || 1.0);
 
     finalDmg *= dmgMult;
 
     // 3. 固定減算
-    let dmgSub = targetObj.states.filter(s => STATE_MASTER[s.id]?.category === "dmg_sub").reduce((sum, s) => sum + s.val, 0);
+    let dmgSub = targetObj.states.filter(s => STATE_MASTER[s.id] && STATE_MASTER[s.id].category === "dmg_sub").reduce((sum, s) => sum + s.val, 0);
     if (targetObj === player) {
         dmgSub += getReliefStaticValue("dmg_sub");
         // ヘルポエマー: 敵のATKを直接下げる（プレイヤーの被ダメを減らす）

@@ -1,4 +1,9 @@
-console.log("★ main.js is loaded! (v2.18.7)");
+console.log("★ main.js is loaded! (v2.18.8)");
+
+// --- Global Variables (Explicit Declarations for Compatibility) ---
+let allSaveData = { slot1: null, slot2: null, slot3: null };
+let savedData = null;
+let currentSlot = "slot1";
 
 // =========================================
 // 1. INITIALIZATION & DATA (初期化・データ)
@@ -47,9 +52,13 @@ function loadGameData() {
     const saved = localStorage.getItem(SAVE_KEY);
     if (saved) {
         try {
-            allSaveData = JSON.parse(saved);
+            const parsed = JSON.parse(saved);
+            if (parsed) {
+                // merge to ensure slot structure
+                allSaveData = { ...allSaveData, ...parsed };
+            }
         } catch (e) {
-            console.error(e);
+            console.error("SaveData Parse Error:", e);
         }
     }
     // データ整合性チェック
