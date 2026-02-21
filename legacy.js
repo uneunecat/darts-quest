@@ -482,16 +482,20 @@ function showLegacyResult(isClear) {
         cu.gamesPlayed++;
         if (parseFloat(ppr) > cu.bestPPR) cu.bestPPR = parseFloat(ppr);
 
-        // 履歴
-        if (!cu.history) cu.history = [];
-        cu.history.unshift({
+        // 共通履歴保存へ移行するため旧式のcu.history保存コードは削除
+        const record = {
+            id: Date.now(),
             date: new Date().toISOString(),
-            score: totalScore,
+            modeType: legacyModeType,
+            isCpuBattle: false,
+            cpuLevel: 0,
+            result: "CLEAR",
+            playerScore: totalScore,
+            totalThrows: allThrows.length,
             ppr: parseFloat(ppr),
-            rt: rt,
-            rounds: cuRoundScores.map(r => r.reduce((a, b) => a + b, 0))
-        });
-        if (cu.history.length > 30) cu.history = cu.history.slice(0, 30);
+            rt: rt
+        };
+        saveLegacyHistory(record);
 
         const totalDP = gainedDP + bonusDP;
         savedData.dp = (savedData.dp || 0) + totalDP;
@@ -543,6 +547,20 @@ function showLegacyResult(isClear) {
         savedData.dp = (savedData.dp || 0) + gainedDP;
         saveToDrive();
         updateCountUpDPDisplay();
+
+        const record = {
+            id: Date.now(),
+            date: new Date().toISOString(),
+            modeType: legacyModeType,
+            isCpuBattle: false,
+            cpuLevel: 0,
+            result: isClear ? "CLEAR" : "OVER",
+            playerScore: reducedScore,
+            totalThrows: allThrows.length,
+            ppr: parseFloat(ppr),
+            rt: rt
+        };
+        saveLegacyHistory(record);
 
         // 01リザルトHTML (PPR/Rt表示)
         overlay.innerHTML = `
@@ -723,6 +741,20 @@ function showCpuBattleResult(isPlayerWin) {
 
     const playerRt = calculateRating(parseFloat(playerPPR));
     const cpuRt = calculateRating(parseFloat(cpuPPR));
+
+    const record = {
+        id: Date.now(),
+        date: new Date().toISOString(),
+        modeType: legacyModeType,
+        isCpuBattle: true,
+        cpuLevel: cpuLevel,
+        result: isPlayerWin ? "WIN" : "LOSE",
+        playerScore: playerPoints,
+        totalThrows: playerTotalThrows,
+        ppr: parseFloat(playerPPR),
+        rt: playerRt
+    };
+    saveLegacyHistory(record);
 
     overlay.innerHTML = `
         <div class="cu-result-card" style="border-color:${headerColor}; box-shadow:0 0 30px ${headerColor};">
@@ -1125,4 +1157,100 @@ function handleLegacyEnter() {
             updateCountUpUI();
         }
     }
+}
+
+
+// =========================================
+// Legacy History Functionality
+// =========================================
+
+function saveLegacyHistory(record) {
+    if (!savedData.legacy) savedData.legacy = {};
+    if (!savedData.legacy.history) savedData.legacy.history = [];
+
+    savedData.legacy.history.unshift(record);
+    if (savedData.legacy.history.length > 50) {
+        savedData.legacy.history = savedData.legacy.history.slice(0, 50);
+    }
+    saveToDrive();
+}
+
+let currentLegacyFilter = "ALL";
+
+function filterLegacyHistory(type) {
+    currentLegacyFilter = type;
+
+    // Update button states
+    ["ALL", "COUNTUP", "01GAME", "CPU"].forEach(t => {
+        const btn = el("hist-filter-" + t);
+        if (btn) {
+            if (t === type) btn.classList.add("active");
+            else btn.classList.remove("active");
+        }
+    });
+
+    renderLegacyHistory();
+}
+
+function openLegacyHistory() {
+    el("legacy-history-modal").style.display = "flex";
+    filterLegacyHistory("ALL"); // Reset to ALL and render
+}
+
+function closeLegacyHistory() {
+    el("legacy-history-modal").style.display = "none";
+}
+
+function renderLegacyHistory() {
+    const listEl = el("legacy-history-list");
+    listEl.innerHTML = "";
+
+    if (!savedData.legacy || !savedData.legacy.history || savedData.legacy.history.length === 0) {
+        listEl.innerHTML = "<div style='text-align:center; color:#888; margin-top:50px;'>No history found.</div>";
+        return;
+    }
+
+    const filterVal = currentLegacyFilter;
+
+    let filtered = savedData.legacy.history.filter(h => {
+        if (filterVal === "ALL") return true;
+        if (filterVal === "COUNTUP") return h.modeType === "COUNTUP";
+        if (filterVal === "01GAME") return h.modeType !== "COUNTUP" && !h.isCpuBattle;
+        if (filterVal === "CPU") return h.isCpuBattle;
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        listEl.innerHTML = "<div style='text-align:center; color:#888; margin-top:50px;'>No matching history found.</div>";
+        return;
+    }
+
+    filtered.forEach(h => {
+        const dateObj = new Date(h.date);
+        const dateStr = `${dateObj.getFullYear()}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${String(dateObj.getDate()).padStart(2, '0')} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+
+        let titleMode = h.modeType;
+        if (h.isCpuBattle) {
+            titleMode = `VS CPU Lv.${h.cpuLevel} [${h.modeType}]`;
+        } else if (h.modeType !== "COUNTUP") {
+            titleMode = `SOLO ${h.modeType}`;
+        }
+
+        const resClass = h.result.toLowerCase(); // win, lose, clear, over
+        const scoreLabel = h.modeType === "COUNTUP" ? "Score" : "Dmg";
+
+        const html = `
+            <div class="legacy-history-item ${resClass}">
+                <div class="legacy-history-item-left">
+                    <div class="legacy-history-date">${dateStr}</div>
+                    <div class="legacy-history-title">${titleMode}</div>
+                    <div class="legacy-history-stats">${scoreLabel}: ${h.playerScore} &nbsp;|&nbsp; Throws: ${h.totalThrows} &nbsp;|&nbsp; PPR: ${(h.ppr || 0).toFixed(1)} (Rt ${h.rt || 1})</div>
+                </div>
+                <div class="legacy-history-right">
+                    <div class="legacy-history-result ${resClass}">${h.result}</div>
+                </div>
+            </div>
+        `;
+        listEl.innerHTML += html;
+    });
 }

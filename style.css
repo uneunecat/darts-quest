@@ -5881,3 +5881,78 @@ stg-info-row {
     color: #ff5252;
     text-shadow: 0 0 10px #000, 0 0 20px #ff5252;
 }
+
+/* Legacy History Styles */
+.legacy-history-item {
+    background: #222;
+    border-left: 5px solid #00d2fc;
+    border-radius: 4px;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.legacy-history-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.7);
+}
+
+.legacy-history-item.win,
+.legacy-history-item.clear {
+    border-left-color: #ffd700;
+}
+
+.legacy-history-item.lose,
+.legacy-history-item.over {
+    border-left-color: #ff5252;
+}
+
+.legacy-history-item-left {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.legacy-history-date {
+    font-size: 12px;
+    color: #888;
+}
+
+.legacy-history-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #fff;
+}
+
+.legacy-history-stats {
+    font-size: 14px;
+    color: #ccc;
+}
+
+.legacy-history-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.legacy-history-result {
+    font-size: 24px;
+    font-weight: bold;
+    font-family: 'Cinzel Decorative', serif;
+}
+
+.legacy-history-result.win,
+.legacy-history-result.clear {
+    color: #ffd700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.legacy-history-result.lose,
+.legacy-history-result.over {
+    color: #ff5252;
+    text-shadow: 0 0 10px rgba(255, 82, 82, 0.5);
+}
