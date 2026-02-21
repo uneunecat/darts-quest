@@ -34,6 +34,10 @@ function preloadImage(url) {
 let bluetoothDevice = null;
 let bluetoothServer = null;
 
+// セーブデータ管理
+let allSaveData = { slot1: null, slot2: null, slot3: null };
+let currentSlot = "slot1";
+
 // プレイヤー状態
 let player = {
     hp: 100, maxHp: 100, mp: 3, maxMp: 10,

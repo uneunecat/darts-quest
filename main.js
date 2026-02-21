@@ -1,9 +1,6 @@
-console.log("★ main.js is loaded! (v2.18.8)");
+console.log("★ main.js is loaded! (v2.18.9)");
 
-// --- Global Variables (Explicit Declarations for Compatibility) ---
-let allSaveData = { slot1: null, slot2: null, slot3: null };
-let savedData = null;
-let currentSlot = "slot1";
+// --- Initialization Logic ---
 
 // =========================================
 // 1. INITIALIZATION & DATA (初期化・データ)
