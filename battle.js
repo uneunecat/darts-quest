@@ -28,7 +28,6 @@ function setupStage(sel, continueMode, startFloor = 1) {
     stage = sel;
     floor = startFloor;
     isProcessing = false;
-    extraBossTurnCount = 0;
     currentTurn = 1;
     stageStartTurn = totalGameTurns;
     player.reliefResurrectUsed = false; // ★リセット

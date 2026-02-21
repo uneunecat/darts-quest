@@ -7,7 +7,7 @@
 - **対応デバイス**: PC (900x620px スケーリング) / モバイル (フル幅レスポンシブ)
 - **外部連携**: DARTSLIVE ダーツボード (Web Bluetooth API)
 - **保存方式**: localStorage (3スロット制)
-- **バージョン**: v2.18.7 (latest)
+- **バージョン**: v4.8 (latest)
 
 ---
 
@@ -15,15 +15,17 @@
 
 | ファイル | 役割 | 行数(概算) | 読み込み順 |
 |---------|------|-----------|-----------|
-| `index.html` | 全画面のHTML構造 | 340行: UI骨格・Audio要素定義 | - |
-| `style.css` | 全スタイル・アニメーション | 1302行: カード・バトル・モーダル等 | - |
-| `data.js` | マスターデータ | 846行: WORLD_MAP・カード・RELIEF_DB・定数・TIMING | 1 |
-| `state.js` | グローバル状態・ユーティリティ・ステートエンジン・ステージヘルパー | **Tick / Check / Utils** | 2 |
-| `audio.js` | サウンド管理 | BGM/SE再生・音量設定 | 3 |
-| `visual.js` | 演出処理 | エフェクト・カットイン・MPアニメーション | 4 |
-| `ui.js` | UI描画・モーダル・レイアウト | **StageSelect(TCG)**・カード生成・ショップ・デッキ | 5 |
-| `battle.js` | 戦闘エンジン | **ProcessTurn**・スキル実行・ステージセットアップ・敵出現 | 6 |
-| `main.js` | エントリーポイント | 初期化・BT接続・ゲームフロー・セッション管理・セーブ | 7 |
+| `index.html` | 全画面のHTML構造 | UI骨格・Audio要素定義 | - |
+| `style.css` | 全スタイル・アニメーション | カード・バトル・モーダル等 | - |
+| `data.js` | マスターデータ | 845行: WORLD_MAP・カード・RELIEF_DB・定数・TIMING | 1 |
+| `state.js` | グローバル状態・ユーティリティ・ステートエンジン・ステージヘルパー | 324行: Tick / Check / Utils | 2 |
+| `audio.js` | サウンド管理 | 86行: BGM/SE再生・音量設定・SE_FALLBACK_MAP | 3 |
+| `visual.js` | 演出処理 | 216行: エフェクト・カットイン・MPアニメーション | 4 |
+| `battle.js` | 戦闘エンジン | 1311行: ProcessTurn・スキル実行・ステージセットアップ・敵出現 | 5 |
+| `legacy.js` | レガシーダーツモード | 1460行: COUNT-UP・01・VS CPU | 6 |
+| `ui.js` | UI描画・モーダル・レイアウト | 1675行: StageSelect(TCG)・カード生成・ショップ・デッキ | 7 |
+| `debug.js` | デバッグマネージャ (GUI) | 203行: ステージジャンプ・データ操作 | 8 |
+| `main.js` | エントリーポイント | 647行: 初期化・BT接続・ゲームフロー・セッション管理・セーブ | 9 |
 | `assets/` | 画像・BGM・SE リソース | PNG/MP3 | - |
 
 ---
@@ -112,6 +114,7 @@
   history: [],           // 最大50件
   clearedExtra: false,   // EXTRAクリア済みフラグ
   dp: 0,                 // ダーツポイント (通貨)
+  souls: 0,              // ★ ソウル (レリーフ通貨)
   bestRanks: {},         // { [stageId]: "SSS"|"S"|"A"|"B"|"C" }
   stageStats: {          // ★ v7.0: ステージ戦績 (TCGスタイル用)
     "1-1": { attempts: 10, clears: 5, maxDP: 1200, bestTurns: 8 },
@@ -120,7 +123,9 @@
   unlockedStage4: false, // Stage4解放フラグ
   deck: [],              // デッキ構成 (カードIDの配列, 20枚)
   cards: {},             // 所持カード { [cardId]: 所持枚数 }
-  collection: {}         // 累計入手数
+  collection: {},        // 累計入手数
+  unlockedReliefs: [],   // ★ 解放済みレリーフIDの配列
+  equippedReliefs: [null, null, null]  // ★ 装備中レリーフID (3枠)
 }
 ```
 
@@ -149,16 +154,16 @@
 
 ```javascript
 STATE_MASTER = {
-  "p_atk_buff":  { label: "攻撃UP", icon: "⚔️", category: "atk_mult", timing: "throw" },
-  "p_atk_flat":  { label: "ダメUP", icon: "⚔️", category: "atk_add",  timing: "throw" },
-  "e_atk_buff":  { label: "強攻",   icon: "⚔️", category: "atk_mult", timing: "round" },
-  "guard_ratio": { label: "ガード", icon: "🛡️", category: "dmg_mult", timing: "round" },
-  "guard_fixed": { label: "アーマー", icon: "🛡️", category: "dmg_sub", timing: "round" },
-  "barrier":     { label: "結界",   icon: "💠", category: "barrier",  timing: "round" },
-  "charge":      { label: "溜め",   icon: "⚡", category: "charge",   timing: "round" },
-  "stun":        { label: "スタン", icon: "😵", category: "stun",     timing: "round" },
-  "item_lock":   { label: "アイテム封印", icon: "🔒", category: "item_lock", timing: "round" },
-  "bind":        { label: "拘束",   icon: "⛓️", category: "action_lock", timing: "throw" }
+  "p_atk_buff":  { label: "攻撃UP", icon: "⚔️", category: "atk_mult", timing: "throw", class: "chip-p-buff" },
+  "p_atk_flat":  { label: "ダメUP", icon: "⚔️", category: "atk_add",  timing: "throw", class: "chip-p-buff" },
+  "e_atk_buff":  { label: "強攻",   icon: "⚔️", category: "atk_mult", timing: "round", class: "chip-e-buff" },
+  "guard_ratio": { label: "ガード", icon: "🛡️", category: "dmg_mult", timing: "round", class: "chip-guard" },
+  "guard_fixed": { label: "アーマー", icon: "🛡️", category: "dmg_sub", timing: "round", class: "chip-guard" },
+  "barrier":     { label: "結界",   icon: "💠", category: "barrier",  timing: "round", class: "chip-barrier" },
+  "charge":      { label: "溜め",   icon: "⚡", category: "charge",   timing: "round", class: "chip-charge" },
+  "stun":        { label: "スタン", icon: "😵", category: "stun",     timing: "round", class: "chip-stun" },
+  "item_lock":   { label: "カード封印", icon: "🔒", category: "item_lock", timing: "round", class: "chip-lock" },
+  "bind":        { label: "拘束",   icon: "⛓️", category: "action_lock", timing: "throw", class: "chip-stun" }
 }
 ```
 
@@ -172,7 +177,7 @@ STATE_MASTER = {
 | `barrier` | ダメージ閾値 (未満無効) | applyDefenseLogic |
 | `charge` | チャージ状態フラグ | UI表示・条件判定 |
 | `stun` | 行動不能 | processEnemyTurn |
-| `item_lock` | アイテム・カード使用不可 | useItem / playHandCard |
+| `item_lock` | カード・アイテム使用不可 | useItem / playHandCard |
 | `action_lock` | 投擲制限 (1投のみ) | processOneThrow |
 
 **タイミング制御**:
@@ -717,6 +722,22 @@ gainedDP = scoreDP + rankDP
 ### SE (Attack)
 `se-attack`, `se-hit`, `se-single`, `se-double`, `se-triple`, `se-bull`, `se-dbull`, `se-boom`, `se-weak`
 
+### SE_FALLBACK_MAP (audio.js)
+カードSEなど、HTML上にAudio要素がないSEを代替再生するためのマッピング。
+
+| 指定SE | フォールバック先 |
+|--------|----------------|
+| `se-water` | `se-boom` |
+| `se-wind` | `se-attack` |
+| `se-dark` | `se-boom` |
+| `se-bell` | `se-item` |
+| `se-coin` | `se-item` |
+| `se-guard` | `se-buff` |
+| `se-debuff` | `se-warning` |
+| `se-draw` | `se-item` |
+| `se-chain` | `se-warning` |
+| `se-break` | `se-boom` |
+
 ---
 
 ## 14. Rating System
@@ -809,12 +830,16 @@ window.DJ = function(stage, floor) {
 **チートコード**:
 - タイトル画面で `1111` を4回入力 → DP +5000
 
-**GUIデバッグメニュー (v9.0)**:
+**GUIデバッグメニュー (debug.js)**:
 - 画面右下の「DEBUG」ボタンで開閉。
-- **Unlock All Stages**: 全ステージ・パック解放
-- **Gain All Cards**: 全カード x3 入手
-- **Reset Cards**: 所持カード初期化
+- **Unlock All Stages**: 全ステージ解放 (Rank S付与)
+- **Unlock All Packs**: 全パック解放 (Unlock All Stagesと同等)
+- **Gain All Cards (x3)**: 全カード x3 入手
+- **Unlock All Reliefs**: 全レリーフ解放 + 全モンスター討伐済み化
+- **Add 10,000 DP**: DP +10,000
+- **Add 10,000 SOULS**: ソウル +10,000
 - **Jump to Stage**: ステージIDとフロアを指定して即時開始 (Auto-Resume機能付き)
+- **Reset Save Data**: セーブデータ全削除
 
 ---
 
@@ -980,3 +1005,21 @@ window.DJ = function(stage, floor) {
 - **ボタン**: タイトル画面サブボタン「🔲 FULL」、戦闘画面右上アイコンボタン
 - **スケーリング**: 全画面時 `resizeGame()` の係数が `0.95 → 1.0` に変化
 - **イベント**: `fullscreenchange` でリサイズ再計算 + ボタンアイコン更新
+
+---
+
+## 21. Legacy Darts Mode (legacy.js)
+
+QUESTモード以外の従来のダーツゲームモード。タイトル画面の「LEGACY」ボタンから遷移。
+
+### 21.1 ゲームモード
+| モード | 説明 |
+|--------|------|
+| COUNT-UP | 8ラウンド × 3投で合計スコアを競う |
+| 01 | 指定点数 (301/501/701) からゼロを目指す |
+| VS CPU | CPUとの対戦 (COUNT-UP形式) |
+
+### 21.2 特徴
+- QUESTモードとは独立した状態管理 (別スコープの変数群)
+- Bluetooth入力・キーボード入力に対応
+- 1460行の単一ファイルで3モード全てを管理
