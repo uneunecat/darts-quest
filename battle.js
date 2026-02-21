@@ -49,7 +49,7 @@ function setupStage(sel, continueMode, startFloor = 1) {
         player.mp = 0;
         player.deckLocked = false;
 
-        if (!savedData.deck || savedData.deck.length < DECK_SIZE) {
+        if (!savedData.deck || savedData.deck.length < MIN_DECK_SIZE) {
             player.deckLocked = true;
             player.deck = [];
             player.hand = [];

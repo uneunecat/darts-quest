@@ -47,6 +47,7 @@ function openLegacyMenu() {
 function backToTitleFromLegacySelect() {
     el("legacy-select-screen").style.display = "none";
     el("title-screen").style.display = "flex";
+    updateTitleScore(); // 獲得したDPなどを即時反映
 }
 
 // --- UI Logic for CPU Mode ---
@@ -94,6 +95,11 @@ function startCpuGame(level) {
 function startLegacyGame(mode) {
     legacyMode = true;
     legacyModeType = mode;
+
+    if (mode === "COUNTUP") {
+        isCpuBattle = false; // CUはソロ専用
+        switchLegacyMode('SOLO'); // UIも更新
+    }
 
     if (isCpuBattle && mode !== "COUNTUP") {
         openCpuLevelModal();

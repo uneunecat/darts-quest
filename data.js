@@ -26,6 +26,7 @@ const DL_SCORE_MAP = {
 
 // Game Logic Constants
 const DECK_SIZE = 20;
+const MIN_DECK_SIZE = 3;
 const HAND_SIZE = 5;
 const INITIAL_HAND = 3;
 const SAVE_KEY = "darts_quest_save";

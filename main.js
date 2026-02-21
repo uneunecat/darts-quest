@@ -1,4 +1,4 @@
-console.log("★ main.js is loaded! (v2.18.9)");
+console.log("★ main.js is loaded! (v2.18.10)");
 
 // --- Initialization Logic ---
 
@@ -167,6 +167,12 @@ async function connectToBoard() {
         const btn = el("bt-connect-btn");
         if (bluetoothDevice && bluetoothDevice.gatt.connected) {
             alert("既に接続されています");
+            return;
+        }
+
+        // Web Bluetooth API check
+        if (!navigator.bluetooth) {
+            alert("お使いのブラウザはBluetooth接続に対応していません。\niPad/iPhoneで接続するには「Bluefy」などのWeb Bluetooth対応ブラウザをお試しください。");
             return;
         }
 

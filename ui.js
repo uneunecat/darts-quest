@@ -1035,8 +1035,16 @@ function renderDeckEditor() {
 
     const deckCount = savedData.deck.length;
     const countEl = el("deck-count");
-    countEl.innerText = deckCount;
-    if (deckCount < DECK_SIZE) { countEl.style.color = "#ff5555"; } else { countEl.style.color = "#00ff00"; }
+    if (countEl) {
+        countEl.innerText = deckCount;
+        if (deckCount < MIN_DECK_SIZE) {
+            countEl.style.color = "#ff5555"; // 不足
+        } else if (deckCount < DECK_SIZE) {
+            countEl.style.color = "#ffd700"; // 使用可能（最大未満）
+        } else {
+            countEl.style.color = "#00ff00"; // 最大
+        }
+    }
 
     const listGrid = el("card-grid");
     listGrid.innerHTML = "";
