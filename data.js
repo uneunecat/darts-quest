@@ -681,6 +681,144 @@ const CARD_DB = [
         visual: { se: "se-dark" },
         actions: [{ type: "DAMAGE", target: "ENEMY", mode: "loss_hp" }],
         packs: ["vol3"]
+    },
+    // --- Vol.4 - Divine Judgment (15枚: ID 138-152) ---
+    { 
+        id: 138, name: "神の宣告", rarity: "UR", type: "TRAP", cost: 0, desc: "被弾時、現在HPの半分を失うが、攻撃を無効化し敵のバリアや防御を全て破壊する", 
+        visual: { se: "se-boom" },
+        trap: { 
+            trigger: "attack", 
+            actions: [
+                { type: "DAMAGE", target: "PLAYER", mode: "current_hp_percent", val: 50 },
+                { type: "NEGATE" },
+                { type: "STATE", target: "ENEMY", kind: "barrier", turn: 0 },
+                { type: "STATE", target: "ENEMY", kind: "guard_fixed", turn: 0 },
+                { type: "STATE", target: "ENEMY", kind: "guard_ratio", turn: 0 },
+                { type: "STATE", target: "ENEMY", kind: "e_atk_buff", turn: 0 }
+            ] 
+        }, packs: ["vol4"] 
+    },
+    { 
+        id: 139, name: "突然変異", rarity: "UR", type: "MAGIC", cost: 5, desc: "現在HPの90%を失う代わりに、次の3投のダメージを3倍(+2.0)にする", 
+        visual: { se: "se-buff", msg: "肉体が異形の力に覚醒する！" },
+        actions: [
+            { type: "DAMAGE", target: "PLAYER", mode: "current_hp_percent", val: 90 },
+            { type: "STATE", target: "PLAYER", kind: "p_atk_buff", val: 2.0, turn: 3 }
+        ], packs: ["vol4"] 
+    },
+    { 
+        id: 140, name: "大嵐", rarity: "SR", type: "MAGIC", cost: 1, desc: "敵味方全てのバリア・シールド・攻撃バフを吹き飛ばす", 
+        visual: { se: "se-wind", msg: "猛烈な嵐がフィールドをリセットした！" },
+        actions: [
+            { type: "STATE", target: "ENEMY", kind: "barrier", turn: 0 },
+            { type: "STATE", target: "ENEMY", kind: "guard_fixed", turn: 0 },
+            { type: "STATE", target: "ENEMY", kind: "guard_ratio", turn: 0 },
+            { type: "STATE", target: "ENEMY", kind: "e_atk_buff", turn: 0 },
+            { type: "STATE", target: "PLAYER", kind: "guard_fixed", turn: 0 },
+            { type: "STATE", target: "PLAYER", kind: "guard_ratio", turn: 0 },
+            { type: "STATE", target: "PLAYER", kind: "p_atk_buff", turn: 0 },
+            { type: "STATE", target: "PLAYER", kind: "p_atk_flat", turn: 0 }
+        ], packs: ["vol4"] 
+    },
+    { 
+        id: 141, name: "ディメンション・マジック", rarity: "SR", type: "MAGIC", cost: 6, desc: "手札を1枚捨て、敵に250の固定ダメージ", 
+        visual: { se: "se-boom" },
+        actions: [
+            { type: "DISCARD_SELECT", count: 1 },
+            { type: "DAMAGE", target: "ENEMY", mode: "fixed", val: 250 }
+        ], packs: ["vol4"] 
+    },
+    { 
+        id: 142, name: "洗脳解除", rarity: "SR", type: "MAGIC", cost: 1, desc: "プレイヤーのアイテム封印と拘束(1投制限)を解除する", 
+        visual: { se: "se-heal", msg: "呪縛から解放された！" },
+        actions: [
+            { type: "STATE", target: "PLAYER", kind: "item_lock", turn: 0 },
+            { type: "STATE", target: "PLAYER", kind: "action_lock", turn: 0 }
+        ], packs: ["vol4"] 
+    },
+    { 
+        id: 143, name: "威嚇する咆哮", rarity: "R", type: "TRAP", cost: 5, desc: "被弾時、攻撃を無効化し敵を1ターンスタンさせる", 
+        visual: { se: "se-warning" },
+        trap: { 
+            trigger: "attack", 
+            actions: [
+                { type: "NEGATE" },
+                { type: "STATE", target: "ENEMY", kind: "stun", turn: 1 }
+            ] 
+        }, packs: ["vol4"] 
+    },
+    { 
+        id: 144, name: "非常食", rarity: "R", type: "MAGIC", cost: 2, desc: "手札を全て捨て、捨てた枚数×80のHPを回復する", 
+        visual: { se: "se-heal" },
+        actions: [
+            { type: "HEAL", target: "PLAYER", val: 0, scale: { source: "hand", factor: 80 } },
+            { type: "DISCARD_ALL" }
+        ], packs: ["vol4"] 
+    },
+    { 
+        id: 145, name: "魂の解放", rarity: "R", type: "MAGIC", cost: 6, desc: "墓地のマジックカードをランダムに2枚手札に戻す", 
+        visual: { se: "se-item" },
+        actions: [
+            { type: "SPECIAL_SALVAGE" },
+            { type: "SPECIAL_SALVAGE" }
+        ], packs: ["vol4"] 
+    },
+    { 
+        id: 146, name: "貪欲な壺", rarity: "R", type: "MAGIC", cost: 1, desc: "手札を1枚選んで捨て、カードを2枚引く", 
+        visual: { se: "se-item" },
+        actions: [
+            { type: "DISCARD_SELECT", count: 1 },
+            { type: "DRAW", val: 2 }
+        ], packs: ["vol4"] 
+    },
+    { 
+        id: 147, name: "マジック・ジャマー", rarity: "N", type: "TRAP", cost: 1, desc: "被弾時、手札を1枚選んで捨て攻撃を無効化する", 
+        visual: { se: "se-break" },
+        trap: { 
+            trigger: "attack", 
+            actions: [
+                { type: "DISCARD_SELECT", count: 1 },
+                { type: "NEGATE" }
+            ] 
+        }, packs: ["vol4"] 
+    },
+    { 
+        id: 148, name: "抹殺の使徒", rarity: "N", type: "MAGIC", cost: 3, desc: "敵の結界(バリア)を破壊し、50ダメージ", 
+        visual: { se: "se-attack" },
+        actions: [
+            { type: "STATE", target: "ENEMY", kind: "barrier", turn: 0 },
+            { type: "DAMAGE", target: "ENEMY", mode: "fixed", val: 50 }
+        ], packs: ["vol4"] 
+    },
+    { 
+        id: 149, name: "鉄の装甲", rarity: "N", type: "MAGIC", cost: 4, desc: "3ターンの間、受けるダメージを常に -30 する", 
+        visual: { se: "se-buff" },
+        actions: [
+            { type: "STATE", target: "PLAYER", kind: "guard_fixed", val: 30, turn: 3 }
+        ], packs: ["vol4"] 
+    },
+    { 
+        id: 150, name: "自業自得", rarity: "N", type: "MAGIC", cost: 2, desc: "自身に50の固定ダメージを受け、敵に120の固定ダメージ", 
+        visual: { se: "se-boom" },
+        actions: [
+            { type: "DAMAGE", target: "PLAYER", mode: "fixed", val: 50 },
+            { type: "DAMAGE", target: "ENEMY", mode: "fixed", val: 120 }
+        ], packs: ["vol4"] 
+    },
+    { 
+        id: 151, name: "突風", rarity: "N", type: "MAGIC", cost: 1, desc: "敵の攻撃力上昇状態を解除する", 
+        visual: { se: "se-wind" },
+        actions: [
+            { type: "STATE", target: "ENEMY", kind: "e_atk_buff", turn: 0 }
+        ], packs: ["vol4"] 
+    },
+    { 
+        id: 152, name: "恵みの雨", rarity: "N", type: "MAGIC", cost: 3, desc: "HPを40、MPを2回復する", 
+        visual: { se: "se-heal" },
+        actions: [
+            { type: "HEAL", target: "PLAYER", val: 40 },
+            { type: "MP_ACTION", target: "PLAYER", val: 2 }
+        ], packs: ["vol4"] 
     }
 ];
 
@@ -688,7 +826,8 @@ const CARD_DB = [
 const PACK_DATA = [
     { id: "vol1", name: "Vol.1 - Legend", price: 1000, desc: "伝説の始まり。基本魔法カード収録。", unlockStage: "1-1", img: "assets/packs/vol1.png" },
     { id: "vol2", name: "Vol.2 - Awakening", price: 1000, desc: "テクニカルな戦略カードが登場。", unlockStage: "1-3", img: "assets/packs/vol2.png" },
-    { id: "vol3", name: "Vol.3 - Rulers", price: 1000, desc: "運命を操作する強力な魔法・罠。", unlockStage: "2-1", img: "assets/packs/vol3.png" }
+    { id: "vol3", name: "Vol.3 - Rulers", price: 1000, desc: "運命を操作する強力な魔法・罠。", unlockStage: "2-1", img: "assets/packs/vol3.png" },
+    { id: "vol4", name: "Vol.4 - Judgment", price: 1000, desc: "神に抗う禁断の術。強力な代償を伴う魔法・罠。", unlockStage: "2-2", img: "assets/packs/vol4.png" }
 ];
 
 // Player Default Stats
