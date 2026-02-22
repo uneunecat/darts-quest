@@ -110,6 +110,8 @@ function startLegacyGame(mode) {
 
 function startLegacyGameProcess(mode) {
     el("legacy-select-screen").style.display = "none";
+    const mainArea = document.querySelector(".cu-main-area");
+    if (mainArea) mainArea.classList.remove("turn-cpu"); // ★ 色をリセット
 
     // 初期化
     cuRound = 0;

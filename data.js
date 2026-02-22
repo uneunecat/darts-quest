@@ -398,7 +398,7 @@ const CARD_DB = [
             trigger: "summon",
             actions: [
                 { type: "DAMAGE", target: "ENEMY", mode: "fixed", val: 50 },
-                { type: "STATE", target: "ENEMY", kind: "stun", turn: 1 }
+                { type: "STATE", target: "ENEMY", kind: "stun", turn: 2 }
             ]
         },
         packs: ["vol1"]
@@ -627,7 +627,7 @@ const CARD_DB = [
         visual: { se: "se-bell" },
         trap: {
             trigger: "summon",
-            actions: [{ type: "STATE", target: "ENEMY", kind: "stun", turn: 1 }]
+            actions: [{ type: "STATE", target: "ENEMY", kind: "stun", turn:2 }]
         },
         packs: ["vol3"]
     },

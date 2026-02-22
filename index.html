@@ -15,7 +15,7 @@
         rel="stylesheet">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=2.18.20">
+    <link rel="stylesheet" href="style.css?v=2.18.24">
 </head>
 
 <body>
@@ -314,14 +314,16 @@
                 <h1 class="legacy-select-title">SELECT GAME MODE</h1>
 
                 <div class="legacy-mode-switch-container">
-                    <button class="legacy-mode-btn active" id="btn-mode-solo" onclick="switchLegacyMode('SOLO')">SOLO
+                    <button class="legacy-mode-btn active" id="btn-mode-solo"
+                        onclick="playSE('se-decide'); switchLegacyMode('SOLO')">SOLO
                         PLAY</button>
-                    <button class="legacy-mode-btn" id="btn-mode-cpu" onclick="switchLegacyMode('CPU')">VS CPU</button>
+                    <button class="legacy-mode-btn" id="btn-mode-cpu"
+                        onclick="playSE('se-decide'); switchLegacyMode('CPU')">VS CPU</button>
                 </div>
 
                 <div class="legacy-card-container">
                     <!-- COUNT-UP -->
-                    <div class="legacy-card card-countup" onclick="startLegacyGame('COUNTUP')">
+                    <div class="legacy-card card-countup" onclick="playSE('se-decide'); startLegacyGame('COUNTUP')">
                         <div class="card-icon">🎯</div>
                         <div class="card-name">COUNT-UP</div>
                         <div class="card-desc">Score high in 8 rounds</div>
@@ -331,30 +333,33 @@
                     <div class="legacy-01-section">
                         <div class="legacy-section-title">01 GAMES</div>
                         <div class="legacy-card-row">
-                            <div class="legacy-card card-01" onclick="startLegacyGame('301')">
+                            <div class="legacy-card card-01" onclick="playSE('se-decide'); startLegacyGame('301')">
                                 <div class="card-name-large">301</div>
                                 <div class="card-desc">10 Rounds</div>
                             </div>
-                            <div class="legacy-card card-01" onclick="startLegacyGame('501')">
+                            <div class="legacy-card card-01" onclick="playSE('se-decide'); startLegacyGame('501')">
                                 <div class="card-name-large">501</div>
                                 <div class="card-desc">15 Rounds</div>
                             </div>
-                            <div class="legacy-card card-01" onclick="startLegacyGame('701')">
+                            <div class="legacy-card card-01" onclick="playSE('se-decide'); startLegacyGame('701')">
                                 <div class="card-name-large">701</div>
                                 <div class="card-desc">20 Rounds</div>
                             </div>
                         </div>
                         <div class="legacy-card-row-small">
-                            <div class="legacy-card-small" onclick="startLegacyGame('901')">901</div>
-                            <div class="legacy-card-small" onclick="startLegacyGame('1501')">1501</div>
+                            <div class="legacy-card-small" onclick="playSE('se-decide'); startLegacyGame('901')">901
+                            </div>
+                            <div class="legacy-card-small" onclick="playSE('se-decide'); startLegacyGame('1501')">1501
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div style="display:flex; gap:20px; align-items:center; z-index:2;">
-                    <button class="legacy-back-btn" onclick="backToTitleFromLegacySelect()">BACK TO TITLE</button>
+                    <button class="legacy-back-btn" onclick="playSE('se-cancel'); backToTitleFromLegacySelect()">BACK TO
+                        TITLE</button>
                     <button class="legacy-back-btn" style="border-color:#e94560; color:#e94560;"
-                        onclick="openLegacyHistory()">📜 HISTORY</button>
+                        onclick="playSE('se-decide'); openLegacyHistory()">📜 HISTORY</button>
                 </div>
             </div>
 
@@ -426,8 +431,10 @@
                  ========================================= -->
             <div class="legacy-screen" id="legacy-screen" style="display:none;">
                 <div class="cu-dp-badge" id="cu-dp-display">DP: 0</div>
-                <button class="exit-icon-btn" onclick="exitLegacy()" title="BACK TO SELECT">🔙</button>
-                <button class="fullscreen-icon-btn" onclick="toggleFullscreen()" title="FULLSCREEN">🔲</button>
+                <button class="exit-icon-btn" onclick="playSE('se-cancel'); exitLegacy()"
+                    title="BACK TO SELECT">🔙</button>
+                <button class="fullscreen-icon-btn" onclick="playSE('se-decide'); toggleFullscreen()"
+                    title="FULLSCREEN">🔲</button>
 
                 <div class="cu-layout">
                     <!-- 左パネル: スコア情報 -->
@@ -472,8 +479,8 @@
                 </div>
 
                 <!-- Legacy用インターバルオーバーレイ -->
-                <div id="cu-interval-screen" class="interval-overlay" onclick="startCountUpNextRound()"
-                    style="display:none;">
+                <div id="cu-interval-screen" class="interval-overlay"
+                    onclick="playSE('se-decide'); startCountUpNextRound()" style="display:none;">
                     <div class="interval-content">
                         <div class="interval-msg">NEXT ROUND</div>
                         <div class="interval-sub">TAP TO START</div>
@@ -599,15 +606,15 @@
         </div>
     </div>
     <div id="card-zoom-overlay"></div>
-    <script src="data.js?v=2.18.21"></script>
-    <script src="state.js?v=2.18.21"></script>
-    <script src="audio.js?v=2.18.21"></script>
-    <script src="visual.js?v=2.18.21"></script>
-    <script src="battle.js?v=2.18.21"></script>
-    <script src="legacy.js?v=2.18.21"></script>
-    <script src="ui.js?v=2.18.21"></script>
-    <script src="debug.js?v=2.18.21"></script>
-    <script src="main.js?v=2.18.21"></script>
+    <script src="data.js?v=2.18.24"></script>
+    <script src="state.js?v=2.18.24"></script>
+    <script src="audio.js?v=2.18.24"></script>
+    <script src="visual.js?v=2.18.24"></script>
+    <script src="battle.js?v=2.18.24"></script>
+    <script src="legacy.js?v=2.18.24"></script>
+    <script src="ui.js?v=2.18.24"></script>
+    <script src="debug.js?v=2.18.24"></script>
+    <script src="main.js?v=2.18.24"></script>
 </body>
 
 </html>

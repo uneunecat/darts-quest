@@ -59,7 +59,9 @@ const SE_FALLBACK_MAP = {
     "se-debuff": "se-warning",
     "se-draw": "se-item",
     "se-chain": "se-warning",
-    "se-break": "se-boom"
+    "se-break": "se-boom",
+    "se-decide": "se-tap",
+    "se-cancel": "se-tap"
 };
 
 function playSE(id) {

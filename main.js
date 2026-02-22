@@ -574,9 +574,16 @@ window.addEventListener("keydown", function (e) {
 
     // Chest Interaction removed
 
-    // Battle / Legacy Input (Debug)
-    if (legacyMode && el("legacy-screen").style.display !== "none" && !cuProcessing) {
-        if (e.key >= '0' && e.key <= '9') {
+    // Battle / Legacy Input (Debug / Interval)
+    if (legacyMode && el("legacy-screen").style.display !== "none") {
+        // インターバル画面表示中のEnterキー対応
+        if (el("cu-interval-screen").style.display === "flex" && e.key === "Enter") {
+            playSE('se-decide');
+            startCountUpNextRound();
+            return;
+        }
+
+        if (!cuProcessing && e.key >= '0' && e.key <= '9') {
             if (currentInput.length < 3) {
                 playSE("se-tap");
                 currentInput += e.key;
