@@ -95,7 +95,7 @@ function spawnEnemy() {
         const img = el("enemy-img");
         img.style.display = "none";
         img.src = "";
-        img.classList.remove("enemy-appear-anim");
+        img.classList.remove("enemy-appear-anim", "anim-spawn-normal", "anim-spawn-boss", "anim-death-normal", "anim-death-boss");
 
         const bgUrl = getStageBackground(stage, floor);
         if (bgUrl) container.style.backgroundImage = `url('${bgUrl}')`;
@@ -137,11 +137,22 @@ function triggerEncounterEffects() {
     img.src = enemy.data.img;
 
     if (isBoss) {
+        img.classList.add("anim-spawn-boss");
         el("game-container").classList.add("boss-mode");
         el("boss-label").style.display = "inline";
+
+        // 着地タイミングでSEとシェイク
+        setTimeout(() => {
+            playSE("se-boom");
+            const container = el("game-container");
+            container.classList.add("shake-heavy");
+            setTimeout(() => container.classList.remove("shake-heavy"), 500);
+        }, 400);
+
         playSE("se-warning");
         announce(`WARNING: ${enemy.name}`, "danger");
     } else {
+        img.classList.add("anim-spawn-normal");
         playSE("se-attack");
         announce(`${enemy.name} APPEARED!`, "normal");
     }
@@ -191,7 +202,37 @@ async function winBattle() {
     battleEnded = true;
 
     addLog(`${enemy.name} を倒した`, "system");
-    el("enemy-img").style.display = "none";
+
+    const img = el("enemy-img");
+    const isBoss = isBossFloor(stage, floor);
+
+    // 出現アニメーションクラスを除去
+    img.classList.remove("anim-spawn-normal", "anim-spawn-boss");
+
+    // 撃破アニメーション効果の付与
+    if (isBoss) {
+        img.classList.add("anim-death-boss");
+        playSE("se-boom");
+        setTimeout(() => playSE("se-boom"), 400);
+        setTimeout(() => playSE("se-boom"), 800);
+        setTimeout(() => playSE("se-boom"), 1200);
+        setTimeout(() => playSE("se-break"), 1600);
+
+        const container = el("game-container");
+        container.classList.add("shake-heavy");
+        setTimeout(() => container.classList.remove("shake-heavy"), 2000);
+    } else {
+        img.classList.add("anim-death-normal");
+        playSE("se-break");
+    }
+
+    // アニメーション完了まで待機
+    const animDuration = isBoss ? 2000 : 800;
+    await wait(animDuration);
+
+    img.style.display = "none";
+    img.classList.remove("anim-death-boss", "anim-death-normal");
+    el("game-container").classList.remove("shake-heavy");
 
     // ★追加: 敵撃破時レリーフトリガー (腐敗の石版など)
     await checkReliefTriggers("onEnemyKill");

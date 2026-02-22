@@ -5960,3 +5960,131 @@ stg-info-row {
     color: #ff5252;
     text-shadow: 0 0 10px rgba(255, 82, 82, 0.5);
 }
+
+/* =========================================
+   Enemy Encounter & Death Animations
+========================================= */
+
+/* 出現演出: 通常 */
+.anim-spawn-normal {
+    animation: fade-in-up 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes fade-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* 出現演出: ボス */
+.anim-spawn-boss {
+    animation: boss-spawn-heavy 1.0s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes boss-spawn-heavy {
+    0% {
+        opacity: 0;
+        transform: translateY(-50px) scale(1.5);
+        filter: brightness(2);
+    }
+
+    40% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: brightness(1);
+    }
+
+    45% {
+        transform: translateY(5px) scale(1.05);
+    }
+
+    /* Landing impact */
+    60% {
+        transform: translateY(-2px) scale(0.98);
+    }
+
+    100% {
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* 撃破演出: 通常 */
+.anim-death-normal {
+    animation: death-collapse 0.8s ease-in forwards;
+}
+
+@keyframes death-collapse {
+    0% {
+        filter: brightness(1) sepia(0) hue-rotate(0deg);
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    30% {
+        filter: brightness(2) sepia(1) hue-rotate(-50deg);
+        transform: scale(1.05);
+    }
+
+    /* Red flash */
+    100% {
+        filter: brightness(0) blur(4px);
+        opacity: 0;
+        transform: translateY(40px) scale(0.9);
+    }
+}
+
+/* 撃破演出: ボス */
+.anim-death-boss {
+    animation: death-boss-explode 2.0s ease-in-out forwards;
+}
+
+@keyframes death-boss-explode {
+    0% {
+        filter: brightness(1);
+        transform: translateX(0);
+    }
+
+    10% {
+        filter: brightness(2) contrast(1.5);
+        transform: translateX(-10px) rotate(-2deg);
+    }
+
+    20% {
+        filter: invert(1);
+        transform: translateX(10px) rotate(2deg);
+    }
+
+    30% {
+        filter: brightness(3) sepia(1) hue-rotate(-50deg);
+        transform: translateX(-15px) rotate(-3deg) scale(1.1);
+    }
+
+    40% {
+        filter: invert(1);
+        transform: translateX(15px) rotate(4deg) scale(1.1);
+    }
+
+    60% {
+        filter: brightness(5) blur(2px);
+        transform: translateX(0) scale(1.2);
+        opacity: 1;
+    }
+
+    80% {
+        filter: brightness(10) blur(10px);
+        transform: scale(1.5);
+        opacity: 0.8;
+    }
+
+    100% {
+        filter: brightness(10) blur(20px);
+        transform: scale(0.1);
+        opacity: 0;
+    }
+}
