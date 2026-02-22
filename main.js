@@ -282,6 +282,7 @@ function handleBluetoothNotify(event) {
 // =========================================
 
 function initGameSession(startStage, continueMode = false, startFloor = 1) {
+    legacyMode = false; // ★ 強制リセット
     if (!continueMode) {
         player = {
             ...JSON.parse(JSON.stringify(PLAYER_INITIAL_STATS)), // ディープコピー

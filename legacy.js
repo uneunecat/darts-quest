@@ -841,6 +841,7 @@ function exitLegacy() {
     el("cu-result-overlay").style.display = "none";
     el("legacy-screen").style.display = "none";
     el("legacy-select-screen").style.display = "flex"; // レガシー選択画面へ戻る
+    legacyMode = false; // ★ 追加: フラグを戻す
 
     // BGM
     playBGM("bgm-title");
