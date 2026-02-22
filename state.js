@@ -283,21 +283,29 @@ function isStageUnlocked(stageId) {
     const sData = getStageData(stageId);
     if (!sData) return false;
 
-    if (sData.type === "EXTRA") {
-        return !!savedData.bestRanks["1-3"];
+    const areaId = stageId.split("-")[0];
+    const isExtra = sData.type === "EXTRA";
+
+    if (isExtra) {
+        // EXTRAステージの解放条件: そのエリアのNORMAL最終ステージをクリアしていること
+        const area = WORLD_MAP["AREA_" + areaId];
+        if (!area) return false;
+        const normals = area.stages.filter(s => s.type === "NORMAL");
+        const lastNormal = normals[normals.length - 1];
+        return !!(savedData.bestRanks && savedData.bestRanks[lastNormal.id]);
     }
 
-    let allStages = [];
+    // NORMALステージの解放条件
+    let allNormals = [];
     Object.values(WORLD_MAP).forEach(area => {
-        allStages = allStages.concat(area.stages);
+        allNormals = allNormals.concat(area.stages.filter(s => s.type === "NORMAL"));
     });
 
-    const idx = allStages.findIndex(s => s.id === stageId);
+    const idx = allNormals.findIndex(s => s.id === stageId);
     if (idx > 0) {
-        const prevStage = allStages[idx - 1];
-        if (stageId === "2-1") return !!savedData.bestRanks["1-3"];
-
-        return !!savedData.bestRanks[prevStage.id];
+        const prevNormal = allNormals[idx - 1];
+        // 前の通常ステージがクリアされているか
+        return !!(savedData.bestRanks && savedData.bestRanks[prevNormal.id]);
     }
 
     return false;
