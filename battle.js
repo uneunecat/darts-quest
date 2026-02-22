@@ -878,7 +878,7 @@ function applyDefenseLogic(dmg, targetObj, isDarts = false) {
     // 攻撃者（プレイヤー）のレリーフによる貫通性能をチェック
     let barrierIgnore = 0;
     let armorIgnore = 0;
-    if (!isDarts) { // 敵がダメージを受ける時 (executorはplayer)
+    if (targetObj === enemy) { // 敵がダメージを受ける時 (executorはplayer)
         barrierIgnore = getReliefStaticValue("pierce_barrier");
         armorIgnore = getReliefStaticValue("pierce_fixed");
     }
