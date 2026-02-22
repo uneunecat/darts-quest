@@ -1382,9 +1382,7 @@ stg-info-row {
     width: 100%;
     margin-top: 0;
     padding-top: 20px;
-    height: auto !important;
-    flex-grow: 0 !important;
-    min-height: 50% !important;
+    flex: 1 !important;
 }
 
 #enemy-img {
@@ -1401,7 +1399,7 @@ stg-info-row {
 
 .enemy-hp-container {
     position: absolute;
-    top: 90%;
+    top: 60%;
     left: 50%;
     transform: translate(-50%, -50%);
     width: 100%;
@@ -3133,8 +3131,11 @@ stg-info-row {
     }
 
     .enemy-hp-container {
-        bottom: 0 !important;
-        position: relative;
+        position: absolute !important;
+        top: 60% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        bottom: auto !important;
     }
 
     .hp-mega-text {
