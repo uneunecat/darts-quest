@@ -1016,6 +1016,12 @@ function renderDeckEditor() {
     if (!savedData.cards) savedData.cards = {};
 
     const deckGrid = el("deck-grid");
+    const listGrid = el("card-grid");
+
+    // ★ スクロール位置の保存
+    const savedDeckScroll = deckGrid ? deckGrid.scrollTop : 0;
+    const savedListScroll = listGrid ? listGrid.scrollTop : 0;
+
     deckGrid.innerHTML = "";
 
     for (let i = 0; i < DECK_SIZE; i++) {
@@ -1046,7 +1052,6 @@ function renderDeckEditor() {
         }
     }
 
-    const listGrid = el("card-grid");
     listGrid.innerHTML = "";
     let ownedCount = 0;
     CARD_DB.forEach(card => {
@@ -1058,6 +1063,10 @@ function renderDeckEditor() {
         listGrid.appendChild(div);
     });
     el("collection-rate").innerText = `${Math.floor((ownedCount / CARD_DB.length) * 100)}%`;
+
+    // ★ スクロール位置の復元
+    if (deckGrid) deckGrid.scrollTop = savedDeckScroll;
+    if (listGrid) listGrid.scrollTop = savedListScroll;
 }
 
 

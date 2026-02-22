@@ -2386,6 +2386,8 @@ stg-info-row {
     padding: 12px;
     align-content: start;
     overflow-y: scroll !important;
+    flex: 1;
+    min-height: 0;
 }
 
 .deck-grid .std-card {
@@ -2421,6 +2423,8 @@ stg-info-row {
     align-content: start;
     overflow-y: auto !important;
     grid-auto-rows: max-content;
+    flex: 1;
+    min-height: 0;
 }
 
 .deck-card-detail {
